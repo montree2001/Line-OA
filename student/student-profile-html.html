@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>STD-Prasat - โปรไฟล์นักเรียน</title>
+    <style>
+        /* ตั้งค่าพื้นฐาน */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Prompt', sans-serif;
+        }
+        
+        body {
+            background-color: #f5f5f5;
+            color: #333;
+            font-size: 16px;
+            line-height: 1.5;
+        }
+        
+        /* ส่วนหัว */
+        .header {
+            background-color: #06c755;
+            color: white;
+            padding: 15px;
+            text-align: center;
+            position: fixed;
+            top: 0;
+            width: 100%;
+            z-index: 1000;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .header h1 {
+            font-size: 20px;
+            margin: 0;
+        }
+        
+        .header-icon {
+            font-size: 24px;
+        }
+        
+        .container {
+            max-width: 600px;
+            margin: 70px auto 80px;
+            padding: 15px;
+        }
+        
+        /* การ์ดโปรไฟล์ */
+        .profile-card {
+            background-color: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            position: relative;
+        }
+        
+        .profile-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .profile-image-container {
+            position: relative;
+            width: 100px;
+            height: 100px;
+            margin-right: 20px;
+        }
+        
+        .profile-image {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background-color: #06c755;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 40px;
+            font-weight: bold;
+        }
+        
+        .change-photo {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            width: 30px;
+            height: 30px;
+            background-color: #fff;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            cursor: pointer;
+        }
+        
+        .change-photo .material-icons {
+            font-size: 18px;
+            color: #06c755;
+        }
+        
+        .profile-info {
+            flex: 1;
+        }
+        
+        .profile-name {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .profile-details {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 3px;
+        }
+        
+        .edit-button {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background-color: #f5f5f5;
+            border: none;
+            border-radius: 20px;
+            padding: 5px 10px;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+        }
+        
+        .edit-button .material-icons {
+            font-size: 16px;
+            margin-right: 5px;
+        }
+        
+        /* สถิติการเข้าแถว */
+        .stats-section {
+            margin-top: 20px;
+            border-top: 1px solid #f0f0f0;
+            padding-top: 20px;
+        }
+        
+        .section-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .section-title .material-icons {
+            margin-right: 8px;
+            color: #06c755;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+        
+        .stat-box {
+            background-color: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px 10px;
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .stat-value.good {
+            color: #4caf50;
+        }
+        
+        .stat-value.warning {
+            color: #ff9800;
+        }
+        
+        .stat-value.danger {
+            color: #f44336;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+        }
+        
+        /* การตั้งค่า */
+        .settings-card {
+            background-color: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .settings-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #333;
+        }
+        
+        .settings-list {
+            list-style: none;
+        }
+        
+        .settings-item {
+            padding: 15px 0;
+            display: flex;
+            align-items: center;
+            border-bottom: 1px solid #f0f0f0;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .settings-item:last-child {
+            border-bottom: none;
+        }
+        
+        .settings-item:hover {
+            background-color: #f9f9f9;
+        }
+        
+        .settings-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+        }
+        
+        .settings-icon.green {
+            background-color: #e8f5e9;
+            color: #4caf50;
+        }
+        
+        .settings-icon.blue {
+            background-color: #e3f2fd;
+            color: #2196f3;
+        }
+        
+        .settings-icon.purple {
+            background-color: #f3e5f5;
+            color: #9c27b0;
+        }
+        
+        .settings-icon.orange {
+            background-color: #fff3e0;
+            color: #ff9800;
+        }
+        
+        .settings-icon.red {
+            background-color: #ffebee;
+            color: #f44336;
+        }
+        
+        .settings-content {
+            flex: 1;
+        }
+        
+        .settings-name {
+            font-weight: 500;
+        }
+        
+        .settings-description {
+            font-size: 12px;
+            color: #666;
+            margin-top: 2px;
+        }
+        
+        .settings-item .material-icons.arrow {
+            color: #ccc;
+        }
+        
+        /* ปุ่มออกจากระบบ */
+        .logout-button {
+            width: 100%;
+            padding: 15px;
+            background-color: #ffebee;
+            color: #f44336;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        
+        .logout-button .material-icons {
+            margin-right: 10px;
+        }
+        
+        /* ปุ่มอัพโหลดรูปเข้าแถว */
+        .upload-button {
+            width: 100%;
+            padding: 15px;
+            background-color: #06c755;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .upload-button .material-icons {
+            margin-right: 10px;
+        }
+        
+        /* โปรไฟล์ครูที่ปรึกษา */
+        .advisor-section {
+            margin-top: 10px;
+        }
+        
+        .advisor-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+        
+        .advisor-card {
+            background-color: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .advisor-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background-color: #2196f3;
+            margin-right: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 20px;
+        }
+        
+        .advisor-info {
+            flex: 1;
+        }
+        
+        .advisor-name {
+            font-weight: 500;
+            margin-bottom: 3px;
+        }
+        
+        .advisor-position {
+            font-size: 12px;
+            color: #666;
+        }
+        
+        /* ข้อมูลเวอร์ชัน */
+        .version-info {
+            text-align: center;
+            font-size: 12px;
+            color: #999;
+            margin-top: 20px;
+        }
+        
+        /* แถบนำทางด้านล่าง */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            background-color: white;
+            display: flex;
+            justify-content: space-around;
+            padding: 10px 0;
+            box-shadow: 0 -2px 5px rgba(0,0,0,0.1);
+            z-index: 1000;
+        }
+        
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-size: 12px;
+            color: #666;
+            text-decoration: none;
+        }
+        
+        .nav-item.active {
+            color: #06c755;
+        }
+        
+        .nav-icon {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+        
+        /* ไอคอนจาก Material Icons */
+        .material-icons {
+            font-family: 'Material Icons';
+            font-weight: normal;
+            font-style: normal;
+            font-size: 24px;
+            line-height: 1;
+            letter-spacing: normal;
+            text-transform: none;
+            display: inline-block;
+            white-space: nowrap;
+            word-wrap: normal;
+            direction: ltr;
+            -webkit-font-feature-settings: 'liga';
+            -webkit-font-smoothing: antialiased;
+        }
+    </style>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/material-design-icons/3.0.1/iconfont/material-icons.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="header">
+        <a href="#" onclick="goBack()" class="header-icon">
+            <span class="material-icons">arrow_back</span>
+        </a>
+        <h1>โปรไฟล์ของฉัน</h1>
+        <div class="header-icon">
+            <span class="material-icons">notifications</span>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- การ์ดโปรไฟล์ -->
+        <div class="profile-card">
+            <button class="edit-button">
+                <span class="material-icons">edit</span> แก้ไข
+            </button>
+            
+            <div class="profile-header">
+                <div class="profile-image-container">
+                    <div class="profile-image">อ</div>
+                    <div class="change-photo">
+                        <span class="material-icons">photo_camera</span>
+                    </div>
+                </div>
+                <div class="profile-info">
+                    <div class="profile-name">นายเอกชัย รักเรียน</div>
+                    <div class="profile-details">ม.6/1 เลขที่ 15</div>
+                    <div class="profile-details">รหัสนักเรียน: 16536</div>
+                    <div class="profile-details">อีเมล: ekachai.r@student.prasat.ac.th</div>
+                </div>
+            </div>
+            
+            <div class="stats-section">
+                <div class="section-title">
+                    <span class="material-icons">bar_chart</span> สถิติการเข้าแถว
+                </div>
+                <div class="stats-grid">
+                    <div class="stat-box">
+                        <div class="stat-value">97</div>
+                        <div class="stat-label">วันเรียนทั้งหมด</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value">97</div>
+                        <div class="stat-label">วันเข้าแถว</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value good">100%</div>
+                        <div class="stat-label">อัตราการเข้าแถว</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="advisor-section">
+                <div class="advisor-title">ครูที่ปรึกษา</div>
+                <div class="advisor-card">
+                    <div class="advisor-avatar">ค</div>
+                    <div class="advisor-info">
+                        <div class="advisor-name">อาจารย์ใจดี มากเมตตา</div>
+                        <div class="advisor-position">ครูประจำชั้น ม.6/1</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ปุ่มอัพโหลดรูปเข้าแถว -->
+        <button class="upload-button">
+            <span class="material-icons">file_upload</span> อัพโหลดภาพการเข้าแถว
+        </button>
+
+        <!-- การตั้งค่า -->
+        <div class="settings-card">
+            <div class="settings-title">ตั้งค่าส่วนตัว</div>
+            <ul class="settings-list">
+                <li class="settings-item">
+                    <div class="settings-icon green">
+                        <span class="material-icons">person</span>
+                    </div>
+                    <div class="settings-content">
+                        <div class="settings-name">ข้อมูลส่วนตัว</div>
+                        <div class="settings-description">แก้ไขข้อมูลส่วนตัวของคุณ</div>
+                    </div>
+                    <span class="material-icons arrow">chevron_right</span>
+                </li>
+                <li class="settings-item">
+                    <div class="settings-icon blue">
+                        <span class="material-icons">vpn_key</span>
+                    </div>
+                    <div class="settings-content">
+                        <div class="settings-name">เปลี่ยนรหัสผ่าน</div>
+                        <div class="settings-description">เปลี่ยนรหัสผ่านเข้าสู่ระบบของคุณ</div>
+                    </div>
+                    <span class="material-icons arrow">chevron_right</span>
+                </li>
+                <li class="settings-item">
+                    <div class="settings-icon purple">
+                        <span class="material-icons">notifications</span>
+                    </div>
+                    <div class="settings-content">
+                        <div class="settings-name">การแจ้งเตือน</div>
+                        <div class="settings-description">ตั้งค่าการแจ้งเตือนและการเตือนความจำ</div>
+                    </div>
+                    <span class="material-icons arrow">chevron_right</span>
+                </li>
+                <li class="settings-item">
+                    <div class="settings-icon orange">
+                        <span class="material-icons">language</span>
+                    </div>
+                    <div class="settings-content">
+                        <div class="settings-name">ภาษา</div>
+                        <div class="settings-description">เปลี่ยนภาษาที่ใช้ในแอปพลิเคชัน</div>
+                    </div>
+                    <span class="material-icons arrow">chevron_right</span>
+                </li>
+                <li class="settings-item">
+                    <div class="settings-icon green">
+                        <span class="material-icons">family_restroom</span>
+                    </div>
+                    <div class="settings-content">
+                        <div class="settings-name">ข้อมูลผู้ปกครอง</div>
+                        <div class="settings-description">ดูข้อมูลผู้ปกครองของคุณ</div>
+                    </div>
+                    <span class="material-icons arrow">chevron_right</span>
+                </li>
+                <li class="settings-item">
+                    <div class="settings-icon blue">
+                        <span class="material-icons">help</span>
+                    </div>
+                    <div class="settings-content">
+                        <div class="settings-name">ช่วยเหลือ</div>
+                        <div class="settings-description">วิธีใช้งานและคำถามที่พบบ่อย</div>
+                    </div>
+                    <span class="material-icons arrow">chevron_right</span>
+                </li>
+                <li class="settings-item">
+                    <div class="settings-icon red">
+                        <span class="material-icons">bug_report</span>
+                    </div>
+                    <div class="settings-content">
+                        <div class="settings-name">รายงานปัญหา</div>
+                        <div class="settings-description">แจ้งปัญหาการใช้งานระบบ</div>
+                    </div>
+                    <span class="material-icons arrow">chevron_right</span>
+                </li>
+            </ul>
+        </div>
+
+        <!-- ปุ่มออกจากระบบ -->
+        <button class="logout-button">
+            <span class="material-icons">logout</span> ออกจากระบบ
+        </button>
+
+        <!-- ข้อมูลเวอร์ชัน -->
+        <div class="version-info">
+            <p>STD-Prasat v1.0.0</p>
+            <p>© 2025 โรงเรียนปราสาทวิทยาคม</p>
+        </div>
+    </div>
+
+    <!-- แถบนำทางด้านล่าง -->
+    <div class="bottom-nav">
+        <a href="#" class="nav-item">
+            <span class="material-icons nav-icon">home</span>
+            <span>หน้าหลัก</span>
+        </a>
+        <a href="#" class="nav-item">
+            <span class="material-icons nav-icon">history</span>
+            <span>ประวัติ</span>
+        </a>
+        <a href="#" class="nav-item active">
+            <span class="material-icons nav-icon">person</span>
+            <span>โปรไฟล์</span>
+        </a>
+    </div>
+
+    <script>
+        // ย้อนกลับ
+        function goBack() {
+            history.back();
+        }
+    </script>
+</body>
+</html>

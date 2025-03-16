@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teacher-Prasat - หน้าหลัก</title>
+    <style>
+        /* ตั้งค่าพื้นฐาน */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Prompt', sans-serif;
+        }
+        
+        body {
+            background-color: #f5f5f5;
+            color: #333;
+            font-size: 16px;
+            line-height: 1.5;
+        }
+        
+        /* ส่วนหัว */
+        .header {
+            background-color: #1976d2;
+            color: white;
+            padding: 15px;
+            text-align: center;
+            position: fixed;
+            top: 0;
+            width: 100%;
+            z-index: 1000;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .container {
+            max-width: 480px;
+            margin: 70px auto 80px;
+            padding: 15px;
+        }
+        
+        /* ข้อมูลชั้นเรียน */
+        .class-card {
+            background-color: #e3f2fd;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .class-card h2 {
+            font-size: 20px;
+            color: #1976d2;
+            margin-bottom: 5px;
+        }
+        
+        .class-card p {
+            font-size: 14px;
+            color: #1976d2;
+            margin-bottom: 5px;
+        }
+        
+        /* สรุปการเข้าแถว */
+        .stats-container {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            gap: 10px;
+        }
+        
+        .stat-card {
+            flex: 1;
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .stat-card.green {
+            background-color: #e8f5e9;
+            color: #388e3c;
+        }
+        
+        .stat-card.red {
+            background-color: #ffebee;
+            color: #d32f2f;
+        }
+        
+        .stat-card h3 {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+        
+        .stat-card p {
+            font-size: 14px;
+        }
+        
+        /* ปุ่มสร้าง PIN */
+        .create-pin-button {
+            background-color: #1976d2;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            padding: 15px;
+            font-size: 16px;
+            font-weight: bold;
+            width: 100%;
+            margin-bottom: 20px;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .create-pin-button .material-icons {
+            margin-right: 10px;
+        }
+        
+        /* แสดง PIN ที่ใช้งานอยู่ */
+        .active-pin-card {
+            background-color: #f0f0f0;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+            text-align: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .active-pin-card h3 {
+            font-size: 16px;
+            color: #1976d2;
+            margin-bottom: 10px;
+        }
+        
+        .active-pin {
+            font-size: 32px;
+            font-weight: bold;
+            color: #1976d2;
+            letter-spacing: 5px;
+        }
+        
+        .pin-expire {
+            font-size: 12px;
+            color: #666;
+            margin-top: 10px;
+        }
+        
+        /* ปุ่มสแกน QR */
+        .scan-qr-button {
+            background-color: #f57c00;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            padding: 15px;
+            font-size: 16px;
+            font-weight: bold;
+            width: 100%;
+            margin-bottom: 20px;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .scan-qr-button .material-icons {
+            margin-right: 10px;
+        }
+        
+        /* รายชื่อนักเรียน */
+        .student-list {
+            background-color: white;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .student-list-header {
+            background-color: #1976d2;
+            color: white;
+            padding: 10px 15px;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .student-list-header span:first-child {
+            flex: 3;
+        }
+        
+        .student-list-header span:last-child {
+            flex: 1;
+            text-align: center;
+        }
+        
+        .student-item {
+            padding: 10px 15px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .student-item:last-child {
+            border-bottom: none;
+        }
+        
+        .student-name {
+            flex: 3;
+        }
+        
+        .student-status {
+            flex: 1;
+            text-align: center;
+            border-radius: 15px;
+            padding: 3px 10px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        
+        .student-status.present {
+            background-color: #e8f5e9;
+            color: #388e3c;
+        }
+        
+        .student-status.absent {
+            background-color: #ffebee;
+            color: #d32f2f;
+        }
+        
+        /* แถบนำทางด้านล่าง */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            background-color: white;
+            display: flex;
+            justify-content: space-around;
+            padding: 10px 0;
+            box-shadow: 0 -2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-size: 12px;
+            color: #666;
+            text-decoration: none;
+        }
+        
+        .nav-item.active {
+            color: #1976d2;
+        }
+        
+        .nav-icon {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+        
+        /* ไอคอนจาก Material Icons */
+        .material-icons {
+            font-family: 'Material Icons';
+            font-weight: normal;
+            font-style: normal;
+            font-size: 24px;
+            line-height: 1;
+            letter-spacing: normal;
+            text-transform: none;
+            display: inline-block;
+            white-space: nowrap;
+            word-wrap: normal;
+            direction: ltr;
+            -webkit-font-feature-settings: 'liga';
+            -webkit-font-smoothing: antialiased;
+        }
+    </style>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/material-design-icons/3.0.1/iconfont/material-icons.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="header">
+        <h1>Teacher-Prasat</h1>
+    </div>
+
+    <div class="container">
+        <!-- ข้อมูลชั้นเรียน -->
+        <div class="class-card">
+            <h2>ม.6/1</h2>
+            <p>นักเรียน 35 คน</p>
+            <p>วันที่ 16 มี.ค. 2025</p>
+        </div>
+
+        <!-- สรุปการเข้าแถว -->
+        <div class="stats-container">
+            <div class="stat-card green">
+                <h3>33</h3>
+                <p>มาเรียน</p>
+            </div>
+            <div class="stat-card red">
+                <h3>2</h3>
+                <p>ขาดเรียน</p>
+            </div>
+        </div>
+
+        <!-- ปุ่มสร้าง PIN -->
+        <button class="create-pin-button">
+            <span class="material-icons">pin</span> สร้างรหัส PIN
+        </button>
+
+        <!-- แสดง PIN ที่ใช้งานอยู่ -->
+        <div class="active-pin-card">
+            <h3>รหัส PIN ที่ใช้งานได้</h3>
+            <div class="active-pin">5731</div>
+            <div class="pin-expire">หมดอายุในอีก 9 นาที</div>
+        </div>
+
+        <!-- ปุ่มสแกน QR -->
+        <button class="scan-qr-button">
+            <span class="material-icons">qr_code_scanner</span> สแกน QR นักเรียน
+        </button>
+
+        <!-- รายชื่อนักเรียน -->
+        <div class="student-list">
+            <div class="student-list-header">
+                <span>รายชื่อนักเรียน</span>
+                <span>สถานะ</span>
+            </div>
+            <div class="student-item">
+                <div class="student-name">1. นายเอกชัย รักเรียน</div>
+                <div class="student-status present">มา</div>
+            </div>
+            <div class="student-item">
+                <div class="student-name">2. นางสาวสมศรี ใจดี</div>
+                <div class="student-status present">มา</div>
+            </div>
+            <div class="student-item">
+                <div class="student-name">3. นายสมชาย เรียนดี</div>
+                <div class="student-status present">มา</div>
+            </div>
+            <div class="student-item">
+                <div class="student-name">4. นางสาวพิมพ์ใจ ร่าเริง</div>
+                <div class="student-status absent">ขาด</div>
+            </div>
+            <div class="student-item">
+                <div class="student-name">5. นายสุชาติ รักษาสัตย์</div>
+                <div class="student-status present">มา</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- แถบนำทางด้านล่าง -->
+    <div class="bottom-nav">
+        <a href="#" class="nav-item active">
+            <span class="material-icons nav-icon">home</span>
+            <span>หน้าหลัก</span>
+        </a>
+        <a href="#" class="nav-item">
+            <span class="material-icons nav-icon">assessment</span>
+            <span>รายงาน</span>
+        </a>
+        <a href="#" class="nav-item">
+            <span class="material-icons nav-icon">settings</span>
+            <span>ตั้งค่า</span>
+        </a>
+    </div>
+</body>
+</html>

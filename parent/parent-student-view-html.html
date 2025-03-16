@@ -1,0 +1,885 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SADD-Prasat - ข้อมูลนักเรียน</title>
+    <style>
+        /* ตั้งค่าพื้นฐาน */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Sarabun', sans-serif;
+        }
+        
+        body {
+            background-color: #f8f9fa;
+            color: #333;
+            font-size: 16px;
+            line-height: 1.5;
+        }
+        
+        /* ส่วนหัว */
+        .header {
+            background: linear-gradient(135deg, #8e24aa 0%, #6a1b9a 100%);
+            color: white;
+            padding: 15px 20px;
+            position: fixed;
+            top: 0;
+            width: 100%;
+            z-index: 1000;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .header h1 {
+            font-size: 20px;
+            font-weight: 600;
+        }
+        
+        .header-icon {
+            font-size: 24px;
+        }
+        
+        .container {
+            max-width: 600px;
+            margin: 70px auto 80px;
+            padding: 15px;
+        }
+        
+        /* แถบนักเรียน */
+        .students-bar {
+            background-color: white;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            overflow-x: auto;
+            white-space: nowrap;
+            display: flex;
+            gap: 15px;
+        }
+        
+        .student-pill {
+            display: inline-flex;
+            align-items: center;
+            padding: 8px 15px;
+            border-radius: 30px;
+            background-color: #f5f5f5;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .student-pill.active {
+            background-color: #8e24aa;
+            color: white;
+            box-shadow: 0 2px 5px rgba(142, 36, 170, 0.3);
+        }
+        
+        .student-pill-avatar {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background-color: #e0e0e0;
+            margin-right: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+        
+        .student-pill.active .student-pill-avatar {
+            background-color: white;
+            color: #8e24aa;
+        }
+        
+        .student-pill-name {
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        /* ข้อมูลนักเรียน */
+        .student-profile {
+            background-color: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        
+        .profile-header {
+            display: flex;
+            margin-bottom: 20px;
+        }
+        
+        .student-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 20px;
+            background-color: #8e24aa;
+            margin-right: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 32px;
+            font-weight: bold;
+        }
+        
+        .student-info {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        
+        .student-name {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .student-details {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 3px;
+        }
+        
+        .student-status {
+            margin-top: 5px;
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .student-status.present {
+            background-color: #e8f5e9;
+            color: #4caf50;
+        }
+        
+        .student-status.absent {
+            background-color: #ffebee;
+            color: #f44336;
+        }
+        
+        .profile-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 5px;
+        }
+        
+        .profile-action-button {
+            background-color: #f5f5f5;
+            border: none;
+            border-radius: 20px;
+            padding: 5px 10px;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+        }
+        
+        .profile-action-button .material-icons {
+            font-size: 16px;
+            margin-right: 3px;
+        }
+        
+        /* สถิติการเข้าแถว */
+        .stats-card {
+            background-color: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        
+        .stats-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .stats-title {
+            font-size: 16px;
+            font-weight: 600;
+        }
+        
+        .stats-term {
+            color: #8e24aa;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+        }
+        
+        .stat-item {
+            padding: 15px;
+            border-radius: 12px;
+            background-color: #f8f9fa;
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .stat-value.good {
+            color: #4caf50;
+        }
+        
+        .stat-value.warning {
+            color: #ff9800;
+        }
+        
+        .stat-value.danger {
+            color: #f44336;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .stats-progress {
+            margin-top: 20px;
+        }
+        
+        .progress-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+        
+        .progress-text {
+            font-weight: 500;
+        }
+        
+        .progress-value {
+            color: #8e24aa;
+            font-weight: 600;
+        }
+        
+        .progress-bar {
+            height: 8px;
+            background-color: #f1f1f1;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #8e24aa 0%, #b039c3 100%);
+            border-radius: 4px;
+        }
+        
+        /* ประวัติการเข้าแถว */
+        .attendance-card {
+            background-color: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        
+        .attendance-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .attendance-title {
+            font-size: 16px;
+            font-weight: 600;
+        }
+        
+        .view-all {
+            color: #8e24aa;
+            font-size: 14px;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        
+        .attendance-filters {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            overflow-x: auto;
+            padding-bottom: 5px;
+        }
+        
+        .filter-button {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 20px;
+            font-size: 14px;
+            cursor: pointer;
+            white-space: nowrap;
+            background-color: #f5f5f5;
+        }
+        
+        .filter-button.active {
+            background-color: #8e24aa;
+            color: white;
+        }
+        
+        .attendance-list {
+            max-height: 350px;
+            overflow-y: auto;
+        }
+        
+        .attendance-item {
+            display: flex;
+            padding: 15px 0;
+            border-bottom: 1px solid #f1f1f1;
+        }
+        
+        .attendance-item:last-child {
+            border-bottom: none;
+        }
+        
+        .attendance-date {
+            width: 40px;
+            text-align: center;
+            margin-right: 15px;
+        }
+        
+        .attendance-day {
+            font-size: 18px;
+            font-weight: bold;
+        }
+        
+        .attendance-month {
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .attendance-details {
+            flex: 1;
+        }
+        
+        .attendance-status {
+            display: flex;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+        
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+        
+        .status-dot.present {
+            background-color: #4caf50;
+        }
+        
+        .status-dot.absent {
+            background-color: #f44336;
+        }
+        
+        .status-text {
+            font-weight: 600;
+        }
+        
+        .status-text.present {
+            color: #4caf50;
+        }
+        
+        .status-text.absent {
+            color: #f44336;
+        }
+        
+        .attendance-time {
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .attendance-method {
+            display: flex;
+            align-items: center;
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+        
+        .attendance-method .material-icons {
+            font-size: 14px;
+            margin-right: 5px;
+        }
+        
+        /* ข้อมูลครูที่ปรึกษา */
+        .teacher-card {
+            background-color: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        
+        .teacher-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+        
+        .teacher-info {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .teacher-avatar {
+            width: 60px;
+            height: 60px;
+            border-radius: 15px;
+            background-color: #e3f2fd;
+            margin-right: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #1976d2;
+            font-size: 24px;
+        }
+        
+        .teacher-details {
+            flex: 1;
+        }
+        
+        .teacher-name {
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 3px;
+        }
+        
+        .teacher-position {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 3px;
+        }
+        
+        .teacher-contact {
+            font-size: 12px;
+            color: #1976d2;
+            display: flex;
+            align-items: center;
+        }
+        
+        .teacher-contact .material-icons {
+            font-size: 14px;
+            margin-right: 5px;
+        }
+        
+        .contact-buttons {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .contact-button {
+            flex: 1;
+            padding: 12px 0;
+            border: none;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+        }
+        
+        .contact-button.call {
+            background-color: #e8f5e9;
+            color: #4caf50;
+        }
+        
+        .contact-button.message {
+            background-color: #e3f2fd;
+            color: #1976d2;
+        }
+        
+        .contact-button .material-icons {
+            margin-right: 8px;
+        }
+        
+        /* แถบนำทางด้านล่าง */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            background-color: white;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 5px;
+            padding: 10px 0;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
+            z-index: 1000;
+        }
+        
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-size: 12px;
+            color: #666;
+            text-decoration: none;
+        }
+        
+        .nav-item.active {
+            color: #8e24aa;
+        }
+        
+        .nav-icon {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+        
+        /* Chart Styles */
+        .chart-container {
+            height: 200px;
+            margin-top: 20px;
+            position: relative;
+        }
+        
+        .chart-bars {
+            display: flex;
+            height: 150px;
+            align-items: flex-end;
+            justify-content: space-between;
+        }
+        
+        .chart-bar {
+            width: 15%;
+            background: linear-gradient(0deg, #8e24aa 0%, #b039c3 100%);
+            border-radius: 5px 5px 0 0;
+            position: relative;
+        }
+        
+        .chart-bar-label {
+            position: absolute;
+            bottom: -25px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .chart-axis {
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            height: 1px;
+            background-color: #e0e0e0;
+        }
+        
+        /* ไอคอนจาก Material Icons */
+        .material-icons {
+            font-family: 'Material Icons';
+            font-weight: normal;
+            font-style: normal;
+            font-size: 24px;
+            line-height: 1;
+            letter-spacing: normal;
+            text-transform: none;
+            display: inline-block;
+            white-space: nowrap;
+            word-wrap: normal;
+            direction: ltr;
+            -webkit-font-feature-settings: 'liga';
+            -webkit-font-smoothing: antialiased;
+        }
+    </style>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/material-design-icons/3.0.1/iconfont/material-icons.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="header">
+        <a href="#" onclick="goBack()" class="header-icon">
+            <span class="material-icons">arrow_back</span>
+        </a>
+        <h1>ข้อมูลนักเรียน</h1>
+        <div class="header-icon">
+            <span class="material-icons">notifications</span>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- แถบนักเรียน -->
+        <div class="students-bar">
+            <div class="student-pill active" onclick="switchStudent(1)">
+                <div class="student-pill-avatar">อ</div>
+                <div class="student-pill-name">เอกชัย</div>
+            </div>
+            <div class="student-pill" onclick="switchStudent(2)">
+                <div class="student-pill-avatar">ส</div>
+                <div class="student-pill-name">สมหญิง</div>
+            </div>
+            <div class="student-pill" onclick="switchStudent(3)">
+                <div class="student-pill-avatar">ธ</div>
+                <div class="student-pill-name">ธนกฤต</div>
+            </div>
+        </div>
+
+        <!-- ข้อมูลนักเรียน -->
+        <div class="student-profile">
+            <div class="profile-header">
+                <div class="student-avatar">อ</div>
+                <div class="student-info">
+                    <div class="student-name">นายเอกชัย รักเรียน</div>
+                    <div class="student-details">ม.6/1 เลขที่ 15</div>
+                    <div class="student-details">รหัสนักเรียน: 16536</div>
+                    <div class="student-status present">
+                        <span class="material-icons" style="font-size: 14px; margin-right: 5px;">check_circle</span>
+                        เข้าแถววันนี้ เวลา 07:45 น.
+                    </div>
+                </div>
+            </div>
+            
+            <div class="profile-actions">
+                <button class="profile-action-button">
+                    <span class="material-icons">history</span>
+                    ประวัติการเข้าแถว
+                </button>
+                <button class="profile-action-button">
+                    <span class="material-icons">note</span>
+                    ข้อมูลการเรียน
+                </button>
+                <button class="profile-action-button">
+                    <span class="material-icons">contact_page</span>
+                    ข้อมูลส่วนตัว
+                </button>
+            </div>
+        </div>
+
+        <!-- สถิติการเข้าแถว -->
+        <div class="stats-card">
+            <div class="stats-header">
+                <div class="stats-title">สถิติการเข้าแถว</div>
+                <div class="stats-term">ภาคเรียนที่ 2/2567</div>
+            </div>
+            
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-value">97</div>
+                    <div class="stat-label">วันเรียนทั้งหมด</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">97</div>
+                    <div class="stat-label">วันเข้าแถว</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value good">100%</div>
+                    <div class="stat-label">อัตราการเข้าแถว</div>
+                </div>
+            </div>
+            
+            <div class="stats-progress">
+                <div class="progress-label">
+                    <span class="progress-text">ความสม่ำเสมอในการเข้าแถว</span>
+                    <span class="progress-value">ยอดเยี่ยม</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: 100%;"></div>
+                </div>
+            </div>
+            
+            <div class="chart-container">
+                <div class="chart-bars">
+                    <div class="chart-bar" style="height: 80%;">
+                        <div class="chart-bar-label">ต.ค.</div>
+                    </div>
+                    <div class="chart-bar" style="height: 90%;">
+                        <div class="chart-bar-label">พ.ย.</div>
+                    </div>
+                    <div class="chart-bar" style="height: 100%;">
+                        <div class="chart-bar-label">ธ.ค.</div>
+                    </div>
+                    <div class="chart-bar" style="height: 95%;">
+                        <div class="chart-bar-label">ม.ค.</div>
+                    </div>
+                    <div class="chart-bar" style="height: 97%;">
+                        <div class="chart-bar-label">ก.พ.</div>
+                    </div>
+                    <div class="chart-bar" style="height: 100%;">
+                        <div class="chart-bar-label">มี.ค.</div>
+                    </div>
+                </div>
+                <div class="chart-axis"></div>
+            </div>
+        </div>
+
+        <!-- ประวัติการเข้าแถว -->
+        <div class="attendance-card">
+            <div class="attendance-header">
+                <div class="attendance-title">ประวัติการเข้าแถว</div>
+                <a href="#" class="view-all">ดูทั้งหมด</a>
+            </div>
+            
+            <div class="attendance-filters">
+                <button class="filter-button active">ทั้งหมด</button>
+                <button class="filter-button">เดือนนี้</button>
+                <button class="filter-button">สัปดาห์นี้</button>
+                <button class="filter-button">มาเรียน</button>
+                <button class="filter-button">ขาดเรียน</button>
+            </div>
+            
+            <div class="attendance-list">
+                <!-- วันที่ 16 มีนาคม -->
+                <div class="attendance-item">
+                    <div class="attendance-date">
+                        <div class="attendance-day">16</div>
+                        <div class="attendance-month">มี.ค.</div>
+                    </div>
+                    <div class="attendance-details">
+                        <div class="attendance-status">
+                            <div class="status-dot present"></div>
+                            <div class="status-text present">มาเรียน</div>
+                        </div>
+                        <div class="attendance-time">เช็คชื่อเวลา 07:45 น.</div>
+                        <div class="attendance-method">
+                            <span class="material-icons">gps_fixed</span>
+                            เช็คชื่อผ่าน GPS
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- วันที่ 15 มีนาคม -->
+                <div class="attendance-item">
+                    <div class="attendance-date">
+                        <div class="attendance-day">15</div>
+                        <div class="attendance-month">มี.ค.</div>
+                    </div>
+                    <div class="attendance-details">
+                        <div class="attendance-status">
+                            <div class="status-dot present"></div>
+                            <div class="status-text present">มาเรียน</div>
+                        </div>
+                        <div class="attendance-time">เช็คชื่อเวลา 07:40 น.</div>
+                        <div class="attendance-method">
+                            <span class="material-icons">pin</span>
+                            เช็คชื่อด้วยรหัส PIN
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- วันที่ 14 มีนาคม -->
+                <div class="attendance-item">
+                    <div class="attendance-date">
+                        <div class="attendance-day">14</div>
+                        <div class="attendance-month">มี.ค.</div>
+                    </div>
+                    <div class="attendance-details">
+                        <div class="attendance-status">
+                            <div class="status-dot present"></div>
+                            <div class="status-text present">มาเรียน</div>
+                        </div>
+                        <div class="attendance-time">เช็คชื่อเวลา 07:38 น.</div>
+                        <div class="attendance-method">
+                            <span class="material-icons">qr_code_scanner</span>
+                            เช็คชื่อด้วย QR Code
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- วันที่ 13 มีนาคม -->
+                <div class="attendance-item">
+                    <div class="attendance-date">
+                        <div class="attendance-day">13</div>
+                        <div class="attendance-month">มี.ค.</div>
+                    </div>
+                    <div class="attendance-details">
+                        <div class="attendance-status">
+                            <div class="status-dot present"></div>
+                            <div class="status-text present">มาเรียน</div>
+                        </div>
+                        <div class="attendance-time">เช็คชื่อเวลา 07:42 น.</div>
+                        <div class="attendance-method">
+                            <span class="material-icons">gps_fixed</span>
+                            เช็คชื่อผ่าน GPS
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ข้อมูลครูที่ปรึกษา -->
+        <div class="teacher-card">
+            <div class="teacher-title">ครูที่ปรึกษา</div>
+            
+            <div class="teacher-info">
+                <div class="teacher-avatar">
+                    <span class="material-icons">person</span>
+                </div>
+                <div class="teacher-details">
+                    <div class="teacher-name">อาจารย์ใจดี มากเมตตา</div>
+                    <div class="teacher-position">ครูประจำชั้น ม.6/1</div>
+                    <div class="teacher-contact">
+                        <span class="material-icons">phone</span>
+                        081-234-5678
+                    </div>
+                </div>
+            </div>
+            
+            <div class="contact-buttons">
+                <button class="contact-button call">
+                    <span class="material-icons">call</span> โทร
+                </button>
+                <button class="contact-button message">
+                    <span class="material-icons">chat</span> ข้อความ
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- แถบนำทางด้านล่าง -->
+    <div class="bottom-nav">
+        <a href="#" class="nav-item">
+            <span class="material-icons nav-icon">home</span>
+            <span>หน้าหลัก</span>
+        </a>
+        <a href="#" class="nav-item active">
+            <span class="material-icons nav-icon">child_care</span>
+            <span>นักเรียน</span>
+        </a>
+        <a href="#" class="nav-item">
+            <span class="material-icons nav-icon">chat</span>
+            <span>ข้อความ</span>
+        </a>
+        <a href="#" class="nav-item">
+            <span class="material-icons nav-icon">person</span>
+            <span>โปรไฟล์</span>
+        </a>
+    </div>
+
+    <script>
+        // ย้อนกลับ
+        function goBack() {
+            history.back();
+        }
+        
+        // สลับนักเรียน
+        function switchStudent(studentId) {
+            const pills = document.querySelectorAll('.student-pill');
+            pills.forEach(pill => pill.classList.remove('active'));
+            
+            // เพิ่มคลาส active ให้กับนักเรียนที่เลือก
+            pills[studentId - 1].classList.add('active');
+            
+            // ในงานจริงควรมีการโหลดข้อมูลนักเรียนจาก API แล้วอัปเดตข้อมูลในหน้า
+            // ตัวอ

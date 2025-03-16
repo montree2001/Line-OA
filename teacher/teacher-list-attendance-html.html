@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teacher-Prasat - เช็คชื่อนักเรียน</title>
+    <style>
+        /* ตั้งค่าพื้นฐาน */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Prompt', sans-serif;
+        }
+        
+        body {
+            background-color: #f5f5f5;
+            color: #333;
+            font-size: 16px;
+            line-height: 1.5;
+        }
+        
+        /* ส่วนหัว */
+        .header {
+            background-color: #1976d2;
+            color: white;
+            padding: 15px;
+            text-align: center;
+            position: fixed;
+            top: 0;
+            width: 100%;
+            z-index: 1000;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .header h1 {
+            font-size: 20px;
+            margin: 0;
+        }
+        
+        .header-icon {
+            font-size: 24px;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 70px auto 80px;
+            padding: 15px;
+        }
+        
+        /* ข้อมูลชั้นเรียน */
+        .class-info {
+            background-color: #e3f2fd;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .class-details h2 {
+            font-size: 20px;
+            color: #1976d2;
+            margin-bottom: 5px;
+        }
+        
+        .class-details p {
+            font-size: 14px;
+            color: #1976d2;
+        }
+        
+        .date-info {
+            text-align: right;
+            font-size: 14px;
+            color: #1976d2;
+        }
+        
+        /* สถิติการเข้าแถว */
+        .stats-container {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-card {
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .stat-card.total {
+            background-color: #e3f2fd;
+            color: #1976d2;
+        }
+        
+        .stat-card.present {
+            background-color: #e8f5e9;
+            color: #4caf50;
+        }
+        
+        .stat-card.absent {
+            background-color: #ffebee;
+            color: #f44336;
+        }
+        
+        .stat-card .value {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .stat-card .label {
+            font-size: 14px;
+        }
+        
+        /* ปุ่มควบคุม */
+        .control-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .control-button {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .control-button .material-icons {
+            margin-right: 8px;
+        }
+        
+        .control-button.blue {
+            background-color: #1976d2;
+            color: white;
+        }
+        
+        .control-button.green {
+            background-color: #4caf50;
+            color: white;
+        }
+        
+        .control-button.orange {
+            background-color: #ff9800;
+            color: white;
+        }
+        
+        /* ส่วนค้นหา */
+        .search-bar {
+            background-color: white;
+            display: flex;
+            padding: 10px;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        .search-input {
+            flex: 1;
+            border: none;
+            padding: 5px 10px;
+            font-size: 16px;
+            outline: none;
+        }
+        
+        .search-icon {
+            color: #666;
+            margin-right: 5px;
+        }
+        
+        /* ตารางรายชื่อนักเรียน */
+        .student-list {
+            background-color: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        .list-header {
+            background-color: #f5f5f5;
+            padding: 15px;
+            font-weight: bold;
+            display: grid;
+            grid-template-columns: 50px 1fr 120px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .student-item {
+            padding: 15px;
+            display: grid;
+            grid-template-columns: 50px 1fr 120px;
+            border-bottom: 1px solid #eee;
+            align-items: center;
+        }
+        
+        .student-item:last-child {
+            border-bottom: none;
+        }
+        
+        .student-item:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        
+        .student-number {
+            text-align: center;
+            font-weight: bold;
+            color: #666;
+        }
+        
+        .student-name {
+            font-weight: 500;
+        }
+        
+        .attendance-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+        
+        .action-button {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .action-button.present {
+            background-color: #e8f5e9;
+            color: #4caf50;
+        }
+        
+        .action-button.present:hover, .action-button.present.active {
+            background-color: #4caf50;
+            color: white;
+        }
+        
+        .action-button.absent {
+            background-color: #ffebee;
+            color: #f44336;
+        }
+        
+        .action-button.absent:hover, .action-button.absent.active {
+            background-color: #f44336;
+            color: white;
+        }
+        
+        /* แถบนำทางด้านล่าง */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            background-color: white;
+            display: flex;
+            justify-content: space-around;
+            padding: 10px 0;
+            box-shadow: 0 -2px 5px rgba(0,0,0,0.1);
+            z-index: 1000;
+        }
+        
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-size: 12px;
+            color: #666;
+            text-decoration: none;
+        }
+        
+        .nav-item.active {
+            color: #1976d2;
+        }
+        
+        .nav-icon {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+        
+        /* ปุ่มลอย */
+        .floating-button {
+            position: fixed;
+            bottom: 90px;
+            right: 20px;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background-color: #4caf50;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            border: none;
+            cursor: pointer;
+            z-index: 1000;
+        }
+        
+        .floating-button .material-icons {
+            font-size: 30px;
+        }
+        
+        /* Modal popup */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .modal-content {
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 400px;
+            text-align: center;
+        }
+        
+        .modal-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+        
+        .modal-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .modal-button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        
+        .modal-button.confirm {
+            background-color: #4caf50;
+            color: white;
+        }
+        
+        .modal-button.cancel {
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        
+        /* ไอคอนจาก Material Icons */
+        .material-icons {
+            font-family: 'Material Icons';
+            font-weight: normal;
+            font-style: normal;
+            font-size: 24px;
+            line-height: 1;
+            letter-spacing: normal;
+            text-transform: none;
+            display: inline-block;
+            white-space: nowrap;
+            word-wrap: normal;
+            direction: ltr;
+            -webkit-font-feature-settings: 'liga';
+            -webkit-font-smoothing: antialiased;
+        }
+    </style>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/material-design-icons/3.0.1/iconfont/material-icons.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="header">
+        <a href="#" onclick="goBack()" class="header-icon">
+            <span class="material-icons">arrow_back</span>
+        </a>
+        <h1>เช็คชื่อเข้าแถว</h1>
+        <div class="header-icon">
+            <span class="material-icons">more_vert</span>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- ข้อมูลชั้นเรียน -->
+        <div class="class-info">
+            <div class="class-details">
+                <h2>ม.6/1</h2>
+                <p>นักเรียนทั้งหมด 35 คน</p>
+            </div>
+            <div class="date-info">
+                <p>วันที่ 16 มีนาคม 2025</p>
+                <p>เวลา 07:45 น.</p>
+            </div>
+        </div>
+
+        <!-- สถิติการเข้าแถว -->
+        <div class="stats-container">
+            <div class="stat-card total">
+                <div class="value">35</div>
+                <div class="label">ทั้งหมด</div>
+            </div>
+            <div class="stat-card present">
+                <div class="value" id="present-count">28</div>
+                <div class="label">มาเรียน</div>
+            </div>
+            <div class="stat-card absent">
+                <div class="value" id="absent-count">7</div>
+                <div class="label">ขาดเรียน</div>
+            </div>
+        </div>
+
+        <!-- ปุ่มควบคุม -->
+        <div class="control-buttons">
+            <button class="control-button blue" onclick="showPinModal()">
+                <span class="material-icons">pin</span> สร้าง PIN
+            </button>
+            <button class="control-button orange" onclick="scanQRCode()">
+                <span class="material-icons">qr_code_scanner</span> สแกน QR
+            </button>
+            <button class="control-button green" onclick="showMarkAllModal()">
+                <span class="material-icons">done_all</span> เช็คชื่อทั้งหมด
+            </button>
+        </div>
+
+        <!-- ส่วนค้นหา -->
+        <div class="search-bar">
+            <span class="material-icons search-icon">search</span>
+            <input type="text" class="search-input" placeholder="ค้นหาชื่อนักเรียน..." id="search-input" oninput="searchStudents()">
+        </div>
+
+        <!-- รายชื่อนักเรียน -->
+        <div class="student-list" id="student-list">
+            <div class="list-header">
+                <div>เลขที่</div>
+                <div>ชื่อ-นามสกุล</div>
+                <div>การเข้าแถว</div>
+            </div>
+            
+            <!-- นักเรียนคนที่ 1 -->
+            <div class="student-item" data-name="นายเอกชัย รักเรียน">
+                <div class="student-number">1</div>
+                <div class="student-name">นายเอกชัย รักเรียน</div>
+                <div class="attendance-actions">
+                    <button class="action-button present active" onclick="markAttendance(this, 'present', 1)">
+                        <span class="material-icons">check</span>
+                    </button>
+                    <button class="action-button absent" onclick="markAttendance(this, 'absent', 1)">
+                        <span class="material-icons">close</span>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- นักเรียนคนที่ 2 -->
+            <div class="student-item" data-name="นางสาวสมศรี ใจดี">
+                <div class="student-number">2</div>
+                <div class="student-name">นางสาวสมศรี ใจดี</div>
+                <div class="attendance-actions">
+                    <button class="action-button present active" onclick="markAttendance(this, 'present', 2)">
+                        <span class="material-icons">check</span>
+                    </button>
+                    <button class="action-button absent" onclick="markAttendance(this, 'absent', 2)">
+                        <span class="material-icons">close</span>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- นักเรียนคนที่ 3 -->
+            <div class="student-item" data-name="นายสมชาย เรียนดี">
+                <div class="student-number">3</div>
+                <div class="student-name">นายสมชาย เรียนดี</div>
+                <div class="attendance-actions">
+                    <button class="action-button present active" onclick="markAttendance(this, 'present', 3)">
+                        <span class="material-icons">check</span>
+                    </button>
+                    <button class="action-button absent" onclick="markAttendance(this, 'absent', 3)">
+                        <span class="material-icons">close</span>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- นักเรียนคนที่ 4 -->
+            <div class="student-item" data-name="นางสาวพิมพ์ใจ ร่าเริง">
+                <div class="student-number">4</div>
+                <div class="student-name">นางสาวพิมพ์ใจ ร่าเริง</div>
+                <div class="attendance-actions">
+                    <button class="action-button present" onclick="markAttendance(this, 'present', 4)">
+                        <span class="material-icons">check</span>
+                    </button>
+                    <button class="action-button absent active" onclick="markAttendance(this, 'absent', 4)">
+                        <span class="material-icons">close</span>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- นักเรียนคนที่ 5 -->
+            <div class="student-item" data-name="นายสุชาติ รักษาสัตย์">
+                <div class="student-number">5</div>
+                <div class="student-name">นายสุชาติ รักษาสัตย์</div>
+                <div class="attendance-actions">
+                    <button class="action-button present active" onclick="markAttendance(this, 'present', 5)">
+                        <span class="material-icons">check</span>
+                    </button>
+                    <button class="action-button absent" onclick="markAttendance(this, 'absent', 5)">
+                        <span class="material-icons">close</span>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- นักเรียนคนที่ 6 -->
+            <div class="student-item" data-name="นางสาววันเพ็ญ แสนสุข">
+                <div class="student-number">6</div>
+                <div class="student-name">นางสาววันเพ็ญ แสนสุข</div>
+                <div class="attendance-actions">
+                    <button class="action-button present active" onclick="markAttendance(this, 'present', 6)">
+                        <span class="material-icons">check</span>
+                    </button>
+                    <button class="action-button absent" onclick="markAttendance(this, 'absent', 6)">
+                        <span class="material-icons">close</span>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- นักเรียนคนที่ 7 -->
+            <div class="student-item" data-name="นายธันวา มั่นคง">
+                <div class="student-number">7</div>
+                <div class="student-name">นายธันวา มั่นคง</div>
+                <div class="attendance-actions">
+                    <button class="action-button present" onclick="markAttendance(this, 'present', 7)">
+                        <span class="material-icons">check</span>
+                    </button>
+                    <button class="action-button absent active" onclick="markAttendance(this, 'absent', 7)">
+                        <span class="material-icons">close</span>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- นักเรียนคนที่ 8 -->
+            <div class="student-item" data-name="นายขวัญใจ นารี">
+                <div class="student-number">8</div>
+                <div class="student-name">นายขวัญใจ นารี</div>
+                <div class="attendance-actions">
+                    <button class="action-button present active" onclick="markAttendance(this, 'present', 8)">
+                        <span class="material-icons">check</span>
+                    </button>
+                    <button class="action-button absent" onclick="markAttendance(this, 'absent', 8)">
+                        <span class="material-icons">close</span>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- นักเรียนคนที่ 9 -->
+            <div class="student-item" data-name="นางสาวน้ำใส ไหลเย็น">
+                <div class="student-number">9</div>
+                <div class="student-name">นางสาวน้ำใส ไหลเย็น</div>
+                <div class="attendance-actions">
+                    <button class="action-button present active" onclick="markAttendance(this, 'present', 9)">
+                        <span class="material-icons">check</span>
+                    </button>
+                    <button class="action-button absent" onclick="markAttendance(this, 'absent', 9)">
+                        <span class="material-icons">close</span>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- นักเรียนคนที่ 10 -->
+            <div class="student-item" data-name="นายรุ่งโรจน์ สดใส">
+                <div class="student-number">10</div>
+                <div class="student-name">นายรุ่งโรจน์ สดใส</div>
+                <div class="attendance-actions">
+                    <button class="action-button present" onclick="markAttendance(this, 'present', 10)">
+                        <span class="material-icons">check</span>
+                    </button>
+                    <button class="action-button absent active" onclick="markAttendance(this, 'absent', 10)">
+                        <span class="material-icons">close</span>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- นักเรียนคนที่ 11 -->
+            <div class="student-item" data-name="นางสาวสุดา รักเธอ">
+                <div class="student-number">11</div>
+                <div class="student-name">นางสาวสุดา รักเธอ</div>
+                <div class="attendance-actions">
+                    <button class="action-button present active" onclick="markAttendance(this, 'present', 11)">
+                        <span class="material-icons">check</span>
+                    </button>
+                    <button class="action-button absent" onclick="markAttendance(this, 'absent', 11)">
+                        <span class="material-icons">close</span>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- นักเรียนคนที่ 12 -->
+            <div class="student-item" data-name="นายบุญมี ศรีสุข">
+                <div class="student-number">12</div>
+                <div class="student-name">นายบุญมี ศรีสุข</div>
+                <div class="attendance-actions">
+                    <button class="action-button present active" onclick="markAttendance(this, 'present', 12)">
+                        <span class="material-icons">check</span>
+                    </button>
+                    <button class="action-button absent" onclick="markAttendance(this, 'absent', 12)">
+                        <span class="material-icons">close</span>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- นักเรียนคนที่ 13 -->
+            <div class="student-item" data-name="นางสาวพิมพา ใจรัก">
+                <div class="student-number">13</div>
+                <div class="student-name">นางสาวพิมพา ใจรัก</div>
+                <div class="attendance-actions">
+                    <button class="action-button present" onclick="markAttendance(this, 'present', 13)">
+                        <span class="material-icons">check</span>
+                    </button>
+                    <button class="action-button absent active" onclick="markAttendance(this, 'absent', 13)">
+                        <span class="material-icons">close</span>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- นักเรียนคนที่ 14 -->
+            <div class="student-item" data-name="นายชัยพร พรมชัย">
+                <div class="student-number">14</div>
+                <div class="student-name">นายชัยพร พรมชัย</div>
+                <div class="attendance-actions">
+                    <button class="action-button present active" onclick="markAttendance(this, 'present', 14)">
+                        <span class="material-icons">check</span>
+                    </button>
+                    <button class="action-button absent" onclick="markAttendance(this, 'absent', 14)">
+                        <span class="material-icons">close</span>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- นักเรียนคนที่ 15 -->
+            <div class="student-item" data-name="นางสาวนภา ฟ้าใส">
+                <div class="student-number">15</div>
+                <div class="student-name">นางสาวนภา ฟ้าใส</div>
+                <div class="attendance-actions">
+                    <button class="action-button present" onclick="markAttendance(this, 'present', 15)">
+                        <span class="material-icons">check</span>
+                    </button>
+                    <button class="action-button absent active" onclick="markAttendance(this, 'absent', 15)">
+                        <span class="material-icons">close</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- ปุ่มลอย -->
+        <button class="floating-button" onclick="saveAttendance()">
+            <span class="material-icons">save</span>
+        </button>
+    </div>
+
+    <!-- แถบนำทางด้านล่าง -->
+    <div class="bottom-nav">
+        <a href="#" class="nav-item">
+            <span class="material-icons nav-icon">home</span>
+            <span>หน้าหลัก</span>
+        </a>
+        <a href="#" class="nav-item active">
+            <span class="material-icons nav-icon">groups</span>
+            <span>เช็คชื่อ</span>
+        </a>
+        <a href="#" class="nav-item">
+            <span class="material-icons nav-icon">assessment</span>
+            <span>รายงาน</span>
+        </a>
+        <a href="#" class="nav-item">
+            <span class="material-icons nav-icon">settings</span>
+            <span>ตั้งค่า</span>
+        </a>
+    </div>
+    
+    <!-- Modal สร้าง PIN -->
+    <div class="modal" id="pin-modal">
+        <div class="modal-content">
+            <div class="modal-title">สร้างรหัส PIN สำหรับการเช็คชื่อ</div>
+            <div style="font-size: 36px; font-weight: bold; color: #1976d2; letter-spacing: 5px;">
+                5731
+            </div>
+            <p style="margin-top: 10px; color: #666;">รหัส PIN นี้จะหมดอายุใน 10 นาที</p>
+            <div class="modal-buttons">
+                <button class="modal-button cancel" onclick="closeModal('pin-modal')">ปิด</button>
+                <button class="modal-button confirm" onclick="generateNewPin()">สร้างใหม่</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal เช็คชื่อทั้งหมด -->
+    <div class="modal" id="mark-all-modal">
+        <div class="modal-content">
+            <div class="modal-title">เช็คชื่อนักเรียนทั้งหมด</div>
+            <p>คุณต้องการเช็คชื่อให้นักเรียนทั้งหมด "มาเรียน" ใช่หรือไม่?</p>
+            <div class="modal-buttons">
+                <button class="modal-button cancel" onclick="closeModal('mark-all-modal')">ยกเลิก</button>
+                <button class="modal-button confirm" onclick="markAllPresent()">ยืนยัน</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ย้อนกลับ
+        function goBack() {
+            history.back();
+        }
+        
+        // เช็คชื่อนักเรียน
+        function markAttendance(button, status, studentId) {
+            const studentItem = button.closest('.student-item');
+            const presentButton = studentItem.querySelector('.action-button.present');
+            const absentButton = studentItem.querySelector('.action

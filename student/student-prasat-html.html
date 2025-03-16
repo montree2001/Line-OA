@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>STD-Prasat - หน้าหลัก</title>
+    <style>
+        /* ตั้งค่าพื้นฐาน */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Prompt', sans-serif;
+        }
+        
+        body {
+            background-color: #f5f5f5;
+            color: #333;
+            font-size: 16px;
+            line-height: 1.5;
+        }
+        
+        /* ส่วนหัว */
+        .header {
+            background-color: #06c755;
+            color: white;
+            padding: 15px;
+            text-align: center;
+            position: fixed;
+            top: 0;
+            width: 100%;
+            z-index: 1000;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .container {
+            max-width: 480px;
+            margin: 70px auto 80px;
+            padding: 15px;
+        }
+        
+        /* โปรไฟล์ */
+        .profile-card {
+            background-color: white;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .profile-image {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background-color: #06c755;
+            margin-right: 15px;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 24px;
+        }
+        
+        .profile-info h2 {
+            font-size: 18px;
+            margin-bottom: 5px;
+        }
+        
+        .profile-info p {
+            font-size: 14px;
+            color: #666;
+        }
+        
+        /* การ์ดข้อมูลสถิติ */
+        .stats-container {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            gap: 10px;
+        }
+        
+        .stat-card {
+            flex: 1;
+            background-color: white;
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .stat-card.blue {
+            background-color: #e1f5fe;
+            color: #0288d1;
+        }
+        
+        .stat-card.green {
+            background-color: #e8f5e9;
+            color: #388e3c;
+        }
+        
+        .stat-card h3 {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+        
+        .stat-card p {
+            font-size: 14px;
+        }
+        
+        /* ปุ่มเช็คชื่อ */
+        .check-in-button {
+            background-color: #06c755;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            padding: 15px;
+            font-size: 16px;
+            font-weight: bold;
+            width: 100%;
+            margin-bottom: 20px;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        /* วิธีการเช็คชื่อ */
+        .check-in-methods {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            gap: 10px;
+        }
+        
+        .method-card {
+            flex: 1;
+            background-color: white;
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        .method-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .method-card.orange {
+            background-color: #fff3e0;
+            color: #e65100;
+        }
+        
+        .method-card.blue {
+            background-color: #e8eaf6;
+            color: #3f51b5;
+        }
+        
+        .method-card.teal {
+            background-color: #e0f2f1;
+            color: #00796b;
+            margin-top: 10px;
+        }
+        
+        .method-card h3 {
+            font-size: 18px;
+            margin-bottom: 5px;
+        }
+        
+        .method-card p {
+            font-size: 14px;
+        }
+        
+        /* แถบนำทางด้านล่าง */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            background-color: white;
+            display: flex;
+            justify-content: space-around;
+            padding: 10px 0;
+            box-shadow: 0 -2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-size: 12px;
+            color: #666;
+            text-decoration: none;
+        }
+        
+        .nav-item.active {
+            color: #06c755;
+        }
+        
+        .nav-icon {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+        
+        /* ไอคอนจาก Material Icons */
+        .material-icons {
+            font-family: 'Material Icons';
+            font-weight: normal;
+            font-style: normal;
+            font-size: 24px;
+            line-height: 1;
+            letter-spacing: normal;
+            text-transform: none;
+            display: inline-block;
+            white-space: nowrap;
+            word-wrap: normal;
+            direction: ltr;
+            -webkit-font-feature-settings: 'liga';
+            -webkit-font-smoothing: antialiased;
+        }
+    </style>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/material-design-icons/3.0.1/iconfont/material-icons.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="header">
+        <h1>STD-Prasat</h1>
+    </div>
+
+    <div class="container">
+        <!-- โปรไฟล์ -->
+        <div class="profile-card">
+            <div class="profile-image">
+                <span>อ</span>
+            </div>
+            <div class="profile-info">
+                <h2>นายเอกชัย รักเรียน</h2>
+                <p>ม.6/1 เลขที่ 15</p>
+            </div>
+        </div>
+
+        <!-- สถิติการเข้าแถว -->
+        <div class="stats-container">
+            <div class="stat-card blue">
+                <h3>23</h3>
+                <p>วันเข้าแถว</p>
+            </div>
+            <div class="stat-card green">
+                <h3>97%</h3>
+                <p>อัตราการเข้าแถว</p>
+            </div>
+        </div>
+
+        <!-- ปุ่มเช็คชื่อ -->
+        <button class="check-in-button">เช็คชื่อเข้าแถววันนี้</button>
+
+        <!-- วิธีการเช็คชื่อ -->
+        <div class="check-in-methods">
+            <div class="method-card orange">
+                <span class="material-icons">qr_code_2</span>
+                <h3>QR Code</h3>
+                <p>สำหรับครูสแกน</p>
+            </div>
+            <div class="method-card blue">
+                <span class="material-icons">pin</span>
+                <h3>รหัส PIN</h3>
+                <p>ใส่รหัสจากครู</p>
+            </div>
+        </div>
+        
+        <div class="method-card teal">
+            <span class="material-icons">location_on</span>
+            <h3>GPS</h3>
+            <p>เช็คชื่อด้วยตำแหน่งที่ตั้ง</p>
+        </div>
+    </div>
+
+    <!-- แถบนำทางด้านล่าง -->
+    <div class="bottom-nav">
+        <a href="#" class="nav-item active">
+            <span class="material-icons nav-icon">home</span>
+            <span>หน้าหลัก</span>
+        </a>
+        <a href="#" class="nav-item">
+            <span class="material-icons nav-icon">history</span>
+            <span>ประวัติ</span>
+        </a>
+        <a href="#" class="nav-item">
+            <span class="material-icons nav-icon">person</span>
+            <span>โปรไฟล์</span>
+        </a>
+    </div>
+</body>
+</html>

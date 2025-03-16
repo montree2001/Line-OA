@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SADD-Prasat - ข้อความ</title>
+    <style>
+        /* ตั้งค่าพื้นฐาน */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Sarabun', sans-serif;
+        }
+        
+        body {
+            background-color: #f8f9fa;
+            color: #333;
+            font-size: 16px;
+            line-height: 1.5;
+        }
+        
+        /* ส่วนหัว */
+        .header {
+            background: linear-gradient(135deg, #8e24aa 0%, #6a1b9a 100%);
+            color: white;
+            padding: 15px 20px;
+            position: fixed;
+            top: 0;
+            width: 100%;
+            z-index: 1000;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .header h1 {
+            font-size: 20px;
+            font-weight: 600;
+        }
+        
+        .header-actions {
+            display: flex;
+            gap: 15px;
+        }
+        
+        .header-icon {
+            font-size: 24px;
+        }
+        
+        .container {
+            max-width: 600px;
+            margin: 70px auto 80px;
+            padding: 15px;
+        }
+        
+        /* ส่วนค้นหา */
+        .search-bar {
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            padding: 10px 15px;
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .search-bar input {
+            flex: 1;
+            border: none;
+            outline: none;
+            font-size: 14px;
+            padding: 5px 0;
+        }
+        
+        .search-icon {
+            color: #8e24aa;
+            margin-right: 10px;
+        }
+        
+        /* Tabs for Message Types */
+        .message-tabs {
+            display: flex;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+        
+        .message-tab {
+            flex: 1;
+            padding: 12px 0;
+            text-align: center;
+            font-weight: 500;
+            cursor: pointer;
+            position: relative;
+        }
+        
+        .message-tab.active {
+            color: #8e24aa;
+        }
+        
+        .message-tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background-color: #8e24aa;
+        }
+        
+        /* Message List */
+        .message-list {
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+        
+        .message-item {
+            padding: 15px;
+            display: flex;
+            border-bottom: 1px solid #f1f1f1;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        .message-item:hover {
+            background-color: #f9f9f9;
+        }
+        
+        .message-item:last-child {
+            border-bottom: none;
+        }
+        
+        .message-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            margin-right: 15px;
+            background-color: #e1f5fe;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #039be5;
+            font-size: 20px;
+            font-weight: bold;
+        }
+        
+        .message-avatar.teacher {
+            background-color: #e1f5fe;
+            color: #039be5;
+        }
+        
+        .message-avatar.admin {
+            background-color: #e8f5e9;
+            color: #43a047;
+        }
+        
+        .message-avatar.system {
+            background-color: #fff3e0;
+            color: #ff9800;
+        }
+        
+        .message-content {
+            flex: 1;
+        }
+        
+        .message-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+        }
+        
+        .message-sender {
+            font-weight: 600;
+            font-size: 16px;
+        }
+        
+        .message-time {
+            color: #999;
+            font-size: 12px;
+        }
+        
+        .message-preview {
+            color: #666;
+            font-size: 14px;
+            display: -webkit-box;
+            -webkit-line-clamp: 1;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        
+        .message-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 5px;
+        }
+        
+        .message-category {
+            font-size: 12px;
+            padding: 2px 8px;
+            border-radius: 10px;
+            background-color: #f1f1f1;
+            color: #666;
+        }
+        
+        .message-category.urgent {
+            background-color: #ffebee;
+            color: #e53935;
+        }
+        
+        .message-category.announcement {
+            background-color: #e8f5e9;
+            color: #43a047;
+        }
+        
+        .message-badge {
+            background-color: #8e24aa;
+            color: white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 30px 20px;
+            color: #666;
+        }
+        
+        .empty-icon {
+            font-size: 48px;
+            color: #ccc;
+            margin-bottom: 10px;
+        }
+        
+        .empty-message {
+            font-size: 16px;
+            margin-bottom: 5px;
+        }
+        
+        .empty-description {
+            font-size: 14px;
+            color: #999;
+        }
+        
+        /* แถบนำทางด้านล่าง */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            background-color: white;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 5px;
+            padding: 10px 0;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
+            z-index: 1000;
+        }
+        
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-size: 12px;
+            color: #666;
+            text-decoration: none;
+        }
+        
+        .nav-item.active {
+            color: #8e24aa;
+        }
+        
+        .nav-icon {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+        
+        /* ปุ่มสร้างข้อความใหม่ */
+        .floating-button {
+            position: fixed;
+            bottom: 80px;
+            right: 20px;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background-color: #8e24aa;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 10px rgba(142, 36, 170, 0.3);
+            border: none;
+            cursor: pointer;
+            z-index: 1000;
+        }
+        
+        .floating-button .material-icons {
+            font-size: 24px;
+        }
+        
+        /* ไอคอนจาก Material Icons */
+        .material-icons {
+            font-family: 'Material Icons';
+            font-weight: normal;
+            font-style: normal;
+            font-size: 24px;
+            line-height: 1;
+            letter-spacing: normal;
+            text-transform: none;
+            display: inline-block;
+            white-space: nowrap;
+            word-wrap: normal;
+            direction: ltr;
+            -webkit-font-feature-settings: 'liga';
+            -webkit-font-smoothing: antialiased;
+        }
+    </style>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/material-design-icons/3.0.1/iconfont/material-icons.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="header">
+        <h1>ข้อความ</h1>
+        <div class="header-actions">
+            <span class="material-icons header-icon">filter_list</span>
+            <span class="material-icons header-icon">more_vert</span>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- ส่วนค้นหา -->
+        <div class="search-bar">
+            <span class="material-icons search-icon">search</span>
+            <input type="text" placeholder="ค้นหาข้อความ...">
+        </div>
+
+        <!-- Tabs for Message Types -->
+        <div class="message-tabs">
+            <div class="message-tab active" onclick="switchTab('all')">ทั้งหมด</div>
+            <div class="message-tab" onclick="switchTab('teachers')">ครูที่ปรึกษา</div>
+            <div class="message-tab" onclick="switchTab('admin')">ฝ่ายบริหาร</div>
+            <div class="message-tab" onclick="switchTab('announcement')">ประกาศ</div>
+        </div>
+
+        <!-- Message List -->
+        <div class="message-list">
+            <!-- Message from Teacher -->
+            <div class="message-item" onclick="openMessage(1)">
+                <div class="message-avatar teacher">ค</div>
+                <div class="message-content">
+                    <div class="message-header">
+                        <div class="message-sender">อาจารย์ใจดี มากเมตตา</div>
+                        <div class="message-time">10:30 น.</div>
+                    </div>
+                    <div class="message-preview">
+                        เรียนผู้ปกครองนักเรียน น.ส.สมหญิง รักเรียน ขอแจ้งให้ทราบว่าในวันพรุ่งนี้จะมีการทดสอบวัดผลกลางภาค...
+                    </div>
+                    <div class="message-meta">
+                        <div class="message-category">ครูประจำชั้น</div>
+                        <div class="message-badge">1</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Message from Admin -->
+            <div class="message-item" onclick="openMessage(2)">
+                <div class="message-avatar admin">บ</div>
+                <div class="message-content">
+                    <div class="message-header">
+                        <div class="message-sender">ฝ่ายบริหาร</div>
+                        <div class="message-time">เมื่อวาน</div>
+                    </div>
+                    <div class="message-preview">
+                        แจ้งกำหนดการประชุมผู้ปกครองนักเรียนภาคเรียนที่ 2 ประจำปีการศึกษา 2567 ในวันเสาร์ที่ 22 มีนาคม 2568...
+                    </div>
+                    <div class="message-meta">
+                        <div class="message-category announcement">ประกาศ</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Message from Teacher 2 -->
+            <div class="message-item" onclick="openMessage(3)">
+                <div class="message-avatar teacher">ว</div>
+                <div class="message-content">
+                    <div class="message-header">
+                        <div class="message-sender">อาจารย์วิทยา สอนดี</div>
+                        <div class="message-time">12 มี.ค.</div>
+                    </div>
+                    <div class="message-preview">
+                        เรียนผู้ปกครอง ด.ช.ธนกฤต รักเรียน ขอแจ้งให้ทราบว่านักเรียนมีผลการเรียนวิชาคณิตศาสตร์ที่ต้องปรับปรุง...
+                    </div>
+                    <div class="message-meta">
+                        <div class="message-category">ครูประจำวิชา</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Message from System -->
+            <div class="message-item" onclick="openMessage(4)">
+                <div class="message-avatar system">S</div>
+                <div class="message-content">
+                    <div class="message-header">
+                        <div class="message-sender">ระบบแจ้งเตือน</div>
+                        <div class="message-time">10 มี.ค.</div>
+                    </div>
+                    <div class="message-preview">
+                        แจ้งเตือน: นายเอกชัย รักเรียน ไม่ได้เช็คชื่อเข้าแถวในวันที่ 10 มีนาคม 2568
+                    </div>
+                    <div class="message-meta">
+                        <div class="message-category urgent">แจ้งเตือนด่วน</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Message from Admin 2 -->
+            <div class="message-item" onclick="openMessage(5)">
+                <div class="message-avatar admin">บ</div>
+                <div class="message-content">
+                    <div class="message-header">
+                        <div class="message-sender">ฝ่ายบริหาร</div>
+                        <div class="message-time">5 มี.ค.</div>
+                    </div>
+                    <div class="message-preview">
+                        ประกาศวันหยุดเพิ่มเติม: โรงเรียนจะปิดทำการในวันที่ 8 มีนาคม 2568 เนื่องจากกิจกรรมพัฒนาบุคลากร...
+                    </div>
+                    <div class="message-meta">
+                        <div class="message-category announcement">ประกาศ</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ปุ่มสร้างข้อความใหม่ -->
+    <button class="floating-button" onclick="newMessage()">
+        <span class="material-icons">chat</span>
+    </button>
+
+    <!-- แถบนำทางด้านล่าง -->
+    <div class="bottom-nav">
+        <a href="#" class="nav-item">
+            <span class="material-icons nav-icon">home</span>
+            <span>หน้าหลัก</span>
+        </a>
+        <a href="#" class="nav-item">
+            <span class="material-icons nav-icon">child_care</span>
+            <span>นักเรียน</span>
+        </a>
+        <a href="#" class="nav-item active">
+            <span class="material-icons nav-icon">chat</span>
+            <span>ข้อความ</span>
+        </a>
+        <a href="#" class="nav-item">
+            <span class="material-icons nav-icon">person</span>
+            <span>โปรไฟล์</span>
+        </a>
+    </div>
+
+    <script>
+        // ฟังก์ชันสลับแท็บ
+        function switchTab(tabName) {
+            // Remove active class from all tabs
+            const tabs = document.querySelectorAll('.message-tab');
+            tabs.forEach(tab => tab.classList.remove('active'));
+            
+            // Add active class to clicked tab
+            event.currentTarget.classList.add('active');
+            
+            // In a real application, this would filter the messages based on the tabName
+            console.log(`Switching to tab: ${tabName}`);
+        }
+        
+        // ฟังก์ชันเปิดข้อความ
+        function openMessage(messageId) {
+            // In a real application, this would navigate to the message detail page
+            console.log(`Opening message with ID: ${messageId}`);
+            // window.location.href = `message-detail.html?id=${messageId}`;
+        }
+        
+        // ฟังก์ชันสร้างข้อความใหม่
+        function newMessage() {
+            // In a real application, this would navigate to the new message page
+            console.log('Creating a new message');
+            // window.location.href = 'new-message.html';
+        }
+    </script>
+</body>
+</html>

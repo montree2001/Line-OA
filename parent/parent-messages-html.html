@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SADD-Prasat - ข้อความ</title>
+    <style>
+        /* ตั้งค่าพื้นฐาน */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Sarabun', sans-serif;
+        }
+        
+        body {
+            background-color: #f8f9fa;
+            color: #333;
+            font-size: 16px;
+            line-height: 1.5;
+        }
+        
+        /* ส่วนหัว */
+        .header {
+            background: linear-gradient(135deg, #8e24aa 0%, #6a1b9a 100%);
+            color: white;
+            padding: 15px 20px;
+            position: fixed;
+            top: 0;
+            width: 100%;
+            z-index: 1000;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .header h1 {
+            font-size: 20px;
+            font-weight: 600;
+        }
+        
+        .header-icons {
+            display: flex;
+            gap: 15px;
+        }
+        
+        .container {
+            max-width: 600px;
+            margin: 70px auto 80px;
+            padding: 15px;
+        }
+        
+        /* แท็บข้อความ */
+        .message-tabs {
+            background-color: white;
+            border-radius: 12px;
+            display: flex;
+            margin-bottom: 20px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        
+        .message-tab {
+            flex: 1;
+            padding: 12px 0;
+            text-align: center;
+            font-weight: 600;
+            cursor: pointer;
+            position: relative;
+        }
+        
+        .message-tab.active {
+            color: #8e24aa;
+        }
+        
+        .message-tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background-color: #8e24aa;
+        }
+        
+        /* ค้นหา */
+        .search-bar {
+            background-color: white;
+            border-radius: 12px;
+            padding: 12px 15px;
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        
+        .search-bar input {
+            flex: 1;
+            border: none;
+            outline: none;
+            font-size: 16px;
+            margin-left: 10px;
+        }
+        
+        .search-bar .material-icons {
+            color: #8e24aa;
+        }
+        
+        /* รายการข้อความ */
+        .message-list {
+            margin-bottom: 20px;
+        }
+        
+        .message-date {
+            font-size: 14px;
+            color: #666;
+            margin: 15px 0 10px;
+            font-weight: 500;
+        }
+        
+        .message-item {
+            background-color: white;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        .message-item:hover {
+            transform: translateY(-2px);
+        }
+        
+        .message-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 25px;
+            margin-right: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+        }
+        
+        .avatar-teacher {
+            background-color: #1976d2;
+        }
+        
+        .avatar-school {
+            background-color: #4caf50;
+        }
+        
+        .avatar-admin {
+            background-color: #f44336;
+        }
+        
+        .message-content {
+            flex: 1;
+        }
+        
+        .message-sender {
+            font-weight: 600;
+            margin-bottom: 5px;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .message-time {
+            font-size: 12px;
+            color: #666;
+            font-weight: normal;
+        }
+        
+        .message-preview {
+            font-size: 14px;
+            color: #666;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        
+        .message-notification {
+            min-width: 20px;
+            height: 20px;
+            border-radius: 10px;
+            background-color: #8e24aa;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            margin-left: 10px;
+            padding: 0 5px;
+        }
+        
+        /* ป้ายแสดงสถานะ */
+        .message-status {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            margin-left: 10px;
+            font-weight: 500;
+        }
+        
+        .status-urgent {
+            background-color: #ffebee;
+            color: #f44336;
+        }
+        
+        .status-announcement {
+            background-color: #e0f2f1;
+            color: #009688;
+        }
+        
+        /* ไม่มีข้อความ */
+        .no-messages {
+            text-align: center;
+            padding: 30px 0;
+            color: #666;
+        }
+        
+        .no-messages .material-icons {
+            font-size: 48px;
+            color: #ddd;
+            margin-bottom: 10px;
+        }
+        
+        .no-messages-text {
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+        
+        .no-messages-subtext {
+            font-size: 14px;
+            color: #999;
+        }
+        
+        /* ปุ่มลอย */
+        .floating-button {
+            position: fixed;
+            bottom: 90px;
+            right: 20px;
+            width: 60px;
+            height: 60px;
+            border-radius: 30px;
+            background-color: #8e24aa;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 10px rgba(142, 36, 170, 0.3);
+            cursor: pointer;
+            border: none;
+            z-index: 100;
+        }
+        
+        /* แถบนำทางด้านล่าง */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            background-color: white;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 5px;
+            padding: 10px 0;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
+            z-index: 1000;
+        }
+        
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-size: 12px;
+            color: #666;
+            text-decoration: none;
+        }
+        
+        .nav-item.active {
+            color: #8e24aa;
+        }
+        
+        .nav-icon {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+        
+        /* ไอคอนจาก Material Icons */
+        .material-icons {
+            font-family: 'Material Icons';
+            font-weight: normal;
+            font-style: normal;
+            font-size: 24px;
+            line-height: 1;
+            letter-spacing: normal;
+            text-transform: none;
+            display: inline-block;
+            white-space: nowrap;
+            word-wrap: normal;
+            direction: ltr;
+            -webkit-font-feature-settings: 'liga';
+            -webkit-font-smoothing: antialiased;
+        }
+    </style>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/material-design-icons/3.0.1/iconfont/material-icons.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="header">
+        <h1>ข้อความ</h1>
+        <div class="header-icons">
+            <span class="material-icons">notifications</span>
+            <span class="material-icons">account_circle</span>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- แท็บข้อความ -->
+        <div class="message-tabs">
+            <div class="message-tab active" onclick="switchTab('inbox')">กล่องข้อความ</div>
+            <div class="message-tab" onclick="switchTab('unread')">ยังไม่ได้อ่าน</div>
+            <div class="message-tab" onclick="switchTab('important')">สำคัญ</div>
+        </div>
+
+        <!-- ค้นหา -->
+        <div class="search-bar">
+            <span class="material-icons">search</span>
+            <input type="text" placeholder="ค้นหาข้อความ...">
+        </div>
+
+        <!-- รายการข้อความ -->
+        <div class="message-list" id="inbox-tab">
+            <!-- วันนี้ -->
+            <div class="message-date">วันนี้</div>
+            
+            <!-- ข้อความจากครูประจำชั้น -->
+            <div class="message-item">
+                <div class="message-avatar avatar-teacher">ค</div>
+                <div class="message-content">
+                    <div class="message-sender">
+                        อาจารย์ใจดี มากเมตตา
+                        <span class="message-status status-urgent">ด่วน</span>
+                        <span class="message-time">10:15</span>
+                    </div>
+                    <div class="message-preview">เรียนผู้ปกครองของนายเอกชัย เนื่องจากวันนี้มีการประชุมผู้ปกครองกลุ่มย่อย ขออนุญาตเชิญท่านเข้าร่วม...</div>
+                </div>
+                <div class="message-notification">2</div>
+            </div>
+            
+            <!-- ข้อความจากโรงเรียน -->
+            <div class="message-item">
+                <div class="message-avatar avatar-school">ร</div>
+                <div class="message-content">
+                    <div class="message-sender">
+                        ประชาสัมพันธ์โรงเรียน
+                        <span class="message-status status-announcement">ประกาศ</span>
+                        <span class="message-time">08:30</span>
+                    </div>
+                    <div class="message-preview">แจ้งกำหนดการสอบปลายภาคเรียนที่ 2/2568 ระหว่างวันที่ 1-5 เมษายน 2568 โดยนักเรียนต้องมาถึงโรงเรียน...</div>
+                </div>
+            </div>
+            
+            <!-- เมื่อวาน -->
+            <div class="message-date">เมื่อวาน</div>
+            
+            <!-- ข้อความจากครูแนะแนว -->
+            <div class="message-item">
+                <div class="message-avatar avatar-teacher">ค</div>
+                <div class="message-content">
+                    <div class="message-sender">
+                        ครูแนะแนว
+                        <span class="message-time">15:45</span>
+                    </div>
+                    <div class="message-preview">เรียนผู้ปกครอง ขอเชิญท่านและนักเรียนเข้าร่วมงานแนะแนวการศึกษาต่อระดับอุดมศึกษา ในวันเสาร์ที่...</div>
+                </div>
+            </div>
+            
+            <!-- ข้อความจากฝ่ายทะเบียน -->
+            <div class="message-item">
+                <div class="message-avatar avatar-admin">ท</div>
+                <div class="message-content">
+                    <div class="message-sender">
+                        ฝ่ายทะเบียนและวัดผล
+                        <span class="message-time">09:20</span>
+                    </div>
+                    <div class="message-preview">แจ้งผลการเรียนประจำเดือนกุมภาพันธ์ของนายเอกชัย รักเรียน ได้รับการอนุมัติแล้ว ท่านสามารถดูรายละเอียด...</div>
+                </div>
+            </div>
+            
+            <!-- สัปดาห์นี้ -->
+            <div class="message-date">สัปดาห์นี้</div>
+            
+            <!-- ข้อความจากครูประจำวิชา -->
+            <div class="message-item">
+                <div class="message-avatar avatar-teacher">ว</div>
+                <div class="message-content">
+                    <div class="message-sender">
+                        ครูวิชาคณิตศาสตร์
+                        <span class="message-time">จ 14:30</span>
+                    </div>
+                    <div class="message-preview">เรียนผู้ปกครอง ขอแจ้งให้ทราบว่านายเอกชัย มีผลการเรียนวิชาคณิตศาสตร์ที่ดีมาก และได้รับเลือก...</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- ข้อความที่ยังไม่ได้อ่าน (ซ่อนไว้) -->
+        <div class="message-list" id="unread-tab" style="display: none;">
+            <!-- ข้อความจากครูประจำชั้น -->
+            <div class="message-item">
+                <div class="message-avatar avatar-teacher">ค</div>
+                <div class="message-content">
+                    <div class="message-sender">
+                        อาจารย์ใจดี มากเมตตา
+                        <span class="message-status status-urgent">ด่วน</span>
+                        <span class="message-time">10:15</span>
+                    </div>
+                    <div class="message-preview">เรียนผู้ปกครองของนายเอกชัย เนื่องจากวันนี้มีการประชุมผู้ปกครองกลุ่มย่อย ขออนุญาตเชิญท่านเข้าร่วม...</div>
+                </div>
+                <div class="message-notification">2</div>
+            </div>
+        </div>
+        
+        <!-- ข้อความสำคัญ (ซ่อนไว้) -->
+        <div class="message-list" id="important-tab" style="display: none;">
+            <!-- ข้อความจากโรงเรียน -->
+            <div class="message-item">
+                <div class="message-avatar avatar-school">ร</div>
+                <div class="message-content">
+                    <div class="message-sender">
+                        ประชาสัมพันธ์โรงเรียน
+                        <span class="message-status status-announcement">ประกาศ</span>
+                        <span class="message-time">08:30</span>
+                    </div>
+                    <div class="message-preview">แจ้งกำหนดการสอบปลายภาคเรียนที่ 2/2568 ระหว่างวันที่ 1-5 เมษายน 2568 โดยนักเรียนต้องมาถึงโรงเรียน...</div>
+                </div>
+            </div>
+            
+            <!-- ข้อความจากครูประจำชั้น -->
+            <div class="message-item">
+                <div class="message-avatar avatar-teacher">ค</div>
+                <div class="message-content">
+                    <div class="message-sender">
+                        อาจารย์ใจดี มากเมตตา
+                        <span class="message-status status-urgent">ด่วน</span>
+                        <span class="message-time">10:15</span>
+                    </div>
+                    <div class="message-preview">เรียนผู้ปกครองของนายเอกชัย เนื่องจากวันนี้มีการประชุมผู้ปกครองกลุ่มย่อย ขออนุญาตเชิญท่านเข้าร่วม...</div>
+                </div>
+                <div class="message-notification">2</div>
+            </div>
+        </div>
+
+        <!-- ปุ่มสร้างข้อความใหม่ -->
+        <button class="floating-button">
+            <span class="material-icons">edit</span>
+        </button>
+    </div>
+
+    <!-- แถบนำทางด้านล่าง -->
+    <div class="bottom-nav">
+        <a href="#" class="nav-item">
+            <span class="material-icons nav-icon">home</span>
+            <span>หน้าหลัก</span>
+        </a>
+        <a href="#" class="nav-item">
+            <span class="material-icons nav-icon">child_care</span>
+            <span>นักเรียน</span>
+        </a>
+        <a href="#" class="nav-item active">
+            <span class="material-icons nav-icon">chat</span>
+            <span>ข้อความ</span>
+        </a>
+        <a href="#" class="nav-item">
+            <span class="material-icons nav-icon">person</span>
+            <span>โปรไฟล์</span>
+        </a>
+    </div>
+
+    <script>
+        // สลับแท็บ
+        function switchTab(tabName) {
+            // ซ่อนทุกแท็บ
+            document.getElementById('inbox-tab').style.display = 'none';
+            document.getElementById('unread-tab').style.display = 'none';
+            document.getElementById('important-tab').style.display = 'none';
+            
+            // แสดงแท็บที่เลือก
+            document.getElementById(tabName + '-tab').style.display = 'block';
+            
+            // เอาคลาส active ออกจากทุกแท็บ
+            const tabs = document.querySelectorAll('.message-tab');
+            tabs.forEach(tab => tab.classList.remove('active'));
+            
+            // เพิ่มคลาส active ให้แท็บที่เลือก
+            if (tabName === 'inbox') {
+                tabs[0].classList.add('active');
+            } else if (tabName === 'unread') {
+                tabs[1].classList.add('active');
+            } else if (tabName === 'important') {
+                tabs[2].classList.add('active');
+            }
+        }
+    </script>
+</body>
+</html>

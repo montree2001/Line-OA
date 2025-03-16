@@ -1,0 +1,955 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>STUDENT-Prasat - ส่งข้อความแจ้งเตือน</title>
+    <style>
+        /* ตั้งค่าพื้นฐาน */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Prompt', sans-serif;
+        }
+        
+        body {
+            background-color: #f5f5f5;
+            color: #333;
+            font-size: 16px;
+            line-height: 1.5;
+            display: flex;
+            min-height: 100vh;
+        }
+        
+        /* ไซด์บาร์ */
+        .sidebar {
+            width: 280px;
+            background-color: #263238;
+            color: white;
+            height: 100vh;
+            position: fixed;
+            overflow-y: auto;
+        }
+        
+        .sidebar-header {
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .logo {
+            font-size: 20px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            color: white;
+            text-decoration: none;
+        }
+        
+        .logo .material-icons {
+            margin-right: 10px;
+            color: #06c755;
+        }
+        
+        .sidebar-menu {
+            padding: 20px 0;
+        }
+        
+        .menu-category {
+            font-size: 12px;
+            text-transform: uppercase;
+            color: #78909c;
+            padding: 10px 20px;
+            margin-top: 10px;
+        }
+        
+        .menu-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 20px;
+            color: #b0bec5;
+            text-decoration: none;
+            transition: all 0.3s;
+            position: relative;
+        }
+        
+        .menu-item:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+            color: white;
+        }
+        
+        .menu-item.active {
+            background-color: rgba(255, 255, 255, 0.1);
+            color: white;
+            border-left: 4px solid #06c755;
+        }
+        
+        .menu-item .material-icons {
+            margin-right: 10px;
+        }
+        
+        .menu-item .badge {
+            position: absolute;
+            right: 20px;
+            background-color: #f44336;
+            color: white;
+            font-size: 11px;
+            padding: 2px 6px;
+            border-radius: 10px;
+        }
+        
+        .admin-info {
+            padding: 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            background-color: #263238;
+        }
+        
+        .admin-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: #06c755;
+            margin-right: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+        
+        .admin-details {
+            flex: 1;
+        }
+        
+        .admin-name {
+            font-weight: bold;
+            font-size: 14px;
+        }
+        
+        .admin-role {
+            font-size: 12px;
+            color: #78909c;
+        }
+        
+        .admin-menu {
+            padding: 8px;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        
+        .admin-menu:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+        
+        /* เนื้อหาหลัก */
+        .main-content {
+            flex: 1;
+            margin-left: 280px;
+            padding: 20px;
+        }
+        
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .page-title {
+            font-size: 24px;
+            font-weight: 600;
+        }
+        
+        .header-actions {
+            display: flex;
+            gap: 15px;
+        }
+        
+        .search-bar {
+            display: flex;
+            background-color: white;
+            border-radius: 30px;
+            overflow: hidden;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        
+        .search-input {
+            border: none;
+            padding: 10px 15px;
+            font-size: 14px;
+            flex: 1;
+            min-width: 250px;
+            outline: none;
+        }
+        
+        .search-button {
+            background-color: transparent;
+            border: none;
+            padding: 0 15px;
+            cursor: pointer;
+            color: #666;
+        }
+        
+        .action-button {
+            display: flex;
+            align-items: center;
+            background-color: #06c755;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 30px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .action-button .material-icons {
+            margin-right: 5px;
+        }
+        
+        /* แท็บ */
+        .tabs-container {
+            margin-bottom: 20px;
+        }
+        
+        .tabs-header {
+            display: flex;
+            background-color: white;
+            border-radius: 10px 10px 0 0;
+            overflow: hidden;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        
+        .tab {
+            padding: 15px 20px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+        }
+        
+        .tab.active {
+            background-color: white;
+            color: #06c755;
+        }
+        
+        .tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background-color: #06c755;
+        }
+        
+        .tab-content {
+            background-color: white;
+            border-radius: 0 0 10px 10px;
+            padding: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        /* การ์ด */
+        .card {
+            background-color: white;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            padding: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        
+        .card-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .card-title .material-icons {
+            margin-right: 10px;
+            color: #06c755;
+        }
+        
+        /* ตัวกรอง */
+        .filter-container {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .filter-group {
+            flex: 1;
+            min-width: 180px;
+        }
+        
+        .filter-label {
+            font-weight: bold;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+        
+        .form-control {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #e0e0e0;
+            border-radius: 5px;
+            font-size: 14px;
+            outline: none;
+        }
+        
+        .form-control:focus {
+            border-color: #06c755;
+        }
+        
+        .filter-button {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 5px;
+            background-color: #06c755;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 26px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .filter-button .material-icons {
+            margin-right: 5px;
+        }
+        
+        /* ตาราง */
+        .table-responsive {
+            overflow-x: auto;
+        }
+        
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .data-table th, .data-table td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .data-table th {
+            background-color: #f9f9f9;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .data-table tr:hover {
+            background-color: #f5f5f5;
+        }
+        
+        .student-info {
+            display: flex;
+            align-items: center;
+        }
+        
+        .student-avatar {
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            background-color: #e3f2fd;
+            margin-right: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #1976d2;
+            font-weight: bold;
+        }
+        
+        .student-details {
+            flex: 1;
+        }
+        
+        .student-name {
+            font-weight: 500;
+        }
+        
+        .student-class {
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .status-badge.danger {
+            background-color: #ffebee;
+            color: #f44336;
+        }
+        
+        .status-badge.warning {
+            background-color: #fff8e1;
+            color: #ff9800;
+        }
+        
+        .status-badge.success {
+            background-color: #e8f5e9;
+            color: #4caf50;
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 5px;
+        }
+        
+        .table-action-btn {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .table-action-btn.primary {
+            background-color: #e3f2fd;
+            color: #1976d2;
+        }
+        
+        .table-action-btn.success {
+            background-color: #e8f5e9;
+            color: #4caf50;
+        }
+        
+        .table-action-btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        /* รายการผู้รับ */
+        .recipients-container {
+            max-height: 250px;
+            overflow-y: auto;
+            border: 1px solid #e0e0e0;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        
+        .recipient-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 15px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .recipient-item:last-child {
+            border-bottom: none;
+        }
+        
+        .recipient-info {
+            display: flex;
+            align-items: center;
+        }
+        
+        .recipient-details {
+            margin-left: 10px;
+        }
+        
+        .parent-info {
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .batch-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        /* ฟอร์มข้อความ */
+        .message-form {
+            margin-top: 20px;
+        }
+        
+        .template-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .template-btn {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 5px;
+            background-color: #f5f5f5;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .template-btn:hover {
+            background-color: #e0e0e0;
+        }
+        
+        .template-btn.active {
+            background-color: #e3f2fd;
+            color: #1976d2;
+            font-weight: 600;
+        }
+        
+        .message-textarea {
+            width: 100%;
+            min-height: 200px;
+            border: 1px solid #e0e0e0;
+            border-radius: 5px;
+            padding: 15px;
+            font-size: 14px;
+            margin-bottom: 20px;
+            resize: vertical;
+            outline: none;
+        }
+        
+        .message-textarea:focus {
+            border-color: #06c755;
+        }
+        
+        .message-preview {
+            background-color: #f9f9f9;
+            border: 1px solid #e0e0e0;
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .preview-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+        
+        .preview-button {
+            padding: 5px 10px;
+            border: none;
+            border-radius: 5px;
+            background-color: #f5f5f5;
+            font-size: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+        }
+        
+        .preview-button .material-icons {
+            font-size: 16px;
+            margin-right: 5px;
+        }
+        
+        .preview-content {
+            background-color: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 5px;
+            padding: 15px;
+        }
+        
+        .form-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .btn {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 5px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        
+        .btn-secondary {
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        
+        .btn-primary {
+            background-color: #06c755;
+            color: white;
+            display: flex;
+            align-items: center;
+        }
+        
+        .btn-primary .material-icons {
+            margin-right: 5px;
+        }
+        
+        /* โมดัล */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        
+        .modal.active {
+            display: flex;
+        }
+        
+        .modal-content {
+            background-color: white;
+            border-radius: 10px;
+            padding: 30px;
+            width: 100%;
+            max-width: 500px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            position: relative;
+        }
+        
+        .modal-close {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background-color: transparent;
+            border: none;
+            cursor: pointer;
+            color: #666;
+        }
+        
+        .modal-title {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+        
+        .modal-body {
+            margin-bottom: 30px;
+        }
+        
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+        
+        /* สำหรับอุปกรณ์เคลื่อนที่ */
+        @media (max-width: 992px) {
+            .sidebar {
+                width: 70px;
+                overflow: visible;
+            }
+            
+            .sidebar-header {
+                padding: 15px;
+                justify-content: center;
+            }
+            
+            .logo {
+                font-size: 0;
+            }
+            
+            .logo .material-icons {
+                margin-right: 0;
+                font-size: 24px;
+            }
+            
+            .menu-category, .admin-details, .menu-item span:not(.material-icons) {
+                display: none;
+            }
+            
+            .menu-item {
+                padding: 15px;
+                justify-content: center;
+            }
+            
+            .menu-item .material-icons {
+                margin-right: 0;
+            }
+            
+            .menu-item .badge {
+                position: absolute;
+                top: 5px;
+                right: 5px;
+            }
+            
+            .admin-info {
+                justify-content: center;
+                padding: 15px;
+            }
+            
+            .admin-avatar {
+                margin-right: 0;
+            }
+            
+            .admin-menu {
+                display: none;
+            }
+            
+            .main-content {
+                margin-left: 70px;
+            }
+            
+            .stats-container, .charts-container {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .header-actions {
+                width: 100%;
+                margin-top: 15px;
+            }
+            
+            .search-bar {
+                width: 100%;
+            }
+            
+            .filter-container {
+                flex-direction: column;
+            }
+            
+            .filter-group {
+                width: 100%;
+            }
+            
+            .table-responsive {
+                overflow-x: auto;
+            }
+        }
+    </style>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/material-design-icons/3.0.1/iconfont/material-icons.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- ไซด์บาร์ -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <a href="#" class="logo">
+                <span class="material-icons">school</span>
+                STUDENT-Prasat
+            </a>
+        </div>
+        
+        <div class="sidebar-menu">
+            <div class="menu-category">หน้าหลัก</div>
+            <a href="#" class="menu-item">
+                <span class="material-icons">dashboard</span>
+                <span>แดชบอร์ด</span>
+            </a>
+            <a href="#" class="menu-item">
+                <span class="material-icons">how_to_reg</span>
+                <span>เช็คชื่อนักเรียน</span>
+            </a>
+            <a href="#" class="menu-item">
+                <span class="material-icons">assessment</span>
+                <span>รายงานและสถิติ</span>
+            </a>
+            <a href="#" class="menu-item active">
+                <span class="material-icons">send</span>
+                <span>ส่งรายงานผู้ปกครอง</span>
+            </a>
+            <a href="#" class="menu-item">
+                <span class="material-icons">warning</span>
+                <span>นักเรียนเสี่ยงตกกิจกรรม</span>
+                <span class="badge">12</span>
+            </a>
+            
+            <div class="menu-category">จัดการข้อมูล</div>
+            <a href="#" class="menu-item">
+                <span class="material-icons">people</span>
+                <span>นักเรียน</span>
+            </a>
+            <a href="#" class="menu-item">
+                <span class="material-icons">person</span>
+                <span>ครูที่ปรึกษา</span>
+            </a>
+            <a href="#" class="menu-item">
+                <span class="material-icons">family_restroom</span>
+                <span>ผู้ปกครอง</span>
+            </a>
+            <a href="#" class="menu-item">
+                <span class="material-icons">class</span>
+                <span>ชั้นเรียน</span>
+            </a>
+            
+            <div class="menu-category">ตั้งค่า</div>
+            <a href="#" class="menu-item">
+                <span class="material-icons">settings</span>
+                <span>ตั้งค่าระบบ</span>
+            </a>
+            <a href="#" class="menu-item">
+                <span class="material-icons">help</span>
+                <span>ช่วยเหลือ</span>
+            </a>
+        </div>
+        
+        <div class="admin-info">
+            <div class="admin-avatar">จ</div>
+            <div class="admin-details">
+                <div class="admin-name">จารุวรรณ บุญมี</div>
+                <div class="admin-role">เจ้าหน้าที่กิจการนักเรียน</div>
+            </div>
+            <div class="admin-menu">
+                <span class="material-icons">more_vert</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- เนื้อหาหลัก -->
+    <div class="main-content">
+        <div class="header">
+            <h1 class="page-title">ส่งข้อความรายงานการเข้าแถว</h1>
+            <div class="header-actions">
+                <div class="search-bar">
+                    <input type="text" class="search-input" placeholder="ค้นหานักเรียน, ครู, ชั้นเรียน...">
+                    <button class="search-button">
+                        <span class="material-icons">search</span>
+                    </button>
+                </div>
+                <button class="action-button" onclick="showHistoryModal()">
+                    <span class="material-icons">history</span>
+                    ประวัติการส่งข้อความ
+                </button>
+            </div>
+        </div>
+
+        <!-- แท็บ -->
+        <div class="tabs-container">
+            <div class="tabs-header">
+                <div class="tab active" onclick="showTab('individual')">ส่งรายบุคคล</div>
+                <div class="tab" onclick="showTab('group')">ส่งกลุ่ม</div>
+                <div class="tab" onclick="showTab('templates')">จัดการเทมเพลต</div>
+            </div>
+        </div>
+
+        <!-- เนื้อหาแท็บส่งรายบุคคล -->
+        <div id="individual-tab" class="tab-content active">
+            <div class="card">
+                <div class="card-title">
+                    <span class="material-icons">search</span>
+                    ค้นหานักเรียน
+                </div>
+                <div class="filter-container">
+                    <div class="filter-group">
+                        <div class="filter-label">ชื่อ-นามสกุลนักเรียน</div>
+                        <input type="text" class="form-control" placeholder="ป้อนชื่อนักเรียน...">
+                    </div>
+                    <div class="filter-group">
+                        <div class="filter-label">ระดับชั้น</div>
+                        <select class="form-control">
+                            <option value="">-- ทุกระดับชั้น --</option>
+                            <option>ม.1</option>
+                            <option>ม.2</option>
+                            <option>ม.3</option>
+                            <option>ม.4</option>
+                            <option>ม.5</option>
+                            <option>ม.6</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <div class="filter-label">ห้องเรียน</div>
+                        <select class="form-control">
+                            <option value="">-- ทุกห้อง --</option>
+                            <option>1</option>
+                            <option>2</option>
+                            <option>3</option>
+                            <option>4</option>
+                            <option>5</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <div class="filter-label">สถานะการเข้าแถว</div>
+                        <select class="form-control">
+                            <option value="">-- ทุกสถานะ --</option>
+                            <option>เสี่ยงตกกิจกรรม</option>
+                            <option>ต้องระวัง</option>
+                            <option>ปกติ</option>
+                        </select>
+                    </div>
+                    <button class="filter-button">
+                        <span class="material-icons">search</span>
+                        ค้นหา
+                    </button>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th width="5%"></th>
+                                <th width="25%">นักเรียน</th>
+                                <th width="10%">ชั้น/ห้อง</th>
+                                <th width="15%">เข้าแถว</th>
+                                <th width="15%">สถานะ</th>
+                                <th width="15%">ผู้ปกครอง</th>
+                                <th width="15%">จัดการ</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>
+                                    <input type="radio" name="student_select" checked>
+                                </td>
+                                <td>
+                                    <div class="student-info">
+                                        <div class="student-avatar">ธ</div>
+                                        <div class="student-details">
+                                            <div class="student-name">นายธนกฤต สุขใจ</div>
+                                            <div class="student-class">เลขที่ 12</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>ม.6/2</td>
+                                <td>26/40 วัน (65%)</td>
+                                <td><span class="status-badge danger">เสี่ยงตกกิจกรรม</span></td>
+                                <td>นางวันดี สุขใจ (แม่)</td>
+                                <td>
+                                    <div class="action-buttons">
+                                        <button class="table-action-btn primary" title="ดูประวัติการส่ง">
+                                            <span class="material-icons">history</span>
+                                        </button>
+                                        <button class="table-action-btn success" title="ส่งข้อความ">
+                                            <span class="material-icons">send</span>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <input type="radio" name="student_select">
+                                </td>
+                                <td>
+                                    <div class="student-info">

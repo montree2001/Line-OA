@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>STD-Prasat - เช็คชื่อเข้าแถว</title>
+    <style>
+        /* ตั้งค่าพื้นฐาน */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Prompt', sans-serif;
+        }
+        
+        body {
+            background-color: #f5f5f5;
+            color: #333;
+            font-size: 16px;
+            line-height: 1.5;
+        }
+        
+        /* ส่วนหัว */
+        .header {
+            background-color: #06c755;
+            color: white;
+            padding: 15px 20px;
+            text-align: center;
+            position: fixed;
+            top: 0;
+            width: 100%;
+            z-index: 1000;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .header h1 {
+            font-size: 20px;
+            margin: 0;
+        }
+        
+        .header-icon {
+            font-size: 24px;
+        }
+        
+        .container {
+            max-width: 600px;
+            margin: 70px auto 80px;
+            padding: 15px;
+        }
+        
+        /* การ์ดเวลาและสถานะ */
+        .status-card {
+            background-color: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        
+        .date-display {
+            margin-bottom: 15px;
+        }
+        
+        .current-date {
+            font-size: 16px;
+            color: #666;
+        }
+        
+        .time-display {
+            font-size: 42px;
+            font-weight: bold;
+            margin: 10px 0;
+            color: #333;
+        }
+        
+        .time-description {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 15px;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 600;
+            margin-top: 10px;
+        }
+        
+        .status-open {
+            background-color: #e8f5e9;
+            color: #4caf50;
+        }
+        
+        .status-closed {
+            background-color: #ffebee;
+            color: #f44336;
+        }
+        
+        /* วิธีการเช็คชื่อ */
+        .check-methods-card {
+            background-color: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .card-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .card-title .material-icons {
+            margin-right: 10px;
+            color: #06c755;
+        }
+        
+        .method-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+        }
+        
+        .method-card {
+            background-color: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px 15px;
+            text-align: center;
+            cursor: pointer;
+            transition: transform 0.2s;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        
+        .method-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .method-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 15px;
+        }
+        
+        .method-icon.gps {
+            background-color: #e0f2f1;
+            color: #009688;
+        }
+        
+        .method-icon.qr {
+            background-color: #fff3e0;
+            color: #ff9800;
+        }
+        
+        .method-icon.pin {
+            background-color: #e8eaf6;
+            color: #3f51b5;
+        }
+        
+        .method-icon.photo {
+            background-color: #f3e5f5;
+            color: #9c27b0;
+        }
+        
+        .method-icon .material-icons {
+            font-size: 30px;
+        }
+        
+        .method-name {
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+        
+        .method-description {
+            font-size: 12px;
+            color: #666;
+        }
+        
+        /* อัพโหลดรูปภาพ */
+        .upload-card {
+            background-color: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .upload-area {
+            border: 2px dashed #ddd;
+            border-radius: 10px;
+            padding: 30px 20px;
+            text-align: center;
+            margin-bottom: 20px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .upload-area:hover {
+            border-color: #06c755;
+            background-color: #f9f9f9;
+        }
+        
+        .upload-icon {
+            font-size: 48px;
+            color: #ddd;
+            margin-bottom: 10px;
+        }
+        
+        .upload-text {
+            color: #666;
+            margin-bottom: 5px;
+        }
+        
+        .upload-subtext {
+            font-size: 12px;
+            color: #999;
+        }
+        
+        .upload-preview {
+            margin-top: 20px;
+            display: none; /* จะแสดงเมื่อมีการอัพโหลดรูปภาพ */
+        }
+        
+        .preview-title {
+            font-weight: 600;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .preview-title .material-icons {
+            margin-right: 5px;
+            color: #06c755;
+        }
+        
+        .preview-image {
+            width: 100%;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .upload-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .upload-button {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .upload-button.primary {
+            background-color: #06c755;
+            color: white;
+        }
+        
+        .upload-button.secondary {
+            background-color: #f5f5f5;
+            color: #666;
+        }
+        
+        .upload-button .material-icons {
+            margin-right: 5px;
+        }
+        
+        /* GPS Method */
+        .gps-card {
+            background-color: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            display: none; /* จะแสดงเมื่อกดปุ่ม GPS */
+        }
+        
+        .gps-status {
+            text-align: center;
+            padding: 20px 0;
+        }
+        
+        .gps-icon {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background-color: #e0f2f1;
+            color: #009688;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 15px;
+        }
+        
+        .gps-icon .material-icons {
+            font-size: 40px;
+        }
+        
+        .gps-text {
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+        
+        .gps-subtext {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 20px;
+        }
+        
+        .gps-details {
+            background-color: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .gps-detail-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        
+        .gps-detail-item:last-child {
+            margin-bottom: 0;
+        }
+        
+        .gps-detail-label {
+            color: #666;
+        }
+        
+        .gps-detail-value {
+            font-weight: 500;
+        }
+        
+        .gps-action {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            background-color: #009688;
+            color: white;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .gps-action .material-icons {
+            margin-right: 10px;
+        }
+        
+        /* QR Code Method */
+        .qr-card {
+            background-color: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            text-align: center;
+            display: none; /* จะแสดงเมื่อกดปุ่ม QR */
+        }
+        
+        .qr-container {
+            margin: 20px 0;
+        }
+        
+        .qr-code {
+            width: 200px;
+            height: 200px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .qr-code img {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .qr-info {
+            margin-top: 15px;
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .qr-refresh {
+            margin-top: 20px;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            background-color: #f5f5f5;
+            color: #666;
+            font-weight: 500;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+        }
+        
+        .qr-refresh .material-icons {
+            margin-right: 5px;
+        }
+        
+        /* PIN Method */
+        .pin-card {
+            background-color: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            text-align: center;
+            display: none; /* จะแสดงเมื่อกดปุ่ม PIN */
+        }
+        
+        .pin-input-container {
+            margin: 30px 0;
+        }
+        
+        .pin-input {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
+        
+        .pin-digit {
+            width: 50px;
+            height: 60px;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            font-size: 24px;
+            font-weight: bold;
+            text-align: center;
+        }
+        
+        .pin-info {
+            margin-top: 20px;
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .pin-submit {
+            margin-top: 30px;
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            background-color: #3f51b5;
+            color: white;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .pin-submit .material-icons {
+            margin-right: 10px;
+        }
+        
+        /* แถบนำทางด้านล่าง */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            background-color: white;
+            display: flex;
+            justify-content: space-around;
+            padding: 10px 0;
+            box-shadow: 0 -2px 5px rgba(0,0,0,0.1);
+            z-index: 1000;
+        }
+        
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-size: 12px;
+            color: #666;
+            text-decoration: none;
+        }
+        
+        .nav-item.active {
+            color: #06c755;
+        }
+        
+        .nav-icon {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+        
+        /* ไอคอนจาก Material Icons */
+        .material-icons {
+            font-family: 'Material Icons';
+            font-weight: normal;
+            font-style: normal;
+            font-size: 24px;
+            line-height: 1;
+            letter-spacing: normal;
+            text-transform: none;
+            display: inline-block;
+            white-space: nowrap;
+            word-wrap: normal;
+            direction: ltr;
+            -webkit-font-feature-settings: 'liga';
+            -webkit-font-smoothing: antialiased;
+        }
+    </style>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/material-design-icons/3.0.1/iconfont/material-icons.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="header">
+        <a href="#" onclick="goBack()" class="header-icon">
+            <span class="material-icons">arrow_back</span>
+        </a>
+        <h1>เช็คชื่อเข้าแถว</h1>
+        <div class="header-icon">
+            <span class="material-icons">help_outline</span>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- การ์ดเวลาและสถานะ -->
+        <div class="status-card">
+            <div class="date-display">
+                <div class="current-date">วันจันทร์ที่ 16 มีนาคม 2025</div>
+            </div>
+            <div class="time-display" id="current-time">07:45:18</div>
+            <div class="time-description">เวลาเช็คชื่อ: 07:00 - 08:30 น.</div>
+            <div class="status-indicator status-open">เปิดให้เช็คชื่อ</div>
+        </div>
+
+        <!-- วิธีการเช็คชื่อ -->
+        <div class="check-methods-card">
+            <div class="card-title">
+                <span class="material-icons">how_to_reg</span> เลือกวิธีการเช็คชื่อ
+            </div>
+            
+            <div class="method-grid">
+                <div class="method-card" onclick="showMethod('gps')">
+                    <div class="method-icon gps">
+                        <span class="material-icons">gps_fixed</span>
+                    </div>
+                    <div class="method-name">GPS</div>
+                    <div class="method-description">เช็คชื่อด้วยตำแหน่งที่ตั้ง</div>
+                </div>
+                
+                <div class="method-card" onclick="showMethod('qr')">
+                    <div class="method-icon qr">
+                        <span class="material-icons">qr_code_2</span>
+                    </div>
+                    <div class="method-name">QR Code</div>
+                    <div class="method-description">สร้าง QR เพื่อให้ครูสแกน</div>
+                </div>
+                
+                <div class="method-card" onclick="showMethod('pin')">
+                    <div class="method-icon pin">
+                        <span class="material-icons">pin</span>
+                    </div>
+                    <div class="method-name">รหัส PIN</div>
+                    <div class="method-description">ใส่รหัส PIN จากครู</div>
+                </div>
+                
+                <div class="method-card" onclick="showMethod('photo')">
+                    <div class="method-icon photo">
+                        <span class="material-icons">add_a_photo</span>
+                    </div>
+                    <div class="method-name">ถ่ายรูป</div>
+                    <div class="method-description">อัพโหลดรูปเข้าแถว</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- GPS Method -->
+        <div class="gps-card" id="gps-method">
+            <div class="card-title">
+                <span class="material-icons">gps_fixed</span> เช็คชื่อด้วย GPS
+            </div>
+            
+            <div class="gps-status">
+                <div class="gps-icon">
+                    <span class="material-icons">gps_fixed</span>
+                </div>
+                <div class="gps-text">กำลังตรวจสอบตำแหน่ง</div>
+                <div class="gps-subtext">โปรดรอสักครู่...</div>
+            </div>
+            
+            <div class="gps-details">
+                <div class="gps-detail-item">
+                    <div class="gps-detail-label">สถานะ GPS:</div>
+                    <div class="gps-detail-value">พร้อมใช้งาน</div>
+                </div>
+                <div class="gps-detail-item">
+                    <div class="gps-detail-label">ระยะห่างจากโรงเรียน:</div>
+                    <div class="gps-detail-value">45 เมตร</div>
+                </div>
+                <div class="gps-detail-item">
+                    <div class="gps-detail-label">ความแม่นยำ:</div>
+                    <div class="gps-detail-value">± 10 เมตร</div>
+                </div>
+            </div>
+            
+            <button class="gps-action">
+                <span class="material-icons">check</span> ยืนยันการเช็คชื่อด้วย GPS
+            </button>
+        </div>
+
+        <!-- QR Code Method -->
+        <div class="qr-card" id="qr-method">
+            <div class="card-title">
+                <span class="material-icons">qr_code_2</span> เช็คชื่อด้วย QR Code
+            </div>
+            
+            <div class="qr-container">
+                <div class="qr-code">
+                    <img src="https://api.qrserver.com/v1/create-qr-code/?data=STD-16536-16032025-0745&size=200x200" alt="QR Code">
+                </div>
+                <div class="qr-info">
+                    QR Code นี้จะหมดอายุในอีก 5 นาที<br>
+                    แสดงให้ครูสแกนเพื่อเช็คชื่อ
+                </div>
+            </div>
+            
+            <button class="qr-refresh">
+                <span class="material-icons">refresh</span> สร้าง QR Code ใหม่
+            </button>
+        </div>
+
+        <!-- PIN Method -->
+        <div class="pin-card" id="pin-method">
+            <div class="card-title">
+                <span class="material-icons">pin</span> เช็คชื่อด้วยรหัส PIN
+            </div>
+            
+            <div class="pin-input-container">
+                <div class="pin-input">
+                    <input type="text" class="pin-digit" maxlength="1" inputmode="numeric" pattern="[0-9]" autocomplete="off">
+                    <input type="text" class="pin-digit" maxlength="1" inputmode="numeric" pattern="[0-9]" autocomplete="off">
+                    <input type="text" class="pin-digit" maxlength="1" inputmode="numeric" pattern="[0-9]" autocomplete="off">
+                    <input type="text" class="pin-digit" maxlength="1" inputmode="numeric" pattern="[0-9]" autocomplete="off">
+                </div>
+                <div class="pin-info">
+                    กรอกรหัส PIN 4 หลักที่ได้รับจากครู
+                </div>
+            </div>
+            
+            <button class="pin-submit">
+                <span class="material-icons">check</span> ยืนยันรหัส PIN
+            </button>
+        </div>
+
+        <!-- อัพโหลดรูปภาพ -->
+        <div class="upload-card" id="photo-method">
+            <div class="card-title">
+                <span class="material-icons">add_a_photo</span> อัพโหลดรูปภาพการเข้าแถว
+            </div>
+            
+            <div class="upload-area" onclick="document.getElementById('file-upload').click()">
+                <input type="file" id="file-upload" style="display: none;" accept="image/*" onchange="previewImage(this)">
+                <div class="upload-icon">
+                    <span class="material-icons">cloud_upload</span>
+                </div>
+                <div class="upload-text">คลิกเพื่ออัพโหลดภาพถ่ายการเข้าแถว</div>
+                <div class="upload-subtext">รองรับไฟล์ JPG, PNG ขนาดไม่เกิน 5MB</div>
+            </div>
+            
+            <div class="upload-preview" id="image-preview">
+                <div class="preview-title">
+                    <span class="material-icons">photo</span> ภาพตัวอย่าง
+                </div>
+                <img src="#" class="preview-image" id="preview-img" alt="ภาพตัวอย่าง">
+                
+                <div class="upload-actions">
+                    <button class="upload-button secondary" onclick="resetImage()">
+                        <span class="material-icons">refresh</span> เลือกใหม่
+                    </button>
+                    <button class="upload-button primary">
+                        <span class="material-icons">file_upload</span> อัพโหลด
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- แถบนำทางด้านล่าง -->
+    <div class="bottom-nav">
+        <a href="#" class="nav-item">
+            <span class="material-icons nav-icon">home</span>
+            <span>หน้าหลัก</span>
+        </a>
+        <a href="#" class="nav-item">
+            <span class="material-icons nav-icon">history</span>
+            <span>ประวัติ</span>
+        </a>
+        <a href="#" class="nav-item">
+            <span class="material-icons nav-icon">person</span>
+            <span>โปรไฟล์</span>
+        </a>
+    </div>
+
+    <script>
+        // ฟังก์ชันแสดงเวลาปัจจุบัน
+        function updateTime() {
+            const now = new Date();
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+            document.getElementById('current-time').textContent = `${hours}:${minutes}:${seconds}`;
+            
+            // อัพเดทสถานะการเช็คชื่อ
+            const statusElement = document.querySelector('.status-indicator');
+            if (now.getHours() < 8 || (now.getHours() === 8 && now.getMinutes() <= 30)) {
+                statusElement.className = 'status-indicator status-open';
+                statusElement.textContent = 'เปิดให้เช็คชื่อ';
+            } else {
+                statusElement.className = 'status-indicator status-closed';
+                statusElement.textContent = 'ปิดการเช็คชื่อแล้ว';
+            }
+        }
+        
+        // อัพเดทเวลาทุกวินาที
+        setInterval(updateTime, 1000);
+        updateTime(); // เรียกใช้งานครั้งแรก
+        
+        // ฟังก์ชันแสดงวิธีการเช็คชื่อ
+        function showMethod(method) {
+            // ซ่อนวิธีการเช็คชื่อทั้งหมด
+            document.getElementById('gps-method').style.display = 'none';
+            document.getElementById('qr-method').style.display = 'none';
+            document.getElementById('pin-method').style.display = 'none';
+            document.getElementById('photo-method').style.display = 'none';
+            
+            // แสดงวิธีการที่เลือก
+            if (method === 'gps') {
+                document.getElementById('gps-method').style.display = 'block';
+            } else if (method === 'qr') {
+                document.getElementById('qr-method').style.display = 'block';
+            } else if (method === 'pin') {
+                document.getElementById('pin-method').style.display = 'block';
+                setupPinInputs(); // ตั้งค่า input สำหรับรหัส PIN
+            } else if (method === 'photo') {
+                document.getElementById('photo-method').style.display = 'block';
+            }
+            
+            // เลื่อนไปยังวิธีการที่เลือก
+            document.getElementById(method + '-method').scrollIntoView({ behavior: 'smooth' });
+        }
+        
+        // ฟังก์ชันตั้งค่า input สำหรับรหัส PIN
+        function setupPinInputs() {
+            const pinDigits = document.querySelectorAll('.pin-digit');
+            
+            // เพิ่ม event listener สำหรับ input แต่ละตัว
+            pinDigits.forEach((input, index) => {
+                // เมื่อพิมพ์ตัวเลข ให้เลื่อนไปยัง input ถัดไป
+                input.addEventListener('input', function() {
+                    if (this.value.length === 1) {
+                        if (index < pinDigits.length - 1) {
+                            pinDigits[index + 1].focus();
+                        }
+                    }
+                });
+                
+                // เมื่อกด Backspace ให้เลื่อนไปยัง input ก่อนหน้า
+                input.addEventListener('keydown', function(e) {
+                    if (e.key === 'Backspace' && this.value.length === 0) {
+                        if (index > 0) {
+                            pinDigits[index - 1].focus();
+                        }
+                    }
+                });
+            });
+            
+            // ตั้งค่า focus ที่ input แรก
+            pinDigits[0].focus();
+        }
+        
+        // ฟังก์ชันแสดงตัวอย่างรูปภาพ
+        function previewImage(input) {
+            if (input.files && input.files[0]) {
+                var reader = new FileReader();
+                
+                reader.onload = function(e) {
+                    document.getElementById('preview-img').src = e.target.result;
+                    document.getElementById('image-preview').style.display = 'block';
+                    document.querySelector('.upload-area').style.display = 'none';
+                }
+                
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+        
+        // ฟังก์ชันรีเซ็ตรูปภาพ
+        function resetImage() {
+            document.getElementById('file-upload').value = '';
+            document.getElementById('image-preview').style.display = 'none';
+            document.querySelector('.upload-area').style.display = 'block';
+        }
+        
+        // ฟังก์ชันย้อนกลับ
+        function goBack() {
+            window.location.href = 'index.html';
+        }
+    </script>
+</body>
+</html>
