@@ -1,353 +1,176 @@
-/**
- * at_risk.css - สไตล์เฉพาะสำหรับหน้านักเรียนที่เสี่ยงตกกิจกรรม
- * ระบบ STUDENT-Prasat
- */
+/* at_risk.css - สไตล์เฉพาะสำหรับหน้านักเรียนที่เสี่ยงตกกิจกรรม */
 
-/* แท็บรูปแบบพิเศษสำหรับหน้านักเรียนเสี่ยงตกกิจกรรม */
-.risk-tabs .tab {
-    padding: 12px 18px;
-    position: relative;
-}
-
-.risk-tabs .tab .badge {
-    position: relative;
-    top: -2px;
-    margin-left: 6px;
-}
-
-/* ปุ่มส่งข้อความกลุ่ม */
-.bulk-action-btn {
-    display: flex;
-    align-items: center;
-    background-color: var(--primary-color);
-    color: white;
-    padding: 10px 15px;
-    border: none;
-    border-radius: 5px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background-color 0.3s;
-}
-
-.bulk-action-btn:hover {
-    background-color: var(--primary-color-dark);
-}
-
-.bulk-action-btn .material-icons {
-    margin-right: 5px;
-}
-
-/* สีพื้นหลังสำหรับแถวที่เสี่ยงสูง */
-.high-risk-row {
-    background-color: rgba(255, 67, 54, 0.1);
-}
-
-.medium-risk-row {
-    background-color: rgba(255, 152, 0, 0.1);
-}
-
-/* ส่วนข้อมูลนักเรียน */
-.student-profile {
-    margin-top: 20px;
-}
-
-.student-profile-header {
-    display: flex;
-    align-items: center;
+/* Card Styles */
+.risk-card {
     margin-bottom: 20px;
 }
 
-.student-profile-avatar {
-    width: 60px;
-    height: 60px;
-    border-radius: 50%;
-    background-color: var(--secondary-color-light);
-    color: var(--secondary-color);
-    font-size: 24px;
-    font-weight: bold;
+.risk-card-title {
     display: flex;
     align-items: center;
-    justify-content: center;
-    margin-right: 20px;
-}
-
-.student-profile-info h3 {
-    margin: 0 0 5px 0;
     font-size: 18px;
+    font-weight: 600;
 }
 
-.student-profile-info p {
-    margin: 0 0 5px 0;
-    color: var(--text-light);
-}
-
-/* สถิติการเข้าแถว */
-.attendance-stat {
-    text-align: center;
-    background-color: #f9f9f9;
-    padding: 15px;
-    border-radius: 5px;
-    transition: transform 0.3s;
-}
-
-.attendance-stat:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-}
-
-.attendance-stat-value {
-    font-size: 24px;
-    font-weight: bold;
+.risk-card-title .material-icons {
+    margin-right: 10px;
     color: var(--primary-color);
 }
 
-.attendance-stat-label {
+/* Status Badges */
+.risk-status-badge {
+    display: inline-block;
+    padding: 5px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.risk-status-badge.danger {
+    background-color: var(--danger-color-light);
+    color: var(--danger-color);
+}
+
+.risk-status-badge.warning {
+    background-color: var(--warning-color-light);
+    color: var(--warning-color);
+}
+
+.risk-status-badge.success {
+    background-color: var(--success-color-light);
+    color: var(--success-color);
+}
+
+/* Filter Styles */
+.risk-filter-container {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.risk-filter-group {
+    flex: 1;
+    min-width: 180px;
+}
+
+.risk-filter-label {
+    font-weight: bold;
+    margin-bottom: 5px;
+    font-size: 14px;
+}
+
+/* Table Styles */
+.risk-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.risk-table th, 
+.risk-table td {
+    padding: 12px 15px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.risk-table th {
+    background-color: var(--bg-light);
+    font-weight: 600;
+    color: var(--text-dark);
+}
+
+.risk-student-info {
+    display: flex;
+    align-items: center;
+}
+
+.risk-student-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: var(--secondary-color-light);
+    color: var(--secondary-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 10px;
+    font-weight: bold;
+}
+
+.risk-student-details {
+    flex: 1;
+}
+
+.risk-student-name {
+    font-weight: 500;
+}
+
+.risk-student-class {
     font-size: 12px;
     color: var(--text-light);
 }
 
-/* กราฟวงกลมแสดงสัดส่วน */
-.chart-container {
-    position: relative;
-    height: 300px;
-}
-
-/* ปฏิทินการเข้าแถว */
-.attendance-calendar {
-    background-color: #f9f9f9;
-    padding: 15px;
-    border-radius: 5px;
-}
-
-.attendance-month {
-    font-weight: bold;
-    margin-bottom: 10px;
-    text-align: center;
-}
-
-.attendance-days {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
+/* Action Buttons */
+.risk-action-buttons {
+    display: flex;
     gap: 5px;
 }
 
-.attendance-day {
+.risk-action-btn {
     width: 30px;
     height: 30px;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 12px;
-    font-weight: bold;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
 }
 
-.attendance-day.present {
+.risk-action-btn.primary {
+    background-color: var(--secondary-color-light);
+    color: var(--secondary-color);
+}
+
+.risk-action-btn.success {
     background-color: var(--success-color-light);
     color: var(--success-color);
 }
 
-.attendance-day.absent {
-    background-color: var(--danger-color-light);
-    color: var(--danger-color);
+.risk-action-btn:hover {
+    transform: translateY(-2px);
 }
 
-.attendance-day.weekend {
-    background-color: #eee;
-    color: #999;
-}
-
-/* รายการผู้รับข้อความ */
-.recipients-container {
-    max-height: 250px;
-    overflow-y: auto;
-    border: 1px solid var(--border-color);
-    border-radius: 5px;
-    margin-bottom: 20px;
-}
-
-.recipient-item {
+/* Pagination */
+.risk-pagination {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 10px 15px;
-    border-bottom: 1px solid #eee;
-}
-
-.recipient-item:last-child {
-    border-bottom: none;
-}
-
-.recipient-info {
-    display: flex;
-    align-items: center;
-}
-
-.recipient-details {
-    margin-left: 10px;
-}
-
-.parent-info {
-    font-size: 12px;
-    color: var(--text-light);
-}
-
-/* สรุปการเช็คชื่อ */
-.recipients-summary {
-    background-color: #f9f9f9;
-    padding: 15px;
-    border-radius: 5px;
-    margin-top: 20px;
-}
-
-.recipients-summary p {
-    margin: 5px 0;
-}
-
-/* รายงานรายวัน */
-.daily-report-card {
-    border-left: 4px solid var(--primary-color);
-}
-
-/* สรุปรายเดือน */
-.monthly-summary {
-    margin-top: 20px;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 20px;
-}
-
-.monthly-summary-item {
-    flex: 1;
-    min-width: 200px;
-    background-color: #fff;
-    border-radius: 10px;
-    padding: 15px;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-}
-
-.monthly-summary-title {
-    font-weight: 600;
-    margin-bottom: 5px;
-    color: var(--text-dark);
-}
-
-.monthly-summary-value {
-    font-size: 28px;
-    font-weight: 700;
-    margin-bottom: 5px;
-}
-
-.monthly-summary-value.success {
-    color: var(--success-color);
-}
-
-.monthly-summary-value.warning {
-    color: var(--warning-color);
-}
-
-.monthly-summary-value.danger {
-    color: var(--danger-color);
-}
-
-.monthly-summary-subtext {
-    font-size: 12px;
-    color: var(--text-light);
-}
-
-/* กราฟแท่งสำหรับแสดงอัตราการเข้าแถวแยกตามระดับชั้น */
-.class-attendance-chart {
-    height: 300px;
-    display: flex;
-    align-items: flex-end;
-    justify-content: space-around;
-    padding: 20px 0;
-    margin-bottom: 20px;
-}
-
-.class-bar {
-    width: 60px;
-    background-color: var(--secondary-color-light);
-    border-radius: 5px 5px 0 0;
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-}
-
-.class-bar-label {
-    position: absolute;
-    bottom: -30px;
-    white-space: nowrap;
-    font-weight: 600;
-}
-
-.class-bar-value {
-    position: absolute;
-    top: -25px;
-    font-weight: 600;
-    color: var(--primary-color);
-}
-
-/* ปรับแต่งตารางให้เหมาะกับการแสดงข้อมูลนักเรียนเสี่ยงตก */
-.risk-table th, .risk-table td {
-    padding: 12px 15px;
-    vertical-align: middle;
-}
-
-.card-footer {
-    margin-top: 20px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.pagination {
-    display: flex;
+    justify-content: center;
     gap: 5px;
+    margin-top: 20px;
 }
 
-.page-link {
-    padding: 5px 10px;
-    border-radius: 3px;
-    background-color: #f5f5f5;
-    color: var(--text-dark);
+.risk-page-link {
+    padding: 8px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    cursor: pointer;
+    color: var(--primary-color);
     text-decoration: none;
 }
 
-.page-link.active {
+.risk-page-link.active {
     background-color: var(--primary-color);
     color: white;
+    border-color: var(--primary-color);
 }
 
-.page-separator {
-    padding: 5px;
-    color: var(--text-light);
-}
-
-/* รองรับการแสดงผลบนมือถือ */
+/* Responsive Design */
 @media (max-width: 768px) {
-    .student-profile-header {
+    .risk-filter-container {
         flex-direction: column;
-        text-align: center;
     }
 
-    .student-profile-avatar {
-        margin-right: 0;
-        margin-bottom: 15px;
-    }
-
-    .monthly-summary-item {
+    .risk-filter-group {
         min-width: 100%;
     }
-
-    .class-attendance-chart {
-        overflow-x: auto;
-        justify-content: flex-start;
-        padding: 20px;
-    }
-
-    .class-bar {
-        margin: 0 20px;
-    }
 }
+

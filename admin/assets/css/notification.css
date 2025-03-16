@@ -1,0 +1,275 @@
+/**
+ * notification.css - สไตล์เฉพาะสำหรับหน้าส่งข้อความแจ้งเตือน
+ * ระบบ STUDENT-Prasat
+ */
+
+/* แท็บสำหรับระบบส่งข้อความ */
+.tabs-container {
+    margin-bottom: 20px;
+}
+
+.tabs-header {
+    display: flex;
+    background-color: white;
+    border-radius: 10px 10px 0 0;
+    overflow: hidden;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+.tab {
+    padding: 15px 20px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    position: relative;
+}
+
+.tab.active {
+    background-color: white;
+    color: var(--primary-color);
+}
+
+.tab.active::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background-color: var(--primary-color);
+}
+
+.tab-content {
+    background-color: white;
+    border-radius: 0 0 10px 10px;
+    padding: 20px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+/* ปุ่มเทมเพลต */
+.template-buttons {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+    flex-wrap: wrap;
+}
+
+.template-btn {
+    padding: 8px 12px;
+    border: none;
+    border-radius: 5px;
+    background-color: #f5f5f5;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.template-btn:hover {
+    background-color: #e0e0e0;
+}
+
+.template-btn.active {
+    background-color: var(--secondary-color-light);
+    color: var(--secondary-color);
+    font-weight: 600;
+}
+
+/* พื้นที่เขียนข้อความและตัวอย่าง */
+.message-form {
+    margin-top: 20px;
+}
+
+.message-textarea {
+    width: 100%;
+    min-height: 200px;
+    border: 1px solid var(--border-color);
+    border-radius: 5px;
+    padding: 15px;
+    font-size: 14px;
+    margin-bottom: 20px;
+    resize: vertical;
+    outline: none;
+    font-family: inherit;
+    line-height: 1.5;
+}
+
+.message-textarea:focus {
+    border-color: var(--primary-color);
+}
+
+.message-preview {
+    background-color: #f9f9f9;
+    border: 1px solid var(--border-color);
+    border-radius: 5px;
+    padding: 15px;
+    margin-bottom: 20px;
+}
+
+.preview-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    font-weight: 600;
+}
+
+.preview-button {
+    padding: 5px 10px;
+    border: none;
+    border-radius: 5px;
+    background-color: #f5f5f5;
+    font-size: 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+}
+
+.preview-button .material-icons {
+    font-size: 16px;
+    margin-right: 5px;
+}
+
+.preview-content {
+    background-color: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 5px;
+    padding: 15px;
+}
+
+/* รายการผู้รับข้อความในแท็บส่งกลุ่ม */
+.recipients-container {
+    max-height: 300px;
+    overflow-y: auto;
+    border: 1px solid var(--border-color);
+    border-radius: 5px;
+    margin-bottom: 20px;
+}
+
+.recipient-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 15px;
+    border-bottom: 1px solid #eee;
+}
+
+.recipient-item:last-child {
+    border-bottom: none;
+}
+
+.recipient-info {
+    display: flex;
+    align-items: center;
+}
+
+.recipient-info input[type="checkbox"] {
+    margin-right: 10px;
+}
+
+.recipient-details {
+    flex: 1;
+}
+
+.student-name {
+    font-weight: 600;
+    margin-bottom: 3px;
+}
+
+.parent-info {
+    font-size: 12px;
+    color: var(--text-light);
+}
+
+/* ปุ่มการจัดการผู้รับข้อความ */
+.batch-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+/* ปรับแต่งสไตล์เพิ่มเติมสำหรับหน้าเทมเพลต */
+.card-title {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+}
+
+.card-title .material-icons {
+    margin-right: 10px;
+    color: var(--primary-color);
+}
+
+.form-text {
+    font-size: 12px;
+    color: var(--text-light);
+    margin-top: 5px;
+}
+
+/* รองรับการแสดงผลบนมือถือ */
+@media (max-width: 768px) {
+    .tabs-header {
+        flex-wrap: wrap;
+    }
+    
+    .tab {
+        flex: 1;
+        padding: 10px;
+        text-align: center;
+        font-size: 14px;
+    }
+    
+    .template-buttons {
+        flex-direction: column;
+    }
+    
+    .template-btn {
+        width: 100%;
+    }
+    
+    .preview-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+    
+    .batch-actions {
+        flex-direction: column;
+    }
+    
+    .batch-actions .btn {
+        width: 100%;
+    }
+}
+
+/* Filter Button Styling */
+.filter-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 15px;
+    background-color: var(--primary-color, #06c755);
+    color: white;
+    border: none;
+    border-radius: 5px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    margin-top: 26px; /* Aligns with form inputs */
+    gap: 8px;
+}
+
+.filter-button:hover {
+    background-color: var(--primary-color-dark, #05a647);
+}
+
+.filter-button .material-icons {
+    margin-right: 5px;
+}

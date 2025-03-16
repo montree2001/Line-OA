@@ -833,3 +833,73 @@ document.addEventListener('DOMContentLoaded', function() {
     margin: 5px 0;
 }
 </style>
+
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // เลือกแท็บทั้งหมด
+    const tabs = document.querySelectorAll('.tab');
+    const tabContents = document.querySelectorAll('.tab-content');
+
+    // เพิ่ม Event Listener ให้กับแต่ละแท็บ
+    tabs.forEach(tab => {
+        tab.addEventListener('click', function() {
+            // ดึง data-tab attribute
+            const tabId = this.getAttribute('data-tab');
+
+            // ลบคลาส active ออกจากแท็บและเนื้อหาทั้งหมด
+            tabs.forEach(t => t.classList.remove('active'));
+            tabContents.forEach(tc => tc.classList.remove('active'));
+
+            // เพิ่มคลาส active ให้แท็บและเนื้อหาที่เลือก
+            this.classList.add('active');
+            document.getElementById(`${tabId}-tab`).classList.add('active');
+        });
+    });
+});
+</script>
+
+<style>
+.tabs-container {
+    margin-bottom: 20px;
+}
+
+.tabs-header {
+    display: flex;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.tab {
+    padding: 10px 15px;
+    cursor: pointer;
+    font-weight: 500;
+    border-bottom: 3px solid transparent;
+    transition: all 0.3s ease;
+}
+
+.tab:hover {
+    background-color: #f5f5f5;
+}
+
+.tab.active {
+    color: #06c755;
+    border-bottom-color: #06c755;
+}
+
+.tab .badge {
+    background-color: #f44336;
+    color: white;
+    font-size: 11px;
+    padding: 2px 6px;
+    border-radius: 10px;
+    margin-left: 5px;
+}
+
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+}
+</style>

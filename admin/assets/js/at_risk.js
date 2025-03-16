@@ -261,3 +261,4 @@ function showAlert(message, type = 'info') {
         }
     }, 5000);
 }
+

@@ -61,7 +61,8 @@
             ช่วยเหลือ
         </a>
     </div>
-    
+    <a href="profile.php" class="sidebar-footer">
+      
     <div class="admin-info">
         <div class="admin-avatar"><?php echo isset($admin_info['initials']) ? $admin_info['initials'] : 'A'; ?></div>
         <div class="admin-details">
@@ -73,6 +74,7 @@
         </div>
     </div>
 </div>
+</a>
 
 <!-- Admin dropdown menu -->
 <div class="admin-dropdown" id="adminDropdown">
