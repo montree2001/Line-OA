@@ -40,15 +40,18 @@ function initSidebar() {
     
     if (menuToggle && sidebar && overlay) {
         // Toggle sidebar on mobile
-        menuToggle.addEventListener('click', function() {
+        menuToggle.addEventListener('click', function(e) {
+            e.preventDefault();
             sidebar.classList.toggle('active');
             overlay.classList.toggle('active');
+            document.body.classList.toggle('sidebar-open');
         });
         
         // Close sidebar when clicking overlay
         overlay.addEventListener('click', function() {
             sidebar.classList.remove('active');
             overlay.classList.remove('active');
+            document.body.classList.remove('sidebar-open');
         });
         
         // Close sidebar when clicking a menu item on mobile
@@ -57,6 +60,7 @@ function initSidebar() {
                 if (window.innerWidth <= 992) {
                     sidebar.classList.remove('active');
                     overlay.classList.remove('active');
+                    document.body.classList.remove('sidebar-open');
                 }
             });
         });
@@ -66,6 +70,7 @@ function initSidebar() {
             if (window.innerWidth > 992) {
                 sidebar.classList.remove('active');
                 overlay.classList.remove('active');
+                document.body.classList.remove('sidebar-open');
             }
         });
     }
@@ -359,123 +364,52 @@ function showTab(tabId, container = document) {
     }
 }
 
-/**
- * ดาวน์โหลดรายงาน
- * 
- * @param {string} reportType - ประเภทรายงานที่ต้องการดาวน์โหลด
- * @param {Object} params - พารามิเตอร์สำหรับการดาวน์โหลดรายงาน
- */
-function downloadReport(reportType, params = {}) {
-    // สร้าง URL สำหรับดาวน์โหลดรายงาน
-    let url = `export.php?type=${encodeURIComponent(reportType)}`;
+// Function to toggle sidebar
+function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('overlay');
     
-    // เพิ่มพารามิเตอร์เพิ่มเติม
-    for (const key in params) {
-        if (params.hasOwnProperty(key)) {
-            url += `&${encodeURIComponent(key)}=${encodeURIComponent(params[key])}`;
-        }
-    }
-    
-    // แสดงข้อความกำลังดาวน์โหลด
-    showAlert('กำลังดาวน์โหลดรายงาน...', 'info');
-    
-    // เริ่มการดาวน์โหลด
-    window.location.href = url;
-}
-
-/**
- * จัดรูปแบบวันที่เป็นภาษาไทย
- * 
- * @param {Date|string} date - วันที่ที่ต้องการจัดรูปแบบ
- * @param {boolean} includeTime - แสดงเวลาด้วยหรือไม่
- * @returns {string} วันที่ในรูปแบบภาษาไทย
- */
-function formatThaiDate(date, includeTime = false) {
-    const d = new Date(date);
-    const day = d.getDate();
-    const month = d.getMonth() + 1;
-    const year = d.getFullYear() + 543; // แปลงเป็น พ.ศ.
-    
-    let thaiDate = `${day}/${month}/${year}`;
-    
-    if (includeTime) {
-        const hours = d.getHours().toString().padStart(2, '0');
-        const minutes = d.getMinutes().toString().padStart(2, '0');
-        thaiDate += ` ${hours}:${minutes}`;
-    }
-    
-    return thaiDate;
-}
-
-/**
- * สร้างรหัส PIN สำหรับการเช็คชื่อ
- */
-function generatePin() {
-    // สร้างรหัส PIN 4 หลักแบบสุ่ม
-    const pin = Math.floor(1000 + Math.random() * 9000);
-    
-    // ส่งข้อมูลไปบันทึกในเซิร์ฟเวอร์
-    fetch('check_attendance.php', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-            'X-Requested-With': 'XMLHttpRequest'
-        },
-        body: 'generate_pin=1&ajax=1'
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.pin) {
-            // อัปเดตการแสดงผล PIN
-            const pinDisplay = document.getElementById('currentPin');
-            if (pinDisplay) {
-                pinDisplay.textContent = data.pin;
-            }
-            
-            // เริ่มตัวนับเวลาถอยหลัง
-            startPinTimer(data.expires_at);
-            
-            // แสดงข้อความสำเร็จ
-            showAlert('สร้างรหัส PIN สำเร็จแล้ว', 'success');
-        } else {
-            showAlert('เกิดข้อผิดพลาดในการสร้างรหัส PIN', 'danger');
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        showAlert('เกิดข้อผิดพลาดในการเชื่อมต่อ', 'danger');
-    });
-}
-
-/**
- * เริ่มตัวนับเวลาถอยหลังสำหรับรหัส PIN
- * 
- * @param {number} expiresAt - เวลาที่หมดอายุ (timestamp)
- */
-function startPinTimer(expiresAt) {
-    const timerElement = document.getElementById('pinTimer');
-    if (!timerElement) return;
-    
-    // ยกเลิกตัวนับเวลาเดิม (ถ้ามี)
-    if (window.pinTimerInterval) {
-        clearInterval(window.pinTimerInterval);
-    }
-    
-    // อัปเดตการแสดงผลทุกวินาที
-    window.pinTimerInterval = setInterval(() => {
-        const now = Math.floor(Date.now() / 1000);
-        const remaining = expiresAt - now;
+    if (sidebar && overlay) {
+        sidebar.classList.toggle('active');
+        overlay.classList.toggle('active');
         
-        if (remaining <= 0) {
-            // หมดเวลาแล้ว
-            clearInterval(window.pinTimerInterval);
-            timerElement.textContent = '00:00';
-            showAlert('รหัส PIN หมดอายุแล้ว กรุณาสร้างรหัสใหม่', 'warning');
-        } else {
-            // แสดงเวลาที่เหลือ
-            const minutes = Math.floor(remaining / 60);
-            const seconds = remaining % 60;
-            timerElement.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-        }
-    }, 1000);
+        // Prevent body scrolling when sidebar is open
+        document.body.style.overflow = sidebar.classList.contains('active') ? 'hidden' : '';
+    }
 }
+
+// Event listener for menu toggle button
+document.addEventListener('DOMContentLoaded', function() {
+    const menuToggle = document.getElementById('menuToggle');
+    if (menuToggle) {
+        menuToggle.addEventListener('click', toggleSidebar);
+    }
+
+    // Close sidebar when clicking overlay
+    const overlay = document.getElementById('overlay');
+    if (overlay) {
+        overlay.addEventListener('click', toggleSidebar);
+    }
+    
+    // Close sidebar when clicking a menu item on mobile
+    const menuItems = document.querySelectorAll('.menu-item');
+    menuItems.forEach(item => {
+        item.addEventListener('click', function() {
+            if (window.innerWidth <= 992) {
+                toggleSidebar();
+            }
+        });
+    });
+    
+    // Handle window resize
+    window.addEventListener('resize', function() {
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('overlay');
+        
+        if (window.innerWidth > 992 && sidebar && overlay) {
+            sidebar.classList.remove('active');
+            overlay.classList.remove('active');
+            document.body.style.overflow = '';
+        }
+    });
+});

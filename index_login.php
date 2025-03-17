@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>STUDENT-Prasat - เข้าสู่ระบบด้วย LINE</title>
+    <title>SADD-Prasat - เข้าสู่ระบบด้วย LINE</title>
     <style>
         /* ตั้งค่าพื้นฐาน */
         * {
@@ -257,7 +257,6 @@
             white-space: nowrap;
             word-wrap: normal;
             direction: ltr;
-            -webkit-font-feature-settings: 'liga';
             -webkit-font-smoothing: antialiased;
         }
         

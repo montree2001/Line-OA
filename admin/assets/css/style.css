@@ -835,3 +835,199 @@ body {
         padding: 20px;
     }
 }
+
+
+/* แก้ไข CSS สำหรับ Sidebar เพื่อทำให้รองรับ Responsive design */
+
+/* ปรับแต่ง sidebar เพื่อรองรับการแสดงผลบนอุปกรณ์มือถือ */
+@media (max-width: 992px) {
+    /* ตั้งค่าสำหรับ sidebar บนมือถือ */
+    .sidebar {
+        transform: translateX(-100%);
+        width: 260px;
+        z-index: 1050;
+        box-shadow: 2px 0 10px rgba(0,0,0,0.2);
+        transition: transform 0.3s ease;
+    }
+    
+    .sidebar.active {
+        transform: translateX(0);
+    }
+
+    /* ปรับการแสดงผลข้อความในเมนู */
+    .menu-text {
+        display: block; /* แก้ไขจาก display: none เป็น block */
+    }
+    
+    /* ปรับ main content เมื่อ sidebar ถูกซ่อน */
+    .main-content {
+        margin-left: 0;
+        width: 100%;
+        padding-top: 60px; /* เพิ่มพื้นที่ด้านบนเพื่อไม่ให้ทับกับปุ่ม toggle */
+    }
+    
+    /* แสดงปุ่ม toggle สำหรับมือถือ */
+    .menu-toggle {
+        display: flex;
+        position: fixed;
+        top: 15px;
+        left: 15px;
+        z-index: 1051;
+        background-color: var(--primary-color);
+        color: white;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        border: none;
+    }
+    
+    /* แสดง overlay เมื่อเปิด sidebar บนมือถือ */
+    .overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 1049;
+    }
+    
+    .overlay.active {
+        display: block;
+    }
+}
+
+/* ปรับแต่งเพิ่มเติมสำหรับมือถือขนาดเล็ก */
+@media (max-width: 576px) {
+    .sidebar {
+        width: 85%;
+    }
+    
+    .admin-info {
+        flex-direction: column;
+        align-items: center;
+        padding: 15px;
+    }
+    
+    .admin-avatar {
+        margin-right: 0;
+        margin-bottom: 10px;
+    }
+    
+    .admin-details {
+        text-align: center;
+    }
+}
+
+/* ปรับปรุงสไตล์ของเมนูไอเท็ม */
+.menu-item {
+    display: flex;
+    align-items: center;
+    padding: 12px 20px;
+    color: var(--sidebar-text);
+    text-decoration: none;
+    transition: all var(--transition-speed);
+    position: relative;
+    width: 100%;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.menu-item .material-icons {
+    margin-right: 10px;
+    min-width: 24px; /* เพิ่ม min-width เพื่อให้ไอคอนมีขนาดคงที่ */
+}
+
+.menu-text {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ปรับปรุงการแสดง badge */
+.menu-item .badge {
+    position: absolute;
+    right: 15px;
+    background-color: var(--danger-color);
+    color: white;
+    font-size: 11px;
+    padding: 2px 6px;
+    border-radius: 10px;
+    min-width: 20px;
+    text-align: center;
+}
+
+/* แก้ไขสไตล์ admin info */
+.admin-info {
+    display: flex;
+    align-items: center;
+    padding: 15px 20px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    background-color: var(--sidebar-bg);
+    position: relative;
+    bottom: 0;
+    width: 100%;
+}
+/* Sidebar Mobile Styles */
+@media (max-width: 992px) {
+    .sidebar {
+        position: fixed;
+        top: 0;
+        left: -280px; /* Hide sidebar off-screen */
+        width: 280px;
+        height: 100vh;
+        z-index: 1000;
+        transition: transform 0.3s ease-in-out;
+        background-color: #263238;
+        overflow-y: auto;
+    }
+    
+    .sidebar.active {
+        transform: translateX(280px); /* Slide in from left */
+    }
+    
+    .overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 999;
+    }
+    
+    .overlay.active {
+        display: block;
+    }
+    
+    .main-content {
+        margin-left: 0;
+        width: 100%;
+        padding-top: 60px; /* Space for menu toggle */
+    }
+    
+    .menu-toggle {
+        display: flex;
+        position: fixed;
+        top: 10px;
+        left: 10px;
+        z-index: 1001;
+        background-color: #06c755;
+        color: white;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    }
+}
+

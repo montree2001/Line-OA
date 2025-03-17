@@ -6,7 +6,7 @@
     <title><?php echo isset($page_title) ? $page_title . ' - STUDENT-Prasat' : 'STUDENT-Prasat'; ?></title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/material-design-icons/3.0.1/iconfont/material-icons.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link href="assets/css/stlye.css" rel="stylesheet">
+    <link href="assets/css/style.css" rel="stylesheet">
     <?php if(isset($extra_css)): ?>
         <?php foreach($extra_css as $css): ?>
             <link href="<?php echo $css; ?>" rel="stylesheet">
@@ -14,10 +14,10 @@
     <?php endif; ?>
 </head>
 <body>
-    <!-- Mobile menu toggle -->
+    <!-- ปุ่มเปิด/ปิดเมนูสำหรับมือถือ -->
     <button class="menu-toggle" id="menuToggle" aria-label="เปิด/ปิดเมนู">
         <span class="material-icons">menu</span>
     </button>
     
-    <!-- Overlay for mobile sidebar -->
+    <!-- Overlay สำหรับมือถือ -->
     <div class="overlay" id="overlay"></div>

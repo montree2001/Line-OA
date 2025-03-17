@@ -14,10 +14,10 @@
     <?php endif; ?>
 </head>
 <body>
-    <!-- Mobile menu toggle -->
-    <button class="menu-toggle" id="menuToggle" aria-label="เปิด/ปิดเมนู">
-        <span class="material-icons">menu</span>
-    </button>
-    
-    <!-- Overlay for mobile sidebar -->
-    <div class="overlay" id="overlay"></div>
+<div class="header">
+        <div class="app-name">STD-Prasat</div>
+        <div class="header-icons">
+            <span class="material-icons">notifications</span>
+            <span class="material-icons">account_circle</span>
+        </div>
+    </div> 

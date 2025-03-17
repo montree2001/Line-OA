@@ -3,7 +3,7 @@
  * ระบบ STUDENT-Prasat
  */
 
-/* แท็บสำหรับแสดงข้อมูลผู้ปกครอง */
+/* แท็บจัดการผู้ปกครอง */
 .tabs-container {
     margin-bottom: 20px;
 }
@@ -13,7 +13,7 @@
     background-color: white;
     border-radius: 10px 10px 0 0;
     overflow: hidden;
-    box-shadow: var(--card-shadow);
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
 }
 
 .tab {
@@ -22,7 +22,6 @@
     cursor: pointer;
     transition: all 0.3s;
     position: relative;
-    white-space: nowrap;
 }
 
 .tab.active {
@@ -40,146 +39,209 @@
     background-color: var(--primary-color);
 }
 
-/* ข้อมูลผู้ปกครองในตาราง */
-.parent-info {
-    display: flex;
-    align-items: center;
+.tab-content {
+    display: none;
+    background-color: white;
+    border-radius: 0 0 10px 10px;
+    padding: 20px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
 }
 
-.parent-avatar {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    background-color: var(--primary-color-light);
-    color: var(--primary-color);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: bold;
-    margin-right: 10px;
+.tab-content.active {
+    display: block;
 }
 
-.parent-details {
+/* รายการผู้ปกครอง */
+.parent-list-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.parent-filter {
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+}
+
+.filter-group {
     flex: 1;
+    min-width: 180px;
 }
 
-.parent-name {
-    font-weight: 500;
+.filter-label {
+    font-weight: bold;
+    margin-bottom: 5px;
+    font-size: 14px;
 }
 
-.parent-email {
-    font-size: 12px;
-    color: var(--text-light);
-}
-
-.student-info-mini {
-    line-height: 1.3;
-}
-
-.student-info-mini .student-name {
-    font-weight: 500;
-}
-
-.student-info-mini .student-class {
-    font-size: 12px;
-    color: var(--text-light);
-}
-
-/* ช่องทางการติดต่อ */
-.status-badge.info {
-    background-color: var(--secondary-color-light);
-    color: var(--secondary-color);
-}
-
-.status-badge.primary {
-    background-color: #e3f2fd;
-    color: #1976d2;
-}
-
-/* สถิติการสื่อสาร */
-.message-stats {
+.pagination-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     margin-top: 20px;
 }
 
-.stat-card {
-    background-color: #f9f9f9;
-    border-radius: 8px;
-    padding: 15px;
-    text-align: center;
-    height: 100%;
+.pagination {
+    display: flex;
+    gap: 5px;
+}
+
+.page-link {
+    padding: 8px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 5px;
+    font-size: 14px;
+    color: var(--text-dark);
+    text-decoration: none;
     transition: all 0.3s;
 }
 
-.stat-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+.page-link:hover {
+    background-color: var(--bg-light);
 }
 
-.stat-title {
+.page-link.active {
+    background-color: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+
+.page-info {
     font-size: 14px;
     color: var(--text-light);
-    margin-bottom: 10px;
 }
 
-.stat-value {
-    font-size: 28px;
-    font-weight: bold;
+/* ฟอร์มข้อมูลผู้ปกครอง */
+.form-section {
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.form-section:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+.section-title {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 15px;
+    color: var(--primary-color);
+    display: flex;
+    align-items: center;
+}
+
+.section-title::before {
+    content: "";
+    display: inline-block;
+    width: 4px;
+    height: 18px;
+    background-color: var(--primary-color);
+    margin-right: 10px;
+}
+
+.form-horizontal {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.form-label {
+    font-weight: 500;
     margin-bottom: 5px;
+    display: block;
 }
 
-.stat-value.success {
-    color: var(--success-color);
-}
-
-.stat-value.danger {
+.form-label.required::after {
+    content: "*";
     color: var(--danger-color);
+    margin-left: 5px;
 }
 
-.stat-footer {
+.form-text {
     font-size: 12px;
     color: var(--text-light);
+    margin-top: 5px;
 }
 
-/* ฟอร์มการตั้งค่า */
-.settings-form {
-    margin-top: 10px;
+.form-check {
+    display: flex;
+    align-items: center;
 }
 
-.settings-form .form-group {
+.form-check-input {
+    margin-right: 10px;
+}
+
+.form-check-label {
+    font-weight: normal;
+}
+
+.form-control-sm {
+    padding: 6px 10px;
+    font-size: 13px;
+    height: 32px;
+}
+
+/* โปรไฟล์ผู้ปกครอง */
+.parent-profile {
+    margin-top: 20px;
+}
+
+.profile-header {
+    display: flex;
     margin-bottom: 20px;
 }
 
-.checkbox-group {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 15px;
-    margin-top: 5px;
-}
-
-.checkbox-item {
-    display: flex;
-    align-items: center;
-}
-
-.checkbox-item input[type="checkbox"] {
-    margin-right: 5px;
-}
-
-.connection-status {
+.profile-avatar {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background-color: var(--secondary-color-light);
+    color: var(--secondary-color);
+    font-size: 36px;
+    font-weight: bold;
     display: flex;
     align-items: center;
-    gap: 10px;
-    margin-top: 5px;
+    justify-content: center;
+    margin-right: 20px;
 }
 
-.connection-info {
-    font-size: 14px;
-    color: var(--text-light);
+.profile-info h3 {
+    font-size: 22px;
+    margin: 0 0 10px 0;
+}
+
+.profile-info p {
+    margin: 0 0 5px 0;
+}
+
+.profile-section {
+    margin-bottom: 25px;
+    background-color: #f9f9f9;
+    border-radius: 8px;
+    padding: 15px;
+}
+
+.profile-section h4 {
+    font-size: 16px;
+    margin-bottom: 10px;
+    padding-bottom: 5px;
+    border-bottom: 1px solid var(--border-color);
 }
 
 /* อัปโหลดไฟล์ */
-.upload-container {
+.upload-section {
     margin-bottom: 20px;
+}
+
+.upload-info {
+    margin-bottom: 10px;
+    font-size: 14px;
 }
 
 .upload-area {
@@ -187,46 +249,66 @@
     border-radius: 8px;
     padding: 30px;
     text-align: center;
-    cursor: pointer;
+    background-color: #f9f9f9;
     transition: all 0.3s;
-    margin-bottom: 10px;
 }
 
 .upload-area:hover {
     border-color: var(--primary-color);
+    background-color: var(--primary-color-light);
 }
 
-.upload-area-drag {
+.upload-area.dragover {
     border-color: var(--primary-color);
     background-color: var(--primary-color-light);
 }
 
-.upload-area .material-icons {
+.file-input {
+    display: none;
+}
+
+.file-label {
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.file-label .material-icons {
     font-size: 48px;
     color: var(--text-light);
     margin-bottom: 10px;
 }
 
-.upload-info {
-    text-align: center;
-    font-size: 14px;
+.file-format {
+    font-size: 12px;
     color: var(--text-light);
+    margin-top: 5px;
 }
 
-.download-link {
-    color: var(--primary-color);
-    text-decoration: none;
+.format-example {
+    margin-top: 30px;
 }
 
-.download-link:hover {
-    text-decoration: underline;
+.format-title {
+    font-size: 16px;
+    margin-bottom: 10px;
 }
 
-.import-options {
-    margin: 20px 0;
+.template-download {
+    margin-top: 15px;
+    display: flex;
+    gap: 10px;
 }
 
-/* การส่งข้อความ */
+.import-actions {
+    margin-top: 20px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+/* โมดัลส่งข้อความ */
 .template-buttons {
     display: flex;
     gap: 10px;
@@ -257,7 +339,7 @@
 .message-textarea {
     width: 100%;
     min-height: 200px;
-    border: 1px solid var(--border-color);
+    border: 1px solid #e0e0e0;
     border-radius: 5px;
     padding: 15px;
     font-size: 14px;
@@ -270,11 +352,164 @@
     border-color: var(--primary-color);
 }
 
-/* สำหรับอุปกรณ์เคลื่อนที่ */
+.message-preview {
+    background-color: #f9f9f9;
+    border: 1px solid #e0e0e0;
+    border-radius: 5px;
+    padding: 15px;
+    margin-bottom: 20px;
+}
+
+.preview-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    font-weight: 600;
+}
+
+.preview-button {
+    padding: 5px 10px;
+    border: none;
+    border-radius: 5px;
+    background-color: #f5f5f5;
+    font-size: 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+}
+
+.preview-button .material-icons {
+    font-size: 16px;
+    margin-right: 5px;
+}
+
+.preview-content {
+    background-color: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 5px;
+    padding: 15px;
+}
+
+/* โมดัลยืนยันการลบ */
+.confirmation-message {
+    text-align: center;
+    margin: 20px 0;
+}
+
+.warning-text {
+    color: var(--danger-color);
+    font-weight: 500;
+    margin-top: 10px;
+}
+
+/* QR Code */
+#qrCodeSection {
+    text-align: center;
+    margin-top: 15px;
+    padding: 15px;
+    background-color: #f9f9f9;
+    border-radius: 8px;
+}
+
+/* การแจ้งเตือน */
+.alert-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    width: 300px;
+    z-index: 1050;
+}
+
+.alert {
+    padding: 15px;
+    margin-bottom: 10px;
+    border-radius: 8px;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    animation: slideIn 0.3s ease-out forwards;
+    overflow: hidden;
+}
+
+.alert.alert-closing {
+    animation: slideOut 0.3s ease-out forwards;
+}
+
+.alert-success {
+    background-color: #e8f5e9;
+    color: #2e7d32;
+    border-left: 4px solid #2e7d32;
+}
+
+.alert-info {
+    background-color: #e3f2fd;
+    color: #1565c0;
+    border-left: 4px solid #1565c0;
+}
+
+.alert-warning {
+    background-color: #fff8e1;
+    color: #ff8f00;
+    border-left: 4px solid #ff8f00;
+}
+
+.alert-danger {
+    background-color: #ffebee;
+    color: #c62828;
+    border-left: 4px solid #c62828;
+}
+
+.alert-content {
+    flex: 1;
+}
+
+.alert-close {
+    background: none;
+    border: none;
+    color: inherit;
+    font-size: 20px;
+    cursor: pointer;
+    padding: 0 5px;
+}
+
+@keyframes slideIn {
+    0% {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    100% {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slideOut {
+    0% {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    100% {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+}
+
+/* ยูทิลิตี้ */
+.text-center {
+    text-align: center;
+}
+
+/* รองรับการแสดงผลบนมือถือ */
 @media (max-width: 992px) {
-    .tab {
-        padding: 12px 15px;
-        font-size: 15px;
+    .row {
+        flex-direction: column;
+    }
+    
+    .col-6 {
+        width: 100%;
+        max-width: 100%;
     }
     
     .filter-container {
@@ -284,72 +519,40 @@
     .filter-group {
         width: 100%;
     }
-    
-    .checkbox-group {
-        flex-direction: column;
-        gap: 10px;
-    }
-    
-    .stat-card {
-        margin-bottom: 15px;
-    }
 }
 
 @media (max-width: 768px) {
-    .tabs-header {
-        overflow-x: auto;
-        white-space: nowrap;
+    .profile-header {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
     }
     
-    .parent-avatar {
-        width: 35px;
-        height: 35px;
-        font-size: 14px;
+    .profile-avatar {
+        margin-right: 0;
+        margin-bottom: 15px;
+    }
+    
+    .form-section {
+        padding: 15px;
+    }
+    
+    .modal-content {
+        width: 95%;
+        padding: 15px;
+    }
+    
+    .template-buttons {
+        flex-direction: column;
+    }
+    
+    .template-btn {
+        width: 100%;
     }
     
     .pagination-container {
         flex-direction: column;
         gap: 10px;
-    }
-    
-    .pagination {
-        justify-content: center;
-    }
-    
-    .pagination-info {
-        text-align: center;
-    }
-    
-    .upload-area {
-        padding: 20px;
-    }
-    
-    .upload-area .material-icons {
-        font-size: 36px;
-    }
-}
-
-@media (max-width: 576px) {
-    .tab {
-        padding: 10px;
-        font-size: 14px;
-    }
-    
-    .template-buttons {
-        flex-direction: column;
-        gap: 5px;
-    }
-    
-    .template-btn {
-        width: 100%;
-        text-align: center;
-    }
-    
-    .upload-area {
-        padding: 15px;
-    }
-    
-    .modal-content {
-        padding: 15px;
+        align-items: center;
     }
 }
