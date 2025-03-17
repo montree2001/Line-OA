@@ -98,7 +98,7 @@
     <div class="card">
         <div class="card-header">
             <div class="card-title">
-                <span class="material-icons">notifications</span> ประกาศวิทยาลัยการอาชีพปราสาท
+                <span class="material-icons">campaign</span> ประกาศจากโรงเรียน
             </div>
             <a href="#" class="view-all">ดูทั้งหมด</a>
         </div>

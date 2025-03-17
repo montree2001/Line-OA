@@ -1,0 +1,508 @@
+
+        /* ตั้งค่าพื้นฐาน */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Prompt', sans-serif;
+        }
+        
+        body {
+            background-color: #f5f5f5;
+            color: #333;
+            font-size: 16px;
+            line-height: 1.5;
+        }
+        
+        /* ส่วนหัว */
+        .header {
+            background-color: #06c755;
+            color: white;
+            padding: 15px;
+            text-align: center;
+            position: fixed;
+            top: 0;
+            width: 100%;
+            z-index: 1000;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .header h1 {
+            font-size: 20px;
+            margin: 0;
+        }
+        
+        .header-icon {
+            font-size: 24px;
+        }
+        
+        .container {
+            max-width: 480px;
+            margin: 70px auto 80px;
+            padding: 15px;
+        }
+        
+        /* โปรไฟล์ */
+        .profile-card {
+            background-color: white;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .profile-image {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background-color: #06c755;
+            margin-right: 15px;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 24px;
+        }
+        
+        .profile-info h2 {
+            font-size: 18px;
+            margin-bottom: 5px;
+        }
+        
+        .profile-info p {
+            font-size: 14px;
+            color: #666;
+        }
+        
+        /* การ์ดสรุปข้อมูล */
+        .summary-card {
+            background-color: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .summary-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .summary-title .material-icons {
+            color: #06c755;
+        }
+        
+        .summary-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .stat-box {
+            background-color: #f5f5f5;
+            border-radius: 8px;
+            padding: 15px 10px;
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .stat-value.good {
+            color: #4caf50;
+        }
+        
+        .stat-value.warning {
+            color: #ff9800;
+        }
+        
+        .stat-value.danger {
+            color: #f44336;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .progress-container {
+            margin-top: 15px;
+        }
+        
+        .progress-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+        
+        .progress-bar {
+            height: 10px;
+            background-color: #e0e0e0;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background-color: #06c755;
+            border-radius: 5px;
+        }
+        
+        /* แท็บเมนู */
+        .tab-menu {
+            display: flex;
+            background-color: white;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .tab-item {
+            flex: 1;
+            padding: 10px;
+            text-align: center;
+            font-weight: bold;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+        }
+        
+        .tab-item.active {
+            color: #06c755;
+            border-bottom-color: #06c755;
+        }
+        
+        /* ปฏิทินการเข้าแถว */
+        .calendar-card {
+            background-color: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .calendar-title {
+            font-size: 18px;
+            font-weight: bold;
+        }
+        
+        .calendar-nav {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .nav-button {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background-color: #f5f5f5;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+        
+        .nav-button .material-icons {
+            font-size: 18px;
+            color: #666;
+        }
+        
+        .calendar-month {
+            font-size: 16px;
+            font-weight: bold;
+        }
+        
+        .calendar-days {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 5px;
+            margin-bottom: 10px;
+        }
+        
+        .day-label {
+            text-align: center;
+            font-size: 12px;
+            color: #666;
+            padding: 5px 0;
+        }
+        
+        .calendar-dates {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 5px;
+        }
+        
+        .date-cell {
+            aspect-ratio: 1/1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            font-size: 14px;
+            position: relative;
+        }
+        
+        .date-cell.today {
+            border: 2px solid #06c755;
+            font-weight: bold;
+        }
+        
+        .date-cell.present {
+            background-color: #e8f5e9;
+            color: #4caf50;
+        }
+        
+        .date-cell.absent {
+            background-color: #ffebee;
+            color: #f44336;
+        }
+        
+        .date-cell.other-month {
+            color: #ccc;
+        }
+        
+        .date-cell .status-dot {
+            position: absolute;
+            bottom: 3px;
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+        }
+        
+        .date-cell .status-dot.present {
+            background-color: #4caf50;
+        }
+        
+        .date-cell .status-dot.absent {
+            background-color: #f44336;
+        }
+        
+        /* ประวัติการเข้าแถว */
+        .history-card {
+            background-color: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .history-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .filter-button {
+            background-color: #f5f5f5;
+            border: none;
+            border-radius: 5px;
+            padding: 5px 10px;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+        }
+        
+        .filter-button .material-icons {
+            font-size: 16px;
+            margin-right: 5px;
+        }
+        
+        .history-list {
+            max-height: 350px;
+            overflow-y: auto;
+        }
+        
+        .history-item {
+            display: flex;
+            padding: 12px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .history-item:last-child {
+            border-bottom: none;
+        }
+        
+        .history-date {
+            width: 80px;
+            padding-right: 15px;
+        }
+        
+        .history-day {
+            font-weight: bold;
+        }
+        
+        .history-month {
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .history-details {
+            flex: 1;
+        }
+        
+        .history-status {
+            display: flex;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+        
+        .status-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+        
+        .status-indicator.present {
+            background-color: #4caf50;
+        }
+        
+        .status-indicator.absent {
+            background-color: #f44336;
+        }
+        
+        .status-text {
+            font-weight: bold;
+        }
+        
+        .status-text.present {
+            color: #4caf50;
+        }
+        
+        .status-text.absent {
+            color: #f44336;
+        }
+        
+        .history-time {
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .history-method {
+            display: flex;
+            align-items: center;
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+        
+        .history-method .material-icons {
+            font-size: 16px;
+            margin-right: 5px;
+        }
+        
+        /* กราฟข้อมูล */
+        .chart-container {
+            margin-top: 20px;
+            position: relative;
+            height: 200px;
+        }
+        
+        .chart-bars {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            height: 150px;
+        }
+        
+        .bar {
+            width: 30px;
+            background-color: #06c755;
+            border-radius: 5px 5px 0 0;
+            position: relative;
+        }
+        
+        .bar-label {
+            position: absolute;
+            bottom: -25px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .chart-axis {
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            height: 1px;
+            background-color: #e0e0e0;
+        }
+        
+        /* แถบนำทางด้านล่าง */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            background-color: white;
+            display: flex;
+            justify-content: space-around;
+            padding: 10px 0;
+            box-shadow: 0 -2px 5px rgba(0,0,0,0.1);
+            z-index: 1000;
+        }
+        
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-size: 12px;
+            color: #666;
+            text-decoration: none;
+        }
+        
+        .nav-item.active {
+            color: #06c755;
+        }
+        
+        .nav-icon {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+        
+        /* ไอคอนจาก Material Icons */
+        .material-icons {
+            font-family: 'Material Icons';
+            font-weight: normal;
+            font-style: normal;
+            font-size: 24px;
+            line-height: 1;
+            letter-spacing: normal;
+            text-transform: none;
+            display: inline-block;
+            white-space: nowrap;
+            word-wrap: normal;
+            direction: ltr;
+           
+            -webkit-font-smoothing: antialiased;
+        }

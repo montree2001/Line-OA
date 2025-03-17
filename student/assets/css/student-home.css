@@ -446,4 +446,57 @@
             -webkit-font-feature-settings: 'liga';
             -webkit-font-smoothing: antialiased;
         }
-  
+  /**
+ * student-home.css - CSS เฉพาะสำหรับหน้าหลักของนักเรียน
+ */
+
+/* ปรับปรุงการแสดงผลเฉพาะหน้าหลัก */
+.profile-status {
+    margin-top: 8px;
+}
+
+.check-in-button {
+    margin-top: 5px;
+    transition: all 0.3s ease;
+}
+
+.check-in-button:active {
+    transform: scale(0.98);
+}
+
+/* การ์ดประกาศ */
+.announcement-list {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.announcement-item {
+    transition: background-color 0.2s;
+    border-radius: 5px;
+    padding: 12px 8px;
+}
+
+.announcement-item:hover {
+    background-color: var(--bg-light);
+    cursor: pointer;
+}
+
+/* ปรับเวลาบนมือถือ */
+@media (max-width: 480px) {
+    .profile-header {
+        align-items: flex-start;
+    }
+    
+    .profile-image {
+        margin-top: 5px;
+    }
+    
+    .stats-grid {
+        margin-top: 10px;
+    }
+    
+    .history-date {
+        width: 35px;
+        height: 35px;
+    }
+}
