@@ -26,7 +26,7 @@ $active_pin = [
     'expire_in_minutes' => 9
 ];
 
-// ข้อมูลนักเรียนสรุป (ตัวอย่าง 5 คนแรก)
+// ข้อมูลนักเรียนสรุป
 $students_summary = [
     [
         'number' => 1,
@@ -52,6 +52,21 @@ $students_summary = [
         'number' => 5,
         'name' => 'นายสุชาติ รักษาสัตย์',
         'status' => 'present'
+    ],
+    [
+        'number' => 6,
+        'name' => 'นางสาววันเพ็ญ แสนสุข',
+        'status' => 'present'
+    ],
+    [
+        'number' => 7,
+        'name' => 'นายธันวา มั่นคง',
+        'status' => 'present'
+    ],
+    [
+        'number' => 8,
+        'name' => 'นายขวัญใจ นารี',
+        'status' => 'absent'
     ]
 ];
 

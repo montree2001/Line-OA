@@ -2,28 +2,34 @@
 <div class="header">
     <div class="app-name">Teacher-Prasat</div>
     <div class="header-icons">
-        <span class="material-icons">notifications</span>
-        <span class="material-icons">account_circle</span>
+        <span class="material-icons" id="notification-icon">notifications</span>
+        <span class="material-icons" id="account-icon">account_circle</span>
     </div>
 </div>
 
 <div class="container">
     <!-- ข้อมูลชั้นเรียน -->
     <div class="class-card">
-        <h2><?php echo $class_info['name']; ?></h2>
-        <p>นักเรียน <?php echo $class_info['total_students']; ?> คน</p>
-        <p>วันที่ <?php echo date('j M Y', strtotime('today')); ?></p>
+        <div class="class-details">
+            <h2><?php echo $class_info['name']; ?></h2>
+            <p>นักเรียนทั้งหมด <?php echo $class_info['total_students']; ?> คน</p>
+            <p>วันที่ <?php echo date('j M Y', strtotime('today')); ?></p>
+        </div>
+        <div class="date-info">
+            <p><?php echo date('l', strtotime('today')); ?></p>
+            <p><?php echo date('H:i'); ?> น.</p>
+        </div>
     </div>
 
     <!-- สรุปการเข้าแถว -->
     <div class="stats-container">
         <div class="stat-card green">
-            <h3><?php echo $class_info['present_today']; ?></h3>
-            <p>มาเรียน</p>
+            <div class="stat-value"><?php echo $class_info['present_today']; ?></div>
+            <div class="stat-label">มาเรียน</div>
         </div>
         <div class="stat-card red">
-            <h3><?php echo $class_info['absent_today']; ?></h3>
-            <p>ขาดเรียน</p>
+            <div class="stat-value"><?php echo $class_info['absent_today']; ?></div>
+            <div class="stat-label">ขาดเรียน</div>
         </div>
     </div>
 
@@ -74,6 +80,29 @@
     <a href="reports.php" class="reports-button">
         <span class="material-icons">assessment</span> รายงานการเข้าแถว
     </a>
+
+    <!-- เมนูลัด -->
+    <div class="quick-menu">
+        <div class="section-title">เมนูลัด</div>
+        <div class="quick-menu-grid">
+            <a href="notification.php" class="quick-menu-item">
+                <span class="material-icons">notifications_active</span>
+                <span class="quick-menu-text">แจ้งเตือน</span>
+            </a>
+            <a href="calendar.php" class="quick-menu-item">
+                <span class="material-icons">calendar_today</span>
+                <span class="quick-menu-text">ปฏิทิน</span>
+            </a>
+            <a href="student-list.php" class="quick-menu-item">
+                <span class="material-icons">assignment_ind</span>
+                <span class="quick-menu-text">รายชื่อนักเรียน</span>
+            </a>
+            <a href="contact-parents.php" class="quick-menu-item">
+                <span class="material-icons">contact_phone</span>
+                <span class="quick-menu-text">ติดต่อผู้ปกครอง</span>
+            </a>
+        </div>
+    </div>
 </div>
 
 <!-- โมดัลสร้างรหัส PIN -->
@@ -82,8 +111,11 @@
         <button class="modal-close" onclick="closeModal()">
             <span class="material-icons">close</span>
         </button>
-        <h2 class="modal-title">สร้างรหัส PIN สำหรับการเช็คชื่อ</h2>
-        <div class="pin-display" id="pinCode">5731</div>
+        <div class="modal-title">
+            <span class="material-icons">pin</span>
+            สร้างรหัส PIN สำหรับการเช็คชื่อ
+        </div>
+        <div class="pin-display" id="pinCode"><?php echo $active_pin['code']; ?></div>
         <div class="pin-info">
             รหัส PIN นี้สำหรับให้นักเรียนเช็คชื่อวันนี้<br>
             เท่านั้น และจะหมดอายุภายในเวลาที่กำหนด
@@ -92,9 +124,85 @@
             <span class="material-icons">timer</span>
             <span>หมดอายุใน 10:00 นาที</span>
         </div>
-        <div class="modal-actions">
-            <button class="btn btn-secondary" onclick="closeModal()">ปิด</button>
-            <button class="btn btn-primary" onclick="generateNewPin()">สร้างรหัสใหม่</button>
+        <div class="modal-buttons">
+            <button class="modal-button cancel" onclick="closeModal()">ปิด</button>
+            <button class="modal-button confirm" onclick="generateNewPin()">สร้างรหัสใหม่</button>
+        </div>
+    </div>
+</div>
+
+<!-- โมดัลแจ้งเตือน -->
+<div class="modal" id="notificationModal">
+    <div class="modal-content">
+        <button class="modal-close" onclick="closeModal('notificationModal')">
+            <span class="material-icons">close</span>
+        </button>
+        <div class="modal-title">
+            <span class="material-icons">notifications</span>
+            การแจ้งเตือน
+        </div>
+        <div class="notification-list">
+            <div class="notification-item">
+                <div class="notification-icon">
+                    <span class="material-icons">person</span>
+                </div>
+                <div class="notification-content">
+                    <div class="notification-title">นักเรียนขาดแถว 2 คน</div>
+                    <div class="notification-time">เมื่อ 10 นาทีที่แล้ว</div>
+                </div>
+            </div>
+            <div class="notification-item">
+                <div class="notification-icon">
+                    <span class="material-icons">event</span>
+                </div>
+                <div class="notification-content">
+                    <div class="notification-title">วันนี้มีกิจกรรมหน้าเสาธง</div>
+                    <div class="notification-time">เมื่อ 1 ชั่วโมงที่แล้ว</div>
+                </div>
+            </div>
+            <div class="notification-item">
+                <div class="notification-icon">
+                    <span class="material-icons">message</span>
+                </div>
+                <div class="notification-content">
+                    <div class="notification-title">ผู้ปกครองส่งข้อความถึงคุณ</div>
+                    <div class="notification-time">เมื่อ 2 ชั่วโมงที่แล้ว</div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-buttons">
+            <button class="modal-button confirm" onclick="viewAllNotifications()">ดูทั้งหมด</button>
+        </div>
+    </div>
+</div>
+
+<!-- โมดัลการแจ้งเตือนผู้ปกครอง -->
+<div class="modal" id="alertParentsModal">
+    <div class="modal-content">
+        <button class="modal-close" onclick="closeModal('alertParentsModal')">
+            <span class="material-icons">close</span>
+        </button>
+        <div class="modal-title">
+            <span class="material-icons">campaign</span>
+            แจ้งเตือนผู้ปกครอง
+        </div>
+        <div class="alert-parents-form">
+            <div class="form-group">
+                <label class="input-label">เลือกผู้รับ</label>
+                <select class="input-field">
+                    <option value="all">ผู้ปกครองทั้งหมด</option>
+                    <option value="absent">เฉพาะผู้ปกครองของนักเรียนที่ขาดแถว</option>
+                    <option value="risk">เฉพาะผู้ปกครองของนักเรียนที่มีความเสี่ยง</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="input-label">ข้อความ</label>
+                <textarea class="input-field" rows="4" placeholder="กรอกข้อความที่ต้องการแจ้งผู้ปกครอง..."></textarea>
+            </div>
+        </div>
+        <div class="modal-buttons">
+            <button class="modal-button cancel" onclick="closeModal('alertParentsModal')">ยกเลิก</button>
+            <button class="modal-button confirm" onclick="sendParentNotification()">ส่งข้อความ</button>
         </div>
     </div>
 </div>

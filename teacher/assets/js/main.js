@@ -537,3 +537,31 @@ function showAlert(message, type = 'info') {
         }
     }, 5000);
 }
+// ฟังก์ชั่นสำหรับ User Dropdown
+function initUserDropdown() {
+    const userMenu = document.querySelector('.user-menu');
+    const userDropdown = document.getElementById('userDropdown');
+    
+    if (userMenu && userDropdown) {
+        // เปิด/ปิด dropdown เมื่อคลิกที่ avatar
+        userMenu.addEventListener('click', function(e) {
+            e.stopPropagation();
+            userDropdown.classList.toggle('active');
+        });
+        
+        // ปิด dropdown เมื่อคลิกที่อื่น
+        document.addEventListener('click', function() {
+            userDropdown.classList.remove('active');
+        });
+        
+        // ป้องกันการปิดเมื่อคลิกที่ dropdown
+        userDropdown.addEventListener('click', function(e) {
+            e.stopPropagation();
+        });
+    }
+}
+
+// เรียกใช้ฟังก์ชั่นเมื่อโหลดหน้าเพจ
+document.addEventListener('DOMContentLoaded', function() {
+    initUserDropdown();
+});
