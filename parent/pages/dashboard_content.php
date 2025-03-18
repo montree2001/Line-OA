@@ -1,171 +1,255 @@
-<!-- ตัวอย่างเนื้อหา - สถิติด่วน -->
-<div class="row">
-    <div class="col-3 col-md-6 col-sm-6">
-        <div class="card">
-            <div class="card-title">
-                <span class="material-icons">people</span>
-                นักเรียนทั้งหมด
-            </div>
-            <h2>1,250 คน</h2>
-            <p>เพิ่มขึ้น 2.5% จากปีที่แล้ว</p>
-        </div>
+<!-- แจ้งเตือน -->
+<div class="notification-banner">
+    <span class="material-icons icon">check_circle</span>
+    <div class="content">
+        <div class="title">บุตรของท่านมาเรียนวันนี้</div>
+        <div class="message"><?php echo isset($latest_check_in) ? $latest_check_in : 'นายเอกชัย รักเรียน เช็คชื่อเข้าแถวเวลา 07:45 น.'; ?></div>
     </div>
-    <div class="col-3 col-md-6 col-sm-6">
-        <div class="card">
-            <div class="card-title">
+</div>
+
+<!-- แท็บเมนู -->
+<div class="tab-menu">
+    <button class="tab-button active" onclick="switchTab('overview')">ภาพรวม</button>
+    <button class="tab-button" onclick="switchTab('attendance')">การเข้าแถว</button>
+    <button class="tab-button" onclick="switchTab('news')">ข่าวสาร</button>
+</div>
+
+<!-- ข้อมูลนักเรียน -->
+<div class="student-section">
+    <div class="section-header">
+        <h2>บุตรของฉัน</h2>
+        <a href="students.php" class="view-all">ดูทั้งหมด</a>
+    </div>
+    
+    <div class="student-cards">
+        <?php if(isset($students) && !empty($students)): ?>
+            <?php foreach($students as $student): ?>
+                <div class="student-card">
+                    <div class="header">
+                        <div class="student-avatar"><?php echo $student['avatar']; ?></div>
+                        <div class="student-info">
+                            <div class="student-name"><?php echo $student['name']; ?></div>
+                            <div class="student-class"><?php echo $student['class']; ?> เลขที่ <?php echo $student['number']; ?></div>
+                        </div>
+                        <div class="student-status">
+                            <span class="material-icons"><?php echo $student['present'] ? 'check_circle' : 'cancel'; ?></span>
+                            <?php echo $student['present'] ? 'มาเรียน' : 'ขาดเรียน'; ?>
+                        </div>
+                    </div>
+                    
+                    <div class="attendance-details">
+                        <div class="attendance-item">
+                            <div class="attendance-label">จำนวนวันเข้าแถว:</div>
+                            <div class="attendance-value"><?php echo $student['attendance_days']; ?> วัน</div>
+                        </div>
+                        <div class="attendance-item">
+                            <div class="attendance-label">จำนวนวันขาดแถว:</div>
+                            <div class="attendance-value"><?php echo $student['absent_days']; ?> วัน</div>
+                        </div>
+                        <div class="attendance-item">
+                            <div class="attendance-label">อัตราการเข้าแถว:</div>
+                            <div class="attendance-value <?php echo $student['attendance_percentage'] >= 90 ? 'good' : ($student['attendance_percentage'] >= 80 ? 'warning' : 'danger'); ?>">
+                                <?php echo $student['attendance_percentage']; ?>%
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            <?php endforeach; ?>
+        <?php else: ?>
+            <!-- ข้อมูลตัวอย่างกรณีไม่มีข้อมูลจริง -->
+            <div class="student-card">
+                <div class="header">
+                    <div class="student-avatar">อ</div>
+                    <div class="student-info">
+                        <div class="student-name">นายเอกชัย รักเรียน</div>
+                        <div class="student-class">ม.6/1 เลขที่ 15</div>
+                    </div>
+                    <div class="student-status">
+                        <span class="material-icons">check_circle</span>
+                        มาเรียน
+                    </div>
+                </div>
+                
+                <div class="attendance-details">
+                    <div class="attendance-item">
+                        <div class="attendance-label">จำนวนวันเข้าแถว:</div>
+                        <div class="attendance-value">97 วัน</div>
+                    </div>
+                    <div class="attendance-item">
+                        <div class="attendance-label">จำนวนวันขาดแถว:</div>
+                        <div class="attendance-value">0 วัน</div>
+                    </div>
+                    <div class="attendance-item">
+                        <div class="attendance-label">อัตราการเข้าแถว:</div>
+                        <div class="attendance-value good">100%</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="student-card">
+                <div class="header">
+                    <div class="student-avatar">ส</div>
+                    <div class="student-info">
+                        <div class="student-name">นางสาวสมหญิง รักเรียน</div>
+                        <div class="student-class">ม.4/2 เลขที่ 8</div>
+                    </div>
+                    <div class="student-status">
+                        <span class="material-icons">check_circle</span>
+                        มาเรียน
+                    </div>
+                </div>
+                
+                <div class="attendance-details">
+                    <div class="attendance-item">
+                        <div class="attendance-label">จำนวนวันเข้าแถว:</div>
+                        <div class="attendance-value">95 วัน</div>
+                    </div>
+                    <div class="attendance-item">
+                        <div class="attendance-label">จำนวนวันขาดแถว:</div>
+                        <div class="attendance-value">2 วัน</div>
+                    </div>
+                    <div class="attendance-item">
+                        <div class="attendance-label">อัตราการเข้าแถว:</div>
+                        <div class="attendance-value good">97.9%</div>
+                    </div>
+                </div>
+            </div>
+        <?php endif; ?>
+    </div>
+</div>
+
+<!-- กิจกรรมล่าสุด -->
+<div class="recent-activities">
+    <div class="section-header">
+        <h2>กิจกรรมล่าสุด</h2>
+        <a href="activities.php" class="view-all">ดูทั้งหมด</a>
+    </div>
+    
+    <?php if(isset($activities) && !empty($activities)): ?>
+        <?php foreach($activities as $activity): ?>
+            <div class="activity-item">
+                <div class="activity-icon <?php echo $activity['type']; ?>">
+                    <span class="material-icons"><?php echo $activity['icon']; ?></span>
+                </div>
+                <div class="activity-content">
+                    <div class="activity-title"><?php echo $activity['title']; ?></div>
+                    <div class="activity-time"><?php echo $activity['time']; ?></div>
+                </div>
+            </div>
+        <?php endforeach; ?>
+    <?php else: ?>
+        <!-- ข้อมูลตัวอย่างกรณีไม่มีข้อมูลจริง -->
+        <div class="activity-item">
+            <div class="activity-icon check-in">
                 <span class="material-icons">check_circle</span>
-                เข้าแถววันนี้
             </div>
-            <h2>1,187 คน</h2>
-            <p>คิดเป็น 94.96%</p>
-        </div>
-    </div>
-    <div class="col-3 col-md-6 col-sm-6">
-        <div class="card">
-            <div class="card-title">
-                <span class="material-icons">cancel</span>
-                ขาดแถววันนี้
+            <div class="activity-content">
+                <div class="activity-title">นายเอกชัย รักเรียน เช็คชื่อเข้าแถว</div>
+                <div class="activity-time">วันนี้, 07:45 น.</div>
             </div>
-            <h2>63 คน</h2>
-            <p>ลดลง 1.2% จากเดือนที่แล้ว</p>
         </div>
-    </div>
-    <div class="col-3 col-md-6 col-sm-6">
-        <div class="card">
-            <div class="card-title">
-                <span class="material-icons">warning</span>
-                เสี่ยงตกกิจกรรม
+        
+        <div class="activity-item">
+            <div class="activity-icon check-in">
+                <span class="material-icons">check_circle</span>
             </div>
-            <h2>12 คน</h2>
-            <p>ลดลง 5 คนจากสัปดาห์ที่แล้ว</p>
+            <div class="activity-content">
+                <div class="activity-title">นางสาวสมหญิง รักเรียน เช็คชื่อเข้าแถว</div>
+                <div class="activity-time">วันนี้, 07:40 น.</div>
+            </div>
         </div>
-    </div>
+        
+        <div class="activity-item">
+            <div class="activity-icon announcement">
+                <span class="material-icons">campaign</span>
+            </div>
+            <div class="activity-content">
+                <div class="activity-title">ประกาศ: แจ้งกำหนดการสอบปลายภาค</div>
+                <div class="activity-time">เมื่อวาน, 10:30 น.</div>
+            </div>
+        </div>
+    <?php endif; ?>
 </div>
 
-<!-- ตัวอย่างปุ่มทางลัด -->
-<div class="quick-actions">
-    <button class="quick-action-btn pin" onclick="showPinModal()">
-        <span class="material-icons">pin</span>
-        สร้างรหัส PIN เช็คชื่อ
-    </button>
-    <button class="quick-action-btn qr">
-        <span class="material-icons">qr_code_scanner</span>
-        สแกน QR Code นักเรียน
-    </button>
-    <button class="quick-action-btn check">
-        <span class="material-icons">check_circle</span>
-        เช็คชื่อนักเรียน
-    </button>
-    <button class="quick-action-btn alert">
-        <span class="material-icons">campaign</span>
-        แจ้งเตือนผู้ปกครอง
-    </button>
-</div>
-
-<!-- ตัวอย่างตาราง -->
-<div class="card">
-    <div class="card-title">
-        <span class="material-icons">warning</span>
-        นักเรียนเสี่ยงตกกิจกรรม
+<!-- ติดต่อครูประจำชั้น -->
+<div class="contact-teacher">
+    <div class="section-header">
+        <h2>ติดต่อครูประจำชั้น</h2>
     </div>
     
-    <div class="table-responsive">
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th>นักเรียน</th>
-                    <th>ชั้น/ห้อง</th>
-                    <th>ร้อยละการเข้าแถว</th>
-                    <th>วันที่ขาด</th>
-                    <th>ครูที่ปรึกษา</th>
-                    <th>การแจ้งเตือน</th>
-                    <th>การจัดการ</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td>
-                        <div class="student-info">
-                            <div class="student-avatar">ธ</div>
-                            <div class="student-details">
-                                <div class="student-name">นายธนกฤต สุขใจ</div>
-                                <div class="student-class">เลขที่ 12</div>
-                            </div>
-                        </div>
-                    </td>
-                    <td>ม.6/2</td>
-                    <td><span class="status-badge danger">68.5%</span></td>
-                    <td>15 วัน</td>
-                    <td>อ.ประสิทธิ์ ดีเลิศ</td>
-                    <td>ยังไม่แจ้ง</td>
-                    <td>
-                        <div class="action-buttons">
-                            <button class="table-action-btn primary" title="ดูรายละเอียด">
-                                <span class="material-icons">visibility</span>
-                            </button>
-                            <button class="table-action-btn success" title="ส่งข้อความ">
-                                <span class="material-icons">send</span>
-                            </button>
-                        </div>
-                    </td>
-                </tr>
-                <tr>
-                    <td>
-                        <div class="student-info">
-                            <div class="student-avatar">ส</div>
-                            <div class="student-details">
-                                <div class="student-name">นางสาวสมหญิง มีสุข</div>
-                                <div class="student-class">เลขที่ 8</div>
-                            </div>
-                        </div>
-                    </td>
-                    <td>ม.5/3</td>
-                    <td><span class="status-badge danger">70.2%</span></td>
-                    <td>14 วัน</td>
-                    <td>อ.วันดี สดใส</td>
-                    <td>แจ้งแล้ว 1 ครั้ง</td>
-                    <td>
-                        <div class="action-buttons">
-                            <button class="table-action-btn primary" title="ดูรายละเอียด">
-                                <span class="material-icons">visibility</span>
-                            </button>
-                            <button class="table-action-btn success" title="ส่งข้อความ">
-                                <span class="material-icons">send</span>
-                            </button>
-                        </div>
-                    </td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
+    <?php if(isset($teacher) && !empty($teacher)): ?>
+        <div class="teacher-info">
+            <div class="teacher-avatar">
+                <?php if(isset($teacher['avatar']) && !empty($teacher['avatar'])): ?>
+                    <img src="<?php echo $teacher['avatar']; ?>" alt="<?php echo $teacher['name']; ?>">
+                <?php else: ?>
+                    <span class="material-icons">person</span>
+                <?php endif; ?>
+            </div>
+            <div class="teacher-details">
+                <div class="teacher-name"><?php echo $teacher['name']; ?></div>
+                <div class="teacher-position"><?php echo $teacher['position']; ?></div>
+            </div>
+        </div>
+    <?php else: ?>
+        <!-- ข้อมูลตัวอย่างกรณีไม่มีข้อมูลจริง -->
+        <div class="teacher-info">
+            <div class="teacher-avatar">
+                <span class="material-icons">person</span>
+            </div>
+            <div class="teacher-details">
+                <div class="teacher-name">อาจารย์ใจดี มากเมตตา</div>
+                <div class="teacher-position">ครูประจำชั้น ม.6/1</div>
+            </div>
+        </div>
+    <?php endif; ?>
     
-    <div class="card-footer">
-        <button class="btn btn-primary">
-            <span class="material-icons">send</span>
-            ส่งรายงานไปยังผู้ปกครองทั้งหมด
+    <div class="contact-buttons">
+        <button class="contact-button call" onclick="callTeacher()">
+            <span class="material-icons">call</span> โทร
+        </button>
+        <button class="contact-button message" onclick="messageTeacher()">
+            <span class="material-icons">chat</span> ข้อความ
         </button>
     </div>
 </div>
 
-<!-- โมดัลสร้างรหัส PIN -->
-<div class="modal" id="pinModal">
-    <div class="modal-content">
-        <button class="modal-close" onclick="closeModal()">
-            <span class="material-icons">close</span>
-        </button>
-        <h2 class="modal-title">สร้างรหัส PIN สำหรับการเช็คชื่อ</h2>
-        <div class="pin-display" id="pinCode">5731</div>
-        <div class="pin-info">
-            รหัส PIN นี้สำหรับให้นักเรียนเช็คชื่อวันนี้<br>
-            เท่านั้น และจะหมดอายุภายในเวลาที่กำหนด
-        </div>
-        <div class="timer">
-            <span class="material-icons">timer</span>
-            <span>หมดอายุใน 9:58 นาที</span>
-        </div>
-        <div class="modal-actions">
-            <button class="btn btn-secondary" onclick="closeModal()">ปิด</button>
-            <button class="btn btn-primary" onclick="generateNewPin()">สร้างรหัสใหม่</button>
-        </div>
+<!-- ประกาศและข่าวสาร -->
+<div class="announcements">
+    <div class="section-header">
+        <h2>ประกาศและข่าวสาร</h2>
+        <a href="announcements.php" class="view-all">ดูทั้งหมด</a>
     </div>
+    
+    <?php if(isset($announcements) && !empty($announcements)): ?>
+        <?php foreach($announcements as $announcement): ?>
+            <div class="announcement-item">
+                <div class="announcement-header">
+                    <div class="announcement-category <?php echo $announcement['category_class']; ?>"><?php echo $announcement['category']; ?></div>
+                    <div class="announcement-date"><?php echo $announcement['date']; ?></div>
+                </div>
+                <div class="announcement-title"><?php echo $announcement['title']; ?></div>
+                <div class="announcement-text"><?php echo $announcement['content']; ?></div>
+            </div>
+        <?php endforeach; ?>
+    <?php else: ?>
+        <!-- ข้อมูลตัวอย่างกรณีไม่มีข้อมูลจริง -->
+        <div class="announcement-item">
+            <div class="announcement-header">
+                <div class="announcement-category exam">สอบ</div>
+                <div class="announcement-date">14 มี.ค. 2568</div>
+            </div>
+            <div class="announcement-title">แจ้งกำหนดการสอบปลายภาค</div>
+            <div class="announcement-text">แจ้งกำหนดการสอบปลายภาคเรียนที่ 2/2567 ระหว่างวันที่ 1-5 เมษายน 2568 โดยนักเรียนต้องมาถึงโรงเรียนก่อนเวลา 8.00 น.</div>
+        </div>
+        
+        <div class="announcement-item">
+            <div class="announcement-header">
+                <div class="announcement-category event">กิจกรรม</div>
+                <div class="announcement-date">10 มี.ค. 2568</div>
+            </div>
+            <div class="announcement-title">ประชุมผู้ปกครองภาคเรียนที่ 2</div>
+            <div class="announcement-text">ขอเชิญผู้ปกครองทุกท่านเข้าร่วมประชุมผู้ปกครองภาคเรียนที่ 2 ในวันเสาร์ที่ 22 มีนาคม 2568 เวลา 9.00-12.00 น. ณ หอประชุมโรงเรียน</div>
+        </div>
+    <?php endif; ?>
 </div>
