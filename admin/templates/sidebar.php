@@ -3,7 +3,7 @@
     <div class="sidebar-header">
         <a href="index.php" class="logo">
             <span class="material-icons">school</span>
-            STUDENT-Prasat
+            STP-Prasat
         </a>
     </div>
     

@@ -174,12 +174,11 @@ body {
 .admin-menu:hover {
     background-color: rgba(255, 255, 255, 0.1);
 }
-
 /* Admin dropdown */
 .admin-dropdown {
     position: fixed;
-    bottom: 80px;
-    right: 20px;
+    bottom: 80px; /* You can keep this if you want it at the same vertical level */
+    left: 260px; /* Adjust this value based on the width of your sidebar (the sidebar looks about 250px wide, so adding a little padding) */
     background-color: white;
     border-radius: 5px;
     box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);

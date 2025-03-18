@@ -413,3 +413,23 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 });
+
+document.addEventListener('DOMContentLoaded', function() {
+    const adminMenuToggle = document.getElementById('adminMenuToggle');
+    const adminDropdown = document.getElementById('adminDropdown');
+    
+    if (adminMenuToggle && adminDropdown) {
+        adminMenuToggle.addEventListener('click', function(e) {
+            e.stopPropagation();
+            adminDropdown.classList.toggle('active');
+        });
+        
+        document.addEventListener('click', function() {
+            adminDropdown.classList.remove('active');
+        });
+        
+        adminDropdown.addEventListener('click', function(e) {
+            e.stopPropagation();
+        });
+    }
+});

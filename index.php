@@ -1,57 +1,51 @@
 <?php
 session_start();
 
+// โหลดการเชื่อมต่อฐานข้อมูล
+require_once 'db_connect.php';
+
 // ตรวจสอบว่ามีการล็อกอินอยู่แล้วหรือไม่
 if (isset($_SESSION['user_id']) && isset($_SESSION['user_type']) && $_SESSION['user_type'] === 'admin') {
-    // ถ้าล็อกอินแล้ว ให้ redirect ไปยังหน้าแดชบอร์ด
     header('Location: admin/index.php');
     exit;
 }
 
-// ตั้งค่าตัวแปรเริ่มต้น
 $error_message = '';
 
-// ตรวจสอบการส่งฟอร์ม
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // รับค่าจากฟอร์ม
     $username = trim($_POST['username'] ?? '');
     $password = $_POST['password'] ?? '';
+    $password_md5 = md5($password); // แปลงรหัสผ่านเป็น MD5
 
-    // ในระบบจริง ควรใช้การเชื่อมต่อฐานข้อมูลและการเข้ารหัสรหัสผ่าน
-    // นี่เป็นเพียงตัวอย่างการตรวจสอบแบบง่ายๆ
-    $valid_users = [
-        'admin' => [
-            'password' => 'prasat2025', // ควรเก็บในรูปแบบแฮช
-            'name' => 'จารุวรรณ บุญมี',
-            'role' => 'เจ้าหน้าที่กิจการนักเรียน'
-        ],
-        'teacher' => [
-            'password' => 'teacher2025',
-            'name' => 'อิศรา สุขใจ',
-            'role' => 'ครูที่ปรึกษา'
-        ]
-    ];
+    // ได้ connection จาก db_connect.php
+    $conn = getDB();
 
-    // ตรวจสอบชื่อผู้ใช้และรหัสผ่าน
-    if (isset($valid_users[$username]) && $valid_users[$username]['password'] === $password) {
-        // สร้าง session สำหรับผู้ใช้
-        $_SESSION['user_id'] = md5($username); // ใช้ md5 เพียงเพื่อตัวอย่าง ไม่แนะนำในการใช้งานจริง
-        $_SESSION['username'] = $username;
-        $_SESSION['user_type'] = ($username === 'admin') ? 'admin' : 'teacher';
-        $_SESSION['user_name'] = $valid_users[$username]['name'];
-        $_SESSION['user_role'] = $valid_users[$username]['role'];
+    // ตรวจสอบข้อมูลจากตาราง users
+    $stmt = $conn->prepare("SELECT * FROM users WHERE line_id = :username AND role IN ('admin', 'teacher')");
+    $stmt->bindParam(':username', $username);
+    $stmt->execute();
+    $user = $stmt->fetch();
 
-        // Redirect ไปยังหน้าแดชบอร์ด
+    // เปรียบเทียบ MD5 hash
+    if ($user && $user['password_hash'] === $password_md5) {
+        // ล็อกอินสำเร็จ
+        $_SESSION['user_id'] = $user['user_id'];
+        $_SESSION['username'] = $user['line_id'];
+        $_SESSION['user_type'] = $user['role'];
+        $_SESSION['user_name'] = $user['first_name'] . ' ' . $user['last_name'];
+        $_SESSION['user_role'] = $user['role'] === 'admin' ? 'เจ้าหน้าที่' : 'ครูที่ปรึกษา';
+
         header('Location: admin/index.php');
         exit;
     } else {
-        // ถ้าชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง
         $error_message = 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง';
     }
 }
 ?>
+
 <!DOCTYPE html>
 <html lang="th">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -194,6 +188,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     </style>
 </head>
+
 <body>
     <div class="login-container">
         <div class="login-logo">
@@ -208,27 +203,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             <div class="form-group">
                 <label for="username" class="form-label">ชื่อผู้ใช้</label>
-                <input 
-                    type="text" 
-                    class="form-control" 
-                    id="username" 
-                    name="username" 
+                <input
+                    type="text"
+                    class="form-control"
+                    id="username"
+                    name="username"
                     placeholder="กรอกชื่อผู้ใช้"
                     value="<?php echo htmlspecialchars($_POST['username'] ?? ''); ?>"
-                    required
-                >
+                    required>
             </div>
 
             <div class="form-group">
                 <label for="password" class="form-label">รหัสผ่าน</label>
-                <input 
-                    type="password" 
-                    class="form-control" 
-                    id="password" 
-                    name="password" 
+                <input
+                    type="password"
+                    class="form-control"
+                    id="password"
+                    name="password"
                     placeholder="กรอกรหัสผ่าน"
-                    required
-                >
+                    required>
             </div>
 
             <button type="submit" class="login-btn">เข้าสู่ระบบ</button>
@@ -253,4 +246,5 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     </script>
 </body>
+
 </html>
