@@ -334,6 +334,11 @@ function messageTeacher(teacherId) {
 }
 </script>
 
+
+
+
+
+
 <style>
 /* สไตล์สำหรับหน้ารายละเอียดนักเรียน */
 .header-navigation {

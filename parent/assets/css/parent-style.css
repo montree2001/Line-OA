@@ -540,41 +540,75 @@ body {
     overflow: hidden;
 }
 
-/* แถบนำทางด้านล่าง */
+
+/* แถบนำทางด้านล่าง - 3 รายการ */
 .bottom-nav {
     position: fixed;
     bottom: 0;
-    width: 100%;
-    background-color: white;
+    left: 0;
+    right: 0;
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 5px;
+    grid-template-columns: repeat(3, 1fr);
+    align-items: center;
+    background-color: white;
     padding: 10px 0;
     box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
     z-index: 1000;
+    border-top: 1px solid #f1f1f1;
 }
 
 .nav-item {
     display: flex;
     flex-direction: column;
     align-items: center;
-    font-size: 12px;
-    color: var(--text-light);
+    justify-content: center;
     text-decoration: none;
-    transition: color var(--transition-speed);
+    color: #666;
+    position: relative;
+    width: 100%;
+    text-align: center;
+    transition: color 0.3s ease;
+}
+
+.nav-item .nav-icon {
+    font-size: 24px;
+    margin-bottom: 4px;
+    color: #666;
+    transition: color 0.3s ease;
+}
+
+.nav-item span {
+    font-size: 12px;
+    font-weight: 500;
 }
 
 .nav-item.active {
-    color: var(--primary-color);
+    color: #8e24aa;
 }
 
-.nav-item:hover {
-    color: var(--primary-color);
+.nav-item.active .nav-icon {
+    color: #8e24aa;
 }
 
-.nav-icon {
-    font-size: 24px;
-    margin-bottom: 5px;
+/* Responsive adjustments */
+@media (max-width: 480px) {
+    .nav-item .nav-icon {
+        font-size: 22px;
+    }
+    
+    .nav-item span {
+        font-size: 11px;
+    }
+}
+
+@media (max-width: 375px) {
+    .nav-item .nav-icon {
+        font-size: 20px;
+    }
+    
+    .nav-item span {
+        font-size: 10px;
+    }
 }
 
 /* การแจ้งเตือนแบบป๊อปอัพ */
@@ -768,276 +802,10 @@ body {
     }
 }
 
-/* แก้ไขในไฟล์ assets/css/parent-style.css */
-
-/* พื้นฐาน Responsive Design */
-* {
-    box-sizing: border-box;
-}
-
-html, body {
-    width: 100%;
-    overflow-x: hidden;
-}
-
-.container {
-    width: 100%;
-    max-width: 600px;
-    padding: 15px;
-    margin: 70px auto 80px;
-}
-
-img, video {
-    max-width: 100%;
-    height: auto;
-}
-
-/* ปรับปรุงการแสดงผลบนหน้าจอขนาดต่างๆ */
-
-/* สำหรับแท็บเล็ตและจอขนาดกลาง */
 @media (max-width: 768px) {
-    .container {
-        padding: 12px;
-        margin-top: 65px;
-        margin-bottom: 75px;
-    }
-    
-    /* ปรับขนาดฟอนต์ */
-    h1, h2, h3 {
-        margin-bottom: 10px;
-    }
-    
-    h2 {
-        font-size: 16px;
-    }
-    
-    /* ปรับ Section headers */
-    .section-header {
-        margin-bottom: 12px;
-    }
-    
-    /* ปรับ Card Components */
-    .notification-banner,
-    .student-card,
-    .recent-activities,
-    .contact-teacher,
-    .announcements,
-    .student-section,
-    .news-item,
-    .history-card {
-        padding: 15px;
-        margin-bottom: 15px;
-    }
-    
-    /* ปรับ Tabs */
-    .tab-menu {
-        margin-bottom: 15px;
-    }
-    
-    .tab-button {
-        padding: 12px 0;
-        font-size: 13px;
-    }
-    
-    /* ปรับ Activity items */
-    .activity-item {
-        padding-bottom: 12px;
-        margin-bottom: 12px;
-    }
-    
-    /* ปรับ Contact buttons */
-    .contact-buttons {
-        gap: 8px;
-    }
-    
-    /* ปรับ Contact teacher */
-    .teacher-avatar {
-        width: 50px;
-        height: 50px;
-        font-size: 20px;
-    }
-    
-    /* ปรับ News items */
-    .news-title {
-        font-size: 16px;
-    }
-    
-    /* ปรับ Bottom navigation */
-    .bottom-nav {
-        padding: 8px 0;
-    }
+    /* CSS สำหรับแท็บเล็ต */
 }
 
-/* สำหรับมือถือทั่วไป */
-@media (max-width: 576px) {
-    .container {
-        padding: 10px;
-        margin-top: 60px;
-    }
-    
-    /* ปรับ Header */
-    .header {
-        padding: 12px 15px;
-    }
-    
-    .app-name {
-        font-size: 18px;
-    }
-    
-    /* ปรับ Notification banner */
-    .notification-banner {
-        padding: 12px;
-    }
-    
-    .notification-banner .title {
-        font-size: 14px;
-    }
-    
-    .notification-banner .message {
-        font-size: 13px;
-    }
-    
-    /* ปรับ Student cards */
-    .student-cards {
-        overflow-x: auto;
-        padding-bottom: 5px;
-        -webkit-overflow-scrolling: touch;
-        scrollbar-width: none; /* Firefox */
-    }
-    
-    .student-cards::-webkit-scrollbar {
-        display: none; /* Chrome, Safari, Opera */
-    }
-    
-    .student-card {
-        min-width: 250px;
-        padding: 12px;
-    }
-    
-    .student-avatar {
-        width: 40px;
-        height: 40px;
-        font-size: 16px;
-    }
-    
-    .student-name {
-        font-size: 14px;
-    }
-    
-    .attendance-details {
-        font-size: 13px;
-    }
-    
-    /* ปรับ Recent activities */
-    .activity-icon {
-        width: 35px;
-        height: 35px;
-        min-width: 35px;
-    }
-    
-    .activity-title {
-        font-size: 14px;
-        /* ทำให้แสดงเต็ม ไม่ตัด */
-        white-space: normal;
-        overflow: visible;
-    }
-    
-    /* ปรับ Contact teacher */
-    .contact-buttons {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-    }
-    
-    .contact-button {
-        width: 100%;
-        padding: 10px 0;
-        font-size: 13px;
-    }
-    
-    /* ปรับ Announcements */
-    .announcement-category {
-        font-size: 11px;
-        padding: 4px 8px;
-    }
-    
-    .announcement-title {
-        font-size: 14px;
-        margin-bottom: 5px;
-    }
-    
-    .announcement-text {
-        font-size: 13px;
-        -webkit-line-clamp: 2;
-    }
-    
-    .announcement-date {
-        font-size: 12px;
-    }
-    
-    /* ปรับ Bottom navigation */
-    .nav-item {
-        font-size: 11px;
-    }
-    
-    .nav-icon {
-        font-size: 20px;
-        margin-bottom: 3px;
-    }
-}
-
-/* สำหรับมือถือขนาดเล็ก */
-@media (max-width: 375px) {
-    .container {
-        padding: 8px;
-    }
-    
-    /* ปรับ Tabs เพื่อให้อ่านง่าย */
-    .tab-button {
-        font-size: 12px;
-        padding: 10px 0;
-    }
-    
-    /* ปรับ Card sizing */
-    .card, 
-    .student-card, 
-    .recent-activities, 
-    .contact-teacher, 
-    .announcements {
-        padding: 10px;
-    }
-    
-    /* ปรับขนาดส่วน activity */
-    .activity-icon {
-        width: 30px;
-        height: 30px;
-        min-width: 30px;
-    }
-    
-    .activity-content {
-        font-size: 13px;
-    }
-    
-    .activity-time {
-        font-size: 11px;
-    }
-    
-    /* ทำให้ contact buttons ดูแน่นมากขึ้น */
-    .contact-button {
-        padding: 8px 0;
-        font-size: 12px;
-    }
-    
-    .contact-button .material-icons {
-        font-size: 16px;
-    }
-    
-    /* Bottom nav ขนาดเล็กลงสำหรับหน้าจอเล็ก */
-    .nav-item {
-        font-size: 10px;
-    }
-    
-    .nav-icon {
-        font-size: 18px;
-        margin-bottom: 2px;
-    }
+@media (max-width: 480px) {
+    /* CSS สำหรับมือถือ */
 }
