@@ -1,8 +1,50 @@
 /* สไตล์เฉพาะสำหรับหน้า Teacher Home */
 
-/* ปรับแต่งการ์ดชั้นเรียน */
+/* ตัวเลือกห้องเรียน */
+.class-selector {
+    background-color: white;
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 15px;
+    box-shadow: var(--card-shadow);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.class-selector label {
+    font-weight: 500;
+    color: var(--text-dark);
+    white-space: nowrap;
+}
+
+.class-selector select {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1px solid #e0e0e0;
+    border-radius: 5px;
+    font-family: 'Prompt', sans-serif;
+    outline: none;
+    background-color: #f5f5f5;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.class-selector select:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.2);
+}
+
+/* ข้อมูลชั้นเรียน */
 .class-card {
     background: linear-gradient(to right, var(--primary-color-light), #bbdefb);
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 15px;
+    box-shadow: var(--card-shadow);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     transition: transform 0.3s;
     border-left: 4px solid var(--primary-color);
 }
@@ -12,14 +54,56 @@
     box-shadow: 0 4px 8px rgba(0,0,0,0.1);
 }
 
-/* ปรับแต่ง stat cards */
+.class-details h2 {
+    font-size: 20px;
+    color: var(--primary-color);
+    margin-bottom: 5px;
+}
+
+.class-details p {
+    font-size: 14px;
+    color: var(--primary-color);
+    margin-bottom: 5px;
+}
+
+.date-info {
+    text-align: right;
+    font-size: 14px;
+    color: var(--primary-color);
+}
+
+/* หัวข้อส่วน */
+.section-title {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+    color: var(--text-dark);
+}
+
+.section-title .material-icons {
+    margin-right: 8px;
+    color: var(--primary-color);
+}
+
+.section-title h3 {
+    font-size: 16px;
+    font-weight: 600;
+    margin: 0;
+}
+
+/* สถิติการเข้าแถว */
 .stats-container {
-    grid-template-columns: repeat(2, 1fr);
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin-bottom: 15px;
 }
 
 .stat-card {
-    position: relative;
-    overflow: hidden;
+    padding: 15px;
+    border-radius: 10px;
+    text-align: center;
+    box-shadow: var(--card-shadow);
     transition: transform 0.3s;
 }
 
@@ -28,23 +112,111 @@
     box-shadow: 0 4px 8px rgba(0,0,0,0.1);
 }
 
-.stat-card h3 {
-    font-size: 32px;
-    margin-bottom: 5px;
+.stat-card.total {
+    background-color: var(--primary-color-light);
+    color: var(--primary-color);
+    border-left: 4px solid var(--primary-color);
 }
 
-.stat-card.green {
+.stat-card.present {
+    background-color: var(--secondary-color-light);
+    color: var(--secondary-color);
     border-left: 4px solid var(--secondary-color);
 }
 
-.stat-card.red {
+.stat-card.absent {
+    background-color: var(--danger-color-light);
+    color: var(--danger-color);
     border-left: 4px solid var(--danger-color);
 }
 
-/* ปรับแต่งการ์ด PIN */
+.stat-card.not-checked {
+    background-color: var(--warning-color-light);
+    color: var(--warning-color);
+    border-left: 4px solid var(--warning-color);
+}
+
+.stat-card .value {
+    font-size: 24px;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.stat-card .label {
+    font-size: 14px;
+}
+
+/* การ์ดปุ่มทางลัด */
+.action-cards {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.action-card {
+    background-color: white;
+    border-radius: 10px;
+    padding: 15px;
+    display: flex;
+    align-items: center;
+    box-shadow: var(--card-shadow);
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.action-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.action-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 10px;
+    background-color: var(--primary-color-light);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 15px;
+}
+
+.action-icon .material-icons {
+    font-size: 24px;
+    color: var(--primary-color);
+}
+
+.action-icon.orange {
+    background-color: var(--warning-color-light);
+}
+
+.action-icon.orange .material-icons {
+    color: var(--warning-color);
+}
+
+.action-text {
+    flex: 1;
+}
+
+.action-title {
+    font-weight: 600;
+    font-size: 15px;
+    margin-bottom: 3px;
+}
+
+.action-subtitle {
+    font-size: 12px;
+    color: var(--text-light);
+}
+
+/* แสดง PIN ที่ใช้งานอยู่ */
 .active-pin-card {
-    position: relative;
-    background: linear-gradient(to bottom, #f5f5f5, #f9f9f9);
+    background-color: white;
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 15px;
+    text-align: center;
+    box-shadow: var(--card-shadow);
     border-left: 4px solid var(--primary-color);
     transition: transform 0.3s;
 }
@@ -54,10 +226,18 @@
     box-shadow: 0 4px 8px rgba(0,0,0,0.1);
 }
 
+.active-pin-card h3 {
+    font-size: 16px;
+    color: var(--primary-color);
+    margin-bottom: 10px;
+}
+
 .active-pin {
-    font-size: 38px;
+    font-size: 32px;
+    font-weight: bold;
+    color: var(--primary-color);
+    letter-spacing: 5px;
     margin: 15px 0;
-    text-shadow: 1px 1px 1px rgba(0,0,0,0.1);
 }
 
 .pin-expire {
@@ -69,76 +249,178 @@
     display: inline-block;
 }
 
-/* ปรับแต่งปุ่ม */
-.create-pin-button, 
-.scan-qr-button,
-.check-attendance-button,
-.reports-button {
-    position: relative;
-    overflow: hidden;
+/* การดำเนินการหลัก */
+.main-actions {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.main-action-btn {
+    padding: 15px;
+    border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    color: white;
+    font-weight: bold;
+    box-shadow: var(--card-shadow);
     transition: all 0.3s;
+    text-align: center;
 }
 
-.create-pin-button:hover, 
-.scan-qr-button:hover,
-.check-attendance-button:hover,
-.reports-button:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+.main-action-btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.15);
 }
 
-.create-pin-button:active, 
-.scan-qr-button:active,
-.check-attendance-button:active,
-.reports-button:active {
-    transform: translateY(0);
+.main-action-btn .material-icons {
+    font-size: 36px;
+    margin-bottom: 10px;
 }
 
-.create-pin-button::after, 
-.scan-qr-button::after,
-.check-attendance-button::after,
-.reports-button::after {
+.main-action-btn.check {
+    background-color: var(--secondary-color);
+}
+
+.main-action-btn.check:hover {
+    background-color: #388e3c;
+}
+
+.main-action-btn.report {
+    background-color: var(--primary-color);
+}
+
+.main-action-btn.report:hover {
+    background-color: var(--primary-color-dark);
+}
+
+/* แท็บเนื้อหา */
+.content-tabs {
+    background-color: white;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: var(--card-shadow);
+    margin-bottom: 20px;
+}
+
+.tab-header {
+    display: flex;
+    border-bottom: 1px solid #eee;
+}
+
+.tab-btn {
+    flex: 1;
+    padding: 12px 10px;
+    background: none;
+    border: none;
+    font-family: 'Prompt', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s;
+    position: relative;
+    color: var(--text-light);
+}
+
+.tab-btn.active {
+    color: var(--primary-color);
+}
+
+.tab-btn.active::after {
     content: '';
     position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 5px;
-    height: 5px;
-    background: rgba(255, 255, 255, 0.5);
-    opacity: 0;
-    border-radius: 100%;
-    transform: scale(1, 1) translate(-50%);
-    transform-origin: 50% 50%;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background-color: var(--primary-color);
 }
 
-.create-pin-button:hover::after, 
-.scan-qr-button:hover::after,
-.check-attendance-button:hover::after,
-.reports-button:hover::after {
-    animation: ripple 1s ease-out;
+.tab-btn .badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 20px;
+    background-color: var(--danger-color);
+    border-radius: 10px;
+    color: white;
+    font-size: 12px;
+    padding: 0 5px;
+    margin-left: 5px;
 }
 
-/* ปรับแต่งรายการนักเรียน */
+.tab-content {
+    display: none;
+    padding: 15px;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+.tab-content-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.tab-content-header h3 {
+    font-size: 16px;
+    margin: 0;
+}
+
+.view-all {
+    font-size: 12px;
+    color: var(--primary-color);
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+}
+
+.view-all:hover {
+    text-decoration: underline;
+}
+
+/* รายการนักเรียน */
 .student-list {
-    border-radius: 15px;
+    background-color: #f9f9f9;
+    border-radius: 8px;
     overflow: hidden;
-    transition: transform 0.3s;
 }
 
-.student-list:hover {
-    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-}
-
-.student-list-header {
+.student-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
     padding: 12px 15px;
+    border-bottom: 1px solid #eee;
 }
 
-.student-item {
-    transition: background-color 0.3s;
+.student-row:last-child {
+    border-bottom: none;
 }
 
-.student-item:hover {
+.student-row:hover {
     background-color: #f5f5f5;
+}
+
+.student-info {
+    display: flex;
+    align-items: center;
+}
+
+.student-number {
+    width: 30px;
+    text-align: center;
+    font-weight: bold;
+    color: var(--text-light);
+    margin-right: 10px;
 }
 
 .student-name {
@@ -146,201 +428,366 @@
 }
 
 .student-status {
-    padding: 5px 12px;
-    font-weight: 600;
-    letter-spacing: 0.5px;
-}
-
-.student-list-footer {
-    background-color: #f5f5f5;
-    padding: 12px;
-}
-
-.view-all-btn {
-    font-weight: 600;
-    padding: 5px 0;
-    transition: color 0.3s;
-}
-
-/* เอฟเฟกต์ Ripple เมื่อกดปุ่ม */
-@keyframes ripple {
-    0% {
-        transform: scale(0, 0);
-        opacity: 1;
-    }
-    20% {
-        transform: scale(25, 25);
-        opacity: 1;
-    }
-    100% {
-        opacity: 0;
-        transform: scale(40, 40);
-    }
-}
-
-/* โหมดมืดสำหรับเวลากลางคืน (หลัง 18:00) */
-@media (prefers-color-scheme: dark) {
-    .dark-mode .class-card {
-        background: linear-gradient(to right, #1e3a5f, #2c5282);
-        color: white;
-    }
-    
-    .dark-mode .stat-card {
-        background-color: #2d3748;
-        color: white;
-    }
-    
-    .dark-mode .active-pin-card {
-        background: linear-gradient(to bottom, #2d3748, #1a202c);
-        color: white;
-    }
-}
-
-/* เมนูลัด */
-.quick-menu {
-    margin-top: 20px;
-    margin-bottom: 30px;
-}
-
-.section-title {
-    font-size: 18px;
-    font-weight: 600;
-    margin-bottom: 15px;
-    color: var(--primary-color);
-    padding-left: 5px;
-    border-left: 4px solid var(--primary-color);
-}
-
-.quick-menu-grid {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 10px;
-}
-
-.quick-menu-item {
-    background-color: white;
-    border-radius: 10px;
-    padding: 15px 10px;
     display: flex;
-    flex-direction: column;
     align-items: center;
-    text-decoration: none;
-    color: var(--text-dark);
-    box-shadow: var(--card-shadow);
-    transition: all 0.3s;
-}
-
-.quick-menu-item:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-    color: var(--primary-color);
-}
-
-.quick-menu-item .material-icons {
-    font-size: 28px;
-    margin-bottom: 8px;
-    color: var(--primary-color);
-}
-
-.quick-menu-text {
-    font-size: 12px;
-    text-align: center;
+    gap: 5px;
     font-weight: 500;
 }
 
-/* การแจ้งเตือน */
-.notification-list {
-    max-height: 300px;
-    overflow-y: auto;
-    margin-bottom: 20px;
+.student-status.present {
+    color: var(--secondary-color);
 }
 
-.notification-item {
-    display: flex;
-    padding: 12px 5px;
-    border-bottom: 1px solid var(--border-color);
-    transition: background-color 0.3s;
+.student-status.absent {
+    color: var(--danger-color);
 }
 
-.notification-item:hover {
-    background-color: #f5f5f5;
-    cursor: pointer;
-}
-
-.notification-icon {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    background-color: var(--primary-color-light);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-right: 12px;
-}
-
-.notification-icon .material-icons {
-    color: var(--primary-color);
-    font-size: 20px;
-}
-
-.notification-content {
-    flex: 1;
-}
-
-.notification-title {
-    font-weight: 500;
-    margin-bottom: 3px;
-}
-
-.notification-time {
+.attendance-time {
     font-size: 12px;
     color: var(--text-light);
 }
 
-/* แจ้งเตือนผู้ปกครอง */
-.alert-parents-form {
-    margin-bottom: 15px;
+/* สถานะว่าง */
+.empty-state {
+    padding: 30px;
+    text-align: center;
 }
 
-.form-group {
-    margin-bottom: 15px;
+.empty-state .material-icons {
+    font-size: 48px;
+    color: #bbdefb;
+    margin-bottom: 10px;
 }
 
-.input-label {
-    display: block;
-    margin-bottom: 8px;
-    font-weight: 500;
-}
-
-.input-field {
-    width: 100%;
-    padding: 10px 12px;
-    border: 1px solid #ddd;
-    border-radius: 8px;
+.empty-state p {
+    color: #999;
     font-size: 14px;
-    font-family: 'Prompt', sans-serif;
 }
 
-textarea.input-field {
-    resize: vertical;
-    min-height: 80px;
+/* รายการนักเรียนเสี่ยงตก */
+.at-risk-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
 }
 
-/* Responsive adjustments */
-@media (max-width: 480px) {
+.at-risk-card {
+    background-color: #f9f9f9;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.at-risk-header {
+    display: flex;
+    align-items: center;
+    padding: 15px;
+    border-bottom: 1px solid #eee;
+}
+
+.student-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: var(--primary-color);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    margin-right: 15px;
+}
+
+.student-details {
+    flex: 1;
+}
+
+.risk-indicator {
+    text-align: center;
+    background-color: var(--danger-color-light);
+    padding: 5px 10px;
+    border-radius: 5px;
+}
+
+.risk-percentage {
+    font-weight: bold;
+    color: var(--danger-color);
+}
+
+.risk-label {
+    font-size: 12px;
+    color: var(--danger-color);
+}
+
+.at-risk-body {
+    padding: 15px;
+    display: flex;
+    gap: 20px;
+    border-bottom: 1px solid #eee;
+}
+
+.risk-detail {
+    display: flex;
+    align-items: center;
+    color: var(--text-light);
+    font-size: 13px;
+}
+
+.risk-detail .material-icons {
+    font-size: 16px;
+    margin-right: 5px;
+    color: var(--danger-color);
+}
+
+.at-risk-actions {
+    padding: 10px 15px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.action-btn {
+    background-color: #f0f0f0;
+    border: none;
+    border-radius: 5px;
+    padding: 5px 10px;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.action-btn:hover {
+    background-color: #e0e0e0;
+}
+
+.action-btn .material-icons {
+    font-size: 14px;
+    margin-right: 5px;
+}
+
+/* ประกาศล่าสุด */
+.announcements-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.announcement-card {
+    background-color: #f9f9f9;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.announcement-header {
+    padding: 12px 15px;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.announcement-header h4 {
+    margin: 0;
+    font-size: 15px;
+    color: var(--primary-color);
+}
+
+.announcement-date {
+    font-size: 12px;
+    color: var(--text-light);
+}
+
+.announcement-body {
+    padding: 12px 15px;
+}
+
+.announcement-body p {
+    margin: 0;
+    font-size: 14px;
+    color: var(--text-dark);
+}
+
+/* Modal */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.5);
+    z-index: 2000;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal.active {
+    display: flex;
+}
+
+.modal-content {
+    background-color: white;
+    padding: 25px;
+    border-radius: 10px;
+    width: 90%;
+    max-width: 400px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    position: relative;
+}
+
+.modal-title {
+    font-size: 18px;
+    font-weight: bold;
+    margin-bottom: 5px;
+    color: var(--primary-color);
+    text-align: center;
+}
+
+.modal-subtitle {
+    font-size: 16px;
+    color: var(--text-light);
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.modal-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin-top: 25px;
+}
+
+.modal-button {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.modal-button.confirm {
+    background-color: var(--secondary-color);
+    color: white;
+}
+
+.modal-button.confirm:hover {
+    background-color: #388e3c;
+}
+
+.modal-button.cancel {
+    background-color: #f5f5f5;
+    color: var(--text-dark);
+}
+
+.modal-button.cancel:hover {
+    background-color: #e0e0e0;
+}
+
+/* PIN Code Display */
+.pin-code {
+    font-size: 48px;
+    font-weight: bold;
+    color: var(--primary-color);
+    text-align: center;
+    letter-spacing: 5px;
+    margin: 20px 0;
+}
+
+.pin-info {
+    text-align: center;
+    color: var(--text-light);
+    margin-bottom: 5px;
+}
+
+/* QR Scanner Placeholder */
+.qr-scanner-placeholder {
+    height: 250px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background-color: #f5f5f5;
+    border-radius: 8px;
+    margin: 20px 0;
+}
+
+.qr-scanner-placeholder .material-icons {
+    font-size: 64px;
+    color: #bbbbbb;
+    margin-bottom: 15px;
+}
+
+.qr-scanner-placeholder p {
+    color: #999;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
     .stats-container {
-        grid-template-columns: 1fr 1fr;
-    }
-    
-    .active-pin {
-        font-size: 32px;
-    }
-    
-    .control-buttons {
-        flex-direction: column;
-    }
-    
-    .quick-menu-grid {
         grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .at-risk-body {
+        flex-direction: column;
+        gap: 10px;
+    }
+}
+
+@media (max-width: 480px) {
+    .class-selector {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .class-selector label {
+        margin-bottom: 5px;
+    }
+    
+    .class-card {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .date-info {
+        text-align: left;
+        margin-top: 10px;
+    }
+    
+    .action-cards {
+        grid-template-columns: 1fr;
+    }
+    
+    .main-actions {
+        grid-template-columns: 1fr;
+    }
+    
+    .tab-btn {
+        font-size: 12px;
+        padding: 10px 5px;
+    }
+    
+    .student-name {
+        max-width: 150px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    
+    .at-risk-header {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .student-avatar {
+        margin-right: 0;
+        margin-bottom: 10px;
+    }
+    
+    .student-details {
+        margin-bottom: 10px;
     }
 }

@@ -1,0 +1,671 @@
+/* ตั้งค่าสำหรับหน้าเช็คชื่อนักเรียน */
+
+/* ตัวเลือกห้องเรียน */
+.class-selector {
+    background-color: white;
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 15px;
+    box-shadow: var(--card-shadow);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.class-selector label {
+    font-weight: 500;
+    color: var(--text-dark);
+}
+
+.class-selector select {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1px solid #e0e0e0;
+    border-radius: 5px;
+    font-family: 'Prompt', sans-serif;
+    outline: none;
+    background-color: #f5f5f5;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.class-selector select:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.2);
+}
+
+/* ข้อมูลชั้นเรียน */
+.class-info {
+    background-color: var(--primary-color-light);
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 15px;
+    box-shadow: var(--card-shadow);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-left: 4px solid var(--primary-color);
+}
+
+.class-details h2 {
+    font-size: 20px;
+    color: var(--primary-color);
+    margin-bottom: 5px;
+}
+
+.class-details p {
+    font-size: 14px;
+    color: var(--primary-color);
+    margin-bottom: 5px;
+}
+
+.date-info {
+    text-align: right;
+    font-size: 14px;
+    color: var(--primary-color);
+}
+
+/* สถิติการเข้าแถว */
+.stats-container {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.stat-card {
+    padding: 15px;
+    border-radius: 10px;
+    text-align: center;
+    box-shadow: var(--card-shadow);
+}
+
+.stat-card.total {
+    background-color: var(--primary-color-light);
+    color: var(--primary-color);
+    border-left: 4px solid var(--primary-color);
+}
+
+.stat-card.present {
+    background-color: var(--secondary-color-light);
+    color: var(--secondary-color);
+    border-left: 4px solid var(--secondary-color);
+}
+
+.stat-card.absent {
+    background-color: var(--danger-color-light);
+    color: var(--danger-color);
+    border-left: 4px solid var(--danger-color);
+}
+
+.stat-card.not-checked {
+    background-color: var(--warning-color-light);
+    color: var(--warning-color);
+    border-left: 4px solid var(--warning-color);
+}
+
+.stat-card .value {
+    font-size: 24px;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.stat-card .label {
+    font-size: 14px;
+}
+
+/* ปุ่มควบคุม */
+.control-buttons {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.control-button {
+    flex: 1;
+    padding: 12px;
+    border: none;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: var(--card-shadow);
+    transition: all 0.3s;
+}
+
+.control-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+}
+
+.control-button:active {
+    transform: translateY(0);
+}
+
+.control-button .material-icons {
+    margin-right: 8px;
+}
+
+.control-button.blue {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.control-button.blue:hover {
+    background-color: var(--primary-color-dark);
+}
+
+.control-button.green {
+    background-color: var(--secondary-color);
+    color: white;
+}
+
+.control-button.green:hover {
+    background-color: #388e3c;
+}
+
+.control-button.orange {
+    background-color: var(--warning-color);
+    color: white;
+}
+
+.control-button.orange:hover {
+    background-color: #f57c00;
+}
+
+/* ส่วนค้นหา */
+.search-bar {
+    background-color: white;
+    display: flex;
+    padding: 10px;
+    border-radius: 10px;
+    box-shadow: var(--card-shadow);
+    margin-bottom: 15px;
+    align-items: center;
+    transition: all 0.3s;
+}
+
+.search-bar:focus-within {
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.search-input {
+    flex: 1;
+    border: none;
+    background: none;
+    outline: none;
+    font-size: 16px;
+    padding: 5px;
+}
+
+.search-icon {
+    color: var(--text-light);
+    margin-right: 5px;
+}
+
+/* แท็บเมนู */
+.tabs {
+    display: flex;
+    margin-bottom: 15px;
+    background-color: white;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: var(--card-shadow);
+}
+
+.tab-button {
+    flex: 1;
+    padding: 12px 10px;
+    background: none;
+    border: none;
+    font-family: 'Prompt', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-light);
+    transition: all 0.3s;
+}
+
+.tab-button .material-icons {
+    margin-right: 5px;
+    font-size: 18px;
+}
+
+.tab-button .count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 20px;
+    background-color: #f0f0f0;
+    border-radius: 10px;
+    font-size: 12px;
+    padding: 0 5px;
+    margin-left: 5px;
+}
+
+.tab-button.active {
+    color: var(--primary-color);
+    background-color: var(--primary-color-light);
+}
+
+.tab-button.active .count {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.tab-button.active::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background-color: var(--primary-color);
+}
+
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+/* สถานะว่าง */
+.empty-state {
+    background-color: white;
+    border-radius: 10px;
+    padding: 40px 20px;
+    text-align: center;
+    box-shadow: var(--card-shadow);
+    margin-bottom: 20px;
+}
+
+.empty-state .material-icons {
+    font-size: 60px;
+    color: var(--secondary-color);
+    margin-bottom: 20px;
+}
+
+.empty-state p {
+    font-size: 18px;
+    color: var(--text-dark);
+    font-weight: 500;
+}
+
+/* รายชื่อนักเรียน */
+.student-list {
+    background-color: white;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    box-shadow: var(--card-shadow);
+    overflow: hidden;
+}
+
+.list-header {
+    background-color: var(--primary-color);
+    color: white;
+    padding: 15px;
+    font-weight: bold;
+    display: grid;
+    grid-template-columns: 50px 1fr auto auto;
+}
+
+.student-item {
+    padding: 15px;
+    display: grid;
+    grid-template-columns: 50px 1fr auto auto;
+    border-bottom: 1px solid #eee;
+    align-items: center;
+    transition: background-color 0.3s;
+}
+
+#unchecked-tab .list-header,
+#unchecked-tab .student-item {
+    grid-template-columns: 50px 1fr 120px;
+}
+
+.student-item:last-child {
+    border-bottom: none;
+}
+
+.student-item:hover {
+    background-color: #f9f9f9;
+}
+
+.student-item:nth-child(even) {
+    background-color: #f9f9f9;
+}
+
+.student-item:nth-child(even):hover {
+    background-color: #f5f5f5;
+}
+
+.student-number {
+    text-align: center;
+    font-weight: bold;
+    color: var(--text-light);
+}
+
+.student-name {
+    font-weight: 500;
+}
+
+.student-status {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-weight: 500;
+}
+
+.student-status.present {
+    color: var(--secondary-color);
+}
+
+.student-status.absent {
+    color: var(--danger-color);
+}
+
+.check-time {
+    color: var(--text-light);
+    font-size: 14px;
+}
+
+.attendance-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+}
+
+.action-button {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.action-button.present {
+    background-color: var(--secondary-color-light);
+    color: var(--secondary-color);
+}
+
+.action-button.present:hover {
+    background-color: var(--secondary-color-light);
+    transform: scale(1.1);
+}
+
+.action-button.present.active, .action-button.present:active {
+    background-color: var(--secondary-color);
+    color: white;
+}
+
+.action-button.absent {
+    background-color: var(--danger-color-light);
+    color: var(--danger-color);
+}
+
+.action-button.absent:hover {
+    background-color: var(--danger-color-light);
+    transform: scale(1.1);
+}
+
+.action-button.absent.active, .action-button.absent:active {
+    background-color: var(--danger-color);
+    color: white;
+}
+
+/* ปุ่มลอย */
+.floating-button {
+    position: fixed;
+    bottom: 90px;
+    right: 20px;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background-color: var(--secondary-color);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    border: none;
+    cursor: pointer;
+    z-index: 1000;
+    transition: all 0.3s;
+}
+
+.floating-button:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 6px 15px rgba(0,0,0,0.25);
+    background-color: #388e3c;
+}
+
+.floating-button .material-icons {
+    font-size: 30px;
+}
+
+/* Modal */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.5);
+    z-index: 2000;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal.active {
+    display: flex;
+}
+
+.modal-content {
+    background-color: white;
+    padding: 25px;
+    border-radius: 10px;
+    width: 90%;
+    max-width: 400px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    position: relative;
+}
+
+.modal-title {
+    font-size: 18px;
+    font-weight: bold;
+    margin-bottom: 5px;
+    color: var(--primary-color);
+    text-align: center;
+}
+
+.modal-subtitle {
+    font-size: 16px;
+    color: var(--text-light);
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.modal-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin-top: 25px;
+}
+
+.modal-button {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.modal-button.confirm {
+    background-color: var(--secondary-color);
+    color: white;
+}
+
+.modal-button.confirm:hover {
+    background-color: #388e3c;
+}
+
+.modal-button.cancel {
+    background-color: #f5f5f5;
+    color: var(--text-dark);
+}
+
+.modal-button.cancel:hover {
+    background-color: #e0e0e0;
+}
+
+/* PIN Code Display */
+.pin-code {
+    font-size: 48px;
+    font-weight: bold;
+    color: var(--primary-color);
+    text-align: center;
+    letter-spacing: 5px;
+    margin: 20px 0;
+}
+
+.pin-info {
+    text-align: center;
+    color: var(--text-light);
+    margin-bottom: 5px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .control-buttons {
+        flex-direction: column;
+    }
+    
+    .control-button {
+        margin-bottom: 10px;
+    }
+    
+    .stats-container {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .list-header, .student-item {
+        grid-template-columns: 40px 1fr auto;
+        padding: 10px;
+    }
+    
+    #unchecked-tab .list-header,
+    #unchecked-tab .student-item {
+        grid-template-columns: 40px 1fr 100px;
+    }
+    
+    .check-time {
+        display: none;
+    }
+    
+    .action-button {
+        width: 32px;
+        height: 32px;
+    }
+    
+    .action-button .material-icons {
+        font-size: 18px;
+    }
+    
+    .pin-code {
+        font-size: 36px;
+    }
+}
+
+@media (max-width: 480px) {
+    .class-selector {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .class-info {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .date-info {
+        text-align: left;
+        margin-top: 10px;
+    }
+    
+    .stats-container {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+    }
+    
+    .stat-card .value {
+        font-size: 20px;
+    }
+    
+    .stat-card .label {
+        font-size: 12px;
+    }
+    
+    .list-header, .student-item {
+        grid-template-columns: 30px 1fr auto;
+        padding: 10px;
+        font-size: 14px;
+    }
+    
+    #unchecked-tab .list-header,
+    #unchecked-tab .student-item {
+        grid-template-columns: 30px 1fr 80px;
+    }
+    
+    .student-name {
+        font-size: 14px;
+    }
+    
+    .attendance-actions {
+        gap: 5px;
+    }
+    
+    .action-button {
+        width: 28px;
+        height: 28px;
+    }
+    
+    .action-button .material-icons {
+        font-size: 16px;
+    }
+    
+    .tab-button {
+        padding: 10px 5px;
+        font-size: 12px;
+    }
+    
+    .tab-button .material-icons {
+        font-size: 16px;
+        margin-right: 3px;
+    }
+    
+    .tab-button .count {
+        min-width: 16px;
+        height: 16px;
+        font-size: 10px;
+    }
+    
+    .pin-code {
+        font-size: 32px;
+    }
+}

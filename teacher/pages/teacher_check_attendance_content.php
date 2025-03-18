@@ -9,11 +9,23 @@
 </div>
 
 <div class="container">
+    <!-- ตัวเลือกเปลี่ยนห้องเรียน -->
+    <div class="class-selector">
+        <label for="class-select">เลือกห้องเรียน:</label>
+        <select id="class-select" onchange="changeClass(this.value)">
+            <?php foreach ($teacher_classes as $class): ?>
+                <option value="<?php echo $class['id']; ?>" <?php echo ($class['id'] == $current_class_id) ? 'selected' : ''; ?>>
+                    <?php echo $class['name']; ?> (<?php echo $class['present_count'] + $class['absent_count']; ?>/<?php echo $class['total_students']; ?>)
+                </option>
+            <?php endforeach; ?>
+        </select>
+    </div>
+
     <!-- ข้อมูลชั้นเรียน -->
     <div class="class-info">
         <div class="class-details">
-            <h2><?php echo $class_info['name']; ?></h2>
-            <p>นักเรียนทั้งหมด <?php echo $class_info['total_students']; ?> คน</p>
+            <h2><?php echo $current_class['name']; ?></h2>
+            <p>นักเรียนทั้งหมด <?php echo $current_class['total_students']; ?> คน</p>
         </div>
         <div class="date-info">
             <p>วันที่ <?php echo date('j F Y'); ?></p>
@@ -24,16 +36,20 @@
     <!-- สถิติการเข้าแถว -->
     <div class="stats-container">
         <div class="stat-card total">
-            <div class="value"><?php echo $class_info['total_students']; ?></div>
+            <div class="value"><?php echo $current_class['total_students']; ?></div>
             <div class="label">ทั้งหมด</div>
         </div>
         <div class="stat-card present">
-            <div class="value" id="present-count"><?php echo $class_info['present_count']; ?></div>
+            <div class="value" id="present-count"><?php echo $current_class['present_count']; ?></div>
             <div class="label">มาเรียน</div>
         </div>
         <div class="stat-card absent">
-            <div class="value" id="absent-count"><?php echo $class_info['absent_count']; ?></div>
+            <div class="value" id="absent-count"><?php echo $current_class['absent_count']; ?></div>
             <div class="label">ขาดเรียน</div>
+        </div>
+        <div class="stat-card not-checked">
+            <div class="value" id="not-checked-count"><?php echo $current_class['not_checked']; ?></div>
+            <div class="label">ยังไม่เช็ค</div>
         </div>
     </div>
 
@@ -56,30 +72,81 @@
         <input type="text" class="search-input" id="search-input" placeholder="ค้นหาชื่อนักเรียน..." oninput="searchStudents()">
     </div>
 
-    <!-- รายชื่อนักเรียน -->
-    <div class="student-list" id="student-list">
-        <div class="list-header">
-            <div>เลขที่</div>
-            <div>ชื่อ-นามสกุล</div>
-            <div>การเข้าแถว</div>
-        </div>
-        
-        <?php foreach ($students as $student): ?>
-        <div class="student-item" data-name="<?php echo $student['name']; ?>">
-            <div class="student-number"><?php echo $student['number']; ?></div>
-            <div class="student-name"><?php echo $student['name']; ?></div>
-            <div class="attendance-actions">
-                <button class="action-button present <?php echo $student['status'] === 'present' ? 'active' : ''; ?>" 
-                        onclick="markAttendance(this, 'present', <?php echo $student['id']; ?>)">
-                    <span class="material-icons">check</span>
-                </button>
-                <button class="action-button absent <?php echo $student['status'] === 'absent' ? 'active' : ''; ?>" 
-                        onclick="markAttendance(this, 'absent', <?php echo $student['id']; ?>)">
-                    <span class="material-icons">close</span>
-                </button>
+    <!-- แท็บเมนู -->
+    <div class="tabs">
+        <button class="tab-button active" onclick="switchTab('unchecked')">
+            <span class="material-icons">schedule</span> รอเช็คชื่อ <span class="count"><?php echo count($unchecked_students); ?></span>
+        </button>
+        <button class="tab-button" onclick="switchTab('checked')">
+            <span class="material-icons">done_all</span> เช็คชื่อแล้ว <span class="count"><?php echo count($checked_students); ?></span>
+        </button>
+    </div>
+
+    <!-- รายชื่อนักเรียนที่ยังไม่ได้เช็คชื่อ -->
+    <div id="unchecked-tab" class="tab-content active">
+        <?php if (empty($unchecked_students)): ?>
+            <div class="empty-state">
+                <span class="material-icons">check_circle</span>
+                <p>เช็คชื่อครบทุกคนแล้ว!</p>
             </div>
-        </div>
-        <?php endforeach; ?>
+        <?php else: ?>
+            <div class="student-list">
+                <div class="list-header">
+                    <div>เลขที่</div>
+                    <div>ชื่อ-นามสกุล</div>
+                    <div>การเช็คชื่อ</div>
+                </div>
+                
+                <?php foreach ($unchecked_students as $student): ?>
+                <div class="student-item" data-name="<?php echo $student['name']; ?>">
+                    <div class="student-number"><?php echo $student['number']; ?></div>
+                    <div class="student-name"><?php echo $student['name']; ?></div>
+                    <div class="attendance-actions">
+                        <button class="action-button present" onclick="markAttendance(this, 'present', <?php echo $student['id']; ?>)">
+                            <span class="material-icons">check</span>
+                        </button>
+                        <button class="action-button absent" onclick="markAttendance(this, 'absent', <?php echo $student['id']; ?>)">
+                            <span class="material-icons">close</span>
+                        </button>
+                    </div>
+                </div>
+                <?php endforeach; ?>
+            </div>
+        <?php endif; ?>
+    </div>
+
+    <!-- รายชื่อนักเรียนที่เช็คชื่อแล้ว -->
+    <div id="checked-tab" class="tab-content">
+        <?php if (empty($checked_students)): ?>
+            <div class="empty-state">
+                <span class="material-icons">schedule</span>
+                <p>ยังไม่มีการเช็คชื่อในวันนี้</p>
+            </div>
+        <?php else: ?>
+            <div class="student-list">
+                <div class="list-header">
+                    <div>เลขที่</div>
+                    <div>ชื่อ-นามสกุล</div>
+                    <div>สถานะ</div>
+                    <div>เวลา</div>
+                </div>
+                
+                <?php foreach ($checked_students as $student): ?>
+                <div class="student-item" data-name="<?php echo $student['name']; ?>">
+                    <div class="student-number"><?php echo $student['number']; ?></div>
+                    <div class="student-name"><?php echo $student['name']; ?></div>
+                    <div class="student-status <?php echo $student['status']; ?>">
+                        <?php if ($student['status'] === 'present'): ?>
+                            <span class="material-icons">check_circle</span> มา
+                        <?php else: ?>
+                            <span class="material-icons">cancel</span> ขาด
+                        <?php endif; ?>
+                    </div>
+                    <div class="check-time"><?php echo $student['time_checked']; ?></div>
+                </div>
+                <?php endforeach; ?>
+            </div>
+        <?php endif; ?>
     </div>
     
     <!-- ปุ่มลอย -->
@@ -92,7 +159,8 @@
 <div class="modal" id="pin-modal">
     <div class="modal-content">
         <div class="modal-title">สร้างรหัส PIN สำหรับการเช็คชื่อ</div>
-        <div class="pin-code">5731</div>
+        <div class="modal-subtitle"><?php echo $current_class['name']; ?></div>
+        <div class="pin-code"><?php echo $pin_code; ?></div>
         <p class="pin-info">รหัส PIN นี้จะหมดอายุใน 10 นาที</p>
         <div class="modal-buttons">
             <button class="modal-button cancel" onclick="closeModal('pin-modal')">ปิด</button>
@@ -105,10 +173,25 @@
 <div class="modal" id="mark-all-modal">
     <div class="modal-content">
         <div class="modal-title">เช็คชื่อนักเรียนทั้งหมด</div>
-        <p>คุณต้องการเช็คชื่อให้นักเรียนทั้งหมด "มาเรียน" ใช่หรือไม่?</p>
+        <div class="modal-subtitle"><?php echo $current_class['name']; ?></div>
+        <p>คุณต้องการเช็คชื่อนักเรียนที่ยังไม่ได้เช็คทั้งหมดเป็น "มาเรียน" ใช่หรือไม่?</p>
         <div class="modal-buttons">
             <button class="modal-button cancel" onclick="closeModal('mark-all-modal')">ยกเลิก</button>
             <button class="modal-button confirm" onclick="markAllPresent()">ยืนยัน</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal ยืนยันการบันทึก -->
+<div class="modal" id="save-modal">
+    <div class="modal-content">
+        <div class="modal-title">บันทึกการเช็คชื่อ</div>
+        <div class="modal-subtitle"><?php echo $current_class['name']; ?></div>
+        <p>ยังมีนักเรียนที่ยังไม่ได้เช็คชื่ออีก <?php echo $current_class['not_checked']; ?> คน</p>
+        <p>คุณต้องการบันทึกการเช็คชื่อเข้าแถวนี้ใช่หรือไม่?</p>
+        <div class="modal-buttons">
+            <button class="modal-button cancel" onclick="closeModal('save-modal')">ยกเลิก</button>
+            <button class="modal-button confirm" onclick="confirmSaveAttendance()">บันทึก</button>
         </div>
     </div>
 </div>

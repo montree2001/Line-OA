@@ -1,94 +1,145 @@
 /**
- * teacher-home.js - สคริปต์เฉพาะสำหรับหน้า Home ของระบบ Teacher-Prasat
+ * teacher-home.js - สคริปต์เฉพาะสำหรับหน้าหลักของระบบ Teacher-Prasat
  */
-
-// Global Variables สำหรับหน้า Home
-let pinTimer = null;
-let remainingTime = 600; // 10 minutes in seconds
-let isDarkMode = false;
 
 // Document Ready Function
 document.addEventListener('DOMContentLoaded', function() {
+    // เริ่มต้นการทำงานของหน้าหลัก
     initHomePage();
-    startPinTimer();
-    checkDarkModeTime();
 });
 
 /**
- * เริ่มต้นการทำงานของหน้า Home
+ * เริ่มต้นการทำงานของหน้าหลัก
  */
 function initHomePage() {
-    // ตั้งค่าทั่วไปของหน้า Home
-    updateDateTime();
+    // ตั้งค่า PIN Timer
+    setupPinTimer();
     
-    // ตรวจสอบเวลาเพื่ออัพเดทสถานะทุก 1 นาที
-    setInterval(updateDateTime, 60000);
-    
-    // เพิ่มอิเวนต์คลิกที่รายการนักเรียน
-    addStudentItemEvents();
-    
-    // ตรวจสอบการเชื่อมต่อ
-    checkConnection();
+    // ตั้งค่าแท็บเริ่มต้น
+    showTab('attendance');
 }
 
 /**
- * อัพเดทวันที่และเวลาปัจจุบัน
+ * เปลี่ยนห้องเรียน
+ * @param {string} classId - ID ของห้องเรียน
  */
-function updateDateTime() {
-    const now = new Date();
+function changeClass(classId) {
+    // ในระบบจริงจะใช้ AJAX เพื่อเรียกข้อมูลของห้องเรียนใหม่
+    // สำหรับตัวอย่าง เราจะนำทางไปยังหน้าเดิมพร้อมกับเปลี่ยนพารามิเตอร์
+    window.location.href = 'home.php?class_id=' + classId;
+}
+
+/**
+ * สร้างรหัส PIN สำหรับการเช็คชื่อ
+ */
+function generatePin() {
+    // แสดง Modal สร้างรหัส PIN
+    const modal = document.getElementById('pin-modal');
+    if (modal) {
+        modal.classList.add('active');
+        document.body.style.overflow = 'hidden'; // ป้องกันการเลื่อนหน้าเว็บ
+    }
+}
+
+/**
+ * สร้างรหัส PIN ใหม่
+ */
+function generateNewPin() {
+    // สร้างรหัส PIN 4 หลักแบบสุ่ม
+    const pin = Math.floor(1000 + Math.random() * 9000);
+    const pinDisplay = document.querySelector('.pin-code');
     
-    // สร้างรูปแบบวันที่ภาษาไทย
-    const thaiMonths = [
-        'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
-        'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'
-    ];
-    
-    const day = now.getDate();
-    const month = thaiMonths[now.getMonth()];
-    const year = now.getFullYear() + 543; // แปลงเป็นปี พ.ศ.
-    const hours = now.getHours().toString().padStart(2, '0');
-    const minutes = now.getMinutes().toString().padStart(2, '0');
-    
-    // อัพเดทข้อมูลวันที่ในหน้า home (ถ้ามี)
-    const dateElements = document.querySelectorAll('.date-info p:first-child');
-    if (dateElements.length > 0) {
-        dateElements.forEach(el => {
-            el.textContent = `วันที่ ${day} ${month} ${year}`;
-        });
+    if (pinDisplay) {
+        pinDisplay.textContent = pin;
     }
     
-    // อัพเดทข้อมูลเวลาในหน้า home (ถ้ามี)
-    const timeElements = document.querySelectorAll('.date-info p:last-child');
-    if (timeElements.length > 0) {
-        timeElements.forEach(el => {
-            el.textContent = `เวลา ${hours}:${minutes} น.`;
-        });
+    // อัพเดทรหัส PIN ในหน้าหลัก (ถ้ามี)
+    const activePin = document.getElementById('active-pin-code');
+    if (activePin) {
+        activePin.textContent = pin;
     }
     
-    // ตรวจสอบเวลาเพื่อเปลี่ยนโหมดมืด/สว่าง
-    checkDarkModeTime();
+    // รีเซ็ต Timer
+    setupPinTimer();
+    
+    // แสดงข้อความแจ้งเตือน
+    showAlert('สร้างรหัส PIN ใหม่เรียบร้อย', 'success');
+}
+
+/**
+ * ปิด Modal ด้วย ID
+ * @param {string} modalId - ID ของ Modal ที่ต้องการปิด
+ */
+function closeModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.classList.remove('active');
+        document.body.style.overflow = '';
+    }
+}
+
+/**
+ * สแกน QR Code
+ */
+function scanQRCode() {
+    // แสดง Modal สแกน QR Code
+    const modal = document.getElementById('qr-modal');
+    if (modal) {
+        modal.classList.add('active');
+        document.body.style.overflow = 'hidden';
+        
+        // ในระบบจริงจะต้องขออนุญาตใช้งานกล้องและเริ่มสแกน QR Code
+        // startQRScanner();
+    }
+}
+
+/**
+ * ตั้งค่า Timer สำหรับ PIN
+ */
+let pinTimer = null;
+let remainingTime = 600; // 10 นาทีในวินาที
+
+function setupPinTimer() {
+    // เคลียร์ Timer เดิม (ถ้ามี)
+    if (pinTimer) {
+        clearInterval(pinTimer);
+        pinTimer = null;
+    }
+    
+    // ตั้งค่าเวลาเริ่มต้น (10 นาที)
+    const pinExpireTime = document.getElementById('pin-expire-time');
+    if (pinExpireTime) {
+        remainingTime = parseInt(pinExpireTime.textContent) * 60;
+    } else {
+        remainingTime = 600;
+    }
+    
+    // อัพเดทการแสดงผล
+    updatePinTimeDisplay();
+    
+    // เริ่ม Timer ใหม่
+    startPinTimer();
 }
 
 /**
  * เริ่ม Timer สำหรับรหัส PIN
  */
 function startPinTimer() {
-    // หยุด Timer เดิม (ถ้ามี)
+    // เคลียร์ Timer เดิม (ถ้ามี)
     if (pinTimer) {
         clearInterval(pinTimer);
     }
-    
-    // อัพเดทเวลาที่เหลือในหน้าเว็บ
-    updatePinTimeDisplay();
     
     // เริ่ม Timer ใหม่
     pinTimer = setInterval(function() {
         remainingTime--;
         
         if (remainingTime <= 0) {
-            // เมื่อหมดเวลา จะสร้าง PIN ใหม่
+            clearInterval(pinTimer);
+            pinTimer = null;
+            
+            // สร้าง PIN ใหม่โดยอัตโนมัติเมื่อหมดเวลา
             generateNewPin();
-            remainingTime = 600; // รีเซ็ตเวลาเป็น 10 นาที
         }
         
         updatePinTimeDisplay();
@@ -96,236 +147,80 @@ function startPinTimer() {
 }
 
 /**
- * อัพเดทการแสดงเวลาของ PIN
+ * อัพเดทการแสดงผล Timer
  */
 function updatePinTimeDisplay() {
-    const pinExpireElement = document.getElementById('pin-expire-time');
+    const pinExpireTime = document.getElementById('pin-expire-time');
     
-    if (pinExpireElement) {
+    if (pinExpireTime) {
         const minutes = Math.floor(remainingTime / 60);
-        const seconds = remainingTime % 60;
-        
-        // แสดงเฉพาะนาที ถ้าไม่มีวินาที
-        if (seconds === 0) {
-            pinExpireElement.textContent = minutes;
-        } else {
-            // แสดงเป็น "X นาที Y วินาที" เมื่อเหลือเวลาน้อย (น้อยกว่า 5 นาที)
-            if (minutes < 5) {
-                pinExpireElement.textContent = `${minutes} นาที ${seconds} วินาที`;
-                // เพิ่มคลาส warning เมื่อเวลาเหลือน้อย
-                if (minutes < 2) {
-                    pinExpireElement.classList.add('warning');
-                }
-            } else {
-                pinExpireElement.textContent = minutes;
-            }
-        }
+        pinExpireTime.textContent = minutes;
     }
 }
 
 /**
- * สร้างรหัส PIN ใหม่
+ * สลับแท็บที่แสดง
+ * @param {string} tabName - ชื่อแท็บ
  */
-function generatePin() {
-    // สร้างรหัส PIN 4 หลักแบบสุ่ม
-    const pin = Math.floor(1000 + Math.random() * 9000);
-    
-    // อัพเดตค่าใน UI
-    const activePin = document.getElementById('active-pin-code');
-    if (activePin) {
-        activePin.textContent = pin;
-    }
-    
-    // รีเซ็ต Timer
-    remainingTime = 600; // 10 นาที
-    startPinTimer();
-    
-    // แสดง Modal (ถ้ามี)
-    showPinModal();
-    
-    // แสดงข้อความแจ้งเตือน
-    showAlert('สร้างรหัส PIN ใหม่เรียบร้อย', 'success');
-    
-    // ส่งข้อมูลไปยังเซิร์ฟเวอร์ (ในระบบจริง)
-    // savePinToServer(pin);
-    
-    return pin;
-}
-
-/**
- * แสดง Modal รหัส PIN
- */
-function showPinModal() {
-    const pinModal = document.getElementById('pinModal');
-    const pinCode = document.getElementById('pinCode');
-    
-    if (pinModal && pinCode) {
-        // อัพเดทรหัส PIN ในโมดัล
-        const activePin = document.getElementById('active-pin-code');
-        if (activePin) {
-            pinCode.textContent = activePin.textContent;
-        }
-        
-        // แสดงโมดัล
-        pinModal.style.display = 'flex';
-    }
-}
-
-/**
- * ปิด Modal
- */
-function closeModal() {
-    const pinModal = document.getElementById('pinModal');
-    
-    if (pinModal) {
-        pinModal.style.display = 'none';
-    }
-}
-
-/**
- * สร้าง PIN ใหม่ และปิด Modal
- */
-function generateNewPin() {
-    generatePin();
-    closeModal();
-}
-
-/**
- * เพิ่มอิเวนต์คลิกที่รายการนักเรียน
- */
-function addStudentItemEvents() {
-    const studentItems = document.querySelectorAll('.student-item');
-    
-    studentItems.forEach(item => {
-        item.addEventListener('click', function() {
-            const studentName = this.querySelector('.student-name').textContent;
-            const studentStatus = this.querySelector('.student-status').textContent;
-            
-            // แสดงสถานะการเข้าแถวของนักเรียน
-            showAlert(`${studentName} - สถานะ: ${studentStatus}`, 'info');
-        });
-    });
-}
-
-/**
- * สแกน QR Code
- */
-function scanQRCode() {
-    // ในระบบจริงจะมีการเรียกใช้ API สำหรับสแกน QR Code
-    showAlert('กำลังเปิดกล้องเพื่อสแกน QR Code...', 'info');
-    
-    // สมมติว่ามีการเรียกใช้ API สำหรับเปิดกล้อง
-    // openCamera();
-}
-
-/**
- * ตรวจสอบการเชื่อมต่อ
- */
-function checkConnection() {
-    if (navigator.onLine) {
-        console.log('ระบบออนไลน์ - เชื่อมต่อกับเซิร์ฟเวอร์แล้ว');
-    } else {
-        showAlert('ไม่มีการเชื่อมต่ออินเทอร์เน็ต - ระบบจะทำงานในโหมดออฟไลน์', 'warning');
-    }
-    
-    // เพิ่มการฟังเหตุการณ์เมื่อมีการเชื่อมต่อ/ไม่มีการเชื่อมต่อ
-    window.addEventListener('online', function() {
-        showAlert('เชื่อมต่ออินเทอร์เน็ตแล้ว - ระบบกำลังซิงค์ข้อมูล', 'success');
+function showTab(tabName) {
+    // ซ่อนทุกแท็บ
+    const tabContents = document.querySelectorAll('.tab-content');
+    tabContents.forEach(tab => {
+        tab.classList.remove('active');
     });
     
-    window.addEventListener('offline', function() {
-        showAlert('ขาดการเชื่อมต่ออินเทอร์เน็ต - ระบบจะทำงานในโหมดออฟไลน์', 'warning');
-    });
-}
-
-/**
- * ตรวจสอบเวลาเพื่อเปลี่ยนโหมดมืด/สว่าง
- */
-function checkDarkModeTime() {
-    const now = new Date();
-    const hour = now.getHours();
-    
-    // เปลี่ยนเป็นโหมดมืดหลัง 18:00 และก่อน 06:00
-    if ((hour >= 18 || hour < 6) && !isDarkMode) {
-        enableDarkMode();
-    } else if (hour >= 6 && hour < 18 && isDarkMode) {
-        disableDarkMode();
-    }
-}
-
-/**
- * เปิดใช้งานโหมดมืด
- */
-function enableDarkMode() {
-    document.body.classList.add('dark-mode');
-    isDarkMode = true;
-}
-
-/**
- * ปิดใช้งานโหมดมืด
- */
-function disableDarkMode() {
-    document.body.classList.remove('dark-mode');
-    isDarkMode = false;
-}
-
-/**
- * เปิดโมดัลการแจ้งเตือน
- */
-function openNotificationModal() {
-    const modal = document.getElementById('notificationModal');
-    if (modal) {
-        modal.style.display = 'flex';
-    }
-}
-
-/**
- * ดูการแจ้งเตือนทั้งหมด
- */
-function viewAllNotifications() {
-    // ในระบบจริงจะนำทางไปยังหน้าการแจ้งเตือนทั้งหมด
-    window.location.href = 'notifications.php';
-}
-
-/**
- * เปิดโมดัลแจ้งเตือนผู้ปกครอง
- */
-function openAlertParentsModal() {
-    const modal = document.getElementById('alertParentsModal');
-    if (modal) {
-        modal.style.display = 'flex';
-    }
-}
-
-/**
- * ส่งการแจ้งเตือนไปยังผู้ปกครอง
- */
-function sendParentNotification() {
-    // ในระบบจริงจะส่งข้อมูลไปยัง server
-    showAlert('ส่งข้อความแจ้งเตือนไปยังผู้ปกครองเรียบร้อยแล้ว', 'success');
-    closeModal('alertParentsModal');
-}
-
-// เพิ่มอีเวนต์ให้กับอไอคอนการแจ้งเตือนและบัญชี
-document.addEventListener('DOMContentLoaded', function() {
-    const notificationIcon = document.getElementById('notification-icon');
-    if (notificationIcon) {
-        notificationIcon.addEventListener('click', openNotificationModal);
+    // แสดงแท็บที่เลือก
+    const selectedTab = document.getElementById(`${tabName}-tab`);
+    if (selectedTab) {
+        selectedTab.classList.add('active');
     }
     
-    // เพิ่มตัวอย่างการแจ้งเตือนและเมาส์โฮเวอร์ให้กับรายการแจ้งเตือน
-    const notificationItems = document.querySelectorAll('.notification-item');
-    notificationItems.forEach(item => {
-        item.addEventListener('click', function() {
-            // ในระบบจริงจะนำทางไปยังรายละเอียดการแจ้งเตือน
-            const title = this.querySelector('.notification-title').textContent;
-            showAlert(`เปิดการแจ้งเตือน: ${title}`, 'info');
-        });
+    // ปรับปุ่มแท็บ
+    const tabButtons = document.querySelectorAll('.tab-btn');
+    tabButtons.forEach(button => {
+        button.classList.remove('active');
     });
-});
+    
+    // เพิ่มคลาส active ให้กับปุ่มที่เลือก
+    const selectedButton = document.querySelector(`.tab-btn[onclick="showTab('${tabName}')"]`);
+    if (selectedButton) {
+        selectedButton.classList.add('active');
+    }
+}
 
 /**
- * ฟังก์ชันแสดงข้อความแจ้งเตือน (อิงตาม main.js)
+ * ดูรายละเอียดนักเรียน
+ * @param {number} studentId - ID ของนักเรียน
+ */
+function viewStudentDetail(studentId) {
+    window.location.href = `student-detail.php?id=${studentId}&class_id=${getCurrentClassId()}`;
+}
+
+/**
+ * แจ้งเตือนผู้ปกครอง
+ * @param {number} studentId - ID ของนักเรียน
+ */
+function notifyParent(studentId) {
+    // ในระบบจริงจะมีการนำทางไปยังหน้าส่งการแจ้งเตือนหรือแสดง Modal
+    showAlert('กำลังส่งการแจ้งเตือนไปยังผู้ปกครอง...', 'info');
+    
+    // จำลองการส่งข้อความ
+    setTimeout(() => {
+        showAlert('ส่งการแจ้งเตือนไปยังผู้ปกครองเรียบร้อยแล้ว', 'success');
+    }, 2000);
+}
+
+/**
+ * ดึง ID ของห้องเรียนปัจจุบัน
+ * @returns {string} ID ของห้องเรียน
+ */
+function getCurrentClassId() {
+    const classSelect = document.getElementById('class-select');
+    return classSelect ? classSelect.value : '1';
+}
+
+/**
+ * แสดงข้อความแจ้งเตือน (อิงจาก main.js)
  * @param {string} message - ข้อความ
  * @param {string} type - ประเภท (success, info, warning, error)
  */
@@ -338,4 +233,116 @@ function showAlert(message, type = 'info') {
     
     // ถ้าไม่มีฟังก์ชันใน main.js ให้สร้าง alert ง่ายๆ
     alert(`${type.toUpperCase()}: ${message}`);
+}
+
+/**
+ * อัพเดทข้อมูลการเช็คชื่อในเรียลไทม์
+ * สามารถใช้เทคโนโลยีเช่น WebSocket หรือ AJAX Polling
+ */
+function startRealtimeUpdates() {
+    // ในระบบจริงจะใช้ WebSocket หรือ Server-Sent Events
+    // แต่ตัวอย่างนี้จะใช้ setInterval แทน
+    
+    setInterval(() => {
+        // เรียกข้อมูลการเช็คชื่อล่าสุดจาก server
+        fetchLatestAttendanceData();
+    }, 30000); // ทุก 30 วินาที
+}
+
+/**
+ * ดึงข้อมูลการเช็คชื่อล่าสุดจาก server
+ */
+function fetchLatestAttendanceData() {
+    // ในระบบจริงจะใช้ AJAX เพื่อดึงข้อมูลจาก server
+    // ตัวอย่าง:
+    /*
+    fetch(`api/attendance.php?class_id=${getCurrentClassId()}`)
+        .then(response => response.json())
+        .then(data => {
+            updateAttendanceStats(data.stats);
+            updateStudentList(data.students);
+        })
+        .catch(error => {
+            console.error('เกิดข้อผิดพลาดในการดึงข้อมูล:', error);
+        });
+    */
+    
+    // ในตัวอย่างนี้ไม่ได้ทำอะไร
+    console.log('Fetching latest attendance data...');
+}
+
+/**
+ * อัพเดทสถิติการเช็คชื่อ
+ * @param {Object} stats - ข้อมูลสถิติการเช็คชื่อ
+ */
+function updateAttendanceStats(stats) {
+    // อัพเดทจำนวนนักเรียนที่มาเรียน
+    const presentCount = document.querySelector('.stat-card.present .value');
+    if (presentCount) {
+        presentCount.textContent = stats.present_count;
+    }
+    
+    // อัพเดทจำนวนนักเรียนที่ขาดเรียน
+    const absentCount = document.querySelector('.stat-card.absent .value');
+    if (absentCount) {
+        absentCount.textContent = stats.absent_count;
+    }
+    
+    // อัพเดทจำนวนนักเรียนที่ยังไม่ได้เช็ค
+    const notCheckedCount = document.querySelector('.stat-card.not-checked .value');
+    if (notCheckedCount) {
+        notCheckedCount.textContent = stats.not_checked;
+    }
+}
+
+/**
+ * อัพเดทรายการเช็คชื่อนักเรียน
+ * @param {Array} students - ข้อมูลการเช็คชื่อนักเรียน
+ */
+function updateStudentList(students) {
+    const studentList = document.querySelector('#attendance-tab .student-list');
+    if (!studentList) return;
+    
+    // ลบข้อความว่าง (ถ้ามี)
+    const emptyState = studentList.querySelector('.empty-state');
+    if (emptyState && students.length > 0) {
+        emptyState.remove();
+    }
+    
+    // อัพเดทหรือสร้างรายการใหม่
+    if (students.length > 0) {
+        // ล้างรายการเดิม
+        studentList.innerHTML = '';
+        
+        // สร้างรายการใหม่
+        students.forEach(student => {
+            const studentRow = document.createElement('div');
+            studentRow.className = 'student-row';
+            
+            studentRow.innerHTML = `
+                <div class="student-info">
+                    <span class="student-number">${student.number}</span>
+                    <span class="student-name">${student.name}</span>
+                </div>
+                <div class="student-status ${student.status}">
+                    ${student.status === 'present' 
+                      ? '<span class="material-icons">check_circle</span> มา' 
+                      : '<span class="material-icons">cancel</span> ขาด'}
+                </div>
+                <div class="attendance-time">${student.time}</div>
+            `;
+            
+            studentList.appendChild(studentRow);
+        });
+    } else if (!emptyState) {
+        // สร้างข้อความว่างถ้าไม่มีข้อมูล
+        const newEmptyState = document.createElement('div');
+        newEmptyState.className = 'empty-state';
+        newEmptyState.innerHTML = `
+            <span class="material-icons">schedule</span>
+            <p>ยังไม่มีการเช็คชื่อในวันนี้</p>
+        `;
+        
+        studentList.appendChild(newEmptyState);
+    }
 }
