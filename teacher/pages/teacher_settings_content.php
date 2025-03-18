@@ -14,11 +14,45 @@
         <div class="profile-avatar"><?php echo $teacher_info['avatar']; ?></div>
         <div class="profile-info">
             <div class="profile-name"><?php echo $teacher_info['name']; ?></div>
-            <div class="profile-role"><?php echo $teacher_info['role']; ?> <?php echo $teacher_info['class']; ?></div>
+            <div class="profile-role"><?php echo $teacher_info['role']; ?> <?php echo $teacher_classes[0]['name']; ?></div>
         </div>
-        <button class="profile-edit" onclick="editProfile()">
-            <span class="material-icons">edit</span> แก้ไข
-        </button>
+        <button class="profile-edit" onclick="showSettingModal('profile')">
+    <span class="material-icons">edit</span> แก้ไข
+</button>
+    </div>
+
+    <!-- รายการห้องเรียนที่รับผิดชอบ -->
+    <div class="settings-section">
+        <div class="section-header">
+            <span class="material-icons">groups</span> ชั้นเรียนที่รับผิดชอบ
+        </div>
+        <div class="class-list">
+            <?php foreach ($teacher_classes as $class): ?>
+            <div class="class-card">
+                <div class="class-info">
+                    <h3><?php echo $class['name']; ?></h3>
+                    <p>นักเรียน <?php echo $class['total_students']; ?> คน</p>
+                    <p>อัตราการเข้าแถว <?php echo $class['attendance_rate']; ?>%</p>
+                </div>
+                <div class="class-status">
+                    <?php if ($class['is_primary']): ?>
+                    <span class="primary-badge">หลัก</span>
+                    <?php endif; ?>
+                    <?php if ($class['at_risk_count'] > 0): ?>
+                    <span class="at-risk-badge"><?php echo $class['at_risk_count']; ?> คนเสี่ยงตก</span>
+                    <?php endif; ?>
+                </div>
+                <div class="class-actions">
+                    <a href="check-attendance.php?class_id=<?php echo $class['id']; ?>" class="class-action-btn">
+                        <span class="material-icons">how_to_reg</span> เช็คชื่อ
+                    </a>
+                    <a href="reports.php?class_id=<?php echo $class['id']; ?>" class="class-action-btn">
+                        <span class="material-icons">assessment</span> รายงาน
+                    </a>
+                </div>
+            </div>
+            <?php endforeach; ?>
+        </div>
     </div>
 
     <!-- การตั้งค่าบัญชี -->
@@ -27,7 +61,7 @@
             <span class="material-icons">account_circle</span> บัญชีและโปรไฟล์
         </div>
         <ul class="settings-list">
-            <li class="settings-item" onclick="navigateTo('edit-profile.php')">
+            <li class="settings-item" onclick="navigateTo('settings.php?type=profile')">
                 <div class="settings-icon icon-general">
                     <span class="material-icons">person</span>
                 </div>
@@ -39,7 +73,7 @@
                     <span class="material-icons">chevron_right</span>
                 </div>
             </li>
-            <li class="settings-item" onclick="navigateTo('change-password.php')">
+            <li class="settings-item" onclick="navigateTo('settings.php?type=password')">
                 <div class="settings-icon icon-security">
                     <span class="material-icons">vpn_key</span>
                 </div>
@@ -51,7 +85,7 @@
                     <span class="material-icons">chevron_right</span>
                 </div>
             </li>
-            <li class="settings-item" onclick="navigateTo('class-info.php')">
+            <li class="settings-item" onclick="navigateTo('settings.php?type=class')">
                 <div class="settings-icon icon-attendance">
                     <span class="material-icons">class</span>
                 </div>
@@ -72,7 +106,7 @@
             <span class="material-icons">how_to_reg</span> การตั้งค่าการเช็คชื่อ
         </div>
         <ul class="settings-list">
-            <li class="settings-item" onclick="navigateTo('pin-settings.php')">
+            <li class="settings-item" onclick="navigateTo('settings.php?type=pin')">
                 <div class="settings-icon icon-attendance">
                     <span class="material-icons">pin</span>
                 </div>
@@ -84,7 +118,7 @@
                     <span class="material-icons">chevron_right</span>
                 </div>
             </li>
-            <li class="settings-item" onclick="navigateTo('qr-settings.php')">
+            <li class="settings-item" onclick="navigateTo('settings.php?type=qr')">
                 <div class="settings-icon icon-attendance">
                     <span class="material-icons">qr_code</span>
                 </div>
@@ -96,7 +130,7 @@
                     <span class="material-icons">chevron_right</span>
                 </div>
             </li>
-            <li class="settings-item" onclick="navigateTo('gps-settings.php')">
+            <li class="settings-item" onclick="navigateTo('settings.php?type=gps')">
                 <div class="settings-icon icon-attendance">
                     <span class="material-icons">gps_fixed</span>
                 </div>
@@ -108,7 +142,7 @@
                     <span class="material-icons">chevron_right</span>
                 </div>
             </li>
-            <li class="settings-item" onclick="navigateTo('time-settings.php')">
+            <li class="settings-item" onclick="navigateTo('settings.php?type=time')">
                 <div class="settings-icon icon-attendance">
                     <span class="material-icons">schedule</span>
                 </div>
@@ -139,7 +173,7 @@
                 </div>
                 <div class="settings-action">
                     <label class="toggle-switch">
-                        <input type="checkbox" checked onchange="toggleNotification('attendance_present')">
+                        <input type="checkbox" <?php echo $notification_settings['student_present'] ? 'checked' : ''; ?> onchange="toggleNotification('student_present')">
                         <span class="toggle-slider"></span>
                     </label>
                 </div>
@@ -154,7 +188,7 @@
                 </div>
                 <div class="settings-action">
                     <label class="toggle-switch">
-                        <input type="checkbox" checked onchange="toggleNotification('attendance_absent')">
+                        <input type="checkbox" <?php echo $notification_settings['student_absent'] ? 'checked' : ''; ?> onchange="toggleNotification('student_absent')">
                         <span class="toggle-slider"></span>
                     </label>
                 </div>
@@ -169,7 +203,7 @@
                 </div>
                 <div class="settings-action">
                     <label class="toggle-switch">
-                        <input type="checkbox" checked onchange="toggleNotification('school_announcement')">
+                        <input type="checkbox" <?php echo $notification_settings['school_announcement'] ? 'checked' : ''; ?> onchange="toggleNotification('school_announcement')">
                         <span class="toggle-slider"></span>
                     </label>
                 </div>
@@ -184,7 +218,22 @@
                 </div>
                 <div class="settings-action">
                     <label class="toggle-switch">
-                        <input type="checkbox" checked onchange="toggleNotification('parent_message')">
+                        <input type="checkbox" <?php echo $notification_settings['parent_message'] ? 'checked' : ''; ?> onchange="toggleNotification('parent_message')">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+            </li>
+            <li class="settings-item">
+                <div class="settings-icon icon-notification">
+                    <span class="material-icons">warning</span>
+                </div>
+                <div class="settings-content">
+                    <div class="settings-title">แจ้งเตือนนักเรียนเสี่ยงตกกิจกรรม</div>
+                    <div class="settings-description">แจ้งเตือนเมื่อนักเรียนมีความเสี่ยงตกกิจกรรม</div>
+                </div>
+                <div class="settings-action">
+                    <label class="toggle-switch">
+                        <input type="checkbox" <?php echo $notification_settings['at_risk_warning'] ? 'checked' : ''; ?> onchange="toggleNotification('at_risk_warning')">
                         <span class="toggle-slider"></span>
                     </label>
                 </div>
@@ -198,7 +247,7 @@
             <span class="material-icons">settings</span> การตั้งค่าทั่วไป
         </div>
         <ul class="settings-list">
-            <li class="settings-item" onclick="navigateTo('appearance-settings.php')">
+            <li class="settings-item" onclick="navigateTo('settings.php?type=appearance')">
                 <div class="settings-icon icon-appearance">
                     <span class="material-icons">palette</span>
                 </div>
@@ -210,7 +259,7 @@
                     <span class="material-icons">chevron_right</span>
                 </div>
             </li>
-            <li class="settings-item" onclick="navigateTo('language-settings.php')">
+            <li class="settings-item" onclick="navigateTo('settings.php?type=language')">
                 <div class="settings-icon icon-general">
                     <span class="material-icons">language</span>
                 </div>
@@ -222,7 +271,7 @@
                     <span class="material-icons">chevron_right</span>
                 </div>
             </li>
-            <li class="settings-item" onclick="navigateTo('data-settings.php')">
+            <li class="settings-item" onclick="navigateTo('settings.php?type=data')">
                 <div class="settings-icon icon-data">
                     <span class="material-icons">storage</span>
                 </div>
@@ -234,7 +283,7 @@
                     <span class="material-icons">chevron_right</span>
                 </div>
             </li>
-            <li class="settings-item" onclick="navigateTo('privacy-settings.php')">
+            <li class="settings-item" onclick="navigateTo('settings.php?type=privacy')">
                 <div class="settings-icon icon-security">
                     <span class="material-icons">security</span>
                 </div>
@@ -301,8 +350,8 @@
 
     <!-- ข้อมูลเวอร์ชัน -->
     <div class="version-info">
-        <p>Teacher-Prasat v1.0.0</p>
-        <p>© 2025 วิทยาลัยการอาชีพปราสาท</p>
+        <p><?php echo $app_version['version']; ?></p>
+        <p><?php echo $app_version['copyright']; ?></p>
     </div>
 </div>
 
@@ -317,3 +366,13 @@
         </div>
     </div>
 </div>
+
+<!-- ปรับเป็นแสดงหน้าตั้งค่าเฉพาะทางเมื่อกดเท่านั้น -->
+<?php if ($setting_type !== 'main' && isset($_GET['show_modal']) && $_GET['show_modal'] === 'true'): ?>
+<script>
+    // เมื่อหน้าโหลดเสร็จ ให้แสดง modal ตั้งค่าเฉพาะทาง เฉพาะเมื่อมีการระบุ parameter
+    document.addEventListener('DOMContentLoaded', function() {
+        showSettingModal('<?php echo $setting_type; ?>');
+    });
+</script>
+<?php endif; ?>

@@ -1,0 +1,540 @@
+/* ตั้งค่าสำหรับหน้าตั้งค่า */
+
+/* รายการห้องเรียน */
+.class-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+.class-card {
+    background-color: white;
+    border-radius: 10px;
+    padding: 15px;
+    box-shadow: var(--card-shadow);
+    border-left: 4px solid var(--primary-color);
+    transition: transform 0.3s;
+    overflow: hidden;
+}
+
+.class-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.class-info h3 {
+    font-size: 18px;
+    color: var(--primary-color);
+    margin-bottom: 5px;
+}
+
+.class-info p {
+    font-size: 14px;
+    color: var(--text-dark);
+    margin-bottom: 5px;
+}
+
+.class-status {
+    display: flex;
+    gap: 10px;
+    margin: 10px 0;
+}
+
+.primary-badge {
+    background-color: var(--primary-color);
+    color: white;
+    padding: 4px 10px;
+    border-radius: 15px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.at-risk-badge {
+    background-color: var(--danger-color-light);
+    color: var(--danger-color);
+    padding: 4px 10px;
+    border-radius: 15px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.class-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.class-action-btn {
+    background-color: #f5f5f5;
+    color: var(--text-dark);
+    padding: 8px 12px;
+    border-radius: 5px;
+    font-size: 14px;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    transition: all 0.3s;
+}
+
+.class-action-btn:hover {
+    background-color: #e0e0e0;
+    color: var(--primary-color);
+}
+
+.class-action-btn .material-icons {
+    font-size: 18px;
+    margin-right: 5px;
+}
+
+/* การตั้งค่าส่วนการแสดงผล */
+.settings-section {
+    background-color: white;
+    border-radius: 10px;
+    padding: 15px 20px;
+    margin-bottom: 20px;
+    box-shadow: var(--card-shadow);
+}
+
+.section-header {
+    padding: 10px 0;
+    margin-bottom: 10px;
+    font-weight: bold;
+    font-size: 16px;
+    color: var(--primary-color);
+    display: flex;
+    align-items: center;
+    border-bottom: 1px solid #eee;
+}
+
+.section-header .material-icons {
+    margin-right: 10px;
+}
+
+.settings-list {
+    list-style: none;
+}
+
+.settings-item {
+    padding: 15px 0;
+    display: flex;
+    align-items: center;
+    border-bottom: 1px solid #eee;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.settings-item:last-child {
+    border-bottom: none;
+}
+
+.settings-item:hover {
+    background-color: #f9f9f9;
+}
+
+.settings-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 15px;
+}
+
+.icon-general {
+    background-color: var(--primary-color-light);
+    color: var(--primary-color);
+}
+
+.icon-attendance {
+    background-color: var(--secondary-color-light);
+    color: var(--secondary-color);
+}
+
+.icon-notification {
+    background-color: var(--warning-color-light);
+    color: var(--warning-color);
+}
+
+.icon-security {
+    background-color: #f3e5f5;
+    color: #9c27b0;
+}
+
+.icon-appearance {
+    background-color: #e8eaf6;
+    color: #3f51b5;
+}
+
+.icon-data {
+    background-color: #e0f7fa;
+    color: #00bcd4;
+}
+
+.icon-about {
+    background-color: #fce4ec;
+    color: #e91e63;
+}
+
+.icon-support {
+    background-color: #f1f8e9;
+    color: #8bc34a;
+}
+
+.settings-content {
+    flex: 1;
+}
+
+.settings-title {
+    font-weight: 500;
+    margin-bottom: 3px;
+}
+
+.settings-description {
+    font-size: 12px;
+    color: var(--text-light);
+}
+
+.settings-action {
+    display: flex;
+    align-items: center;
+}
+
+.settings-item .material-icons {
+    color: #ccc;
+}
+
+/* Toggle Switch */
+.toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 40px;
+    height: 20px;
+}
+
+.toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: .4s;
+    border-radius: 20px;
+}
+
+.toggle-slider:before {
+    position: absolute;
+    content: "";
+    height: 16px;
+    width: 16px;
+    left: 2px;
+    bottom: 2px;
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
+}
+
+input:checked + .toggle-slider {
+    background-color: var(--primary-color);
+}
+
+input:checked + .toggle-slider:before {
+    transform: translateX(20px);
+}
+
+/* ปุ่มออกจากระบบ */
+.logout-button {
+    width: 100%;
+    padding: 15px;
+    background-color: var(--danger-color-light);
+    color: var(--danger-color);
+    border: none;
+    border-radius: 10px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 20px;
+    transition: background-color 0.3s;
+}
+
+.logout-button:hover {
+    background-color: #ffcdd2;
+}
+
+.logout-button .material-icons {
+    margin-right: 10px;
+}
+
+/* ข้อมูลเวอร์ชัน */
+.version-info {
+    text-align: center;
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 20px;
+    margin-bottom: 40px;
+}
+
+/* Modal การตั้งค่า */
+.settings-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 2000;
+    align-items: center;
+    justify-content: center;
+}
+
+.settings-modal.active {
+    display: flex;
+}
+
+.settings-modal-content {
+    background-color: white;
+    border-radius: 10px;
+    padding: 25px;
+    width: 90%;
+    max-width: 500px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+}
+
+.settings-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #eee;
+}
+
+.settings-modal-title {
+    font-size: 18px;
+    font-weight: bold;
+    color: var(--primary-color);
+}
+
+.settings-modal-close {
+    background: none;
+    border: none;
+    font-size: 24px;
+    color: #999;
+    cursor: pointer;
+}
+
+.settings-form {
+    margin-bottom: 20px;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+}
+
+.form-control {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 16px;
+    font-family: 'Prompt', sans-serif;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.2);
+}
+
+.form-select {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 16px;
+    font-family: 'Prompt', sans-serif;
+    background-color: white;
+}
+
+.form-text {
+    font-size: 12px;
+    color: var(--text-light);
+    margin-top: 5px;
+}
+
+.settings-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 30px;
+}
+
+.settings-button {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.settings-button.save {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.settings-button.save:hover {
+    background-color: var(--primary-color-dark);
+}
+
+.settings-button.cancel {
+    background-color: #f5f5f5;
+    color: var(--text-dark);
+}
+
+.settings-button.cancel:hover {
+    background-color: #e0e0e0;
+}
+
+/* การจัดกลุ่มตัวเลือก */
+.option-group {
+    margin-bottom: 20px;
+}
+
+.option-group-title {
+    font-weight: 500;
+    margin-bottom: 10px;
+}
+
+.radio-group {
+    display: flex;
+    gap: 20px;
+}
+
+.radio-item {
+    display: flex;
+    align-items: center;
+}
+
+.radio-item input {
+    margin-right: 8px;
+}
+
+/* รูปโปรไฟล์ */
+.profile-image-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.profile-image-preview {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    background-color: #e3f2fd;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 10px;
+    position: relative;
+    overflow: hidden;
+}
+
+.profile-image-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.profile-image-initial {
+    font-size: 48px;
+    color: var(--primary-color);
+}
+
+.profile-image-upload {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    background-color: var(--primary-color);
+    color: white;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.profile-image-upload input {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.profile-image-text {
+    font-size: 14px;
+    color: var(--text-light);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .settings-modal-content {
+        width: 95%;
+        padding: 20px;
+    }
+    
+    .radio-group {
+        flex-direction: column;
+        gap: 10px;
+    }
+}
+
+@media (max-width: 480px) {
+    .settings-item {
+        flex-wrap: wrap;
+    }
+    
+    .settings-content {
+        width: 100%;
+        margin-top: 10px;
+        margin-left: 55px;
+    }
+    
+    .settings-action {
+        margin-top: 10px;
+        margin-left: auto;
+    }
+    
+    .class-actions {
+        flex-direction: column;
+    }
+    
+    .class-action-btn {
+        width: 100%;
+    }
+}
