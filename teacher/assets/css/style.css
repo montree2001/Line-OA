@@ -1,0 +1,1159 @@
+/* ตั้งค่าพื้นฐาน */
+:root {
+    --primary-color: #1976d2;
+    --primary-color-dark: #0d47a1;
+    --primary-color-light: #e3f2fd;
+    --secondary-color: #4caf50;
+    --secondary-color-light: #e8f5e9;
+    --warning-color: #ff9800;
+    --warning-color-light: #fff8e1;
+    --danger-color: #f44336;
+    --danger-color-light: #ffebee;
+    --success-color: #4caf50;
+    --success-color-light: #e8f5e9;
+    --text-dark: #333;
+    --text-light: #666;
+    --text-muted: #78909c;
+    --bg-light: #f5f5f5;
+    --border-color: #e0e0e0;
+    --card-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    --transition-speed: 0.3s;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Prompt', sans-serif;
+}
+
+html, body {
+    height: 100%;
+    width: 100%;
+    overflow-x: hidden;
+}
+
+body {
+    background-color: var(--bg-light);
+    color: var(--text-dark);
+    font-size: 16px;
+    line-height: 1.5;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+}
+
+/* ส่วนหัว */
+.header {
+    background-color: var(--primary-color);
+    color: white;
+    padding: 15px 20px;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.app-name {
+    font-size: 20px;
+    font-weight: 600;
+}
+
+.header-icons {
+    display: flex;
+    gap: 15px;
+}
+
+.header-icons .material-icons {
+    cursor: pointer;
+}
+
+.header-icon {
+    cursor: pointer;
+}
+
+/* เนื้อหาหลัก */
+.main-content {
+    flex: 1;
+    padding: 20px;
+    width: 100%;
+    margin-top: 60px;
+    margin-bottom: 60px;
+}
+
+.container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 15px;
+}
+
+/* ข้อมูลชั้นเรียน */
+.class-info, .class-card {
+    background-color: var(--primary-color-light);
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 20px;
+    box-shadow: var(--card-shadow);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.class-details h2, .class-card h2 {
+    font-size: 20px;
+    color: var(--primary-color);
+    margin-bottom: 5px;
+}
+
+.class-details p, .class-card p {
+    font-size: 14px;
+    color: var(--primary-color);
+    margin-bottom: 5px;
+}
+
+.date-info, .date-select {
+    text-align: right;
+    font-size: 14px;
+    color: var(--primary-color);
+}
+
+.date-select select {
+    padding: 5px 10px;
+    border: 1px solid #bbdefb;
+    border-radius: 5px;
+    background-color: white;
+    font-size: 14px;
+    margin-left: 10px;
+}
+
+/* สรุปการเข้าแถว */
+.stats-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.stat-card {
+    border-radius: 10px;
+    padding: 15px;
+    text-align: center;
+    box-shadow: var(--card-shadow);
+    background-color: white;
+}
+
+.stat-card.blue {
+    border-top: 3px solid var(--primary-color);
+}
+
+.stat-card.green {
+    border-top: 3px solid var(--success-color);
+}
+
+.stat-card.red {
+    border-top: 3px solid var(--danger-color);
+}
+
+.stat-card.amber {
+    border-top: 3px solid var(--warning-color);
+}
+
+.stat-card.total {
+    background-color: var(--primary-color-light);
+    color: var(--primary-color);
+}
+
+.stat-card.present {
+    background-color: var(--secondary-color-light);
+    color: var(--secondary-color);
+}
+
+.stat-card.absent {
+    background-color: var(--danger-color-light);
+    color: var(--danger-color);
+}
+
+.stat-value, .stat-card h3, .value {
+    font-size: 24px;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.stat-card.blue .stat-value {
+    color: var(--primary-color);
+}
+
+.stat-card.green .stat-value {
+    color: var(--secondary-color);
+}
+
+.stat-card.red .stat-value {
+    color: var(--danger-color);
+}
+
+.stat-card.amber .stat-value {
+    color: var(--warning-color);
+}
+
+.stat-label, .stat-card p, .label {
+    font-size: 14px;
+    color: inherit;
+}
+
+/* ปุ่มสร้าง PIN และสแกน QR */
+.create-pin-button, .scan-qr-button, .check-attendance-button, .reports-button {
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    padding: 15px;
+    font-size: 16px;
+    font-weight: bold;
+    width: 100%;
+    margin-bottom: 20px;
+    cursor: pointer;
+    box-shadow: var(--card-shadow);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    transition: background-color 0.3s;
+}
+
+.create-pin-button:hover, .check-attendance-button:hover {
+    background-color: var(--primary-color-dark);
+}
+
+.scan-qr-button {
+    background-color: var(--warning-color);
+}
+
+.scan-qr-button:hover {
+    background-color: #f57c00;
+}
+
+.reports-button {
+    background-color: var(--secondary-color);
+}
+
+.reports-button:hover {
+    background-color: #388e3c;
+}
+
+.create-pin-button .material-icons, 
+.scan-qr-button .material-icons, 
+.check-attendance-button .material-icons,
+.reports-button .material-icons {
+    margin-right: 10px;
+}
+
+/* แสดง PIN ที่ใช้งานอยู่ */
+.active-pin-card {
+    background-color: #f0f0f0;
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 20px;
+    text-align: center;
+    box-shadow: var(--card-shadow);
+}
+
+.active-pin-card h3 {
+    font-size: 16px;
+    color: var(--primary-color);
+    margin-bottom: 10px;
+}
+
+.active-pin {
+    font-size: 32px;
+    font-weight: bold;
+    color: var(--primary-color);
+    letter-spacing: 5px;
+}
+
+.pin-expire {
+    font-size: 12px;
+    color: var(--text-light);
+    margin-top: 10px;
+}
+
+/* รายชื่อนักเรียน */
+.student-list {
+    background-color: white;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    box-shadow: var(--card-shadow);
+    overflow: hidden;
+}
+
+.student-list-header, .list-header {
+    background-color: var(--primary-color);
+    color: white;
+    padding: 10px 15px;
+    font-weight: bold;
+    display: grid;
+    grid-template-columns: 1fr auto;
+}
+
+.list-header {
+    grid-template-columns: 50px 1fr auto;
+}
+
+.student-item {
+    padding: 10px 15px;
+    border-bottom: 1px solid var(--border-color);
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+}
+
+.list-header + .student-item {
+    grid-template-columns: 50px 1fr auto;
+}
+
+.student-item:last-child {
+    border-bottom: none;
+}
+
+.student-name {
+    flex: 3;
+}
+
+.student-status {
+    flex: 1;
+    text-align: center;
+    border-radius: 15px;
+    padding: 3px 10px;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.student-status.present {
+    background-color: var(--secondary-color-light);
+    color: var(--secondary-color);
+}
+
+.student-status.absent {
+    background-color: var(--danger-color-light);
+    color: var(--danger-color);
+}
+
+.student-number {
+    text-align: center;
+    font-weight: bold;
+    color: var(--text-light);
+}
+
+.attendance-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+}
+
+.action-button {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.action-button.present {
+    background-color: var(--secondary-color-light);
+    color: var(--secondary-color);
+}
+
+.action-button.present:hover, .action-button.present.active {
+    background-color: var(--secondary-color);
+    color: white;
+}
+
+.action-button.absent {
+    background-color: var(--danger-color-light);
+    color: var(--danger-color);
+}
+
+.action-button.absent:hover, .action-button.absent.active {
+    background-color: var(--danger-color);
+    color: white;
+}
+
+.student-list-footer {
+    padding: 10px 15px;
+    text-align: center;
+    border-top: 1px solid var(--border-color);
+}
+
+.view-all-btn {
+    display: inline-flex;
+    align-items: center;
+    color: var(--primary-color);
+    text-decoration: none;
+    font-weight: 500;
+    transition: color 0.3s;
+}
+
+.view-all-btn:hover {
+    color: var(--primary-color-dark);
+}
+
+.view-all-btn .material-icons {
+    font-size: 18px;
+    margin-right: 5px;
+}
+
+/* แถบควบคุม */
+.control-buttons {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.control-button {
+    flex: 1;
+    padding: 12px;
+    border: none;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: var(--card-shadow);
+    transition: background-color 0.3s;
+}
+
+.control-button .material-icons {
+    margin-right: 8px;
+}
+
+.control-button.blue {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.control-button.blue:hover {
+    background-color: var(--primary-color-dark);
+}
+
+.control-button.green {
+    background-color: var(--secondary-color);
+    color: white;
+}
+
+.control-button.green:hover {
+    background-color: #388e3c;
+}
+
+.control-button.orange {
+    background-color: var(--warning-color);
+    color: white;
+}
+
+.control-button.orange:hover {
+    background-color: #f57c00;
+}
+
+/* ส่วนค้นหา */
+.search-bar {
+    background-color: white;
+    display: flex;
+    padding: 10px;
+    border-radius: 10px;
+    box-shadow: var(--card-shadow);
+    margin-bottom: 20px;
+    align-items: center;
+}
+
+.search-input {
+    flex: 1;
+    border: none;
+    background: none;
+    outline: none;
+    font-size: 16px;
+}
+
+.search-icon {
+    color: var(--text-light);
+    margin-right: 5px;
+}
+
+/* แถบนำทางด้านล่าง */
+.bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    background-color: white;
+    display: flex;
+    justify-content: space-around;
+    padding: 10px 0;
+    box-shadow: 0 -2px 5px rgba(0,0,0,0.1);
+    z-index: 1000;
+}
+
+.nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    font-size: 12px;
+    color: var(--text-light);
+    text-decoration: none;
+    transition: color var(--transition-speed);
+}
+
+.nav-item.active {
+    color: var(--primary-color);
+}
+
+.nav-item:hover {
+    color: var(--primary-color);
+}
+
+.nav-icon {
+    font-size: 24px;
+    margin-bottom: 5px;
+}
+
+/* Floating Button */
+.floating-button {
+    position: fixed;
+    bottom: 80px;
+    right: 20px;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background-color: var(--secondary-color);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    border: none;
+    cursor: pointer;
+    z-index: 1000;
+    transition: transform 0.3s, background-color 0.3s;
+}
+
+.floating-button:hover {
+    transform: translateY(-5px);
+    background-color: #388e3c;
+}
+
+.floating-button .material-icons {
+    font-size: 30px;
+}
+
+/* Modal */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 2000;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal.active {
+    display: flex;
+}
+
+.modal-content {
+    background-color: white;
+    border-radius: 10px;
+    padding: 20px;
+    width: 90%;
+    max-width: 400px;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.modal-title {
+    font-size: 18px;
+    font-weight: bold;
+    margin-bottom: 20px;
+    color: var(--primary-color);
+    display: flex;
+    align-items: center;
+}
+
+.modal-title .material-icons {
+    margin-right: 10px;
+}
+
+.modal-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.modal-button {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.modal-button.confirm {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.modal-button.confirm:hover {
+    background-color: var(--primary-color-dark);
+}
+
+.modal-button.cancel {
+    background-color: #f5f5f5;
+    color: var(--text-dark);
+}
+
+.modal-button.cancel:hover {
+    background-color: #e0e0e0;
+}
+
+.modal-close {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: var(--text-light);
+}
+
+.pin-code, .pin-display {
+    font-size: 36px;
+    font-weight: bold;
+    color: var(--primary-color);
+    letter-spacing: 5px;
+    margin: 20px 0;
+    text-align: center;
+}
+
+.pin-info {
+    text-align: center;
+    color: var(--text-light);
+    margin-bottom: 15px;
+}
+
+.timer {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--danger-color);
+    margin-bottom: 15px;
+}
+
+.timer .material-icons {
+    margin-right: 5px;
+}
+
+/* แท็บเมนู */
+.tab-menu {
+    display: flex;
+    background-color: white;
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 20px;
+    box-shadow: var(--card-shadow);
+}
+
+.tab-button {
+    flex: 1;
+    padding: 12px 0;
+    text-align: center;
+    font-weight: 600;
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    transition: all 0.3s;
+}
+
+.tab-button.active {
+    color: var(--primary-color);
+    border-bottom-color: var(--primary-color);
+}
+
+/* ตาราง */
+.student-table-card, .chart-card, .control-bar, .calendar-card, .graph-card {
+    background-color: white;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: var(--card-shadow);
+}
+
+.table-header, .chart-header, .calendar-header, .graph-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.table-title, .chart-title, .control-title, .calendar-title, .graph-title {
+    font-size: 18px;
+    font-weight: bold;
+}
+
+.chart-controls {
+    display: flex;
+    gap: 10px;
+}
+
+.chart-button {
+    background-color: #f5f5f5;
+    border: none;
+    border-radius: 5px;
+    padding: 8px 12px;
+    font-size: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    transition: background-color 0.3s;
+}
+
+.chart-button:hover {
+    background-color: #e0e0e0;
+}
+
+.chart-button .material-icons {
+    font-size: 18px;
+    margin-right: 5px;
+}
+
+.student-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.student-table th {
+    background-color: #f5f5f5;
+    padding: 12px 15px;
+    text-align: left;
+    font-weight: bold;
+    color: var(--text-light);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.student-table td {
+    padding: 12px 15px;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.student-table tr:last-child td {
+    border-bottom: none;
+}
+
+.student-table tr:hover {
+    background-color: #f9f9f9;
+}
+
+.attendance-percent {
+    font-weight: bold;
+}
+
+.attendance-percent.good {
+    color: var(--success-color);
+}
+
+.attendance-percent.warning {
+    color: var(--warning-color);
+}
+
+.attendance-percent.danger {
+    color: var(--danger-color);
+}
+
+.action-buttons {
+    display: flex;
+    gap: 5px;
+}
+
+/* ข้อมูลโปรไฟล์ และการตั้งค่า */
+.profile-card {
+    background-color: white;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: var(--card-shadow);
+    display: flex;
+    align-items: center;
+    position: relative;
+}
+
+.profile-avatar {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background-color: var(--primary-color);
+    margin-right: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 24px;
+}
+
+.profile-info {
+    flex: 1;
+}
+
+.profile-name {
+    font-weight: bold;
+    font-size: 18px;
+    margin-bottom: 5px;
+}
+
+.profile-role {
+    color: var(--text-light);
+    font-size: 14px;
+}
+
+.profile-edit {
+    background-color: #f5f5f5;
+    border: none;
+    border-radius: 5px;
+    padding: 8px 12px;
+    font-size: 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    transition: background-color 0.3s;
+}
+
+.profile-edit:hover {
+    background-color: #e0e0e0;
+}
+
+.profile-edit .material-icons {
+    font-size: 16px;
+    margin-right: 5px;
+}
+
+.settings-section {
+    background-color: white;
+    border-radius: 10px;
+    padding: 15px 20px;
+    margin-bottom: 20px;
+    box-shadow: var(--card-shadow);
+}
+
+.section-header {
+    padding: 10px 0;
+    margin-bottom: 10px;
+    font-weight: bold;
+    font-size: 16px;
+    color: var(--primary-color);
+    display: flex;
+    align-items: center;
+}
+
+.section-header .material-icons {
+    margin-right: 10px;
+}
+
+.settings-list {
+    list-style: none;
+}
+
+.settings-item {
+    padding: 15px 0;
+    display: flex;
+    align-items: center;
+    border-bottom: 1px solid #eee;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.settings-item:last-child {
+    border-bottom: none;
+}
+
+.settings-item:hover {
+    background-color: #f9f9f9;
+}
+
+.settings-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 15px;
+}
+
+.icon-general {
+    background-color: var(--primary-color-light);
+    color: var(--primary-color);
+}
+
+.icon-attendance {
+    background-color: var(--secondary-color-light);
+    color: var(--secondary-color);
+}
+
+.icon-notification {
+    background-color: var(--warning-color-light);
+    color: var(--warning-color);
+}
+
+.icon-security {
+    background-color: #f3e5f5;
+    color: #9c27b0;
+}
+
+.icon-appearance {
+    background-color: #e8eaf6;
+    color: #3f51b5;
+}
+
+.icon-data {
+    background-color: #e0f7fa;
+    color: #00bcd4;
+}
+
+.icon-about {
+    background-color: #fce4ec;
+    color: #e91e63;
+}
+
+.icon-support {
+    background-color: #f1f8e9;
+    color: #8bc34a;
+}
+
+.settings-content {
+    flex: 1;
+}
+
+.settings-title {
+    font-weight: 500;
+    margin-bottom: 3px;
+}
+
+.settings-description {
+    font-size: 12px;
+    color: var(--text-light);
+}
+
+.settings-action {
+    display: flex;
+    align-items: center;
+}
+
+.settings-item .material-icons {
+    color: #ccc;
+}
+
+/* ToggleSwitch */
+.toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 40px;
+    height: 20px;
+}
+
+.toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: .4s;
+    border-radius: 20px;
+}
+
+.toggle-slider:before {
+    position: absolute;
+    content: "";
+    height: 16px;
+    width: 16px;
+    left: 2px;
+    bottom: 2px;
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
+}
+
+input:checked + .toggle-slider {
+    background-color: var(--primary-color);
+}
+
+input:checked + .toggle-slider:before {
+    transform: translateX(20px);
+}
+
+/* ปุ่มออกจากระบบ */
+.logout-button {
+    width: 100%;
+    padding: 15px;
+    background-color: var(--danger-color-light);
+    color: var(--danger-color);
+    border: none;
+    border-radius: 10px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 20px;
+    transition: background-color 0.3s;
+}
+
+.logout-button:hover {
+    background-color: #ffcdd2;
+}
+
+.logout-button .material-icons {
+    margin-right: 10px;
+}
+
+/* ข้อมูลเวอร์ชัน */
+.version-info {
+    text-align: center;
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 20px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .stats-container {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .chart-controls {
+        flex-direction: column;
+    }
+    
+    .control-bar {
+        flex-direction: column;
+        gap: 10px;
+        align-items: flex-start;
+    }
+    
+    .control-actions {
+        width: 100%;
+        justify-content: space-between;
+    }
+    
+    .student-table th:nth-child(3),
+    .student-table td:nth-child(3) {
+        display: none;
+    }
+    
+    .control-buttons {
+        flex-direction: column;
+    }
+    
+    .control-buttons .control-button {
+        margin-bottom: 10px;
+    }
+}
+
+@media (max-width: 480px) {
+    .class-info, .class-card {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .date-info, .date-select {
+        text-align: left;
+        margin-top: 10px;
+    }
+    
+    .stats-container {
+        grid-template-columns: 1fr;
+    }
+    
+    .header h1 {
+        font-size: 18px;
+    }
+}
+
+/* System Alerts */
+.alert-container {
+    position: fixed;
+    top: 70px;
+    right: 20px;
+    z-index: 2000;
+    max-width: 300px;
+}
+
+.alert {
+    margin-bottom: 10px;
+    padding: 15px;
+    border-radius: 5px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    animation: slideIn 0.3s forwards;
+    background-color: white;
+    display: flex;
+    align-items: flex-start;
+}
+
+.alert.success {
+    border-left: 4px solid var(--success-color);
+}
+
+.alert.warning {
+    border-left: 4px solid var(--warning-color);
+}
+
+.alert.error {
+    border-left: 4px solid var(--danger-color);
+}
+
+.alert.info {
+    border-left: 4px solid var(--primary-color);
+}
+
+.alert-icon {
+    margin-right: 10px;
+}
+
+.alert-content {
+    flex: 1;
+}
+
+.alert-close {
+    background: none;
+    border: none;
+    font-size: 18px;
+    cursor: pointer;
+    color: var(--text-light);
+    margin-left: 10px;
+}
+
+.alert-title {
+    font-weight: 600;
+    margin-bottom: 5px;
+}
+
