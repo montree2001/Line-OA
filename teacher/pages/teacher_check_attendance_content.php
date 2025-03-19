@@ -72,15 +72,15 @@
         <input type="text" class="search-input" id="search-input" placeholder="ค้นหาชื่อนักเรียน..." oninput="searchStudents()">
     </div>
 
-    <!-- แท็บเมนู -->
     <div class="tabs">
-        <button class="tab-button active" onclick="switchTab('unchecked')">
+        <button class="tab-btn active" onclick="showTab('unchecked')">
             <span class="material-icons">schedule</span> รอเช็คชื่อ <span class="count"><?php echo count($unchecked_students); ?></span>
         </button>
-        <button class="tab-button" onclick="switchTab('checked')">
+        <button class="tab-btn" onclick="showTab('checked')">
             <span class="material-icons">done_all</span> เช็คชื่อแล้ว <span class="count"><?php echo count($checked_students); ?></span>
         </button>
     </div>
+
 
     <!-- รายชื่อนักเรียนที่ยังไม่ได้เช็คชื่อ -->
     <div id="unchecked-tab" class="tab-content active">
@@ -96,20 +96,20 @@
                     <div>ชื่อ-นามสกุล</div>
                     <div>การเช็คชื่อ</div>
                 </div>
-                
+
                 <?php foreach ($unchecked_students as $student): ?>
-                <div class="student-item" data-name="<?php echo $student['name']; ?>">
-                    <div class="student-number"><?php echo $student['number']; ?></div>
-                    <div class="student-name"><?php echo $student['name']; ?></div>
-                    <div class="attendance-actions">
-                        <button class="action-button present" onclick="markAttendance(this, 'present', <?php echo $student['id']; ?>)">
-                            <span class="material-icons">check</span>
-                        </button>
-                        <button class="action-button absent" onclick="markAttendance(this, 'absent', <?php echo $student['id']; ?>)">
-                            <span class="material-icons">close</span>
-                        </button>
+                    <div class="student-item" data-name="<?php echo $student['name']; ?>">
+                        <div class="student-number"><?php echo $student['number']; ?></div>
+                        <div class="student-name"><?php echo $student['name']; ?></div>
+                        <div class="attendance-actions">
+                            <button class="action-button present" onclick="markAttendance(this, 'present', <?php echo $student['id']; ?>)">
+                                <span class="material-icons">check</span>
+                            </button>
+                            <button class="action-button absent" onclick="markAttendance(this, 'absent', <?php echo $student['id']; ?>)">
+                                <span class="material-icons">close</span>
+                            </button>
+                        </div>
                     </div>
-                </div>
                 <?php endforeach; ?>
             </div>
         <?php endif; ?>
@@ -130,25 +130,25 @@
                     <div>สถานะ</div>
                     <div>เวลา</div>
                 </div>
-                
+
                 <?php foreach ($checked_students as $student): ?>
-                <div class="student-item" data-name="<?php echo $student['name']; ?>">
-                    <div class="student-number"><?php echo $student['number']; ?></div>
-                    <div class="student-name"><?php echo $student['name']; ?></div>
-                    <div class="student-status <?php echo $student['status']; ?>">
-                        <?php if ($student['status'] === 'present'): ?>
-                            <span class="material-icons">check_circle</span> มา
-                        <?php else: ?>
-                            <span class="material-icons">cancel</span> ขาด
-                        <?php endif; ?>
+                    <div class="student-item" data-name="<?php echo $student['name']; ?>">
+                        <div class="student-number"><?php echo $student['number']; ?></div>
+                        <div class="student-name"><?php echo $student['name']; ?></div>
+                        <div class="student-status <?php echo $student['status']; ?>">
+                            <?php if ($student['status'] === 'present'): ?>
+                                <span class="material-icons">check_circle</span> มา
+                            <?php else: ?>
+                                <span class="material-icons">cancel</span> ขาด
+                            <?php endif; ?>
+                        </div>
+                        <div class="check-time"><?php echo $student['time_checked']; ?></div>
                     </div>
-                    <div class="check-time"><?php echo $student['time_checked']; ?></div>
-                </div>
                 <?php endforeach; ?>
             </div>
         <?php endif; ?>
     </div>
-    
+
     <!-- ปุ่มลอย -->
     <button class="floating-button" onclick="saveAttendance()">
         <span class="material-icons">save</span>
@@ -195,3 +195,37 @@
         </div>
     </div>
 </div>
+
+<!-- สร้างฟังก์ชัน switchTab -->
+<script>function showTab(tabName) {
+    // ซ่อนทุกแท็บ
+    const tabContents = document.querySelectorAll('.tab-content');
+    tabContents.forEach(tab => {
+        tab.classList.remove('active');
+    });
+
+    // แสดงแท็บที่เลือก
+    const selectedTab = document.getElementById(`${tabName}-tab`);
+    if (selectedTab) {
+        selectedTab.classList.add('active');
+    }
+
+    // ปรับปุ่มแท็บ
+    const tabButtons = document.querySelectorAll('.tab-btn');
+    tabButtons.forEach(button => {
+        button.classList.remove('active');
+    });
+
+    // เพิ่มคลาส active ให้กับปุ่มที่เลือก
+    const selectedButton = document.querySelector(`.tab-btn[onclick="showTab('${tabName}')"]`);
+    if (selectedButton) {
+        selectedButton.classList.add('active');
+    }
+}
+
+// ตั้งค่าให้แท็บ "ยังไม่ได้เช็ค" (unchecked) เป็นแท็บที่แสดงเริ่มต้น
+document.addEventListener('DOMContentLoaded', function() {
+    showTab('unchecked'); // แสดงแท็บที่ยังไม่ได้เช็ค
+});
+
+</script>
