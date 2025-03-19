@@ -205,7 +205,6 @@
     color: var(--text-light);
     margin-right: 5px;
 }
-
 /* แท็บเมนู */
 .tabs {
     display: flex;
@@ -216,8 +215,9 @@
     box-shadow: var(--card-shadow);
 }
 
+/* สไตล์พื้นฐานของปุ่มแท็บ */
 .tab-button {
-    flex: 1;
+    flex: 1; /* ทำให้ปุ่มขยายเต็มความกว้างเท่าๆ กัน */
     padding: 12px 10px;
     background: none;
     border: none;
@@ -225,19 +225,20 @@
     font-size: 14px;
     font-weight: 500;
     cursor: pointer;
-    position: relative;
     display: flex;
     align-items: center;
     justify-content: center;
     color: var(--text-light);
-    transition: all 0.3s;
+    transition: all 0.3s ease; /* เพิ่ม ease เพื่อการเปลี่ยนแปลงที่นุ่มนวล */
 }
 
+/* ไอคอนในปุ่ม */
 .tab-button .material-icons {
     margin-right: 5px;
     font-size: 18px;
 }
 
+/* ตัวนับจำนวน */
 .tab-button .count {
     display: inline-flex;
     align-items: center;
@@ -249,34 +250,124 @@
     font-size: 12px;
     padding: 0 5px;
     margin-left: 5px;
+    transition: all 0.3s ease; /* เพิ่ม transition ให้ตัวนับด้วย */
 }
 
+/* สถานะ active ของปุ่ม */
 .tab-button.active {
-    color: var(--primary-color);
     background-color: var(--primary-color-light);
+    color: var(--primary-color);
+    transform: scale(1.05); /* ขยายเล็กน้อยเมื่อแท็บถูกเลือก */
+    transition: transform 0.2s ease, background-color 0.3s ease;
 }
 
+/* ตัวนับเมื่อ active */
 .tab-button.active .count {
     background-color: var(--primary-color);
     color: white;
 }
 
+/* เส้นใต้เมื่อ active */
 .tab-button.active::after {
+    background-color: var(--primary-color);
+    height: 3px;
+    width: 100%;
+    transition: height 0.3s ease, background-color 0.3s ease;
+}
+
+/* ซ่อนแท็บทั้งหมดเป็นค่าเริ่มต้น */
+.tab-content {
+    display: none;
+}
+
+/* แสดงแท็บที่ active */
+.tab-content.active {
+    display: block;
+}
+
+.tab-button .material-icons {
+    transition: transform 0.2s ease;
+}
+
+.tab-button.active .material-icons {
+    transform: rotate(180deg); /* หมุนไอคอนเมื่อแท็บ active */
+}
+
+
+
+.tab-btn {
+    flex: 1; /* ทำให้ปุ่มขยายเต็มความกว้างเท่าๆ กัน */
+    padding: 14px 16px;
+    background: none;
+    border: none;
+    font-family: 'Prompt', sans-serif;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #555;
+    transition: all 0.3s ease;
+    position: relative;
+    text-transform: capitalize;
+}
+
+
+.tab-btn .material-icons {
+    margin-right: 8px;
+    font-size: 20px;
+}
+
+
+.tab-btn .count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 20px;
+    background-color: #f0f0f0;
+    border-radius: 10px;
+    font-size: 12px;
+    padding: 0 6px;
+    margin-left: 5px;
+    transition: all 0.3s ease;
+}
+
+
+.tab-btn.active {
+    color: #fff;
+    background-color: #1e88e5; /* สีหลัก */
+    border-radius: 10px 10px 0 0;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+}
+
+.tab-btn.active .count {
+    background-color: #fff;
+    color: #1e88e5;
+}
+
+/* เส้นใต้เมื่อ active */
+.tab-btn.active::after {
     content: '';
     position: absolute;
     bottom: 0;
     left: 0;
     width: 100%;
-    height: 3px;
-    background-color: var(--primary-color);
+    height: 4px;
+    background-color: #1e88e5;
+    transition: all 0.3s ease;
 }
 
-.tab-content {
-    display: none;
+/* สถานะ hover สำหรับปุ่ม */
+.tab-btn:hover {
+    background-color: #f0f0f0;
+    color: #1e88e5;
 }
 
-.tab-content.active {
-    display: block;
+/* ปรับขนาดไอคอนเมื่อ hover */
+.tab-btn:hover .material-icons {
+    transform: scale(1.1);
 }
 
 /* สถานะว่าง */

@@ -550,3 +550,8 @@ function showAlert(message, type = 'info') {
     // ถ้าไม่มีฟังก์ชันใน main.js ให้สร้าง alert ง่ายๆ
     alert(`${type.toUpperCase()}: ${message}`);
 }
+
+
+  
+
+
