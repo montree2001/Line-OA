@@ -1,70 +1,184 @@
 <?php
-require 'config.php'; // ดึงค่าจาก config.php
 session_start();
+require_once 'config/db_config.php';
+require_once 'lib/line_api.php';
 
-// ตรวจสอบว่ามีโค้ดที่ได้รับจาก LINE หรือไม่
-if (isset($_GET['code'])) {
-    $code = $_GET['code'];
+// กำหนดค่า LINE Login
+$client_id = '2007088707'; // ต้องแทนที่ด้วย Client ID จริงของคุณ
+$client_secret = 'ebd6dffa14e54908a835c59c3bd3a7cf'; // ต้องแทนที่ด้วย Client Secret จริงของคุณ
+$redirect_uri = 'https://activity.prasat.ac.th/line/callback.php';
 
-    // ขอ Access Token จาก LINE
-    $token_url = "https://api.line.me/oauth2/v2.1/token";
-    $data = [
-        "grant_type" => "authorization_code",
-        "code" => $code,
-        "redirect_uri" => LINE_REDIRECT_URI,
-        "client_id" => LINE_CLIENT_ID,
-        "client_secret" => LINE_CLIENT_SECRET
-    ];
+// สร้างอ็อบเจ็กต์ LINE API
+$line_api = new LineAPI($client_id, $client_secret, $redirect_uri);
 
-    $headers = ["Content-Type: application/x-www-form-urlencoded"];
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, $token_url);
-    curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data));
-    curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    $response = json_decode(curl_exec($ch), true);
-    curl_close($ch);
+// ตรวจสอบว่ามีโค้ดหรือไม่
+if (!isset($_GET['code'])) {
+    echo "ไม่ได้รับโค้ดจาก LINE";
+    exit;
+}
 
-    if (isset($response["access_token"])) {
-        $access_token = $response["access_token"];
+// รับโค้ดจาก URL
+$code = $_GET['code'];
 
-        // เก็บ Access Token ใน SESSION
-        $_SESSION['access_token'] = $access_token;
+// ตรวจสอบ state
+$state = isset($_GET['state']) ? $_GET['state'] : '';
+if (!in_array($state, ['student', 'teacher', 'parent', 'admin'])) {
+    echo "ไม่สามารถระบุบทบาทได้";
+    exit;
+}
 
-        // ดึงข้อมูลโปรไฟล์จาก LINE
-        $profile_url = "https://api.line.me/v2/profile";
-        $headers = ["Authorization: Bearer " . $access_token];
+// เรียกใช้ API เพื่อรับ Token
+$token = $line_api->getToken($code);
+if (!$token) {
+    echo "ไม่สามารถรับโทเค็นได้";
+    exit;
+}
 
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $profile_url);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        $profile = json_decode(curl_exec($ch), true);
-        curl_close($ch);
+// รับข้อมูลผู้ใช้จาก LINE
+$user_profile = $line_api->getUserProfile($token);
+if (!$user_profile) {
+    echo "ไม่สามารถรับข้อมูลผู้ใช้ได้";
+    exit;
+}
 
-        // แสดงข้อมูลผู้ใช้
-        echo "สวัสดี, " . $profile['displayName'] . "<br>";
-        echo "<img src='" . $profile['pictureUrl'] . "' width='100'><br>";
+// บันทึกข้อมูลเข้าสู่ระบบ
+$line_id = $user_profile['userId'];
+$display_name = $user_profile['displayName'];
+$picture_url = $user_profile['pictureUrl'];
 
-        // แสดงฟอร์มให้กรอกข้อมูล
-        echo '<form action="save_user.php" method="POST">
-                <input type="hidden" name="line_id" value="' . $profile['userId'] . '">
-                <label for="title">คำนำหน้า:</label><br>
-                <input type="text" name="title" required><br>
-                <label for="first_name">ชื่อ:</label><br>
-                <input type="text" name="first_name" required><br>
-                <label for="last_name">สกุล:</label><br>
-                <input type="text" name="last_name" required><br>
-                <label for="phone_number">เบอร์โทรศัพท์:</label><br>
-                <input type="text" name="phone_number" required><br>
-                <input type="submit" value="บันทึกข้อมูล">
-              </form>';
+// เชื่อมต่อฐานข้อมูล
+$conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
+if ($conn->connect_error) {
+    die("การเชื่อมต่อฐานข้อมูลล้มเหลว: " . $conn->connect_error);
+}
 
-    } else {
-        echo "❌ ไม่สามารถรับ Token ได้";
-    }
+// ตรวจสอบว่ามีผู้ใช้อยู่แล้วหรือไม่
+$stmt = $conn->prepare("SELECT user_id, role FROM users WHERE line_id = ?");
+$stmt->bind_param("s", $line_id);
+$stmt->execute();
+$result = $stmt->get_result();
+
+// สร้างตัวแปรเพื่อเก็บ user_id
+$user_id = null;
+
+if ($result->num_rows > 0) {
+    // ผู้ใช้มีอยู่แล้ว - อัปเดตข้อมูล
+    $user_data = $result->fetch_assoc();
+    $user_id = $user_data['user_id'];
+    
+    // อัปเดตข้อมูลผู้ใช้เมื่อมีการล็อกอินใหม่
+    $update_stmt = $conn->prepare("UPDATE users SET profile_picture = ? WHERE user_id = ?");
+    $update_stmt->bind_param("si", $picture_url, $user_id);
+    $update_stmt->execute();
+    $update_stmt->close();
+    
+    // ถ้าผู้ใช้มีบทบาทอยู่แล้ว ใช้บทบาทนั้น
+    $role = $user_data['role'];
 } else {
-    echo "❌ Login ผิดพลาด";
+    // ผู้ใช้ใหม่ - เพิ่มข้อมูล
+    $insert_stmt = $conn->prepare("INSERT INTO users (line_id, role, profile_picture, created_at) VALUES (?, ?, ?, NOW())");
+    $insert_stmt->bind_param("sss", $line_id, $state, $picture_url);
+    $insert_stmt->execute();
+    $user_id = $conn->insert_id;
+    $insert_stmt->close();
+    
+    // บันทึกบทบาท
+    $role = $state;
+}
+
+// บันทึกข้อมูลใน session
+$_SESSION['user_id'] = $user_id;
+$_SESSION['line_id'] = $line_id;
+$_SESSION['role'] = $role;
+$_SESSION['logged_in'] = true;
+
+// ปิดการเชื่อมต่อฐานข้อมูล
+$stmt->close();
+$conn->close();
+
+// เปลี่ยนเส้นทางไปยังหน้าที่เหมาะสมตามบทบาท
+switch ($role) {
+    case 'student':
+        // ตรวจสอบว่าเป็นการลงทะเบียนครั้งแรกหรือไม่
+        if (!checkStudentRegistered($user_id)) {
+            header('Location: student/register.php');
+        } else {
+            header('Location: student/dashboard.php');
+        }
+        break;
+    case 'teacher':
+        // ตรวจสอบว่าเป็นการลงทะเบียนครั้งแรกหรือไม่
+        if (!checkTeacherRegistered($user_id)) {
+            header('Location: teacher/register.php');
+        } else {
+            header('Location: teacher/dashboard.php');
+        }
+        break;
+    case 'parent':
+        // ตรวจสอบว่าเป็นการลงทะเบียนครั้งแรกหรือไม่
+        if (!checkParentRegistered($user_id)) {
+            header('Location: parent/register.php');
+        } else {
+            header('Location: parent/dashboard.php');
+        }
+        break;
+    case 'admin':
+        header('Location: admin/dashboard.php');
+        break;
+    default:
+        header('Location: index.php');
+        break;
+}
+exit;
+
+// ฟังก์ชันตรวจสอบว่านักเรียนได้ลงทะเบียนข้อมูลเพิ่มเติมแล้วหรือไม่
+function checkStudentRegistered($user_id) {
+    global $conn;
+    $conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
+    
+    $stmt = $conn->prepare("SELECT student_id FROM students WHERE user_id = ?");
+    $stmt->bind_param("i", $user_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $is_registered = ($result->num_rows > 0);
+    
+    $stmt->close();
+    $conn->close();
+    
+    return $is_registered;
+}
+
+// ฟังก์ชันตรวจสอบว่าครูได้ลงทะเบียนข้อมูลเพิ่มเติมแล้วหรือไม่
+function checkTeacherRegistered($user_id) {
+    global $conn;
+    $conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
+    
+    $stmt = $conn->prepare("SELECT teacher_id FROM teachers WHERE user_id = ?");
+    $stmt->bind_param("i", $user_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $is_registered = ($result->num_rows > 0);
+    
+    $stmt->close();
+    $conn->close();
+    
+    return $is_registered;
+}
+
+// ฟังก์ชันตรวจสอบว่าผู้ปกครองได้ลงทะเบียนข้อมูลเพิ่มเติมแล้วหรือไม่
+function checkParentRegistered($user_id) {
+    global $conn;
+    $conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
+    
+    $stmt = $conn->prepare("SELECT parent_id FROM parents WHERE user_id = ?");
+    $stmt->bind_param("i", $user_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $is_registered = ($result->num_rows > 0);
+    
+    $stmt->close();
+    $conn->close();
+    
+    return $is_registered;
 }
 ?>
