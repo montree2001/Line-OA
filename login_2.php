@@ -275,8 +275,8 @@
             <div class="logo">
                 <div class="logo-text">SP</div>
             </div>
-            <h1 class="title">STUDENT-Prasat</h1>
-            <p class="subtitle">ระบบเช็คชื่อเข้าแถวออนไลน์ด้วย LINE</p>
+            <h1 class="title">น้องชูใจ</h1>
+            <p class="subtitle">Ai ดูแลผู้เรียน วิทยาลัยการอาชีพปราสาท</p>
         </div>
 
         <!-- เลือกบทบาท -->
