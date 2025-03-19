@@ -3,9 +3,13 @@ session_start();
 require_once 'config/db_config.php';
 require_once 'lib/line_api.php';
 
+// เพิ่มการแสดงข้อผิดพลาดเพื่อช่วยในการดีบัก
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
 // กำหนดค่า LINE Login
-$client_id = '2007088707'; // ต้องแทนที่ด้วย Client ID จริงของคุณ
-$client_secret = 'ebd6dffa14e54908a835c59c3bd3a7cf'; // ต้องแทนที่ด้วย Client Secret จริงของคุณ
+$client_id = '2007088707'; 
+$client_secret = 'ebd6dffa14e54908a835c59c3bd3a7cf'; 
 $redirect_uri = 'https://1ef2-1-20-181-202.ngrok-free.app/line-oa/callback.php';
 
 // สร้างอ็อบเจ็กต์ LINE API
@@ -44,7 +48,7 @@ if (!$user_profile) {
 // บันทึกข้อมูลเข้าสู่ระบบ
 $line_id = $user_profile['userId'];
 $display_name = $user_profile['displayName'];
-$picture_url = $user_profile['pictureUrl'];
+$picture_url = isset($user_profile['pictureUrl']) ? $user_profile['pictureUrl'] : '';
 
 // เชื่อมต่อฐานข้อมูล
 $conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
@@ -52,8 +56,11 @@ if ($conn->connect_error) {
     die("การเชื่อมต่อฐานข้อมูลล้มเหลว: " . $conn->connect_error);
 }
 
+// ตั้งค่า character set เป็น UTF-8
+$conn->set_charset("utf8mb4");
+
 // ตรวจสอบว่ามีผู้ใช้อยู่แล้วหรือไม่
-$stmt = $conn->prepare("SELECT user_id, role FROM users WHERE line_id = ?");
+$stmt = $conn->prepare("SELECT user_id, role, first_name, last_name FROM users WHERE line_id = ?");
 $stmt->bind_param("s", $line_id);
 $stmt->execute();
 $result = $stmt->get_result();
@@ -67,23 +74,62 @@ if ($result->num_rows > 0) {
     $user_id = $user_data['user_id'];
     
     // อัปเดตข้อมูลผู้ใช้เมื่อมีการล็อกอินใหม่
-    $update_stmt = $conn->prepare("UPDATE users SET profile_picture = ? WHERE user_id = ?");
+    $update_stmt = $conn->prepare("UPDATE users SET profile_picture = ?, last_login = NOW() WHERE user_id = ?");
     $update_stmt->bind_param("si", $picture_url, $user_id);
     $update_stmt->execute();
     $update_stmt->close();
     
     // ถ้าผู้ใช้มีบทบาทอยู่แล้ว ใช้บทบาทนั้น
     $role = $user_data['role'];
+    
+    // บันทึกข้อมูลเพิ่มเติมใน session เพื่อใช้ในหน้าลงทะเบียน
+    $_SESSION['profile_picture'] = $picture_url;
+    if (!empty($user_data['first_name'])) {
+        $_SESSION['first_name'] = $user_data['first_name'];
+    }
+    if (!empty($user_data['last_name'])) {
+        $_SESSION['last_name'] = $user_data['last_name'];
+    }
 } else {
     // ผู้ใช้ใหม่ - เพิ่มข้อมูล
-    $insert_stmt = $conn->prepare("INSERT INTO users (line_id, role, profile_picture, created_at) VALUES (?, ?, ?, NOW())");
-    $insert_stmt->bind_param("sss", $line_id, $state, $picture_url);
-    $insert_stmt->execute();
-    $user_id = $conn->insert_id;
-    $insert_stmt->close();
-    
-    // บันทึกบทบาท
-    $role = $state;
+    // กำหนดค่าเริ่มต้นสำหรับฟิลด์ที่ต้องมีค่า
+    $empty_title = ''; // ค่าว่างสำหรับ title ที่เป็น NOT NULL
+
+    // ใช้ try-catch เพื่อจับข้อผิดพลาดที่อาจเกิดขึ้น
+    try {
+        // เตรียม statement พร้อมกำหนดค่าสำหรับทุกฟิลด์ที่จำเป็น
+        $insert_stmt = $conn->prepare("INSERT INTO users (line_id, role, title, profile_picture, created_at, last_login, gdpr_consent) VALUES (?, ?, ?, ?, NOW(), NOW(), 0)");
+        
+        // ตรวจสอบว่า statement ถูกเตรียมสำเร็จหรือไม่
+        if ($insert_stmt === false) {
+            throw new Exception("เกิดข้อผิดพลาดในการเตรียมคำสั่ง SQL: " . $conn->error);
+        }
+        
+        $insert_stmt->bind_param("ssss", $line_id, $state, $empty_title, $picture_url);
+        
+        // ทดลองใช้การ query โดยตรงถ้า bind_param ไม่สำเร็จ
+        if (!$insert_stmt->execute()) {
+            // ถ้า execute ไม่สำเร็จ ทดลองใช้การ query ตรงๆ
+            $sql = "INSERT INTO users (line_id, role, title, profile_picture, created_at, last_login, gdpr_consent) VALUES ('$line_id', '$state', '', '$picture_url', NOW(), NOW(), 0)";
+            if (!$conn->query($sql)) {
+                throw new Exception("ไม่สามารถเพิ่มข้อมูลผู้ใช้ได้: " . $conn->error);
+            }
+        }
+        
+        $user_id = $conn->insert_id;
+        $insert_stmt->close();
+        
+        // บันทึกบทบาท
+        $role = $state;
+        
+        // บันทึกข้อมูลเพิ่มเติมใน session
+        $_SESSION['profile_picture'] = $picture_url;
+        
+    } catch (Exception $e) {
+        // บันทึกข้อผิดพลาดและแสดงผล
+        error_log("ข้อผิดพลาดในการเพิ่มข้อมูลผู้ใช้: " . $e->getMessage());
+        die("เกิดข้อผิดพลาดในการลงทะเบียน: " . $e->getMessage());
+    }
 }
 
 // บันทึกข้อมูลใน session
