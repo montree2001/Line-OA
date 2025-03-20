@@ -15,7 +15,7 @@
 
             <div class="skip-section">
                 <p>หากไม่ทราบชื่อครูที่ปรึกษา คุณสามารถ</p>
-                <a href="register.php?step=5manual" class="text-link">ระบุข้อมูลชั้นเรียนเอง</a>
+                <a href="register.php?step=55" class="text-link">ระบุข้อมูลชั้นเรียนเอง</a>
             </div>
         </form>
     </div>

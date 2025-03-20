@@ -7,7 +7,7 @@
         <?php if (empty($_SESSION['search_teacher_results'])): ?>
             <div class="no-results">
                 <p>ไม่พบข้อมูลครูที่ปรึกษา</p>
-                <a href="register.php?step=5manual" class="btn secondary">ระบุข้อมูลชั้นเรียนเอง</a>
+                <a href="register.php?step=55" class="btn secondary">ระบุข้อมูลชั้นเรียนเอง</a>
             </div>
         <?php else: ?>
             <form method="POST" action="register.php?step=5">
@@ -62,7 +62,7 @@
 
             <div class="skip-section">
                 <p>หากไม่พบชั้นเรียนที่ต้องการ คุณสามารถ</p>
-                <a href="register.php?step=5manual" class="text-link">ระบุข้อมูลชั้นเรียนเอง</a>
+                <a href="register.php?step=55" class="text-link">ระบุข้อมูลชั้นเรียนเอง</a>
             </div>
         <?php endif; ?>
     </div>

@@ -2,7 +2,7 @@
 <div class="card">
     <div class="card-title">ระบุข้อมูลชั้นเรียน</div>
     <div class="card-content">
-        <form method="POST" action="register.php?step=5manual">
+        <form method="POST" action="register.php?step=55">
             <div class="input-container">
                 <label class="input-label">สาขาวิชา</label>
                 <select class="input-field" name="department" required>

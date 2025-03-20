@@ -100,7 +100,7 @@ include 'includes/header.php';
                 exit;
             }
             break;
-        case '3manual':
+        case 33:
             // ตรวจสอบว่ามีรหัสนักศึกษาหรือไม่
             if (!isset($_SESSION['student_code'])) {
                 header('Location: register.php?step=2');
@@ -122,11 +122,11 @@ include 'includes/header.php';
                 include 'register_steps/step5_class.php';
             } else {
                 // ถ้าไม่มีผลลัพธ์ให้ไปหน้ากรอกข้อมูลห้องเรียนเอง
-                header('Location: register.php?step=5manual');
+                header('Location: register.php?step=55');
                 exit;
             }
             break;
-        case '5manual':
+        case 55:
             // ต้องมีข้อมูลพื้นฐานที่ได้จากขั้นตอนก่อนหน้า
             if (!isset($_SESSION['student_code']) || !isset($_SESSION['student_first_name'])) {
                 header('Location: register.php?step=2');

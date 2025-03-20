@@ -10,7 +10,7 @@
     </div>
     
     <div class="card-content">
-        <form method="POST" action="register.php?step=3manual">
+        <form method="POST" action="register.php?step=33">
             <div class="section-divider">
                 <span class="section-title">ข้อมูลส่วนตัว</span>
             </div>

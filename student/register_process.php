@@ -8,6 +8,14 @@ if (!defined('INCLUDED')) {
     define('INCLUDED', true);
 }
 
+// กรณีกดปุ่มกรอกข้อมูลด้วยตนเอง
+if (isset($_POST['manual_entry'])) {
+    $_SESSION['student_code'] = $_POST['student_code'] ?? '';
+    $_SESSION['search_attempted'] = true;
+    header('Location: register.php?step=33');
+    exit;
+}
+
 // จัดการข้อมูลที่ส่งมา
 switch ($step) {
     case 2: // ขั้นตอนค้นหารหัสนักศึกษา
@@ -46,7 +54,7 @@ switch ($step) {
                     $_SESSION['student_code'] = $student_code;
                     $_SESSION['search_attempted'] = true; // ตั้งค่า flag ว่าได้พยายามค้นหาแล้ว
                     
-                    // กลับไปยังหน้าเดิมและแสดงฟอร์มกรอกข้อมูลเอง
+                    // กลับไปยังหน้าเดิมและแสดงปุ่มกรอกข้อมูลเอง
                     header('Location: register.php?step=2');
                     exit;
                 }
@@ -56,9 +64,7 @@ switch ($step) {
         }
         break;
 
-    case "3manual": // ขั้นตอนกรอกข้อมูลนักศึกษาเอง
-        // รับข้อมูลจากฟอร์ม
-        $student_code = $_POST['student_code'] ?? $_SESSION['student_code'] ?? '';
+    case 33: // ขั้นตอนกรอกข้อมูลนักศึกษาเอง
         $title = $_POST['title'] ?? '';
         $first_name = $_POST['first_name'] ?? '';
         $last_name = $_POST['last_name'] ?? '';
@@ -67,16 +73,11 @@ switch ($step) {
         $department = $_POST['department'] ?? '';
         $group_number = $_POST['group_number'] ?? '';
 
-        if (empty($student_code) || empty($title) || empty($first_name) || empty($last_name) || 
-            empty($level_system) || empty($class_level) || empty($department) || empty($group_number)) {
+        if (empty($title) || empty($first_name) || empty($last_name) || empty($level_system) || 
+            empty($class_level) || empty($department) || empty($group_number)) {
             $error_message = "กรุณากรอกข้อมูลให้ครบถ้วน";
-            $_SESSION['form_error'] = true;
-            $_SESSION['input_data'] = $_POST; // เก็บข้อมูลที่กรอกไว้เพื่อแสดงกลับ
-            header('Location: register.php?step=2'); // กลับไปที่หน้าฟอร์ม
-            exit;
         } else {
             // บันทึกข้อมูลใน session
-            $_SESSION['student_code'] = $student_code;
             $_SESSION['student_title'] = $title;
             $_SESSION['student_first_name'] = $first_name;
             $_SESSION['student_last_name'] = $last_name;
@@ -85,10 +86,10 @@ switch ($step) {
             $_SESSION['student_department'] = $department;
             $_SESSION['student_group_number'] = $group_number;
             $_SESSION['search_attempted'] = false; // รีเซ็ตค่า
-            $_SESSION['form_error'] = false; // รีเซ็ตค่า
 
-            // แสดงหน้ายืนยันข้อมูล
-            header('Location: register.php?step=3');
+            // ในกรณีนี้ เราเก็บข้อมูลครบถ้วนแล้ว ให้ข้ามขั้นตอนค้นหาครูที่ปรึกษาและกรอกข้อมูลห้องเรียน
+            // ไปยังขั้นตอนกรอกข้อมูลเพิ่มเติมทันที
+            header('Location: register.php?step=6');
             exit;
         }
         break;
@@ -121,7 +122,7 @@ switch ($step) {
                     exit;
                 } else {
                     // ไม่พบครูที่ปรึกษา ให้ไปยังขั้นตอนกรอกข้อมูลห้องเรียนเอง
-                    header('Location: register.php?step=5manual');
+                    header('Location: register.php?step=55');
                     exit;
                 }
             } catch (PDOException $e) {
@@ -147,7 +148,7 @@ switch ($step) {
         }
         break;
 
-    case "5manual": // ขั้นตอนกรอกข้อมูลห้องเรียนเอง
+    case 55: // ขั้นตอนกรอกข้อมูลห้องเรียนเอง
         $department = $_POST['department'] ?? '';
         $group_number = $_POST['group_number'] ?? '';
 
@@ -302,7 +303,7 @@ switch ($step) {
                 $delete_pending_sql = "DELETE FROM student_pending WHERE student_code = ?";
                 $delete_stmt = $conn->prepare($delete_pending_sql);
                 $delete_stmt->execute([$_SESSION['student_code']]);
-                
+
 
                 // Commit transaction
                 $conn->commit();
