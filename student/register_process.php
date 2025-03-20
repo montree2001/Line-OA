@@ -4,12 +4,15 @@
  */
 
 // ห้ามเข้าถึงโดยตรง
-defined('INCLUDED') or define('INCLUDED', true);
+if (!defined('INCLUDED')) {
+    define('INCLUDED', true);
+}
 
 // จัดการข้อมูลที่ส่งมา
 switch ($step) {
     case 2: // ขั้นตอนค้นหารหัสนักศึกษา
         $student_code = $_POST['student_code'] ?? '';
+        $_SESSION['search_attempted'] = false; // รีเซ็ตค่าเริ่มต้น
 
         if (empty($student_code) || strlen($student_code) !== 11) {
             $error_message = "กรุณากรอกรหัสนักศึกษา 11 หลักให้ถูกต้อง";
@@ -33,14 +36,18 @@ switch ($step) {
                     $_SESSION['student_class_level'] = $student_data['class_level'];
                     $_SESSION['student_department'] = $student_data['department'];
                     $_SESSION['student_group_number'] = $student_data['group_number'];
+                    $_SESSION['search_attempted'] = false; // รีเซ็ตค่า
 
                     // ไปยังขั้นตอนถัดไป
                     header('Location: register.php?step=3');
                     exit;
                 } else {
-                    // ไม่พบข้อมูลนักศึกษา ให้ไปยังขั้นตอนกรอกข้อมูลเอง
+                    // ไม่พบข้อมูลนักศึกษา แสดงข้อความแจ้งเตือนและแสดงปุ่มกรอกข้อมูลเอง
                     $_SESSION['student_code'] = $student_code;
-                    header('Location: register.php?step=3manual');
+                    $_SESSION['search_attempted'] = true; // ตั้งค่า flag ว่าได้พยายามค้นหาแล้ว
+                    
+                    // กลับไปยังหน้าเดิมและแสดงฟอร์มกรอกข้อมูลเอง
+                    header('Location: register.php?step=2');
                     exit;
                 }
             } catch (PDOException $e) {
@@ -50,28 +57,44 @@ switch ($step) {
         break;
 
     case "3manual": // ขั้นตอนกรอกข้อมูลนักศึกษาเอง
+        // รับข้อมูลจากฟอร์ม
+        $student_code = $_POST['student_code'] ?? $_SESSION['student_code'] ?? '';
         $title = $_POST['title'] ?? '';
         $first_name = $_POST['first_name'] ?? '';
         $last_name = $_POST['last_name'] ?? '';
         $level_system = $_POST['level_system'] ?? '';
         $class_level = $_POST['class_level'] ?? '';
+        $department = $_POST['department'] ?? '';
+        $group_number = $_POST['group_number'] ?? '';
 
-        if (empty($title) || empty($first_name) || empty($last_name) || empty($level_system) || empty($class_level)) {
+        if (empty($student_code) || empty($title) || empty($first_name) || empty($last_name) || 
+            empty($level_system) || empty($class_level) || empty($department) || empty($group_number)) {
             $error_message = "กรุณากรอกข้อมูลให้ครบถ้วน";
+            $_SESSION['form_error'] = true;
+            $_SESSION['input_data'] = $_POST; // เก็บข้อมูลที่กรอกไว้เพื่อแสดงกลับ
+            header('Location: register.php?step=2'); // กลับไปที่หน้าฟอร์ม
+            exit;
         } else {
             // บันทึกข้อมูลใน session
+            $_SESSION['student_code'] = $student_code;
             $_SESSION['student_title'] = $title;
             $_SESSION['student_first_name'] = $first_name;
             $_SESSION['student_last_name'] = $last_name;
             $_SESSION['student_level_system'] = $level_system;
             $_SESSION['student_class_level'] = $class_level;
+            $_SESSION['student_department'] = $department;
+            $_SESSION['student_group_number'] = $group_number;
+            $_SESSION['search_attempted'] = false; // รีเซ็ตค่า
+            $_SESSION['form_error'] = false; // รีเซ็ตค่า
 
-            // ไปยังขั้นตอนค้นหาครูที่ปรึกษา
-            header('Location: register.php?step=4');
+            // แสดงหน้ายืนยันข้อมูล
+            header('Location: register.php?step=3');
             exit;
         }
         break;
 
+    // ส่วนที่เหลือเหมือนเดิม...
+    
     case 4: // ขั้นตอนค้นหาครูที่ปรึกษา
         $teacher_name = $_POST['teacher_name'] ?? '';
 
@@ -106,7 +129,7 @@ switch ($step) {
             }
         }
         break;
-
+        
     case 5: // ขั้นตอนเลือกครูที่ปรึกษาและชั้นเรียน
         $teacher_id = $_POST['teacher_id'] ?? '';
         $class_id = $_POST['class_id'] ?? '';
@@ -186,15 +209,35 @@ switch ($step) {
                     $department = $_SESSION['student_department'];
                     $group_number = $_SESSION['student_group_number'];
                     
-                    $new_class_sql = "INSERT INTO classes (academic_year_id, level, department, group_number, created_at) 
-                                     VALUES (:academic_year_id, :level, :department, :group_number, NOW())";
-                    $class_stmt = $conn->prepare($new_class_sql);
-                    $class_stmt->bindParam(':academic_year_id', $current_academic_year_id, PDO::PARAM_INT);
-                    $class_stmt->bindParam(':level', $level, PDO::PARAM_STR);
-                    $class_stmt->bindParam(':department', $department, PDO::PARAM_STR);
-                    $class_stmt->bindParam(':group_number', $group_number, PDO::PARAM_INT);
-                    $class_stmt->execute();
-                    $class_id = $conn->lastInsertId();
+                    // ตรวจสอบว่ามีชั้นเรียนนี้อยู่แล้วหรือไม่
+                    $check_class_sql = "SELECT class_id FROM classes 
+                                       WHERE academic_year_id = :academic_year_id 
+                                       AND level = :level 
+                                       AND department = :department 
+                                       AND group_number = :group_number";
+                    $check_class_stmt = $conn->prepare($check_class_sql);
+                    $check_class_stmt->bindParam(':academic_year_id', $current_academic_year_id, PDO::PARAM_INT);
+                    $check_class_stmt->bindParam(':level', $level, PDO::PARAM_STR);
+                    $check_class_stmt->bindParam(':department', $department, PDO::PARAM_STR);
+                    $check_class_stmt->bindParam(':group_number', $group_number, PDO::PARAM_INT);
+                    $check_class_stmt->execute();
+                    
+                    if ($check_class_stmt->rowCount() > 0) {
+                        // ใช้ class_id ที่มีอยู่แล้ว
+                        $class_row = $check_class_stmt->fetch(PDO::FETCH_ASSOC);
+                        $class_id = $class_row['class_id'];
+                    } else {
+                        // สร้างชั้นเรียนใหม่
+                        $new_class_sql = "INSERT INTO classes (academic_year_id, level, department, group_number, created_at) 
+                                         VALUES (:academic_year_id, :level, :department, :group_number, NOW())";
+                        $class_stmt = $conn->prepare($new_class_sql);
+                        $class_stmt->bindParam(':academic_year_id', $current_academic_year_id, PDO::PARAM_INT);
+                        $class_stmt->bindParam(':level', $level, PDO::PARAM_STR);
+                        $class_stmt->bindParam(':department', $department, PDO::PARAM_STR);
+                        $class_stmt->bindParam(':group_number', $group_number, PDO::PARAM_INT);
+                        $class_stmt->execute();
+                        $class_id = $conn->lastInsertId();
+                    }
                 }
 
                 // 3. เพิ่มข้อมูลในตาราง students
@@ -254,6 +297,13 @@ switch ($step) {
                     }
                 }
 
+
+                //ลบข้อมูลจากตาราง student_pending
+                $delete_pending_sql = "DELETE FROM student_pending WHERE student_code = ?";
+                $delete_stmt = $conn->prepare($delete_pending_sql);
+                $delete_stmt->execute([$_SESSION['student_code']]);
+                
+
                 // Commit transaction
                 $conn->commit();
 
@@ -270,6 +320,9 @@ switch ($step) {
                 unset($_SESSION['search_teacher_results']);
                 unset($_SESSION['selected_teacher_id']);
                 unset($_SESSION['selected_class_id']);
+                unset($_SESSION['search_attempted']);
+                unset($_SESSION['form_error']);
+                unset($_SESSION['input_data']);
 
                 // ไปยังขั้นตอนเสร็จสิ้น
                 header('Location: register.php?step=7');

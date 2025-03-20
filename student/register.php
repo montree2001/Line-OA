@@ -91,21 +91,55 @@ include 'includes/header.php';
             include 'register_steps/step2_student_code.php';
             break;
         case 3:
-            include 'register_steps/step3_confirm_info.php';
+            // ตรวจสอบว่ามีข้อมูลนักศึกษาใน session หรือไม่ก่อนแสดงหน้ายืนยันข้อมูล
+            if (isset($_SESSION['student_code']) && isset($_SESSION['student_first_name']) && isset($_SESSION['student_last_name'])) {
+                include 'register_steps/step3_confirm_info.php';
+            } else {
+                // ถ้าไม่มีข้อมูลให้กลับไปหน้าค้นหารหัสนักศึกษา
+                header('Location: register.php?step=2');
+                exit;
+            }
             break;
         case '3manual':
+            // ตรวจสอบว่ามีรหัสนักศึกษาหรือไม่
+            if (!isset($_SESSION['student_code'])) {
+                header('Location: register.php?step=2');
+                exit;
+            }
             include 'register_steps/step3_manual_info.php';
             break;
         case 4:
+            // ต้องมีข้อมูลพื้นฐานที่ได้จากขั้นตอนก่อนหน้า
+            if (!isset($_SESSION['student_code']) || !isset($_SESSION['student_first_name'])) {
+                header('Location: register.php?step=2');
+                exit;
+            }
             include 'register_steps/step4_advisor.php';
             break;
         case 5:
-            include 'register_steps/step5_class.php';
+            // ตรวจสอบว่ามีผลลัพธ์การค้นหาครูที่ปรึกษาใน session หรือไม่
+            if (isset($_SESSION['search_teacher_results']) && !empty($_SESSION['search_teacher_results'])) {
+                include 'register_steps/step5_class.php';
+            } else {
+                // ถ้าไม่มีผลลัพธ์ให้ไปหน้ากรอกข้อมูลห้องเรียนเอง
+                header('Location: register.php?step=5manual');
+                exit;
+            }
             break;
         case '5manual':
+            // ต้องมีข้อมูลพื้นฐานที่ได้จากขั้นตอนก่อนหน้า
+            if (!isset($_SESSION['student_code']) || !isset($_SESSION['student_first_name'])) {
+                header('Location: register.php?step=2');
+                exit;
+            }
             include 'register_steps/step5_manual_class.php';
             break;
         case 6:
+            // ต้องมีข้อมูลพื้นฐานที่ได้จากขั้นตอนก่อนหน้า
+            if (!isset($_SESSION['student_code']) || !isset($_SESSION['student_first_name'])) {
+                header('Location: register.php?step=2');
+                exit;
+            }
             include 'register_steps/step6_additional.php';
             break;
         case 7:
