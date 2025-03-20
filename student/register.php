@@ -2,6 +2,7 @@
 
 /**
  * student/register.php - หน้าลงทะเบียนสำหรับนักเรียน
+ * ระบบลงทะเบียนสำหรับนักเรียนที่เข้าใช้งานครั้งแรกผ่าน LINE
  */
 session_start();
 require_once '../config/db_config.php';
@@ -349,8 +350,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // ปิดการเชื่อมต่อฐานข้อมูล
 $conn->close();
-
-// รวมหน้าแบบฟอร์มสำหรับแต่ละขั้นตอน
 ?>
 <!DOCTYPE html>
 <html lang="th">
@@ -393,7 +392,6 @@ $conn->close();
 
     <div class="container">
         <!-- Step Indicator -->
-        <!-- ตัวอย่างโครงสร้าง HTML ที่ถูกต้องสำหรับส่วน steps -->
         <div class="steps">
             <div class="step <?php echo ($step >= 1) ? 'completed' : ''; ?> <?php echo ($step === 1) ? 'active' : ''; ?>">
                 <div class="step-number">1</div>
@@ -446,7 +444,7 @@ $conn->close();
         <?php endif; ?>
 
         <!-- แสดงเนื้อหาตามขั้นตอน -->
-        <?php if ($step === 1): ?>
+        <?php if ($step == 1): ?>
             <!-- ขั้นตอนเข้าสู่ระบบ (กำหนดว่าได้เข้าสู่ระบบด้วย LINE แล้ว) -->
             <div class="card">
                 <div class="card-title">เข้าสู่ระบบด้วย LINE</div>
@@ -467,10 +465,9 @@ $conn->close();
                     </div>
                 </div>
             </div>
-        <?php elseif ($step === 2): ?>
+        <?php elseif ($step == 2): ?>
             <!-- ขั้นตอนค้นหารหัสนักศึกษา -->
             <div class="card">
-
                 <div class="card-title">กรอกรหัสนักศึกษา</div>
                 <div class="card-content">
                     <form method="POST" action="register.php?step=2">
@@ -487,6 +484,43 @@ $conn->close();
                         <div class="contact-admin">
                             หากมีปัญหาในการค้นหาข้อมูล กรุณา<a href="#">ติดต่อเจ้าหน้าที่</a>
                         </div>
+                    </form>
+                </div>
+            </div>
+        <?php elseif ($step === 3): ?>
+            <!-- ขั้นตอนยืนยันข้อมูลนักศึกษา -->
+            <div class="card">
+                <div class="card-title">ยืนยันข้อมูลนักศึกษา</div>
+                <div class="card-content">
+                    <div class="profile-info-section">
+                        <h3>ข้อมูลนักศึกษา</h3>
+                        <div class="info-item">
+                            <div class="info-label">รหัสนักศึกษา:</div>
+                            <div class="info-value"><?php echo $_SESSION['student_code']; ?></div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">ชื่อ-นามสกุล:</div>
+                            <div class="info-value"><?php echo $_SESSION['student_title'] . ' ' . $_SESSION['student_first_name'] . ' ' . $_SESSION['student_last_name']; ?></div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">ระดับการศึกษา:</div>
+                            <div class="info-value"><?php echo $_SESSION['student_level_system'] . $_SESSION['student_class_level']; ?></div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">สาขาวิชา:</div>
+                            <div class="info-value"><?php echo $_SESSION['student_department']; ?></div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">กลุ่มเรียน:</div>
+                            <div class="info-value"><?php echo $_SESSION['student_group_number']; ?></div>
+                        </div>
+                    </div>
+
+                    <form method="POST" action="register.php?step=4">
+                        <input type="hidden" name="confirm" value="1">
+                        <button type="submit" class="btn primary">
+                            ยืนยันข้อมูล <span class="material-icons">check</span>
+                        </button>
                     </form>
                 </div>
             </div>
@@ -569,6 +603,10 @@ $conn->close();
                     }
                 }
             </script>
+
+
+
+
         <?php elseif ($step === 7): ?>
             <!-- ขั้นตอนลงทะเบียนเสร็จสิ้น -->
             <div class="card success-card">
@@ -644,7 +682,7 @@ $conn->close();
 </body>
 
 </html>
-<?php if ($step === 3): ?>
+<?php if ($step == 3): ?>
     <!-- ขั้นตอนยืนยันข้อมูลนักศึกษา -->
     <div class="card">
         <div class="card-title">ยืนยันข้อมูลนักศึกษา</div>
@@ -681,7 +719,7 @@ $conn->close();
             </form>
         </div>
     </div>
-<?php elseif ($step === 4): ?>
+<?php elseif ($step == 4): ?>
     <!-- ขั้นตอนค้นหาครูที่ปรึกษา -->
     <div class="card">
         <div class="card-title">ค้นหาครูที่ปรึกษา</div>

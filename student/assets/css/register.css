@@ -1,115 +1,69 @@
 /**
- * register.css - สไตล์สำหรับหน้าลงทะเบียนนักเรียนที่ได้รับการปรับปรุง
- * เพิ่มความทันสมัย ความเป็น Responsive และประสบการณ์ผู้ใช้ที่ดียิ่งขึ้น
+ * register.css - สไตล์สำหรับหน้าลงทะเบียนนักเรียน
+ * ระบบเช็คชื่อเข้าแถวออนไลน์ STP-Prasat
  */
 
 /* ตั้งค่าพื้นฐาน */
 :root {
     /* สีหลัก */
-    --primary-color: #06c755; /* สีหลัก - สีเขียว LINE */
+    --primary-color: #06c755; /* สีเขียว LINE */
     --primary-color-dark: #05a647;
     --primary-color-light: #e8f5e9;
     --primary-gradient: linear-gradient(135deg, #06c755, #00b359);
     
     /* สีรอง */
-    --secondary-color: #1976d2; /* สีรอง - สีน้ำเงิน */
+    --secondary-color: #1976d2; /* สีน้ำเงิน */
     --secondary-color-dark: #1565c0;
     --secondary-color-light: #e3f2fd;
-    --secondary-gradient: linear-gradient(135deg, #1976d2, #1565c0);
     
     /* สีสถานะ */
-    --error-color: #f44336; /* สีแจ้งเตือนความผิดพลาด */
-    --success-color: #4caf50; /* สีแจ้งเตือนความสำเร็จ */
-    --warning-color: #ff9800; /* สีแจ้งเตือน */
+    --error-color: #f44336;
+    --success-color: #4caf50;
+    --warning-color: #ff9800;
     
     /* สีข้อความ */
-    --text-dark: #263238;
-    --text-medium: #546e7a;
-    --text-light: #78909c;
+    --text-dark: #333;
+    --text-medium: #666;
+    --text-light: #999;
     
     /* พื้นหลังและขอบ */
+    --bg-light: #f5f5f5;
     --border-color: #e0e0e0;
-    --border-color-focus: #b0bec5;
-    --bg-light: #f8f9fa;
-    --bg-medium: #f1f3f4;
     
     /* รัศมีขอบ */
     --border-radius-sm: 6px;
-    --border-radius-md: 12px;
-    --border-radius-lg: 18px;
+    --border-radius-md: 10px;
+    --border-radius-lg: 15px;
     
     /* เงา */
     --shadow-sm: 0 2px 4px rgba(0,0,0,0.05);
-    --shadow-md: 0 4px 10px rgba(0,0,0,0.07);
-    --shadow-lg: 0 6px 16px rgba(0,0,0,0.1);
-    --shadow-hover: 0 10px 25px rgba(0,0,0,0.12);
-    --shadow-success: 0 4px 15px rgba(76, 175, 80, 0.25);
-    --shadow-primary: 0 4px 15px rgba(6, 199, 85, 0.25);
+    --shadow-md: 0 4px 8px rgba(0,0,0,0.1);
+    --shadow-lg: 0 8px 16px rgba(0,0,0,0.15);
     
     /* Animation */
-    --transition-fast: 0.2s ease-in-out;
-    --transition-normal: 0.3s ease-in-out;
-    
-    /* Font */
-    --font-main: 'Prompt', sans-serif;
-    
-    /* Spacing */
-    --spacing-xs: 4px;
-    --spacing-sm: 8px;
-    --spacing-md: 16px;
-    --spacing-lg: 24px;
-    --spacing-xl: 32px;
-    
-    /* สีพื้นหลัง */
-    --body-background: #ffffff; /* เปลี่ยนเป็นสีขาวแทนสีดำ */
+    --transition-speed: 0.3s;
 }
 
-/* Global Reset & Base Styles */
-*, *::before, *::after {
-    box-sizing: border-box;
+* {
     margin: 0;
     padding: 0;
-}
-
-html {
-    font-size: 16px;
-    scroll-behavior: smooth;
+    box-sizing: border-box;
+    font-family: 'Prompt', sans-serif;
 }
 
 body {
-    font-family: var(--font-main);
+    background-color: var(--bg-light);
     color: var(--text-dark);
-    background-color: #f8f9fa; /* แก้จาก var(--bg-light) เป็นสีอ่อนเทาขาว */
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    overflow-x: hidden;
     min-height: 100vh;
 }
-
-img {
-    max-width: 100%;
-    height: auto;
-}
-
-/* ตัวช่วยจัดการระยะห่าง */
-.mb-5 { margin-bottom: var(--spacing-xs); }
-.mb-10 { margin-bottom: var(--spacing-sm); }
-.mb-15 { margin-bottom: calc(var(--spacing-sm) + var(--spacing-xs)); }
-.mb-20 { margin-bottom: var(--spacing-md); }
-.mb-30 { margin-bottom: calc(var(--spacing-md) + var(--spacing-sm)); }
-.mt-5 { margin-top: var(--spacing-xs); }
-.mt-10 { margin-top: var(--spacing-sm); }
-.mt-15 { margin-top: calc(var(--spacing-sm) + var(--spacing-xs)); }
-.mt-20 { margin-top: var(--spacing-md); }
-.mt-30 { margin-top: calc(var(--spacing-md) + var(--spacing-sm)); }
-.text-center { text-align: center; }
 
 /* ส่วนหัว */
 .header {
     background: var(--primary-gradient);
     color: white;
-    padding: var(--spacing-md);
+    padding: 15px 20px;
     text-align: center;
     position: fixed;
     top: 0;
@@ -119,29 +73,29 @@ img {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    transition: padding var(--transition-normal);
 }
 
 .header h1 {
     font-size: 1.25rem;
     margin: 0;
     font-weight: 600;
-    letter-spacing: 0.2px;
 }
 
-.header-icon {
+.header-icon, .header-spacer {
     width: 2.5rem;
     height: 2.5rem;
-    background: rgba(255, 255, 255, 0.1);
-    border: none;
-    color: white;
-    font-size: 1.5rem;
-    cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
+}
+
+.header-icon {
+    background: rgba(255, 255, 255, 0.1);
     border-radius: 50%;
-    transition: background-color var(--transition-fast);
+    border: none;
+    color: white;
+    cursor: pointer;
+    transition: background-color var(--transition-speed);
 }
 
 .header-icon:hover {
@@ -152,18 +106,11 @@ img {
     transform: scale(0.95);
 }
 
-.header-spacer {
-    width: 2.5rem;
-}
-
 .container {
-    max-width: 700px;
-    margin: 6rem auto var(--spacing-lg);
-    padding: var(--spacing-md);
+    max-width: 600px;
+    margin: 70px auto 40px;
+    padding: 0 15px;
     animation: fadeIn 0.5s ease-out;
-    background-color: white; /* เพิ่มพื้นหลังสีขาวให้กับ container */
-    border-radius: var(--border-radius-lg);
-    box-shadow: var(--shadow-md);
 }
 
 @keyframes fadeIn {
@@ -171,20 +118,18 @@ img {
     to { opacity: 1; transform: translateY(0); }
 }
 
-/* Step indicator */
+/* ตัวบอกขั้นตอน */
 .steps {
     display: flex;
     align-items: center;
-    justify-content: center;
-    margin-bottom: var(--spacing-xl);
+    margin-bottom: 20px;
     overflow-x: auto;
-    padding: var(--spacing-md);
+    padding: 15px;
     background-color: white;
     border-radius: var(--border-radius-md);
     box-shadow: var(--shadow-sm);
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
-    position: relative;
 }
 
 .steps::-webkit-scrollbar {
@@ -195,48 +140,37 @@ img {
     display: flex;
     flex-direction: column;
     align-items: center;
-    width: 5rem;
+    width: 60px;
     flex-shrink: 0;
     position: relative;
-    transition: all var(--transition-normal);
     z-index: 2;
 }
 
 .step-number {
-    width: 2rem;
-    height: 2rem;
+    width: 28px;
+    height: 28px;
     border-radius: 50%;
     background-color: #e0e0e0;
     color: white;
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-bottom: var(--spacing-sm);
+    margin-bottom: 5px;
     font-size: 0.875rem;
+    font-weight: 500;
     position: relative;
     z-index: 2;
-    font-weight: 500;
-    transition: all var(--transition-normal);
-    box-shadow: var(--shadow-sm);
+    transition: all var(--transition-speed);
 }
 
 .step.active .step-number {
     background-color: var(--primary-color);
     transform: scale(1.1);
-    box-shadow: var(--shadow-primary);
+    box-shadow: 0 2px 8px rgba(6, 199, 85, 0.3);
 }
 
 .step.completed .step-number {
     background-color: var(--success-color);
-    box-shadow: var(--shadow-success);
-}
-
-/* แก้ไขสถานะของ step ที่ 2 ให้แสดงผลอย่างถูกต้อง */
-.step:nth-child(3).active .step-number,
-.step:nth-child(3).completed .step-number {
-    display: flex !important;
-    opacity: 1 !important;
-    visibility: visible !important;
 }
 
 .step-line {
@@ -244,32 +178,13 @@ img {
     height: 3px;
     background-color: #e0e0e0;
     position: relative;
-    top: -1.05rem;
+    top: -17px;
     z-index: 1;
-    min-width: 3rem;
-    transition: background-color var(--transition-normal);
-    display: block !important;
-    opacity: 1 !important;
-    visibility: visible !important;
+    min-width: 30px;
+    transition: background-color var(--transition-speed);
 }
 
 .step-line.completed {
-    background-color: var(--success-color);
-}
-
-/* แก้ไขเฉพาะสเต็ป 2 */
-.step:nth-child(3) .step-number {
-    background-color: #e0e0e0;
-    visibility: visible !important;
-    display: flex !important;
-    opacity: 1 !important;
-}
-
-.step:nth-child(3).active .step-number {
-    background-color: var(--primary-color);
-}
-
-.step:nth-child(3).completed .step-number {
     background-color: var(--success-color);
 }
 
@@ -278,7 +193,7 @@ img {
     color: var(--text-light);
     text-align: center;
     white-space: nowrap;
-    transition: color var(--transition-normal);
+    transition: color var(--transition-speed);
 }
 
 .step.active .step-title {
@@ -290,11 +205,10 @@ img {
 .card {
     background-color: white;
     border-radius: var(--border-radius-md);
-    padding: var(--spacing-lg);
-    margin-bottom: var(--spacing-lg);
+    padding: 20px;
+    margin-bottom: 20px;
     box-shadow: var(--shadow-md);
-    transition: transform var(--transition-normal), box-shadow var(--transition-normal);
-    overflow: hidden;
+    transition: transform var(--transition-speed), box-shadow var(--transition-speed);
 }
 
 .card:hover {
@@ -302,10 +216,10 @@ img {
 }
 
 .card-title {
-    font-size: 1.125rem;
+    font-size: 1.1rem;
     font-weight: 600;
-    margin-bottom: var(--spacing-lg);
-    padding-bottom: var(--spacing-md);
+    margin-bottom: 20px;
+    padding-bottom: 10px;
     border-bottom: 1px solid var(--border-color);
     color: var(--primary-color);
     position: relative;
@@ -319,93 +233,71 @@ img {
     width: 50px;
     height: 3px;
     background-color: var(--primary-color);
-    border-radius: 3px;
+    border-radius: 1.5px;
 }
 
-.card-content {
-    margin-bottom: var(--spacing-sm);
-}
-
-/* ฟอร์มอินพุต */
+/* ฟอร์ม */
 .input-container {
-    margin-bottom: var(--spacing-lg);
+    margin-bottom: 15px;
 }
 
 .input-label {
     display: block;
-    margin-bottom: var(--spacing-sm);
+    margin-bottom: 5px;
     font-weight: 500;
     color: var(--text-dark);
-    font-size: 0.9375rem;
 }
 
 .input-field {
     width: 100%;
-    padding: 0.75rem 1rem;
+    padding: 12px;
     border: 1px solid var(--border-color);
     border-radius: var(--border-radius-sm);
     font-size: 1rem;
-    transition: all var(--transition-normal);
-    background-color: white;
-    font-family: var(--font-main);
+    transition: all var(--transition-speed);
+    font-family: 'Prompt', sans-serif;
 }
 
 .input-field:hover {
-    border-color: var(--border-color-focus);
+    border-color: #b0bec5;
 }
 
 .input-field:focus {
     border-color: var(--primary-color);
     outline: none;
-    box-shadow: 0 0 0 3px rgba(6, 199, 85, 0.1);
+    box-shadow: 0 0 0 2px rgba(6, 199, 85, 0.1);
 }
 
 .input-field[readonly] {
-    background-color: var(--bg-medium);
+    background-color: var(--bg-light);
     cursor: not-allowed;
-    opacity: 0.8;
 }
 
-/* Select field styling */
 select.input-field {
-    appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%2378909c' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
     background-repeat: no-repeat;
-    background-position: right 0.75rem center;
-    background-size: 1rem;
-    padding-right: 2.5rem;
+    background-position: right 10px center;
+    background-size: 16px;
+    padding-right: 35px;
 }
 
-/* กล่องข้อความช่วยเหลือ */
-.help-text {
-    margin-top: var(--spacing-sm);
-    font-size: 0.75rem;
-    color: var(--text-light);
-    transition: color var(--transition-fast);
-}
-
-.input-field:focus + .help-text,
-.input-field:hover + .help-text {
-    color: var(--text-medium);
-}
-
-/* ปุ่มกด */
+/* ปุ่ม */
 .btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: 0.75rem 1.25rem;
+    padding: 12px 16px;
     border-radius: var(--border-radius-sm);
-    font-weight: 600;
+    font-weight: 500;
     cursor: pointer;
-    transition: all var(--transition-normal);
+    transition: all var(--transition-speed);
     border: none;
     width: 100%;
     font-size: 1rem;
-    letter-spacing: 0.3px;
+    font-family: 'Prompt', sans-serif;
     position: relative;
     overflow: hidden;
-    font-family: var(--font-main);
 }
 
 .btn::after {
@@ -429,53 +321,45 @@ select.input-field {
 }
 
 .btn .material-icons {
-    margin-left: var(--spacing-sm);
-    font-size: 1.25rem;
-    transition: transform var(--transition-fast);
+    margin-left: 8px;
+    font-size: 20px;
+    transition: transform var(--transition-speed);
 }
 
 .btn.primary {
     background: var(--primary-gradient);
     color: white;
-    box-shadow: var(--shadow-primary);
+    box-shadow: 0 2px 5px rgba(6, 199, 85, 0.3);
 }
 
 .btn.primary:hover {
-    background: linear-gradient(135deg, #05b84d, #049b4c);
-    box-shadow: var(--shadow-hover);
+    background: linear-gradient(135deg, #05b64d, #049b4c);
+    box-shadow: 0 4px 10px rgba(6, 199, 85, 0.4);
     transform: translateY(-2px);
-}
-
-.btn.primary:active {
-    transform: translateY(0);
-    box-shadow: var(--shadow-primary);
 }
 
 .btn.primary:hover .material-icons {
     transform: translateX(3px);
 }
 
+.btn.primary:active {
+    transform: translateY(0);
+}
+
 .btn.secondary {
-    background-color: var(--bg-medium);
+    background-color: var(--bg-light);
     color: var(--text-medium);
-    box-shadow: var(--shadow-sm);
 }
 
 .btn.secondary:hover {
-    background-color: var(--bg-light);
-    color: var(--text-dark);
-    box-shadow: var(--shadow-md);
+    background-color: #e9e9e9;
 }
 
-.btn.secondary:active {
-    transform: translateY(1px);
-}
-
-/* การแจ้งเตือน */
+/* แจ้งเตือน */
 .alert {
-    padding: var(--spacing-md);
+    padding: 12px 16px;
     border-radius: var(--border-radius-sm);
-    margin-bottom: var(--spacing-lg);
+    margin-bottom: 20px;
     display: flex;
     align-items: center;
     animation: slideIn 0.3s ease-out;
@@ -487,14 +371,8 @@ select.input-field {
 }
 
 .alert .material-icons {
-    margin-right: var(--spacing-sm);
+    margin-right: 10px;
     font-size: 1.5rem;
-}
-
-.alert-success {
-    background-color: var(--primary-color-light);
-    color: var(--success-color);
-    border-left: 4px solid var(--success-color);
 }
 
 .alert-error {
@@ -503,25 +381,38 @@ select.input-field {
     border-left: 4px solid var(--error-color);
 }
 
-/* ข้อมูลติดต่อผู้ดูแลระบบ */
+.alert-success {
+    background-color: #e8f5e9;
+    color: var(--success-color);
+    border-left: 4px solid var(--success-color);
+}
+
+/* ข้อความช่วยเหลือ */
+.help-text {
+    margin-top: 5px;
+    font-size: 0.75rem;
+    color: var(--text-light);
+}
+
+/* ข้อมูลติดต่อผู้ดูแล */
 .contact-admin {
-    margin-top: var(--spacing-lg);
+    margin-top: 20px;
     text-align: center;
     font-size: 0.875rem;
     color: var(--text-light);
-    padding: var(--spacing-md);
+    padding: 15px;
     background-color: var(--bg-light);
     border-radius: var(--border-radius-sm);
 }
 
-.contact-admin a {
+.text-link {
     color: var(--primary-color);
     text-decoration: none;
     font-weight: 500;
-    transition: color var(--transition-fast);
+    transition: color var(--transition-speed);
 }
 
-.contact-admin a:hover {
+.text-link:hover {
     color: var(--primary-color-dark);
     text-decoration: underline;
 }
@@ -530,7 +421,7 @@ select.input-field {
 .success-icon {
     font-size: 4rem;
     color: var(--success-color);
-    margin-bottom: var(--spacing-lg);
+    margin-bottom: 20px;
     animation: pulse 2s infinite;
     display: inline-block;
 }
@@ -541,14 +432,14 @@ select.input-field {
     100% { transform: scale(1); }
 }
 
-/* ส่วนข้อมูลโปรไฟล์ */
+/* ข้อมูลโปรไฟล์ */
 .profile-info-section {
-    margin-bottom: var(--spacing-lg);
-    padding: var(--spacing-md);
+    margin-bottom: 20px;
+    padding: 15px;
     background-color: var(--bg-light);
     border-radius: var(--border-radius-sm);
     border: 1px solid var(--border-color);
-    transition: all var(--transition-normal);
+    transition: all var(--transition-speed);
 }
 
 .profile-info-section:hover {
@@ -557,11 +448,11 @@ select.input-field {
 }
 
 .profile-info-section h3 {
-    margin-bottom: var(--spacing-md);
+    margin-bottom: 10px;
     font-size: 1rem;
     color: var(--text-dark);
     position: relative;
-    padding-bottom: var(--spacing-xs);
+    padding-bottom: 5px;
 }
 
 .profile-info-section h3::after {
@@ -576,15 +467,14 @@ select.input-field {
 
 .info-item {
     display: flex;
-    margin-bottom: var(--spacing-sm);
-    align-items: baseline;
-    padding: var(--spacing-xs) 0;
+    margin-bottom: 8px;
+    padding: 5px 0;
     border-bottom: 1px dashed var(--border-color);
 }
 
 .info-item:last-child {
-    margin-bottom: 0;
     border-bottom: none;
+    margin-bottom: 0;
 }
 
 .info-label {
@@ -597,58 +487,19 @@ select.input-field {
 .info-value {
     flex: 1;
     color: var(--text-dark);
-    font-weight: 400;
-}
-
-/* ลิงก์ข้าม */
-.skip-section {
-    margin-top: var(--spacing-lg);
-    text-align: center;
-    font-size: 0.875rem;
-    background-color: var(--bg-light);
-    padding: var(--spacing-md);
-    border-radius: var(--border-radius-sm);
-}
-
-.text-link {
-    color: var(--primary-color);
-    text-decoration: none;
-    font-weight: 500;
-    position: relative;
-    transition: all var(--transition-fast);
-}
-
-.text-link::after {
-    content: '';
-    position: absolute;
-    width: 100%;
-    height: 1px;
-    bottom: -2px;
-    left: 0;
-    background-color: var(--primary-color);
-    transform: scaleX(0);
-    transform-origin: bottom right;
-    transition: transform 0.3s ease-out;
-}
-
-.text-link:hover::after {
-    transform: scaleX(1);
-    transform-origin: bottom left;
 }
 
 /* รายการครูที่ปรึกษา */
 .teacher-list {
-    margin-bottom: var(--spacing-lg);
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: var(--spacing-sm);
+    margin-bottom: 20px;
 }
 
 .teacher-card {
     border: 1px solid var(--border-color);
     border-radius: var(--border-radius-sm);
-    padding: var(--spacing-md);
-    transition: all var(--transition-normal);
+    padding: 15px;
+    margin-bottom: 10px;
+    transition: all var(--transition-speed);
     background-color: white;
 }
 
@@ -668,19 +519,18 @@ select.input-field {
     -webkit-appearance: none;
     -moz-appearance: none;
     appearance: none;
-    width: 1.25rem;
-    height: 1.25rem;
+    width: 18px;
+    height: 18px;
     border: 2px solid var(--border-color);
     border-radius: 50%;
-    margin-right: var(--spacing-sm);
+    margin-right: 10px;
     position: relative;
     cursor: pointer;
-    transition: all var(--transition-normal);
+    transition: all var(--transition-speed);
 }
 
 .radio-container input[type="radio"]:checked {
     border-color: var(--primary-color);
-    background-color: white;
 }
 
 .radio-container input[type="radio"]:checked::after {
@@ -689,8 +539,8 @@ select.input-field {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    width: 0.6rem;
-    height: 0.6rem;
+    width: 10px;
+    height: 10px;
     background-color: var(--primary-color);
     border-radius: 50%;
     animation: scaleIn 0.2s ease-out;
@@ -701,15 +551,9 @@ select.input-field {
     to { transform: translate(-50%, -50%) scale(1); }
 }
 
-.radio-label {
-    flex: 1;
-    cursor: pointer;
-}
-
 .teacher-name {
     font-weight: 500;
-    margin-bottom: var(--spacing-xs);
-    color: var(--text-dark);
+    margin-bottom: 5px;
 }
 
 .teacher-department {
@@ -717,30 +561,40 @@ select.input-field {
     color: var(--text-light);
 }
 
+/* ข้ามขั้นตอน */
+.skip-section {
+    margin-top: 20px;
+    text-align: center;
+    font-size: 0.875rem;
+    background-color: var(--bg-light);
+    padding: 15px;
+    border-radius: var(--border-radius-sm);
+}
+
 /* ผลลัพธ์ไม่พบข้อมูล */
 .no-results {
     text-align: center;
-    padding: var(--spacing-lg);
+    padding: 20px;
     background-color: var(--bg-light);
-    border-radius: var(--border-radius-md);
-    margin-bottom: var(--spacing-lg);
+    border-radius: var(--border-radius-sm);
+    margin-bottom: 20px;
     border: 1px dashed var(--border-color);
 }
 
 .no-results p {
-    margin-bottom: var(--spacing-md);
+    margin-bottom: 15px;
     color: var(--text-medium);
 }
 
 /* พื้นที่อัพโหลดรูปภาพ */
 .upload-area {
     border: 2px dashed var(--border-color);
-    border-radius: var(--border-radius-md);
-    padding: var(--spacing-lg);
+    border-radius: var(--border-radius-sm);
+    padding: 20px;
     text-align: center;
-    margin-bottom: var(--spacing-md);
+    margin-bottom: 15px;
     cursor: pointer;
-    transition: all var(--transition-normal);
+    transition: all var(--transition-speed);
     position: relative;
     overflow: hidden;
 }
@@ -758,7 +612,7 @@ select.input-field {
     width: 100%;
     height: 0;
     background-color: rgba(6, 199, 85, 0.05);
-    transition: height var(--transition-normal);
+    transition: height var(--transition-speed);
     z-index: 0;
 }
 
@@ -769,10 +623,10 @@ select.input-field {
 .upload-icon {
     font-size: 2.5rem;
     color: var(--border-color);
-    margin-bottom: var(--spacing-sm);
+    margin-bottom: 10px;
     position: relative;
     z-index: 1;
-    transition: color var(--transition-normal);
+    transition: color var(--transition-speed);
 }
 
 .upload-area:hover .upload-icon {
@@ -781,7 +635,7 @@ select.input-field {
 
 .upload-text {
     font-weight: 500;
-    margin-bottom: var(--spacing-xs);
+    margin-bottom: 5px;
     position: relative;
     z-index: 1;
 }
@@ -794,7 +648,7 @@ select.input-field {
 }
 
 #image-preview {
-    margin: var(--spacing-md) 0;
+    margin: 15px 0;
     text-align: center;
 }
 
@@ -803,18 +657,18 @@ select.input-field {
     max-height: 200px;
     object-fit: cover;
     box-shadow: var(--shadow-md);
-    margin-bottom: var(--spacing-md);
+    margin-bottom: 10px;
 }
 
 /* Checkbox */
 .checkbox-container {
     display: flex;
     align-items: flex-start;
-    margin-bottom: var(--spacing-lg);
+    margin-bottom: 20px;
     background-color: var(--bg-light);
-    padding: var(--spacing-md);
+    padding: 15px;
     border-radius: var(--border-radius-sm);
-    transition: background-color var(--transition-normal);
+    transition: background-color var(--transition-speed);
 }
 
 .checkbox-container:hover {
@@ -826,15 +680,15 @@ select.input-field {
     -webkit-appearance: none;
     -moz-appearance: none;
     appearance: none;
-    width: 1.25rem;
-    height: 1.25rem;
+    width: 18px;
+    height: 18px;
     border: 2px solid var(--border-color);
     border-radius: var(--border-radius-sm);
-    margin-right: var(--spacing-sm);
-    margin-top: 0.1rem;
+    margin-right: 10px;
+    margin-top: 3px;
     position: relative;
     cursor: pointer;
-    transition: all var(--transition-normal);
+    transition: all var(--transition-speed);
     flex-shrink: 0;
 }
 
@@ -846,8 +700,8 @@ select.input-field {
 .checkbox-container input[type="checkbox"]:checked::after {
     content: '';
     position: absolute;
-    left: 6px;
-    top: 2px;
+    left: 5px;
+    top: 1px;
     width: 5px;
     height: 10px;
     border: solid white;
@@ -862,93 +716,35 @@ select.input-field {
     line-height: 1.4;
 }
 
-.checkbox-label a {
-    color: var(--primary-color);
-    text-decoration: none;
-    font-weight: 500;
-}
-
-.checkbox-label a:hover {
-    text-decoration: underline;
-}
-
 /* การ์ดสำเร็จการลงทะเบียน */
 .success-card {
     text-align: center;
-    padding: var(--spacing-xl) var(--spacing-lg);
-    background: linear-gradient(to bottom right, white, var(--bg-light));
-}
-
-.success-icon {
-    width: 6rem;
-    height: 6rem;
-    background: var(--success-color);
-    border-radius: 50%;
-    margin: 0 auto var(--spacing-lg);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: var(--shadow-success);
-    position: relative;
-    overflow: hidden;
-}
-
-.success-icon::before,
-.success-icon::after {
-    content: '';
-    position: absolute;
-    width: 100%;
-    height: 100%;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.1);
-    animation: ripple 2s infinite ease-out;
-    z-index: 0;
-}
-
-.success-icon::after {
-    animation-delay: 1s;
-}
-
-@keyframes ripple {
-    0% { transform: scale(0.8); opacity: 1; }
-    100% { transform: scale(2); opacity: 0; }
-}
-
-.success-icon .material-icons {
-    font-size: 3rem;
-    color: white;
-    position: relative;
-    z-index: 1;
+    padding: 30px 20px;
 }
 
 .success-message {
-    margin-bottom: var(--spacing-xl);
+    margin-bottom: 30px;
 }
 
 .success-message h2 {
     font-size: 1.5rem;
-    margin-bottom: var(--spacing-sm);
+    margin-bottom: 10px;
     color: var(--success-color);
     font-weight: 600;
 }
 
-.success-message p {
-    color: var(--text-medium);
-    margin-bottom: var(--spacing-xs);
-}
-
-/* รายการคุณสมบัติ */
+/* Features Section */
 .features-section {
-    margin: var(--spacing-xl) 0;
-    padding: var(--spacing-lg);
+    margin: 30px 0;
+    padding: 20px;
     background-color: var(--bg-light);
-    border-radius: var(--border-radius-lg);
+    border-radius: var(--border-radius-md);
 }
 
 .features-title {
-    font-size: 1.125rem;
+    font-size: 1.1rem;
     font-weight: 600;
-    margin-bottom: var(--spacing-lg);
+    margin-bottom: 20px;
     text-align: center;
     color: var(--text-dark);
     position: relative;
@@ -969,15 +765,16 @@ select.input-field {
 .feature-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: var(--spacing-md);
+    gap: 15px;
+    margin-top: 20px;
 }
 
 .feature-item {
     background-color: white;
-    border-radius: var(--border-radius-md);
-    padding: var(--spacing-md);
+    border-radius: var(--border-radius-sm);
+    padding: 15px;
     text-align: center;
-    transition: all var(--transition-normal);
+    transition: all var(--transition-speed);
     box-shadow: var(--shadow-sm);
     border: 1px solid var(--border-color);
     position: relative;
@@ -993,7 +790,7 @@ select.input-field {
     height: 4px;
     background: var(--primary-gradient);
     opacity: 0;
-    transition: opacity var(--transition-normal);
+    transition: opacity var(--transition-speed);
 }
 
 .feature-item:hover {
@@ -1007,38 +804,30 @@ select.input-field {
 }
 
 .feature-icon {
-    width: 3.75rem;
-    height: 3.75rem;
+    width: 50px;
+    height: 50px;
     background-color: var(--bg-light);
     border-radius: 50%;
-    margin: 0 auto var(--spacing-sm);
+    margin: 0 auto 10px;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all var(--transition-normal);
-    border: 1px solid var(--border-color);
+    transition: all var(--transition-speed);
 }
 
 .feature-item:hover .feature-icon {
     background-color: var(--primary-color-light);
-    transform: scale(1.05);
 }
 
 .feature-icon .material-icons {
     color: var(--primary-color);
-    font-size: 1.875rem;
-    transition: all var(--transition-normal);
-}
-
-.feature-item:hover .feature-icon .material-icons {
-    color: var(--primary-color-dark);
+    font-size: 24px;
 }
 
 .feature-title {
     font-weight: 600;
-    margin-bottom: var(--spacing-xs);
+    margin-bottom: 5px;
     color: var(--text-dark);
-    font-size: 1rem;
 }
 
 .feature-desc {
@@ -1050,130 +839,41 @@ select.input-field {
 /* การ์ดข้อผิดพลาด */
 .error-card {
     text-align: center;
-    padding: var(--spacing-xl) var(--spacing-lg);
-    background: linear-gradient(to bottom right, white, #fff5f5);
-}
-
-.error-icon {
-    width: 6rem;
-    height: 6rem;
-    background-color: var(--error-color);
-    border-radius: 50%;
-    margin: 0 auto var(--spacing-lg);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 4px 15px rgba(244, 67, 54, 0.3);
-    position: relative;
-    overflow: hidden;
-}
-
-.error-icon::before {
-    content: '';
-    position: absolute;
-    width: 100%;
-    height: 100%;
-    border-radius: 50%;
-    background: radial-gradient(circle, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0) 70%);
-    top: -50%;
-    left: -50%;
-}
-
-.error-icon .material-icons {
-    font-size: 3rem;
-    color: white;
-}
-
-.error-message {
-    margin-bottom: var(--spacing-xl);
-}
-
-.error-message h2 {
-    font-size: 1.5rem;
-    margin-bottom: var(--spacing-sm);
-    color: var(--error-color);
-    font-weight: 600;
-}
-
-.error-message p {
-    color: var(--text-medium);
-    margin-bottom: var(--spacing-xs);
+    padding: 30px 20px;
 }
 
 /* รองรับการแสดงผลบนมือถือ */
 @media (max-width: 768px) {
-    html {
-        font-size: 15px;
-    }
-    
     .container {
-        padding: var(--spacing-sm);
-        margin-top: 5rem;
-    }
-    
-    .header {
-        padding: var(--spacing-sm);
-    }
-    
-    .card {
-        padding: var(--spacing-md);
+        padding: 0 10px;
     }
     
     .feature-grid {
-        grid-template-columns: 1fr 1fr;
-        gap: var(--spacing-sm);
-    }
-    
-    .teacher-list {
-        grid-template-columns: 1fr;
-    }
-    
-    .info-label {
-        width: 40%;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
     }
 }
 
 @media (max-width: 576px) {
-    html {
-        font-size: 14px;
-    }
-    
     .container {
-        padding: var(--spacing-xs);
+        padding: 0 10px;
     }
     
     .step {
-        width: 4rem;
-    }
-    
-    .step-number {
-        width: 1.75rem;
-        height: 1.75rem;
-        font-size: 0.75rem;
+        width: 50px;
     }
     
     .step-title {
-        font-size: 0.6875rem;
-    }
-    
-    /* การแสดงผลของเส้นเชื่อมบนมือถือ */
-    .step-line {
-        min-width: 1.5rem;
-        margin: 0 -2px;
+        font-size: 0.7rem;
     }
     
     .feature-grid {
         grid-template-columns: 1fr;
-        gap: var(--spacing-sm);
-    }
-    
-    .profile-info-section {
-        padding: var(--spacing-sm);
+        gap: 10px;
     }
     
     .info-item {
         flex-direction: column;
-        padding-bottom: var(--spacing-sm);
     }
     
     .info-label {
@@ -1184,74 +884,10 @@ select.input-field {
     .info-value {
         width: 100%;
     }
-    
-    .upload-area {
-        padding: var(--spacing-md);
-    }
-    
-    .checkbox-container {
-        padding: var(--spacing-sm);
-    }
-    
-    .success-icon, .error-icon {
-        width: 5rem;
-        height: 5rem;
-    }
-    
-    .success-icon .material-icons, .error-icon .material-icons {
-        font-size: 2.5rem;
-    }
-    
-    .success-message h2, .error-message h2 {
-        font-size: 1.25rem;
-    }
 }
 
-/* เพิ่มเติมสำหรับอนิเมชันและประสบการณ์ผู้ใช้ */
-.container {
-    min-height: calc(100vh - 70px - 40px);
-    display: flex;
-    flex-direction: column;
-}
-
-/* Focus visible สำหรับการเข้าถึง (accessibility) */
-:focus-visible {
-    outline: 3px solid var(--primary-color);
-    outline-offset: 2px;
-}
-
-/* เพิ่ม transition สำหรับการโหลดหน้า */
-body {
-    animation: fadeIn 0.5s ease-out;
-}
-
-/* เทคนิคการเพิ่มความลึกให้กับการ์ด */
-.card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    left: 0;
-    z-index: -1;
-    border-radius: var(--border-radius-md);
-    background: linear-gradient(to bottom right, rgba(255,255,255,0.1), rgba(0,0,0,0.05));
-    transition: opacity var(--transition-normal);
-    opacity: 0;
-}
-
-.card:hover::before {
-    opacity: 1;
-}
-
-/* ปรับปรุงการแสดงผลบน WebKit browsers */
-@supports (-webkit-appearance: none) {
-    .input-field, .btn {
-        -webkit-appearance: none;
-    }
-}
-
-/* ไม่ใช้ Dark Mode เนื่องจากต้องการใช้พื้นหลังสีอ่อนเท่านั้น */
-/* @media (prefers-color-scheme: dark) {
-    ...
-} */
+/* Helper Classes */
+.text-center { text-align: center; }
+.mb-10 { margin-bottom: 10px; }
+.mb-20 { margin-bottom: 20px; }
+.mt-20 { margin-top: 20px; }
