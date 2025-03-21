@@ -13,7 +13,7 @@ ini_set('display_errors', 1);
 // กำหนดค่า LINE Login
 $client_id = '2007088707'; 
 $client_secret = 'ebd6dffa14e54908a835c59c3bd3a7cf'; 
-$redirect_uri = 'https://cc7c-202-29-240-27.ngrok-free.app/line-OA/callback.php';
+$redirect_uri = 'https://c0a7-202-29-240-27.ngrok-free.app/line-OA/callback.php';
 
 // สร้างอ็อบเจ็กต์ LINE API
 $line_api = new LineAPI($client_id, $client_secret, $redirect_uri);

@@ -73,23 +73,18 @@ switch ($step) {
         $department = $_POST['department'] ?? '';
         $group_number = $_POST['group_number'] ?? '';
 
-        if (empty($title) || empty($first_name) || empty($last_name) || empty($level_system) || 
-            empty($class_level) || empty($department) || empty($group_number)) {
+        if (empty($title) || empty($first_name) || empty($last_name)) {
             $error_message = "กรุณากรอกข้อมูลให้ครบถ้วน";
         } else {
             // บันทึกข้อมูลใน session
             $_SESSION['student_title'] = $title;
             $_SESSION['student_first_name'] = $first_name;
             $_SESSION['student_last_name'] = $last_name;
-            $_SESSION['student_level_system'] = $level_system;
-            $_SESSION['student_class_level'] = $class_level;
-            $_SESSION['student_department'] = $department;
-            $_SESSION['student_group_number'] = $group_number;
             $_SESSION['search_attempted'] = false; // รีเซ็ตค่า
 
             // ในกรณีนี้ เราเก็บข้อมูลครบถ้วนแล้ว ให้ข้ามขั้นตอนค้นหาครูที่ปรึกษาและกรอกข้อมูลห้องเรียน
             // ไปยังขั้นตอนกรอกข้อมูลเพิ่มเติมทันที
-            header('Location: register.php?step=6');
+            header('Location: register.php?step=4');
             exit;
         }
         break;
@@ -122,7 +117,8 @@ switch ($step) {
                     exit;
                 } else {
                     // ไม่พบครูที่ปรึกษา ให้ไปยังขั้นตอนกรอกข้อมูลห้องเรียนเอง
-                    header('Location: register.php?step=55');
+                    header('Location: register.php?step=4');
+                    $_SESSION['alert_message'] = "ไม่พบข้อมูลครูที่ปรึกษา โปรดติดต่อเจ้าหน้าที่";
                     exit;
                 }
             } catch (PDOException $e) {
