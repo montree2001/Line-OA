@@ -695,18 +695,6 @@ function showAddTeacherModal() {
     addModal.show();
 }
 
-// แสดงโมดัลแก้ไขครูที่ปรึกษา
-function showEditTeacherModal(teacherId) {
-    console.log("Edit teacher ID:", teacherId);
-    
-    try {
-        // เรียกใช้ fallback แทนการเรียก API
-        fallbackEditTeacher(teacherId);
-    } catch (error) {
-        console.error('Error in showEditTeacherModal:', error);
-        alert('เกิดข้อผิดพลาดในการแสดงหน้าแก้ไขข้อมูล กรุณาลองใหม่อีกครั้ง');
-    }
-}
 
 // ฟังก์ชันสำรองสำหรับดึงข้อมูลครูจาก DOM (กรณี API ไม่ทำงาน)
 function fallbackEditTeacher(teacherId) {
