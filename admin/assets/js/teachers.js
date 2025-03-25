@@ -22,50 +22,60 @@ function setupSearch() {
     const searchInput = document.getElementById('searchTeacher');
     const filterDepartment = document.getElementById('filterDepartment');
     const filterStatus = document.getElementById('filterStatus');
+    const filterLineStatus = document.getElementById('filterLineStatus');
     
-    if (!searchInput || !filterDepartment || !filterStatus) return;
+    if (!searchInput) return;
     
     // ฟังก์ชันสำหรับการกรองข้อมูล
     function applyFilters() {
         const searchValue = searchInput.value.toLowerCase();
-        const departmentValue = filterDepartment.value.toLowerCase();
-        const statusValue = filterStatus.value;
+        const departmentValue = filterDepartment ? filterDepartment.value.toLowerCase() : '';
+        const statusValue = filterStatus ? filterStatus.value : '';
+        const lineStatusValue = filterLineStatus ? filterLineStatus.value : '';
         
-        const tableRows = document.querySelectorAll('table tbody tr');
+        // สร้าง URL ใหม่พร้อมพารามิเตอร์
+        let url = 'teachers.php';
+        let params = [];
         
-        tableRows.forEach(row => {
-            const teacherName = row.querySelector('td:nth-child(2)').textContent.toLowerCase();
-            const department = row.querySelector('td:nth-child(3)').textContent.toLowerCase();
-            const statusBadge = row.querySelector('td:nth-child(8) .badge');
-            const statusText = statusBadge ? statusBadge.textContent.toLowerCase() : '';
-            
-            // กำหนดสถานะตามคลาสของ badge
-            let statusClass = 'inactive';
-            if (statusBadge && statusBadge.classList.contains('text-bg-success')) {
-                statusClass = 'active';
-            }
-            
-            // ตรวจสอบว่าตรงกับเงื่อนไขการค้นหาหรือไม่
-            const matchesSearch = searchValue === '' || 
-                                  teacherName.includes(searchValue);
-            const matchesDepartment = departmentValue === '' || 
-                                      department.includes(departmentValue);
-            const matchesStatus = statusValue === '' || 
-                                  statusValue === statusClass;
-            
-            // แสดงหรือซ่อนแถว
-            if (matchesSearch && matchesDepartment && matchesStatus) {
-                row.style.display = '';
-            } else {
-                row.style.display = 'none';
-            }
-        });
+        if (searchValue) {
+            params.push('search=' + encodeURIComponent(searchValue));
+        }
+        if (departmentValue) {
+            params.push('department=' + encodeURIComponent(departmentValue));
+        }
+        if (statusValue) {
+            params.push('status=' + encodeURIComponent(statusValue));
+        }
+        if (lineStatusValue) {
+            params.push('line_status=' + encodeURIComponent(lineStatusValue));
+        }
+        
+        if (params.length > 0) {
+            url += '?' + params.join('&');
+        }
+        
+        // นำทางไปยัง URL ใหม่
+        window.location.href = url;
     }
     
     // ผูกเหตุการณ์กับการค้นหาและกรอง
-    searchInput.addEventListener('input', applyFilters);
-    filterDepartment.addEventListener('change', applyFilters);
-    filterStatus.addEventListener('change', applyFilters);
+    searchInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            applyFilters();
+        }
+    });
+    
+    if (filterDepartment) {
+        filterDepartment.addEventListener('change', applyFilters);
+    }
+    
+    if (filterStatus) {
+        filterStatus.addEventListener('change', applyFilters);
+    }
+    
+    if (filterLineStatus) {
+        filterLineStatus.addEventListener('change', applyFilters);
+    }
 }
 
 /**
@@ -185,156 +195,86 @@ function showAddTeacherModal() {
  * @param {number} teacherId - ID ของครูที่ต้องการแก้ไข
  */
 function showEditTeacherModal(teacherId) {
-    // ในการใช้งานจริง จะมีการส่ง AJAX request ไปดึงข้อมูลครูจาก backend
-    fetchTeacherData(teacherId)
-        .then(data => {
-            fillEditTeacherForm(data);
-            
-            // แสดงโมดัล
-            const modal = document.getElementById('editTeacherModal');
-            if (modal && typeof bootstrap !== 'undefined') {
-                const bsModal = new bootstrap.Modal(modal);
-                bsModal.show();
-            }
-        })
-        .catch(error => {
-            console.error('ไม่สามารถดึงข้อมูลครูได้:', error);
-            showAlert('ไม่สามารถโหลดข้อมูลครูได้ กรุณาลองใหม่อีกครั้ง', 'danger');
+    console.log("Edit teacher ID:", teacherId);
+    
+    // ค้นหาแถวของครูในตาราง
+    const teacherRow = document.querySelector(`tr[data-id="${teacherId}"]`);
+    if (!teacherRow) {
+        console.error("Teacher row not found for ID:", teacherId);
+        alert("ไม่พบข้อมูลครูที่ต้องการแก้ไข");
+        return;
+    }
+    
+    try {
+        // ดึงข้อมูลจาก DOM
+        const fullNameContainer = teacherRow.querySelector('td:nth-child(1) div:nth-child(2)');
+        const fullName = fullNameContainer ? fullNameContainer.textContent.trim() : '';
+        console.log("Full name:", fullName);
+        
+        const nameParts = fullName.split(' ');
+        let prefix = 'อาจารย์';
+        let firstName = '';
+        let lastName = '';
+        
+        if (nameParts.length >= 2) {
+            prefix = nameParts[0];
+            firstName = nameParts[1] || '';
+            lastName = nameParts.slice(2).join(' ') || '';
+        }
+        
+        const nationalIdCell = teacherRow.querySelector('td:nth-child(2)');
+        const nationalId = nationalIdCell ? nationalIdCell.textContent.trim() : '';
+        
+        const departmentCell = teacherRow.querySelector('td:nth-child(3)');
+        const department = departmentCell ? departmentCell.textContent.trim() : '';
+        
+        const positionCell = teacherRow.querySelector('td:nth-child(4)');
+        const position = positionCell ? positionCell.textContent.trim() : '';
+        
+        const contactInfo = teacherRow.querySelector('td:nth-child(6)');
+        const phoneElement = contactInfo ? contactInfo.querySelector('div:nth-child(1)') : null;
+        const phone = phoneElement ? phoneElement.textContent.replace('phone', '').trim() : '';
+        
+        const emailElement = contactInfo ? contactInfo.querySelector('div:nth-child(2)') : null;
+        const email = emailElement ? emailElement.textContent.replace('email', '').trim() : '';
+        
+        const statusBadge = teacherRow.querySelector('td:nth-child(7) .badge');
+        const isActive = statusBadge && statusBadge.classList.contains('text-bg-success');
+        
+        // ตรวจสอบสถานะการเชื่อมต่อ Line
+        const lineBadge = teacherRow.querySelector('td:nth-child(8) .badge');
+        const isLineConnected = lineBadge && lineBadge.style.backgroundColor === 'rgb(6, 199, 85)';
+        
+        console.log("Extracted data:", {
+            teacherId, prefix, firstName, lastName, nationalId, department, position, phone, email, isActive, isLineConnected
         });
-}
-
-/**
- * จำลองการดึงข้อมูลครูจาก backend
- * ในการใช้งานจริง จะใช้ fetch API หรือ AJAX
- * 
- * @param {number} teacherId - ID ของครูที่ต้องการดึงข้อมูล
- * @returns {Promise} - Promise ที่จะ resolve ด้วยข้อมูลครู
- */
-function fetchTeacherData(teacherId) {
-    // จำลองการส่ง AJAX request ไปยัง backend
-    return new Promise((resolve) => {
-        // สร้างข้อมูลจำลอง (ในการใช้งานจริงจะดึงจาก backend)
-        const teachers = [
-            {
-                id: 1,
-                code: 'T001',
-                name: 'อาจารย์ประสิทธิ์ ดีเลิศ',
-                prefix: 'อาจารย์',
-                firstName: 'ประสิทธิ์',
-                lastName: 'ดีเลิศ',
-                gender: 'ชาย',
-                position: 'ครูชำนาญการพิเศษ',
-                class: 'ม.6/2',
-                department: 'วิทยาศาสตร์',
-                phone: '081-234-5678',
-                email: 'prasit.d@prasat.ac.th',
-                status: 'active'
-            },
-            {
-                id: 2,
-                code: 'T002',
-                name: 'อาจารย์วันดี สดใส',
-                prefix: 'อาจารย์',
-                firstName: 'วันดี',
-                lastName: 'สดใส',
-                gender: 'หญิง',
-                position: 'ครูชำนาญการ',
-                class: 'ม.5/3',
-                department: 'ภาษาไทย',
-                phone: '089-876-5432',
-                email: 'wandee.s@prasat.ac.th',
-                status: 'active'
-            },
-            {
-                id: 3,
-                code: 'T003',
-                name: 'อาจารย์อิศรา สุขใจ',
-                prefix: 'อาจารย์',
-                firstName: 'อิศรา',
-                lastName: 'สุขใจ',
-                gender: 'ชาย',
-                position: 'ครู',
-                class: 'ม.5/1',
-                department: 'คณิตศาสตร์',
-                phone: '062-345-6789',
-                email: 'issara.s@prasat.ac.th',
-                status: 'active'
-            },
-            {
-                id: 4,
-                code: 'T004',
-                name: 'อาจารย์ใจดี มากเมตตา',
-                prefix: 'อาจารย์',
-                firstName: 'ใจดี',
-                lastName: 'มากเมตตา',
-                gender: 'หญิง',
-                position: 'ครูชำนาญการพิเศษ',
-                class: 'ม.4/1',
-                department: 'ภาษาอังกฤษ',
-                phone: '091-234-5678',
-                email: 'jaidee.m@prasat.ac.th',
-                status: 'active'
-            },
-            {
-                id: 5,
-                code: 'T005',
-                name: 'อาจารย์สมหมาย ใจร่าเริง',
-                prefix: 'อาจารย์',
-                firstName: 'สมหมาย',
-                lastName: 'ใจร่าเริง',
-                gender: 'ชาย',
-                position: 'ครูชำนาญการ',
-                class: 'ม.4/2',
-                department: 'สังคมศึกษา',
-                phone: '098-765-4321',
-                email: 'sommai.j@prasat.ac.th',
-                status: 'inactive'
-            }
-        ];
         
-        // หาข้อมูลครูตาม ID
-        const teacher = teachers.find(t => t.id === teacherId);
+        // กรอกข้อมูลในฟอร์ม
+        document.getElementById('editTeacherId').value = teacherId;
+        document.getElementById('editTeacherNationalId').value = nationalId;
+        document.getElementById('editTeacherPrefix').value = prefix;
+        document.getElementById('editTeacherFirstName').value = firstName;
+        document.getElementById('editTeacherLastName').value = lastName;
+        document.getElementById('editTeacherPosition').value = position;
+        document.getElementById('editTeacherDepartment').value = department;
         
-        // จำลองความล่าช้าของ network
-        setTimeout(() => {
-            resolve(teacher || null);
-        }, 300);
-    });
-}
-
-/**
- * กรอกข้อมูลลงในฟอร์มแก้ไขครู
- * 
- * @param {Object} teacher - ข้อมูลครูที่ต้องการแก้ไข
- */
-function fillEditTeacherForm(teacher) {
-    if (!teacher) return;
-    
-    // กรอกข้อมูลลงในฟอร์ม
-    document.getElementById('editTeacherId').value = teacher.id;
-    document.getElementById('editTeacherCode').value = teacher.code;
-    
-    // ชื่อและนามสกุล
-    document.getElementById('editTeacherPrefix').value = teacher.prefix;
-    
-    // แยกชื่อและนามสกุล (ในกรณีที่ไม่ได้รับข้อมูลแยกกันมา)
-    const nameParts = teacher.name.split(' ');
-    const prefix = nameParts[0];
-    const name = teacher.name.substring(prefix.length + 1);
-    
-    document.getElementById('editTeacherName').value = name;
-    document.getElementById('editTeacherGender').value = teacher.gender;
-    document.getElementById('editTeacherPosition').value = teacher.position;
-    document.getElementById('editTeacherDepartment').value = teacher.department;
-    document.getElementById('editTeacherClass').value = teacher.class;
-    document.getElementById('editTeacherPhone').value = teacher.phone;
-    document.getElementById('editTeacherEmail').value = teacher.email;
-    
-    // ตั้งค่าสถานะ
-    if (teacher.status === 'active') {
-        document.getElementById('editStatusActive').checked = true;
-    } else {
-        document.getElementById('editStatusInactive').checked = true;
+        document.getElementById('editTeacherPhone').value = phone === '-' ? '' : phone;
+        document.getElementById('editTeacherEmail').value = email === '-' ? '' : email;
+        
+        // ตั้งค่าสถานะ
+        if (isActive) {
+            document.getElementById('editStatusActive').checked = true;
+        } else {
+            document.getElementById('editStatusInactive').checked = true;
+        }
+        
+        // แสดงโมดัล
+        var editModal = new bootstrap.Modal(document.getElementById('editTeacherModal'));
+        editModal.show();
+        
+    } catch (error) {
+        console.error("Error in showEditTeacherModal:", error);
+        alert("ไม่สามารถดึงข้อมูลได้ กรุณาลองใหม่อีกครั้ง");
     }
 }
 
@@ -361,9 +301,11 @@ function showImportModal() {
  * แสดงยืนยันการลบ
  * 
  * @param {number} teacherId - ID ของครูที่ต้องการลบ
+ * @param {string} teacherName - ชื่อครูที่ต้องการลบ
  */
-function showDeleteConfirmation(teacherId) {
+function showDeleteConfirmation(teacherId, teacherName) {
     document.getElementById('deleteTeacherId').value = teacherId;
+    document.getElementById('deleteTeacherName').textContent = teacherName;
     
     // แสดงโมดัล
     const modal = document.getElementById('deleteConfirmationModal');
@@ -374,7 +316,30 @@ function showDeleteConfirmation(teacherId) {
 }
 
 /**
- * แสดงข้อความแจ้งเตือน
+ * แสดงยืนยันการเปลี่ยนสถานะ
+ * 
+ * @param {number} teacherId - ID ของครูที่ต้องการเปลี่ยนสถานะ
+ * @param {string} action - การกระทำ (ระงับ/เปิดใช้งาน)
+ */
+function confirmToggleStatus(teacherId, action) {
+    document.getElementById('toggleAction').textContent = action;
+    
+    // ตั้งค่าปุ่มยืนยัน
+    const confirmBtn = document.getElementById('confirmToggleBtn');
+    confirmBtn.onclick = function() {
+        document.getElementById('toggleForm' + teacherId).submit();
+    };
+    
+    // แสดงโมดัล
+    const modal = document.getElementById('toggleStatusModal');
+    if (modal && typeof bootstrap !== 'undefined') {
+        const bsModal = new bootstrap.Modal(modal);
+        bsModal.show();
+    }
+}
+
+/**
+ * แสดงข้อความแจ้งเตือนแบบป๊อปอัพ
  * 
  * @param {string} message - ข้อความที่ต้องการแสดง
  * @param {string} type - ประเภทของการแจ้งเตือน (success, info, warning, danger)

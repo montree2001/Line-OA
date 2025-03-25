@@ -8,11 +8,19 @@
 // เริ่ม session (ใช้สำหรับการเก็บข้อมูลผู้ใช้ที่ล็อกอินและข้อมูลอื่นๆ)
 session_start();
 
-/* // ตรวจสอบการล็อกอิน (หากไม่ได้ล็อกอินให้ redirect ไปหน้า login.php)
+// ตรวจสอบการล็อกอิน (แสดงความคิดเห็นออกไปเพื่อการทดสอบ)
+/*
 if (!isset($_SESSION['user_id']) || !isset($_SESSION['user_type']) || $_SESSION['user_type'] != 'admin') {
     header('Location: login.php');
     exit;
-} */
+}*/
+
+// โหลดไฟล์การเชื่อมต่อฐานข้อมูล
+require_once '../db_connect.php';
+
+// โหลดคลาสสำหรับจัดการข้อมูลครู
+require_once '../models/Teacher.php';
+$teacherModel = new Teacher();
 
 // กำหนดข้อมูลสำหรับหน้าปัจจุบัน
 $current_page = 'teachers';
@@ -46,132 +54,178 @@ $at_risk_count = 12;
 // เพิ่ม Bootstrap CSS แต่ยังคงใช้ CSS หลักของระบบ
 $extra_css = [
     'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css',
-    'assets/css/teachers.css' // CSS เฉพาะสำหรับหน้านี้ (ถ้ามี)
+    'assets/css/teachers.css' // CSS เฉพาะสำหรับหน้านี้
 ];
 
 // เพิ่ม Bootstrap JS และ JS สำหรับหน้านี้
 $extra_js = [
     'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js',
-    'assets/js/teachers.js' // JS เฉพาะสำหรับหน้านี้ (ถ้ามี)
+    'assets/js/teachers.js' // JS เฉพาะสำหรับหน้านี้
 ];
 
 // กำหนดเส้นทางไปยังไฟล์เนื้อหาเฉพาะหน้า
 $content_path = 'pages/teachers_content.php';
 
-// ตรวจสอบการส่งฟอร์มเพิ่มหรือแก้ไขข้อมูลครู (ในการใช้งานจริงจะมีการบันทึกลงฐานข้อมูล)
+// จัดการการส่งฟอร์ม
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (isset($_POST['add_teacher']) || isset($_POST['edit_teacher'])) {
-        // ดำเนินการเพิ่มหรือแก้ไขข้อมูลครู
-        // ในทางปฏิบัติจริง จะมีการตรวจสอบข้อมูล และบันทึกลงฐานข้อมูล
-        
-        // จำลองการเพิ่ม/แก้ไขสำเร็จ
-        $success_message = isset($_POST['add_teacher']) ? "เพิ่มข้อมูลครูที่ปรึกษาเรียบร้อยแล้ว" : "แก้ไขข้อมูลครูที่ปรึกษาเรียบร้อยแล้ว";
-    } elseif (isset($_POST['import_teachers'])) {
-        // ดำเนินการนำเข้าข้อมูลครู
-        // ในทางปฏิบัติจริง จะมีการอัปโหลดและประมวลผลไฟล์
-        
-        // จำลองการนำเข้าสำเร็จ
-        $success_message = "นำเข้าข้อมูลครูที่ปรึกษาเรียบร้อยแล้ว";
-    } elseif (isset($_POST['delete_teacher'])) {
-        // ดำเนินการลบข้อมูลครู
-        
-        // จำลองการลบสำเร็จ
-        $success_message = "ลบข้อมูลครูที่ปรึกษาเรียบร้อยแล้ว";
+    
+    // เพิ่มข้อมูลครูใหม่
+    if (isset($_POST['add_teacher'])) {
+        try {
+            $teacher_data = [
+                'title' => $_POST['teacher_prefix'] ?? 'อาจารย์',
+                'first_name' => $_POST['teacher_first_name'] ?? '',
+                'last_name' => $_POST['teacher_last_name'] ?? '',
+                'national_id' => $_POST['teacher_national_id'] ?? '',
+                'department' => $_POST['teacher_department'] ?? '',
+                'position' => $_POST['teacher_position'] ?? '',
+                'phone_number' => $_POST['teacher_phone'] ?? '',
+                'email' => $_POST['teacher_email'] ?? '',
+                'status' => $_POST['teacher_status'] ?? 'active',
+                'class_id' => $_POST['teacher_class'] ?? null
+            ];
+            
+            $teacherModel->addTeacher($teacher_data);
+            $success_message = "เพิ่มข้อมูลครูที่ปรึกษาเรียบร้อยแล้ว";
+            
+        } catch (Exception $e) {
+            $error_message = "ไม่สามารถเพิ่มข้อมูลครู: " . $e->getMessage();
+        }
+    } 
+    // แก้ไขข้อมูลครู
+    elseif (isset($_POST['edit_teacher'])) {
+        try {
+            $teacher_id = $_POST['teacher_id'] ?? 0;
+            
+            $teacher_data = [
+                'title' => $_POST['teacher_prefix'] ?? 'อาจารย์',
+                'first_name' => $_POST['teacher_first_name'] ?? '',
+                'last_name' => $_POST['teacher_last_name'] ?? '',
+                'national_id' => $_POST['teacher_national_id'] ?? '',
+                'department' => $_POST['teacher_department'] ?? '',
+                'position' => $_POST['teacher_position'] ?? '',
+                'phone_number' => $_POST['teacher_phone'] ?? '',
+                'email' => $_POST['teacher_email'] ?? '',
+                'status' => $_POST['teacher_status'] ?? 'active',
+                'class_id' => $_POST['teacher_class'] ?? null
+            ];
+            
+            $teacherModel->updateTeacher($teacher_id, $teacher_data);
+            $success_message = "แก้ไขข้อมูลครูที่ปรึกษาเรียบร้อยแล้ว";
+            
+        } catch (Exception $e) {
+            $error_message = "ไม่สามารถแก้ไขข้อมูลครู: " . $e->getMessage();
+        }
+    } 
+    // ลบข้อมูลครู
+    elseif (isset($_POST['delete_teacher'])) {
+        try {
+            $teacher_id = $_POST['teacher_id'] ?? 0;
+            
+            $teacherModel->deleteTeacher($teacher_id);
+            $success_message = "ลบข้อมูลครูที่ปรึกษาเรียบร้อยแล้ว";
+            
+        } catch (Exception $e) {
+            $error_message = "ไม่สามารถลบข้อมูลครู: " . $e->getMessage();
+        }
+    } 
+    // เปลี่ยนสถานะครู (ระงับ/เปิดใช้งาน)
+    elseif (isset($_POST['toggle_status'])) {
+        try {
+            $teacher_id = $_POST['teacher_id'] ?? 0;
+            $active = $_POST['status'] === 'active';
+            
+            $teacherModel->toggleTeacherStatus($teacher_id, $active);
+            $status_text = $active ? "เปิดใช้งาน" : "ระงับการใช้งาน";
+            $success_message = "{$status_text}ครูที่ปรึกษาเรียบร้อยแล้ว";
+            
+        } catch (Exception $e) {
+            $error_message = "ไม่สามารถเปลี่ยนสถานะครู: " . $e->getMessage();
+        }
+    } 
+    // นำเข้าข้อมูลครูจากไฟล์ Excel
+    elseif (isset($_POST['import_teachers'])) {
+        try {
+            if (!isset($_FILES['import_file']) || $_FILES['import_file']['error'] != UPLOAD_ERR_OK) {
+                throw new Exception("ไม่พบไฟล์ที่อัปโหลด");
+            }
+            
+            require_once '../import/ImportTeachers.php';
+            $importer = new ImportTeachers();
+            
+            $overwrite = isset($_POST['overwrite_existing']) && $_POST['overwrite_existing'] == 'on';
+            $result = $importer->import($_FILES['import_file'], $overwrite);
+            
+            if ($result['success']) {
+                $success_message = "นำเข้าข้อมูลเรียบร้อยแล้ว: เพิ่มใหม่ {$result['new']} คน, อัปเดต {$result['updated']} คน";
+            } else {
+                $error_message = "เกิดข้อผิดพลาดในการนำเข้าข้อมูล: " . implode(", ", $result['errors']);
+            }
+            
+        } catch (Exception $e) {
+            $error_message = "ไม่สามารถนำเข้าข้อมูล: " . $e->getMessage();
+        }
     }
     
     // Redirect เพื่อป้องกันการ resubmit form
-    header("Location: teachers.php" . (isset($success_message) ? "?success=" . urlencode($success_message) : ""));
+    $params = [];
+    if (isset($success_message)) {
+        $params[] = "success=" . urlencode($success_message);
+    }
+    if (isset($error_message)) {
+        $params[] = "error=" . urlencode($error_message);
+    }
+    
+    $redirect_url = "teachers.php";
+    if (!empty($params)) {
+        $redirect_url .= "?" . implode("&", $params);
+    }
+    
+    header("Location: " . $redirect_url);
     exit;
 }
 
-// แสดงข้อความแจ้งเตือนความสำเร็จ (ถ้ามี)
+// ดึงข้อความแจ้งเตือนจาก URL (ถ้ามี)
 if (isset($_GET['success'])) {
     $success_message = $_GET['success'];
 }
+if (isset($_GET['error'])) {
+    $error_message = $_GET['error'];
+}
 
-// ตัวอย่างข้อมูลครูที่ปรึกษา (ในการใช้งานจริงจะดึงจากฐานข้อมูล)
-$teachers = [
-    [
-        'id' => 1,
-        'code' => 'T001',
-        'name' => 'อาจารย์ประสิทธิ์ ดีเลิศ',
-        'gender' => 'ชาย',
-        'position' => 'ครูชำนาญการพิเศษ',
-        'class' => 'ม.6/2',
-        'department' => 'วิทยาศาสตร์',
-        'phone' => '081-234-5678',
-        'email' => 'prasit.d@prasat.ac.th',
-        'status' => 'active',
-        'students_count' => 35
-    ],
-    [
-        'id' => 2,
-        'code' => 'T002',
-        'name' => 'อาจารย์วันดี สดใส',
-        'gender' => 'หญิง',
-        'position' => 'ครูชำนาญการ',
-        'class' => 'ม.5/3',
-        'department' => 'ภาษาไทย',
-        'phone' => '089-876-5432',
-        'email' => 'wandee.s@prasat.ac.th',
-        'status' => 'active',
-        'students_count' => 32
-    ],
-    [
-        'id' => 3,
-        'code' => 'T003',
-        'name' => 'อาจารย์อิศรา สุขใจ',
-        'gender' => 'ชาย',
-        'position' => 'ครู',
-        'class' => 'ม.5/1',
-        'department' => 'คณิตศาสตร์',
-        'phone' => '062-345-6789',
-        'email' => 'issara.s@prasat.ac.th',
-        'status' => 'active',
-        'students_count' => 36
-    ],
-    [
-        'id' => 4,
-        'code' => 'T004',
-        'name' => 'อาจารย์ใจดี มากเมตตา',
-        'gender' => 'หญิง',
-        'position' => 'ครูชำนาญการพิเศษ',
-        'class' => 'ม.4/1',
-        'department' => 'ภาษาอังกฤษ',
-        'phone' => '091-234-5678',
-        'email' => 'jaidee.m@prasat.ac.th',
-        'status' => 'active',
-        'students_count' => 30
-    ],
-    [
-        'id' => 5,
-        'code' => 'T005',
-        'name' => 'อาจารย์สมหมาย ใจร่าเริง',
-        'gender' => 'ชาย',
-        'position' => 'ครูชำนาญการ',
-        'class' => 'ม.4/2',
-        'department' => 'สังคมศึกษา',
-        'phone' => '098-765-4321',
-        'email' => 'sommai.j@prasat.ac.th',
-        'status' => 'inactive',
-        'students_count' => 0
-    ]
-];
+// ดึงข้อมูลครูจากฐานข้อมูล
+$filters = [];
+if (isset($_GET['search']) && !empty($_GET['search'])) {
+    $filters['search'] = $_GET['search'];
+}
+if (isset($_GET['department']) && $_GET['department'] !== '') {
+    $filters['department'] = $_GET['department'];
+}
+if (isset($_GET['status']) && $_GET['status'] !== '') {
+    $filters['status'] = $_GET['status'];
+}
+if (isset($_GET['line_status']) && $_GET['line_status'] !== '') {
+    $filters['line_status'] = $_GET['line_status'];
+}
 
-// ตัวอย่างข้อมูลภาพรวม (ในการใช้งานจริงจะดึงจากฐานข้อมูล)
-$teachers_stats = [
-    'total' => 25,
-    'active' => 23,
-    'inactive' => 2,
-    'classrooms' => 35,
-    'students' => 1250
-];
+// ดึงข้อมูลครูทั้งหมด
+$teachers = $teacherModel->getAllTeachers(100, 0, $filters);
+
+// ดึงข้อมูลสถิติเกี่ยวกับครู
+$teachers_stats = $teacherModel->getTeacherStats();
+
+// ดึงรายชื่อแผนกและห้องเรียนสำหรับฟอร์ม
+$departments = $teacherModel->getAllDepartments();
+$classes = $teacherModel->getAllClasses();
 
 // ส่งข้อมูลไปยังเทมเพลต
 $data = [
     'teachers' => $teachers,
     'teachers_stats' => $teachers_stats,
-    'success_message' => isset($success_message) ? $success_message : null
+    'departments' => $departments,
+    'classes' => $classes,
+    'success_message' => $success_message ?? null,
+    'error_message' => $error_message ?? null
 ];
 
 // โหลดเทมเพลตส่วนหัว

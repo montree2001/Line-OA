@@ -60,10 +60,6 @@
                 </button>
             </form>
 
-            <div class="skip-section">
-                <p>หากไม่พบชั้นเรียนที่ต้องการ คุณสามารถ</p>
-                <a href="register.php?step=55" class="text-link">ระบุข้อมูลชั้นเรียนเอง</a>
-            </div>
         <?php endif; ?>
     </div>
 </div>

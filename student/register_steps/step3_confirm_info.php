@@ -8,22 +8,12 @@
                 <div class="info-label">รหัสนักศึกษา:</div>
                 <div class="info-value"><?php echo $_SESSION['student_code']; ?></div>
             </div>
+
             <div class="info-item">
                 <div class="info-label">ชื่อ-นามสกุล:</div>
                 <div class="info-value"><?php echo $_SESSION['student_title'] . ' ' . $_SESSION['student_first_name'] . ' ' . $_SESSION['student_last_name']; ?></div>
             </div>
-            <div class="info-item">
-                <div class="info-label">ระดับการศึกษา:</div>
-                <div class="info-value"><?php echo $_SESSION['student_level_system'] . $_SESSION['student_class_level']; ?></div>
-            </div>
-            <div class="info-item">
-                <div class="info-label">สาขาวิชา:</div>
-                <div class="info-value"><?php echo $_SESSION['student_department']; ?></div>
-            </div>
-            <div class="info-item">
-                <div class="info-label">กลุ่มเรียน:</div>
-                <div class="info-value"><?php echo $_SESSION['student_group_number']; ?></div>
-            </div>
+
         </div>
 
         <form method="POST" action="register.php?step=4">
@@ -32,5 +22,6 @@
                 ยืนยันข้อมูล <span class="material-icons">check</span>
             </button>
         </form>
+
     </div>
 </div>

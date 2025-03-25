@@ -6,7 +6,11 @@ require_once 'lib/line_api.php';
 // กำหนดค่า LINE Login
 $client_id = '2007088707'; // แก้เป็น Client ID จริงของคุณ
 $client_secret = 'ebd6dffa14e54908a835c59c3bd3a7cf'; // แก้เป็น Client Secret จริงของคุณ
+<<<<<<< HEAD
 $redirect_uri = 'https://5dc7-202-29-240-27.ngrok-free.app/line-OA/callback.php';
+=======
+$redirect_uri = 'https://8daa-202-29-240-27.ngrok-free.app/line-oa/callback.php';
+>>>>>>> f8bbd0aeb63ef4c6f9922ff6b667ef36e78c81ab
 
 // สร้างอ็อบเจ็กต์ LINE API
 $line_api = new LineAPI($client_id, $client_secret, $redirect_uri);
