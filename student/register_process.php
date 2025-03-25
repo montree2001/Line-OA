@@ -40,7 +40,7 @@ switch ($step) {
                     $_SESSION['student_title'] = $student_data['title'];
                     $_SESSION['student_first_name'] = $student_data['first_name'];
                     $_SESSION['student_last_name'] = $student_data['last_name'];
-                    $_SESSION['student_level_system'] = $student_data['level_system'];
+         
                     $_SESSION['student_class_level'] = $student_data['class_level'];
                     $_SESSION['student_department'] = $student_data['department'];
                     $_SESSION['student_group_number'] = $student_data['group_number'];
@@ -68,7 +68,7 @@ switch ($step) {
         $title = $_POST['title'] ?? '';
         $first_name = $_POST['first_name'] ?? '';
         $last_name = $_POST['last_name'] ?? '';
-        $level_system = $_POST['level_system'] ?? '';
+   
         $class_level = $_POST['class_level'] ?? '';
         $department = $_POST['department'] ?? '';
         $group_number = $_POST['group_number'] ?? '';
@@ -202,7 +202,7 @@ switch ($step) {
                     $class_id = $_SESSION['selected_class_id'];
                 } else {
                     // สร้างชั้นเรียนใหม่
-                    $level = $_SESSION['student_level_system'] . $_SESSION['student_class_level'];
+                 
                     $department = $_SESSION['student_department'];
                     $group_number = $_SESSION['student_group_number'];
                     
@@ -242,17 +242,17 @@ switch ($step) {
                                       user_id, 
                                       student_code, 
                                       title, 
-                                      level_system, 
+                                  
                                       current_class_id, 
                                       status, 
                                       created_at
-                                    ) VALUES (:user_id, :student_code, :title, :level_system, :current_class_id, 'กำลังศึกษา', NOW())";
+                                    ) VALUES (:user_id, :student_code, :title,:current_class_id, 'กำลังศึกษา', NOW())";
 
                 $student_stmt = $conn->prepare($insert_student_sql);
                 $student_stmt->bindParam(':user_id', $_SESSION['user_id'], PDO::PARAM_INT);
                 $student_stmt->bindParam(':student_code', $_SESSION['student_code'], PDO::PARAM_STR);
                 $student_stmt->bindParam(':title', $_SESSION['student_title'], PDO::PARAM_STR);
-                $student_stmt->bindParam(':level_system', $_SESSION['student_level_system'], PDO::PARAM_STR);
+          
                 $student_stmt->bindParam(':current_class_id', $class_id, PDO::PARAM_INT);
                 $student_stmt->execute();
                 $student_id = $conn->lastInsertId();
@@ -309,7 +309,7 @@ switch ($step) {
                 unset($_SESSION['student_title']);
                 unset($_SESSION['student_first_name']);
                 unset($_SESSION['student_last_name']);
-                unset($_SESSION['student_level_system']);
+       
                 unset($_SESSION['student_class_level']);
                 unset($_SESSION['student_department']);
                 unset($_SESSION['student_group_number']);
