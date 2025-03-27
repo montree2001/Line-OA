@@ -2,7 +2,8 @@
 /**
  * classes_functions.php - ฟังก์ชันการจัดการชั้นเรียนและนักเรียน
  */
-
+header('Content-Type: application/json; charset=utf-8');
+$response = ['success' => false, 'message' => 'ยังไม่ได้ดำเนินการ'];
 // เพิ่มชั้นเรียนใหม่
 function addClass($data) {
     try {
@@ -197,7 +198,9 @@ function deleteClass($class_id) {
     }
 }
 
-// จัดการครูที่ปรึกษา
+/**
+ * แก้ไขปัญหาฟังก์ชัน manageAdvisors ใน classes_functions.php
+ */
 function manageAdvisors($data) {
     try {
         $db = getDB();
@@ -216,18 +219,20 @@ function manageAdvisors($data) {
                 continue;
             }
             
+            $teacher_id = $change['teacher_id'];
+            
             switch ($change['action']) {
                 case 'add':
                     // ตรวจสอบว่าครูนี้เป็นที่ปรึกษาของห้องนี้แล้วหรือไม่
-                    $checkQuery = "SELECT COUNT(*) AS count FROM class_advisors 
+                    $checkQuery = "SELECT COUNT(*) FROM class_advisors 
                                   WHERE class_id = :class_id AND teacher_id = :teacher_id";
                     $checkStmt = $db->prepare($checkQuery);
                     $checkStmt->bindParam(':class_id', $class_id, PDO::PARAM_INT);
-                    $checkStmt->bindParam(':teacher_id', $change['teacher_id'], PDO::PARAM_INT);
+                    $checkStmt->bindParam(':teacher_id', $teacher_id, PDO::PARAM_INT);
                     $checkStmt->execute();
-                    $result = $checkStmt->fetch();
+                    $count = $checkStmt->fetchColumn();
                     
-                    if ($result['count'] == 0) {
+                    if ($count == 0) {
                         // ถ้าเพิ่มครูที่ปรึกษาหลัก ต้องยกเลิกครูที่ปรึกษาหลักคนเดิมก่อน
                         if (isset($change['is_primary']) && $change['is_primary']) {
                             $resetQuery = "UPDATE class_advisors SET is_primary = 0 
@@ -242,7 +247,7 @@ function manageAdvisors($data) {
                                     VALUES (:class_id, :teacher_id, :is_primary)";
                         $addStmt = $db->prepare($addQuery);
                         $addStmt->bindParam(':class_id', $class_id, PDO::PARAM_INT);
-                        $addStmt->bindParam(':teacher_id', $change['teacher_id'], PDO::PARAM_INT);
+                        $addStmt->bindParam(':teacher_id', $teacher_id, PDO::PARAM_INT);
                         $is_primary = isset($change['is_primary']) && $change['is_primary'] ? 1 : 0;
                         $addStmt->bindParam(':is_primary', $is_primary, PDO::PARAM_INT);
                         $addStmt->execute();
@@ -255,14 +260,14 @@ function manageAdvisors($data) {
                                    WHERE class_id = :class_id AND teacher_id = :teacher_id";
                     $removeStmt = $db->prepare($removeQuery);
                     $removeStmt->bindParam(':class_id', $class_id, PDO::PARAM_INT);
-                    $removeStmt->bindParam(':teacher_id', $change['teacher_id'], PDO::PARAM_INT);
+                    $removeStmt->bindParam(':teacher_id', $teacher_id, PDO::PARAM_INT);
                     $removeStmt->execute();
                     break;
                     
                 case 'set_primary':
                     // ยกเลิกครูที่ปรึกษาหลักคนเดิม
                     $resetQuery = "UPDATE class_advisors SET is_primary = 0 
-                                  WHERE class_id = :class_id AND is_primary = 1";
+                                  WHERE class_id = :class_id";
                     $resetStmt = $db->prepare($resetQuery);
                     $resetStmt->bindParam(':class_id', $class_id, PDO::PARAM_INT);
                     $resetStmt->execute();
@@ -272,7 +277,7 @@ function manageAdvisors($data) {
                                        WHERE class_id = :class_id AND teacher_id = :teacher_id";
                     $setPrimaryStmt = $db->prepare($setPrimaryQuery);
                     $setPrimaryStmt->bindParam(':class_id', $class_id, PDO::PARAM_INT);
-                    $setPrimaryStmt->bindParam(':teacher_id', $change['teacher_id'], PDO::PARAM_INT);
+                    $setPrimaryStmt->bindParam(':teacher_id', $teacher_id, PDO::PARAM_INT);
                     $setPrimaryStmt->execute();
                     break;
             }
@@ -283,7 +288,7 @@ function manageAdvisors($data) {
         $details = json_encode([
             'class_id' => $class_id,
             'changes' => $changes
-        ]);
+        ], JSON_UNESCAPED_UNICODE);
         
         $actionQuery = "INSERT INTO admin_actions (admin_id, action_type, action_details) 
                        VALUES (:admin_id, 'manage_advisors', :details)";
@@ -296,14 +301,13 @@ function manageAdvisors($data) {
         
         return ['success' => true, 'message' => 'บันทึกการเปลี่ยนแปลงครูที่ปรึกษาสำเร็จ'];
     } catch (PDOException $e) {
-        if ($db->inTransaction()) {
+        if (isset($db) && $db->inTransaction()) {
             $db->rollBack();
         }
         error_log("Error managing advisors: " . $e->getMessage());
         return ['success' => false, 'message' => 'เกิดข้อผิดพลาดในการจัดการครูที่ปรึกษา: ' . $e->getMessage()];
     }
 }
-
 // เลื่อนชั้นนักเรียน
 function promoteStudents($data) {
     try {

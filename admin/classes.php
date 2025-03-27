@@ -22,9 +22,19 @@ require_once 'includes/classes_functions.php';
 require_once 'includes/department_functions.php';
 require_once 'includes/api_handlers.php';
 
-// ตรวจสอบ API requests
 if (isset($_POST['action']) || isset($_GET['action'])) {
-    handleApiRequest();
+    // กำหนดค่าตัวแปร $response เริ่มต้น
+    $response = ['success' => false, 'message' => 'ไม่มีการดำเนินการ'];
+    
+    // เรียกใช้ฟังก์ชัน handleApiRequest ด้วย try-catch เพื่อจับข้อผิดพลาด
+    try {
+        handleApiRequest();
+    } catch (Exception $e) {
+        // บันทึกข้อผิดพลาดและแสดงข้อความแจ้งเตือน
+        error_log("API error: " . $e->getMessage());
+        echo json_encode(['success' => false, 'message' => 'เกิดข้อผิดพลาดในการประมวลผลคำขอ: ' . $e->getMessage()], 
+                        JSON_UNESCAPED_UNICODE);
+    }
     exit;
 }
 

@@ -374,6 +374,7 @@
                 <h3>ครูที่ปรึกษาปัจจุบัน</h3>
                 <div id="currentAdvisorsList" class="advisor-items">
                     <!-- รายการครูที่ปรึกษาปัจจุบัน จะถูกเติมด้วย JavaScript -->
+                    <div class="text-muted">กำลังโหลดข้อมูล...</div>
                 </div>
             </div>
             
@@ -383,14 +384,15 @@
                     <label>เลือกครู</label>
                     <select id="advisorSelect" class="form-control">
                         <option value="">-- เลือกครูที่ปรึกษา --</option>
-                        <?php foreach ($data['teachers'] as $teacher): ?>
-                        <option value="<?php echo $teacher['teacher_id']; ?>"><?php echo $teacher['title'] . ' ' . $teacher['first_name'] . ' ' . $teacher['last_name']; ?></option>
-                        <?php endforeach; ?>
+                        <!-- รายการครู จะถูกเติมด้วย PHP -->
                     </select>
                 </div>
                 <div class="form-check">
                     <input type="checkbox" id="isPrimaryAdvisor" class="form-check-input">
                     <label for="isPrimaryAdvisor" class="form-check-label">ครูที่ปรึกษาหลัก</label>
+                </div>
+                <div class="form-helper-text">
+                    <small class="text-muted">* ครูที่ปรึกษาหลักจะมีเพียงคนเดียวต่อชั้นเรียน</small>
                 </div>
                 <button class="btn btn-primary mt-2" onclick="addAdvisor()">
                     <span class="material-icons">add</span>
@@ -399,8 +401,15 @@
             </div>
         </div>
         
+        <div class="advisor-changes-summary">
+            <h3>สรุปการเปลี่ยนแปลง</h3>
+            <div id="changesLog" class="changes-log">
+                <div class="text-muted">ยังไม่มีการเปลี่ยนแปลง</div>
+            </div>
+        </div>
+        
         <div class="modal-actions">
-            <button class="btn btn-secondary" onclick="closeModal('advisorsModal')">ปิด</button>
+            <button class="btn btn-secondary" onclick="cancelAdvisorChanges()">ยกเลิก</button>
             <button class="btn btn-primary" onclick="saveAdvisorsChanges()">
                 <span class="material-icons">save</span>
                 บันทึกการเปลี่ยนแปลง
@@ -410,18 +419,21 @@
 </div>
 
 <!-- โมดัลเลื่อนชั้นนักเรียน -->
-<div class="modal" id="promoteStudentsModal">
+<div class="modal large-modal" id="promoteStudentsModal">
     <div class="modal-content">
         <button class="modal-close" onclick="closeModal('promoteStudentsModal')">
             <span class="material-icons">close</span>
         </button>
-        <h2 class="modal-title">เลื่อนชั้นนักเรียน</h2>
+        <h2 class="modal-title">
+            <span class="material-icons">upgrade</span>
+            เลื่อนชั้นนักเรียน
+        </h2>
         
         <div class="promotion-info">
             <div class="alert alert-info">
                 <span class="material-icons">info</span>
                 <div class="alert-content">
-                    <p>ระบบจะดำเนินการเลื่อนชั้นนักเรียนจากปีการศึกษา <?php echo $data['current_academic_year']; ?> ไปยังปีการศึกษา <?php echo $data['next_academic_year']; ?></p>
+                    <p><strong>การเลื่อนชั้นนักเรียนจะดำเนินการดังนี้:</strong></p>
                     <p>- นักเรียนชั้น ปวช.1 จะเลื่อนขึ้นไป ปวช.2</p>
                     <p>- นักเรียนชั้น ปวช.2 จะเลื่อนขึ้นไป ปวช.3</p>
                     <p>- นักเรียนชั้น ปวส.1 จะเลื่อนขึ้นไป ปวส.2</p>
@@ -429,32 +441,118 @@
                 </div>
             </div>
             
-            <div class="promotion-count-table">
-                <h3>สรุปจำนวนนักเรียนที่จะเลื่อนชั้น</h3>
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>ระดับชั้นปัจจุบัน</th>
-                            <th>จำนวนนักเรียน</th>
-                            <th>ระดับชั้นใหม่</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($data['promotion_counts'] as $promotion): ?>
-                        <tr>
-                            <td><?php echo $promotion['current_level']; ?></td>
-                            <td><?php echo $promotion['student_count']; ?></td>
-                            <td><?php echo $promotion['new_level']; ?></td>
-                        </tr>
+            <div class="form-section">
+                <div class="form-group">
+                    <label for="fromAcademicYear">ปีการศึกษาต้นทาง</label>
+                    <select id="fromAcademicYear" class="form-control">
+                        <?php foreach ($data['academic_years'] as $year): ?>
+                            <?php if ($year['is_active']): ?>
+                                <option value="<?php echo $year['academic_year_id']; ?>" selected>
+                                    <?php echo $year['year']; ?> (ภาคเรียนที่ <?php echo $year['semester']; ?>)
+                                </option>
+                            <?php endif; ?>
                         <?php endforeach; ?>
-                    </tbody>
-                </table>
+                    </select>
+                    <small class="helper-text">ปีการศึกษาที่จะเลื่อนชั้นนักเรียนออก</small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="toAcademicYear">ปีการศึกษาปลายทาง</label>
+                    <select id="toAcademicYear" class="form-control">
+                        <?php 
+                        // แสดงเฉพาะปีการศึกษาที่อยู่ถัดไป
+                        $nextYearFound = false;
+                        foreach ($data['academic_years'] as $year): 
+                            if ($year['is_active']) continue; // ข้ามปีปัจจุบัน
+                            
+                            if (!$nextYearFound):
+                                $nextYearFound = true;
+                        ?>
+                                <option value="<?php echo $year['academic_year_id']; ?>" selected>
+                                    <?php echo $year['year']; ?> (ภาคเรียนที่ <?php echo $year['semester']; ?>)
+                                </option>
+                        <?php 
+                            endif;
+                        endforeach; 
+                        
+                        // ถ้าไม่พบปีการศึกษาถัดไป ให้แสดงตัวเลือกเพิ่มปีการศึกษาใหม่
+                        if (!$nextYearFound):
+                        ?>
+                            <option value="new" class="text-success">+ เพิ่มปีการศึกษาใหม่</option>
+                        <?php endif; ?>
+                    </select>
+                    <small class="helper-text">ปีการศึกษาที่จะเลื่อนชั้นนักเรียนเข้า</small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="promotionNotes">หมายเหตุการเลื่อนชั้น</label>
+                    <textarea id="promotionNotes" class="form-control" rows="3"></textarea>
+                </div>
+            </div>
+            
+            <div class="promotion-summary">
+                <h3>สรุปจำนวนนักเรียนที่จะเลื่อนชั้น</h3>
+                
+                <div class="promotion-stats">
+                    <div class="promotion-chart">
+                        <!-- กราฟแสดงจำนวนนักเรียนแต่ละระดับชั้น -->
+                        <div id="promotionChart" class="chart-container">
+                            <!-- จะถูกเติมด้วย JS -->
+                        </div>
+                    </div>
+                    
+                    <div class="promotion-table">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>ระดับชั้นปัจจุบัน</th>
+                                    <th>จำนวนนักเรียน</th>
+                                    <th>ระดับชั้นใหม่</th>
+                                </tr>
+                            </thead>
+                            <tbody id="promotionCountsBody">
+                                <?php if (isset($data['promotion_counts']) && is_array($data['promotion_counts'])): ?>
+                                    <?php foreach ($data['promotion_counts'] as $promotion): ?>
+                                    <tr>
+                                        <td><?php echo $promotion['current_level']; ?></td>
+                                        <td class="text-center"><?php echo $promotion['student_count']; ?> คน</td>
+                                        <td class="<?php echo $promotion['new_level'] === 'สำเร็จการศึกษา' ? 'text-success' : ''; ?>">
+                                            <?php echo $promotion['new_level']; ?>
+                                        </td>
+                                    </tr>
+                                    <?php endforeach; ?>
+                                <?php else: ?>
+                                    <tr>
+                                        <td colspan="3" class="text-center">ไม่พบข้อมูลนักเรียนที่จะเลื่อนชั้น</td>
+                                    </tr>
+                                <?php endif; ?>
+                            </tbody>
+                            <tfoot>
+                                <tr>
+                                    <th>รวมทั้งหมด</th>
+                                    <th class="text-center">
+                                        <?php 
+                                            $total = 0;
+                                            if (isset($data['promotion_counts']) && is_array($data['promotion_counts'])) {
+                                                foreach ($data['promotion_counts'] as $promotion) {
+                                                    $total += $promotion['student_count'];
+                                                }
+                                            }
+                                            echo $total . ' คน';
+                                        ?>
+                                    </th>
+                                    <th></th>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
             </div>
         </div>
         
         <div class="modal-actions">
             <button class="btn btn-secondary" onclick="closeModal('promoteStudentsModal')">ยกเลิก</button>
-            <button class="btn btn-warning" onclick="confirmPromoteStudents()">
+            <button id="promoteBtn" class="btn btn-warning" onclick="confirmPromoteStudents()">
                 <span class="material-icons">upgrade</span>
                 ดำเนินการเลื่อนชั้น
             </button>
@@ -488,6 +586,224 @@
 </div>
 
 <style>
+    .large-modal .modal-content {
+    width: 80%;
+    max-width: 1000px;
+}
+
+.promotion-info {
+    margin-bottom: 20px;
+}
+
+.alert {
+    display: flex;
+    align-items: flex-start;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.alert-info {
+    background-color: #e3f2fd;
+    color: #0d47a1;
+    border-left: 4px solid #1976d2;
+}
+
+.alert .material-icons {
+    margin-right: 15px;
+    margin-top: 2px;
+}
+
+.alert-content {
+    flex: 1;
+}
+
+.alert-content p {
+    margin: 5px 0;
+}
+
+.form-section {
+    background-color: #f5f5f5;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.helper-text {
+    color: #666;
+}
+
+.promotion-summary {
+    background-color: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.promotion-summary h3 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.promotion-stats {
+    display: flex;
+    gap: 20px;
+}
+
+.promotion-chart {
+    flex: 1;
+    min-height: 200px;
+}
+
+.promotion-table {
+    flex: 1;
+}
+
+.chart-container {
+    height: 250px;
+    background-color: #f9f9f9;
+    border-radius: 8px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 10px;
+}
+
+.text-success {
+    color: #4caf50;
+}
+
+@media (max-width: 768px) {
+    .promotion-stats {
+        flex-direction: column;
+    }
+    
+    .large-modal .modal-content {
+        width: 95%;
+    }
+}
+    .advisors-management {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.current-advisors, .add-advisor {
+    flex: 1;
+    padding: 15px;
+    background-color: #f9f9f9;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.advisor-items {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-height: 300px;
+    overflow-y: auto;
+    padding-right: 5px;
+}
+
+.advisor-item {
+    display: flex;
+    align-items: center;
+    padding: 10px 15px;
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    transition: all 0.2s ease;
+}
+
+.advisor-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.advisor-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: var(--secondary-color-light);
+    color: var(--secondary-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 10px;
+    font-weight: bold;
+    font-size: 16px;
+}
+
+.advisor-info {
+    flex: 1;
+}
+
+.advisor-action {
+    display: flex;
+    gap: 5px;
+}
+
+.primary-badge {
+    background-color: #4caf50;
+    color: white;
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 10px;
+    margin-left: 10px;
+}
+
+.advisor-changes-summary {
+    background-color: #f5f5f5;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 20px;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.changes-log {
+    font-size: 14px;
+}
+
+.change-item {
+    padding: 8px 0;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.change-item:last-child {
+    border-bottom: none;
+}
+
+.change-add {
+    color: #4caf50;
+}
+
+.change-remove {
+    color: #f44336;
+}
+
+.change-primary {
+    color: #2196f3;
+}
+
+.form-helper-text {
+    margin-top: 5px;
+    font-size: 12px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .advisors-management {
+        flex-direction: column;
+    }
+}
 /* สไตล์เพิ่มเติมสำหรับหน้าจัดการชั้นเรียน */
 .class-dept {
     font-size: 12px;
@@ -791,11 +1107,300 @@ function showClassDetails(classId) {
 }
 
 // ฟังก์ชันจัดการครูที่ปรึกษา
-function manageAdvisors(classId) {
-    currentClassId = classId;
+function renderCurrentAdvisors(advisors) {
+    const currentAdvisorsList = document.getElementById('currentAdvisorsList');
+    currentAdvisorsList.innerHTML = '';
     
-    // ส่งคำขอจัดการครูที่ปรึกษา
-    window.location.href = `classes.php?action=manage_advisors&class_id=${classId}`;
+    if (!advisors || advisors.length === 0) {
+        currentAdvisorsList.innerHTML = '<div class="text-muted">ยังไม่มีครูที่ปรึกษา</div>';
+        return;
+    }
+    
+    advisors.forEach(advisor => {
+        const advisorEl = document.createElement('div');
+        advisorEl.className = 'advisor-item';
+        advisorEl.innerHTML = `
+            <div class="advisor-avatar">${advisor.name.charAt(0)}</div>
+            <div class="advisor-info">
+                <div>${advisor.name} ${advisor.is_primary ? '<span class="primary-badge">หลัก</span>' : ''}</div>
+                <div class="advisor-position">${advisor.position || 'ครู'}</div>
+            </div>
+            <div class="advisor-action">
+                ${!advisor.is_primary ? `
+                <button class="table-action-btn success" onclick="setAsPrimaryAdvisor(${advisor.id})">
+                    <span class="material-icons">stars</span>
+                </button>` : ''}
+                <button class="table-action-btn danger" onclick="removeAdvisor(${advisor.id})">
+                    <span class="material-icons">delete</span>
+                </button>
+            </div>
+        `;
+        currentAdvisorsList.appendChild(advisorEl);
+    });
+}
+
+// อัพเดทการแสดงการเปลี่ยนแปลง
+function updateChangesLog() {
+    const changesLog = document.getElementById('changesLog');
+    
+    if (!advisorsChanges || advisorsChanges.length === 0) {
+        changesLog.innerHTML = '<div class="text-muted">ยังไม่มีการเปลี่ยนแปลง</div>';
+        return;
+    }
+    
+    changesLog.innerHTML = '';
+    advisorsChanges.forEach((change, index) => {
+        const changeItem = document.createElement('div');
+        changeItem.className = 'change-item';
+        
+        let iconClass = '';
+        let changeText = '';
+        
+        // หาชื่อครูจาก select
+        let teacherName = 'ครูรหัส ' + change.teacher_id;
+        const teacherOption = document.querySelector(`#advisorSelect option[value="${change.teacher_id}"]`);
+        if (teacherOption) {
+            teacherName = teacherOption.textContent;
+        }
+        
+        switch (change.action) {
+            case 'add':
+                iconClass = 'change-add';
+                changeText = `<span class="material-icons">person_add</span> เพิ่ม ${teacherName} ${change.is_primary ? '(ที่ปรึกษาหลัก)' : ''}`;
+                break;
+            case 'remove':
+                iconClass = 'change-remove';
+                changeText = `<span class="material-icons">person_remove</span> ลบ ${teacherName}`;
+                break;
+            case 'set_primary':
+                iconClass = 'change-primary';
+                changeText = `<span class="material-icons">stars</span> ตั้ง ${teacherName} เป็นที่ปรึกษาหลัก`;
+                break;
+        }
+        
+        changeItem.innerHTML = `
+            <div class="${iconClass}">
+                ${changeText}
+                <button class="btn-icon" onclick="removeChange(${index})">
+                    <span class="material-icons">cancel</span>
+                </button>
+            </div>
+        `;
+        
+        changesLog.appendChild(changeItem);
+    });
+}
+
+// ลบการเปลี่ยนแปลง
+function removeChange(index) {
+    if (index >= 0 && index < advisorsChanges.length) {
+        advisorsChanges.splice(index, 1);
+        updateChangesLog();
+    }
+}
+
+// ยกเลิกการเปลี่ยนแปลงทั้งหมด
+function cancelAdvisorChanges() {
+    if (advisorsChanges.length > 0) {
+        if (confirm('คุณแน่ใจหรือไม่ที่จะยกเลิกการเปลี่ยนแปลงทั้งหมด?')) {
+            advisorsChanges = [];
+            closeModal('advisorsModal');
+        }
+    } else {
+        closeModal('advisorsModal');
+    }
+}
+
+// อัพเดทฟังก์ชันเพิ่มครูที่ปรึกษา
+function addAdvisor() {
+    const advisorId = document.getElementById('advisorSelect').value;
+    const isPrimary = document.getElementById('isPrimaryAdvisor').checked;
+    
+    if (!advisorId) {
+        showNotification('กรุณาเลือกครูที่ปรึกษา', 'warning');
+        return;
+    }
+    
+    // ตรวจสอบว่าเลือกซ้ำหรือไม่
+    if (advisorsChanges.some(change => change.action === 'add' && change.teacher_id == advisorId)) {
+        showNotification('ครูที่ปรึกษาท่านนี้มีอยู่ในรายการเพิ่มแล้ว', 'warning');
+        return;
+    }
+    
+    // ตรวจสอบว่ามีอยู่ในรายการปัจจุบันแล้วหรือไม่
+    const currentAdvisorItems = document.querySelectorAll('#currentAdvisorsList .advisor-item');
+    let isDuplicate = false;
+    
+    currentAdvisorItems.forEach(item => {
+        const actionButton = item.querySelector('.advisor-action button:last-child');
+        if (actionButton && actionButton.getAttribute('onclick').includes(`removeAdvisor(${advisorId})`)) {
+            isDuplicate = true;
+        }
+    });
+    
+    if (isDuplicate) {
+        showNotification('ครูที่ปรึกษาท่านนี้เป็นที่ปรึกษาของชั้นเรียนนี้อยู่แล้ว', 'warning');
+        return;
+    }
+    
+    // บันทึกการเปลี่ยนแปลง
+    advisorsChanges.push({
+        action: 'add',
+        teacher_id: advisorId,
+        is_primary: isPrimary
+    });
+    
+    // อัพเดทการแสดงการเปลี่ยนแปลง
+    updateChangesLog();
+    
+    // จำลองการแสดงผล (ในตัวอย่างจริง ควรจะดึงข้อมูลครูจาก API)
+    const advisorName = document.querySelector(`#advisorSelect option[value="${advisorId}"]`).textContent;
+    
+    // เพิ่มรายการใหม่ลงในรายการครูที่ปรึกษาปัจจุบัน
+    const currentAdvisorsList = document.getElementById('currentAdvisorsList');
+    const noAdvisorMessage = currentAdvisorsList.querySelector('.text-muted');
+    if (noAdvisorMessage) {
+        currentAdvisorsList.innerHTML = '';
+    }
+    
+    const advisorEl = document.createElement('div');
+    advisorEl.className = 'advisor-item';
+    advisorEl.innerHTML = `
+        <div class="advisor-avatar">${advisorName.charAt(0)}</div>
+        <div class="advisor-info">
+            <div>${advisorName} ${isPrimary ? '<span class="primary-badge">หลัก</span>' : ''}</div>
+            <div class="advisor-position">เพิ่มใหม่</div>
+        </div>
+        <div class="advisor-action">
+            ${!isPrimary ? `
+            <button class="table-action-btn success" onclick="setAsPrimaryAdvisor(${advisorId})">
+                <span class="material-icons">stars</span>
+            </button>` : ''}
+            <button class="table-action-btn danger" onclick="removeNewAdvisor(this, ${advisorId})">
+                <span class="material-icons">delete</span>
+            </button>
+        </div>
+    `;
+    currentAdvisorsList.appendChild(advisorEl);
+    
+    // รีเซ็ตฟอร์ม
+    document.getElementById('advisorSelect').value = '';
+    document.getElementById('isPrimaryAdvisor').checked = false;
+    
+    showNotification('เพิ่มครูที่ปรึกษาใหม่ในรายการแล้ว', 'success');
+}
+
+// อัพเดทฟังก์ชันตั้งเป็นครูที่ปรึกษาหลัก
+function setAsPrimaryAdvisor(advisorId) {
+    // ตรวจสอบว่ามีครูที่ถูกเพิ่มใหม่และตั้งเป็นที่ปรึกษาหลักหรือไม่
+    const hasPrimaryInChanges = advisorsChanges.some(change => 
+        change.action === 'add' && change.is_primary
+    );
+    
+    // หากมีการตั้งครูที่ปรึกษาหลักไปแล้วในการเปลี่ยนแปลง ให้ยกเลิก
+    if (hasPrimaryInChanges) {
+        advisorsChanges = advisorsChanges.map(change => {
+            if (change.action === 'add') {
+                return { ...change, is_primary: false };
+            }
+            return change;
+        });
+    }
+    
+    // บันทึกการเปลี่ยนแปลง
+    advisorsChanges.push({
+        action: 'set_primary',
+        teacher_id: advisorId
+    });
+    
+    // อัพเดทการแสดงการเปลี่ยนแปลง
+    updateChangesLog();
+    
+    // อัพเดท UI
+    // ล้างครูที่ปรึกษาหลักเดิม
+    const primaryBadges = document.querySelectorAll('#currentAdvisorsList .primary-badge');
+    primaryBadges.forEach(badge => {
+        badge.remove();
+    });
+    
+    // แสดงปุ่มตั้งเป็นที่ปรึกษาหลักทั้งหมด
+    const setPrimaryButtons = document.querySelectorAll('#currentAdvisorsList .table-action-btn.success');
+    setPrimaryButtons.forEach(button => {
+        button.style.display = '';
+    });
+    
+    // ตั้งครูคนนี้เป็นที่ปรึกษาหลัก
+    const currentAdvisorItems = document.querySelectorAll('#currentAdvisorsList .advisor-item');
+    currentAdvisorItems.forEach(item => {
+        const actionButton = item.querySelector('.advisor-action button:last-child');
+        if (actionButton && (actionButton.getAttribute('onclick').includes(`removeAdvisor(${advisorId})`) || 
+                             actionButton.getAttribute('onclick').includes(`removeNewAdvisor(this, ${advisorId})`))) {
+            const nameElement = item.querySelector('.advisor-info div:first-child');
+            nameElement.innerHTML = nameElement.textContent + ' <span class="primary-badge">หลัก</span>';
+            
+            // ซ่อนปุ่มตั้งเป็นครูที่ปรึกษาหลัก
+            const setPrimaryButton = item.querySelector('.table-action-btn.success');
+            if (setPrimaryButton) {
+                setPrimaryButton.style.display = 'none';
+            }
+        }
+    });
+    
+    showNotification('ตั้งเป็นครูที่ปรึกษาหลักแล้ว', 'success');
+}
+
+// อัพเดทฟังก์ชันลบครูที่ปรึกษา
+function removeAdvisor(advisorId) {
+    if (confirm(`ต้องการลบครูที่ปรึกษาออกจากชั้นเรียนนี้หรือไม่?`)) {
+        // บันทึกการเปลี่ยนแปลง
+        advisorsChanges.push({
+            action: 'remove',
+            teacher_id: advisorId
+        });
+        
+        // อัพเดทการแสดงการเปลี่ยนแปลง
+        updateChangesLog();
+        
+        // ลบรายการจาก DOM
+        const currentAdvisorItems = document.querySelectorAll('#currentAdvisorsList .advisor-item');
+        currentAdvisorItems.forEach(item => {
+            const actionButton = item.querySelector('.advisor-action button:last-child');
+            if (actionButton && actionButton.getAttribute('onclick').includes(`removeAdvisor(${advisorId})`)) {
+                item.remove();
+            }
+        });
+        
+        // ตรวจสอบว่ายังมีครูที่ปรึกษาในรายการหรือไม่
+        const currentAdvisorsList = document.getElementById('currentAdvisorsList');
+        if (currentAdvisorsList.children.length === 0) {
+            currentAdvisorsList.innerHTML = '<div class="text-muted">ยังไม่มีครูที่ปรึกษา</div>';
+        }
+        
+        showNotification('ลบครูที่ปรึกษาออกจากชั้นเรียนแล้ว', 'success');
+    }
+}
+
+// อัพเดทฟังก์ชันลบครูที่ปรึกษาที่เพิ่งเพิ่มใหม่
+function removeNewAdvisor(buttonElement, advisorId) {
+    // ลบรายการจาก DOM
+    const advisorItem = buttonElement.closest('.advisor-item');
+    advisorItem.remove();
+    
+    // ลบการเปลี่ยนแปลงจากรายการ
+    advisorsChanges = advisorsChanges.filter(change => {
+        return !(change.action === 'add' && change.teacher_id == advisorId);
+    });
+    
+    // อัพเดทการแสดงการเปลี่ยนแปลง
+    updateChangesLog();
+    
+    // ตรวจสอบว่ายังมีครูที่ปรึกษาในรายการหรือไม่
+    const currentAdvisorsList = document.getElementById('currentAdvisorsList');
+    if (currentAdvisorsList.children.length === 0) {
+        currentAdvisorsList.innerHTML = '<div class="text-muted">ยังไม่มีครูที่ปรึกษา</div>';
+    }
+    
+    showNotification('ลบครูที่ปรึกษาออกจากรายการแล้ว', 'info');
 }
 
 // ฟังก์ชันแสดงโมดัลเลื่อนชั้นนักเรียน
@@ -804,23 +1409,195 @@ function showPromoteStudentsModal() {
 }
 
 // ฟังก์ชันยืนยันการเลื่อนชั้นนักเรียน
+
+// ฟังก์ชันสำหรับยืนยันการเลื่อนชั้นนักเรียน
 function confirmPromoteStudents() {
-    if (confirm('คุณแน่ใจหรือไม่ที่จะดำเนินการเลื่อนชั้นนักเรียน? การดำเนินการนี้ไม่สามารถย้อนกลับได้')) {
-        // ส่งคำขอเลื่อนชั้นนักเรียน
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = 'classes.php';
-        
-        const actionInput = document.createElement('input');
-        actionInput.type = 'hidden';
-        actionInput.name = 'form_action';
-        actionInput.value = 'promote_students';
-        
-        form.appendChild(actionInput);
-        document.body.appendChild(form);
-        form.submit();
+    // ตรวจสอบว่ามีปีการศึกษาปลายทางหรือไม่
+    const toAcademicYear = document.getElementById('toAcademicYear').value;
+    const fromAcademicYear = document.getElementById('fromAcademicYear').value;
+    const promotionNotes = document.getElementById('promotionNotes').value;
+    
+    if (toAcademicYear === 'new') {
+        showModal('newAcademicYearModal');
+        return;
     }
+    
+    if (!toAcademicYear || !fromAcademicYear) {
+        showNotification('กรุณาเลือกปีการศึกษาต้นทางและปลายทาง', 'warning');
+        return;
+    }
+    
+    if (!confirm('คุณแน่ใจหรือไม่ที่จะดำเนินการเลื่อนชั้นนักเรียน? การดำเนินการนี้ไม่สามารถย้อนกลับได้')) {
+        return;
+    }
+    
+    // แสดงสถานะกำลังโหลด
+    const promoteBtn = document.getElementById('promoteBtn');
+    promoteBtn.disabled = true;
+    promoteBtn.innerHTML = '<span class="material-icons spinning">sync</span> กำลังดำเนินการ...';
+    
+    // เตรียมข้อมูลสำหรับส่ง
+    const formData = new FormData();
+    formData.append('action', 'promote_students');
+    formData.append('from_academic_year_id', fromAcademicYear);
+    formData.append('to_academic_year_id', toAcademicYear);
+    formData.append('notes', promotionNotes);
+    
+    // ส่งข้อมูลผ่าน AJAX
+    ajaxRequest(
+        'api/class_manager.php',
+        'POST',
+        formData,
+        function(data) {
+            if (data.status === 'success') {
+                showNotification(data.message, 'success');
+                closeModal('promoteStudentsModal');
+                
+                // รอสักครู่แล้วโหลดหน้าใหม่
+                setTimeout(function() {
+                    window.location.reload();
+                }, 1500);
+            } else {
+                showNotification(data.message || 'เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ', 'error');
+                promoteBtn.disabled = false;
+                promoteBtn.innerHTML = '<span class="material-icons">upgrade</span> ดำเนินการเลื่อนชั้น';
+            }
+        },
+        function(error) {
+            console.error('Error:', error);
+            showNotification('เกิดข้อผิดพลาดในการเลื่อนชั้นนักเรียน: ' + error, 'error');
+            promoteBtn.disabled = false;
+            promoteBtn.innerHTML = '<span class="material-icons">upgrade</span> ดำเนินการเลื่อนชั้น';
+        }
+    );
 }
+
+// ฟังก์ชันสร้างกราฟแสดงจำนวนนักเรียนที่จะเลื่อนชั้น
+function renderPromotionChart() {
+    const chartContainer = document.getElementById('promotionChart');
+    
+    // ดึงข้อมูลจากตาราง
+    const dataRows = document.querySelectorAll('#promotionCountsBody tr');
+    if (dataRows.length === 0) {
+        chartContainer.innerHTML = '<div class="text-muted">ไม่มีข้อมูลสำหรับแสดงกราฟ</div>';
+        return;
+    }
+    
+    // สร้างข้อมูลสำหรับกราฟ
+    const chartData = [];
+    let totalStudents = 0;
+    
+    dataRows.forEach(row => {
+        const cells = row.querySelectorAll('td');
+        if (cells.length >= 3) {
+            const currentLevel = cells[0].textContent.trim();
+            const studentCount = parseInt(cells[1].textContent);
+            const newLevel = cells[2].textContent.trim();
+            
+            if (!isNaN(studentCount)) {
+                chartData.push({
+                    level: currentLevel,
+                    students: studentCount,
+                    newLevel: newLevel
+                });
+                totalStudents += studentCount;
+            }
+        }
+    });
+    
+    // สร้างกราฟแท่ง
+    let chartHtml = '';
+    
+    chartData.forEach(item => {
+        const barHeight = (item.students / totalStudents) * 200;
+        const percentage = ((item.students / totalStudents) * 100).toFixed(1);
+        
+        const barColor = item.newLevel === 'สำเร็จการศึกษา' 
+            ? '#4caf50' // สีเขียวสำหรับนักเรียนที่จบการศึกษา
+            : '#2196f3'; // สีฟ้าสำหรับนักเรียนที่เลื่อนชั้น
+        
+        chartHtml += `
+            <div class="chart-bar-container">
+                <div class="chart-bar" style="height: ${barHeight}px; background-color: ${barColor};">
+                    <span class="chart-value">${item.students}</span>
+                </div>
+                <div class="chart-label">${item.level}</div>
+                <div class="chart-percentage">${percentage}%</div>
+            </div>
+        `;
+    });
+    
+    // เพิ่ม CSS เฉพาะสำหรับกราฟ
+    chartHtml = `
+        <style>
+            .chart-wrapper {
+                display: flex;
+                height: 220px;
+                align-items: flex-end;
+                justify-content: space-around;
+                margin-top: 20px;
+            }
+            
+            .chart-bar-container {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                width: 60px;
+            }
+            
+            .chart-bar {
+                width: 40px;
+                min-height: 30px;
+                border-radius: 4px 4px 0 0;
+                position: relative;
+            }
+            
+            .chart-value {
+                position: absolute;
+                top: -20px;
+                left: 50%;
+                transform: translateX(-50%);
+                font-weight: bold;
+            }
+            
+            .chart-label {
+                margin-top: 5px;
+                font-size: 12px;
+                text-align: center;
+            }
+            
+            .chart-percentage {
+                font-size: 10px;
+                color: #666;
+            }
+        </style>
+        <div class="chart-wrapper">
+            ${chartHtml}
+        </div>
+    `;
+    
+    chartContainer.innerHTML = chartHtml;
+}
+
+// เมื่อเปิดโมดัลเลื่อนชั้น ให้แสดงกราฟ
+document.addEventListener('DOMContentLoaded', function() {
+    // เพิ่ม event listener สำหรับการแสดงกราฟเมื่อเปิดโมดัล
+    const promoteStudentsModal = document.getElementById('promoteStudentsModal');
+    if (promoteStudentsModal) {
+        const observer = new MutationObserver(function(mutations) {
+            mutations.forEach(function(mutation) {
+                if (mutation.attributeName === 'style' && 
+                    promoteStudentsModal.style.display === 'flex') {
+                    renderPromotionChart();
+                }
+            });
+        });
+        
+        observer.observe(promoteStudentsModal, {
+            attributes: true
+        });
+    }
+});
 
 // =============== ฟังก์ชันทั่วไป ===============
 

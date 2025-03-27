@@ -24,6 +24,50 @@ function initializeClassManagement() {
     
     // ดึงข้อมูลชั้นเรียนเริ่มต้น
     fetchInitialData();
+    
+    // แสดง notification ว่าระบบพร้อมใช้งาน
+    showNotification('ระบบจัดการชั้นเรียนพร้อมใช้งาน', 'info');
+}
+function ajaxRequest(url, method, data, successCallback, errorCallback) {
+    // สร้าง XMLHttpRequest
+    const xhr = new XMLHttpRequest();
+    xhr.open(method, url, true);
+    
+    // กำหนด headers
+    if (method.toUpperCase() === 'POST' && !(data instanceof FormData)) {
+        xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+    }
+    
+    // กำหนด event handlers
+    xhr.onload = function() {
+        if (xhr.status >= 200 && xhr.status < 300) {
+            try {
+                const response = JSON.parse(xhr.responseText);
+                successCallback(response);
+            } catch (e) {
+                errorCallback('เกิดข้อผิดพลาดในการแปลงข้อมูล JSON: ' + e.message);
+            }
+        } else {
+            errorCallback('เกิดข้อผิดพลาดในการรับข้อมูล: ' + xhr.status);
+        }
+    };
+    
+    xhr.onerror = function() {
+        errorCallback('เกิดข้อผิดพลาดในการเชื่อมต่อ');
+    };
+    
+    // ส่งข้อมูล
+    if (data instanceof FormData) {
+        xhr.send(data);
+    } else if (typeof data === 'object') {
+        const formData = new FormData();
+        Object.keys(data).forEach(key => {
+            formData.append(key, data[key]);
+        });
+        xhr.send(formData);
+    } else {
+        xhr.send();
+    }
 }
 
 /**
@@ -138,92 +182,96 @@ function handleDepartmentFormSubmit(e) {
 /**
  * สร้างแผนกวิชาใหม่
  */
+
+
+
+
 function createDepartment(formData) {
-    // ส่งข้อมูลผ่าน AJAX
-    fetch('api/class_manager.php', {
-        method: 'POST',
-        body: formData
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.status === 'success') {
-            showNotification(data.message, 'success');
-            closeModal('departmentModal');
-            reloadPage(); // โหลดหน้าใหม่เพื่อแสดงข้อมูลที่เพิ่ม
-        } else {
-            showNotification(data.message, 'error');
+    ajaxRequest(
+        'api/class_manager.php',
+        'POST',
+        formData,
+        function(data) {
+            if (data.status === 'success') {
+                showNotification(data.message, 'success');
+                closeModal('departmentModal');
+                reloadPage();
+            } else {
+                showNotification(data.message || 'เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ', 'error');
+            }
+        },
+        function(error) {
+            console.error('Error:', error);
+            showNotification('เกิดข้อผิดพลาดในการส่งข้อมูล: ' + error, 'error');
         }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        showNotification('เกิดข้อผิดพลาดในการส่งข้อมูล', 'error');
-    });
+    );
 }
 
 /**
  * อัปเดตแผนกวิชา
  */
 function updateDepartment(formData) {
-    fetch('api/class_manager.php', {
-        method: 'POST',
-        body: formData
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.status === 'success') {
-            showNotification(data.message, 'success');
-            closeModal('departmentModal');
-            reloadPage();
-        } else {
-            showNotification(data.message, 'error');
+    ajaxRequest(
+        'api/class_manager.php',
+        'POST',
+        formData,
+        function(data) {
+            if (data.status === 'success') {
+                showNotification(data.message, 'success');
+                closeModal('departmentModal');
+                reloadPage();
+            } else {
+                showNotification(data.message || 'เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ', 'error');
+            }
+        },
+        function(error) {
+            console.error('Error:', error);
+            showNotification('เกิดข้อผิดพลาดในการส่งข้อมูล: ' + error, 'error');
         }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        showNotification('เกิดข้อผิดพลาดในการส่งข้อมูล', 'error');
-    });
+    );
 }
+
 
 /**
  * ลบแผนกวิชา
  */
+// แก้ไขฟังก์ชันลบแผนกวิชา
 function deleteDepartment(departmentId) {
     document.getElementById('deleteWarningMessage').innerHTML = `
         คุณต้องการลบแผนกวิชารหัส <strong>${departmentId}</strong> ใช่หรือไม่?<br>
         <strong class="text-danger">คำเตือน:</strong> การลบแผนกวิชาจะส่งผลต่อชั้นเรียนและนักเรียนทั้งหมดในแผนกนี้
     `;
     
-    deleteCallback = () => {
+    deleteCallback = function() {
         const formData = new FormData();
         formData.append('action', 'delete_department');
         formData.append('department_id', departmentId);
         
-        fetch('api/class_manager.php', {
-            method: 'POST',
-            body: formData
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.status === 'success') {
-                showNotification(data.message, 'success');
-                closeModal('confirmDeleteModal');
-                reloadPage();
-            } else {
-                showNotification(data.message, 'error');
+        ajaxRequest(
+            'api/class_manager.php',
+            'POST',
+            formData,
+            function(data) {
+                if (data.status === 'success') {
+                    showNotification(data.message, 'success');
+                    closeModal('confirmDeleteModal');
+                    reloadPage();
+                } else {
+                    showNotification(data.message || 'เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ', 'error');
+                    closeModal('confirmDeleteModal');
+                }
+            },
+            function(error) {
+                console.error('Error:', error);
+                showNotification('เกิดข้อผิดพลาดในการส่งข้อมูล: ' + error, 'error');
                 closeModal('confirmDeleteModal');
             }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            showNotification('เกิดข้อผิดพลาดในการส่งข้อมูล', 'error');
-            closeModal('confirmDeleteModal');
-        });
+        );
     };
     
     document.getElementById('confirmDeleteButton').onclick = deleteCallback;
     showModal('confirmDeleteModal');
 }
-
 /**
  * แสดงโมดัลเพิ่มแผนกวิชา
  */
@@ -329,49 +377,51 @@ function handleClassFormSubmit(e) {
  * สร้างชั้นเรียนใหม่
  */
 function createClass(formData) {
-    fetch('api/class_manager.php', {
-        method: 'POST',
-        body: formData
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.status === 'success') {
-            showNotification(data.message, 'success');
-            closeModal('addClassModal');
-            reloadPage();
-        } else {
-            showNotification(data.message, 'error');
+    ajaxRequest(
+        'api/class_manager.php',
+        'POST',
+        formData,
+        function(data) {
+            if (data.status === 'success') {
+                showNotification(data.message, 'success');
+                closeModal('addClassModal');
+                reloadPage();
+            } else {
+                showNotification(data.message || 'เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ', 'error');
+            }
+        },
+        function(error) {
+            console.error('Error:', error);
+            showNotification('เกิดข้อผิดพลาดในการส่งข้อมูล: ' + error, 'error');
         }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        showNotification('เกิดข้อผิดพลาดในการส่งข้อมูล', 'error');
-    });
+    );
 }
+
 
 /**
  * อัปเดตชั้นเรียน
  */
 function updateClass(formData) {
-    fetch('api/class_manager.php', {
-        method: 'POST',
-        body: formData
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.status === 'success') {
-            showNotification(data.message, 'success');
-            closeModal('addClassModal');
-            reloadPage();
-        } else {
-            showNotification(data.message, 'error');
+    ajaxRequest(
+        'api/class_manager.php',
+        'POST',
+        formData,
+        function(data) {
+            if (data.status === 'success') {
+                showNotification(data.message, 'success');
+                closeModal('addClassModal');
+                reloadPage();
+            } else {
+                showNotification(data.message || 'เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ', 'error');
+            }
+        },
+        function(error) {
+            console.error('Error:', error);
+            showNotification('เกิดข้อผิดพลาดในการส่งข้อมูล: ' + error, 'error');
         }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        showNotification('เกิดข้อผิดพลาดในการส่งข้อมูล', 'error');
-    });
+    );
 }
+
 
 /**
  * แสดงโมดัลเพิ่มชั้นเรียน
@@ -641,32 +691,33 @@ function manageAdvisors(classId) {
     currentClassId = classId;
     advisorsChanges = []; // รีเซ็ตการเปลี่ยนแปลง
     
-    // ดึงข้อมูลครูที่ปรึกษาจากเซิร์ฟเวอร์
-    fetch(`api/class_manager.php`, {
-        method: 'POST',
-        body: new URLSearchParams({
-            'action': 'get_class_advisors',
-            'class_id': classId
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.status === 'success') {
-            document.getElementById('advisorsClassTitle').textContent = data.class_name;
-            
-            // เติมข้อมูลครูที่ปรึกษาปัจจุบัน
-            renderCurrentAdvisors(data.advisors);
-            
-            // แสดงโมดัล
-            showModal('advisorsModal');
-        } else {
-            showNotification(data.message, 'error');
+    // ดึงข้อมูลครูที่ปรึกษาของชั้นเรียน
+    const formData = new FormData();
+    formData.append('action', 'get_class_advisors');
+    formData.append('class_id', classId);
+    
+    ajaxRequest(
+        'api/class_manager.php',
+        'POST',
+        formData,
+        function(data) {
+            if (data.status === 'success') {
+                document.getElementById('advisorsClassTitle').textContent = data.class_name;
+                
+                // เติมข้อมูลครูที่ปรึกษาปัจจุบัน
+                renderCurrentAdvisors(data.advisors);
+                
+                // แสดง Modal
+                showModal('advisorsModal');
+            } else {
+                showNotification(data.message || 'เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ', 'error');
+            }
+        },
+        function(error) {
+            console.error('Error:', error);
+            showNotification('เกิดข้อผิดพลาดในการดึงข้อมูล: ' + error, 'error');
         }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        showNotification('เกิดข้อผิดพลาดในการดึงข้อมูล', 'error');
-    });
+    );
 }
 
 /**
@@ -885,24 +936,24 @@ function saveAdvisorsChanges() {
     formData.append('class_id', currentClassId);
     formData.append('changes', JSON.stringify(advisorsChanges));
     
-    fetch('api/class_manager.php', {
-        method: 'POST',
-        body: formData
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.status === 'success') {
-            showNotification(data.message, 'success');
-            closeModal('advisorsModal');
-            reloadPage();
-        } else {
-            showNotification(data.message, 'error');
+    ajaxRequest(
+        'api/class_manager.php',
+        'POST',
+        formData,
+        function(data) {
+            if (data.status === 'success') {
+                showNotification(data.message, 'success');
+                closeModal('advisorsModal');
+                reloadPage();
+            } else {
+                showNotification(data.message || 'เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ', 'error');
+            }
+        },
+        function(error) {
+            console.error('Error:', error);
+            showNotification('เกิดข้อผิดพลาดในการบันทึกข้อมูล: ' + error, 'error');
         }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        showNotification('เกิดข้อผิดพลาดในการบันทึกข้อมูล', 'error');
-    });
+    );
 }
 
 /**
@@ -1097,6 +1148,46 @@ function showNotification(message, type = 'info') {
     }, 5000);
 }
 
+function logError(message, error) {
+    console.error(message, error);
+    
+    // ถ้ามี response text ให้ลองแสดง
+    if (error.responseText) {
+        try {
+            const response = JSON.parse(error.responseText);
+            console.error('Server response:', response);
+        } catch (e) {
+            console.error('Server response (raw):', error.responseText);
+        }
+    }
+}
+function checkApiConnection() {
+    const testData = new FormData();
+    testData.append('action', 'get_all_departments');
+    
+    ajaxRequest(
+        'api/class_manager.php',
+        'POST',
+        testData,
+        function(data) {
+            if (data.status === 'success') {
+                showNotification('เชื่อมต่อ API สำเร็จ', 'success');
+            } else {
+                showNotification('เชื่อมต่อ API ได้ แต่มีข้อผิดพลาด: ' + (data.message || 'ไม่ทราบสาเหตุ'), 'warning');
+            }
+        },
+        function(error) {
+            showNotification('ไม่สามารถเชื่อมต่อ API ได้: ' + error, 'error');
+        }
+    );
+}
+document.addEventListener('DOMContentLoaded', function() {
+    // ตรวจสอบการเชื่อมต่อ API
+    checkApiConnection();
+    
+    // เริ่มต้นระบบจัดการชั้นเรียน
+    initializeClassManagement();
+});
 /**
  * โหลดหน้าใหม่
  */

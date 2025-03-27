@@ -6,7 +6,14 @@
 /**
  * ฟังก์ชันจัดการคำขอ API
  */
+
+ /**
+ * ฟังก์ชันจัดการคำขอ API
+ */
 function handleApiRequest() {
+    // กำหนดค่าเริ่มต้นให้ตัวแปร $response
+    $response = ['success' => false, 'message' => 'ไม่พบการดำเนินการ'];
+    
     if (isset($_POST['action'])) {
         handlePostRequest();
     } elseif (isset($_GET['action'])) {
@@ -18,7 +25,7 @@ function handleApiRequest() {
  * ฟังก์ชันจัดการคำขอแบบ POST
  */
 function handlePostRequest() {
-    header('Content-Type: application/json');
+    header('Content-Type: application/json; charset=utf-8');
     $response = ['success' => false, 'message' => 'เกิดข้อผิดพลาด'];
     
     try {
@@ -27,6 +34,7 @@ function handlePostRequest() {
                 $response = addClass($_POST);
                 break;
             case 'update_class':
+            case 'edit_class':
                 $response = updateClass($_POST);
                 break;
             case 'delete_class':
@@ -36,6 +44,7 @@ function handlePostRequest() {
                 $response = addDepartment($_POST);
                 break;
             case 'update_department':
+            case 'edit_department':
                 $response = updateDepartment($_POST);
                 break;
             case 'delete_department':
@@ -55,14 +64,15 @@ function handlePostRequest() {
         error_log("Error in API POST request: " . $e->getMessage());
     }
     
-    echo json_encode($response);
+    echo json_encode($response, JSON_UNESCAPED_UNICODE);
+    exit;
 }
 
 /**
  * ฟังก์ชันจัดการคำขอแบบ GET
  */
 function handleGetRequest() {
-    header('Content-Type: application/json');
+    header('Content-Type: application/json; charset=utf-8');
     $response = ['success' => false, 'message' => 'เกิดข้อผิดพลาด'];
     
     try {
@@ -94,7 +104,8 @@ function handleGetRequest() {
         error_log("Error in API GET request: " . $e->getMessage());
     }
     
-    echo json_encode($response);
+    echo json_encode($response, JSON_UNESCAPED_UNICODE);
+    exit;
 }
 
 /**
