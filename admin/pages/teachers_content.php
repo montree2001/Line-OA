@@ -300,3 +300,316 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 </script>
+
+
+<!-- Modal -->
+
+
+<!-- แบบฟอร์มและโมดัลสำหรับหน้าครูที่ปรึกษา -->
+
+<!-- โมดัลเพิ่มครูที่ปรึกษา -->
+<div class="modal fade" id="addTeacherModal" tabindex="-1" aria-labelledby="addTeacherModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addTeacherModalLabel">เพิ่มครูที่ปรึกษา</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="addTeacherForm" method="post" class="needs-validation" novalidate>
+                <div class="modal-body">
+                    <input type="hidden" name="add_teacher" value="1">
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label for="teacher_prefix" class="form-label">คำนำหน้า <span class="text-danger">*</span></label>
+                            <select class="form-select" id="teacher_prefix" name="teacher_prefix" required>
+                                <option value="นาย">นาย</option>
+                                <option value="นาง">นาง</option>
+                                <option value="นางสาว">นางสาว</option>
+                                <option value="ดร.">ดร.</option>
+                                <option value="ผศ.">ผศ.</option>
+                                <option value="รศ.">รศ.</option>
+                                <option value="ศ.">ศ.</option>
+                                <option value="อื่นๆ">อื่นๆ</option>
+                            </select>
+                            <div class="invalid-feedback">กรุณาเลือกคำนำหน้า</div>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="teacher_first_name" class="form-label">ชื่อ <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="teacher_first_name" name="teacher_first_name" required>
+                            <div class="invalid-feedback">กรุณากรอกชื่อ</div>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="teacher_last_name" class="form-label">นามสกุล <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="teacher_last_name" name="teacher_last_name" required>
+                            <div class="invalid-feedback">กรุณากรอกนามสกุล</div>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="teacher_national_id" class="form-label">เลขบัตรประชาชน <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="teacher_national_id" name="teacher_national_id" maxlength="13" required>
+                            <div class="invalid-feedback">กรุณากรอกเลขบัตรประชาชน 13 หลัก</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="teacher_position" class="form-label">ตำแหน่ง</label>
+                            <input type="text" class="form-control" id="teacher_position" name="teacher_position">
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="teacher_department" class="form-label">แผนก/ฝ่าย <span class="text-danger">*</span></label>
+                        <select class="form-select" id="teacher_department" name="teacher_department" required>
+                            <option value="">-- เลือกแผนก/ฝ่าย --</option>
+                            <?php foreach ($data['departments'] as $dept): ?>
+                            <option value="<?php echo htmlspecialchars($dept); ?>"><?php echo htmlspecialchars($dept); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                        <div class="invalid-feedback">กรุณาเลือกแผนก/ฝ่าย</div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="teacher_phone" class="form-label">เบอร์โทรศัพท์</label>
+                            <input type="tel" class="form-control" id="teacher_phone" name="teacher_phone" maxlength="10" pattern="[0-9]{9,10}">
+                            <div class="invalid-feedback">กรุณากรอกเบอร์โทรศัพท์ให้ถูกต้อง</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="teacher_email" class="form-label">อีเมล</label>
+                            <input type="email" class="form-control" id="teacher_email" name="teacher_email">
+                            <div class="invalid-feedback">กรุณากรอกอีเมลให้ถูกต้อง</div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">สถานะ <span class="text-danger">*</span></label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="teacher_status" id="statusActive" value="active" checked>
+                            <label class="form-check-label" for="statusActive">
+                                ปฏิบัติงานอยู่
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="teacher_status" id="statusInactive" value="inactive">
+                            <label class="form-check-label" for="statusInactive">
+                                ไม่ได้ปฏิบัติงาน
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <div class="d-flex align-items-center">
+                            <span class="material-icons me-2">info</span>
+                            <div>
+                                <strong>หมายเหตุ:</strong> เมื่อเพิ่มข้อมูลแล้ว ครูจำเป็นต้องเชื่อมต่อบัญชี LINE เพื่อเข้าใช้งานระบบ
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ยกเลิก</button>
+                    <button type="submit" class="btn btn-primary">บันทึกข้อมูล</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- โมดัลแก้ไขครูที่ปรึกษา -->
+<div class="modal fade" id="editTeacherModal" tabindex="-1" aria-labelledby="editTeacherModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editTeacherModalLabel">แก้ไขข้อมูลครูที่ปรึกษา</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="editTeacherForm" method="post" class="needs-validation" novalidate>
+                <div class="modal-body">
+                    <input type="hidden" name="edit_teacher" value="1">
+                    <input type="hidden" name="teacher_id" id="editTeacherId">
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label for="editTeacherPrefix" class="form-label">คำนำหน้า <span class="text-danger">*</span></label>
+                            <select class="form-select" id="editTeacherPrefix" name="teacher_prefix" required>
+                                <option value="นาย">นาย</option>
+                                <option value="นาง">นาง</option>
+                                <option value="นางสาว">นางสาว</option>
+                                <option value="ดร.">ดร.</option>
+                                <option value="ผศ.">ผศ.</option>
+                                <option value="รศ.">รศ.</option>
+                                <option value="ศ.">ศ.</option>
+                                <option value="อื่นๆ">อื่นๆ</option>
+                            </select>
+                            <div class="invalid-feedback">กรุณาเลือกคำนำหน้า</div>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="editTeacherFirstName" class="form-label">ชื่อ <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="editTeacherFirstName" name="teacher_first_name" required>
+                            <div class="invalid-feedback">กรุณากรอกชื่อ</div>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="editTeacherLastName" class="form-label">นามสกุล <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="editTeacherLastName" name="teacher_last_name" required>
+                            <div class="invalid-feedback">กรุณากรอกนามสกุล</div>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="editTeacherNationalId" class="form-label">เลขบัตรประชาชน <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="editTeacherNationalId" name="teacher_national_id" maxlength="13" required>
+                            <div class="invalid-feedback">กรุณากรอกเลขบัตรประชาชน 13 หลัก</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="editTeacherPosition" class="form-label">ตำแหน่ง</label>
+                            <input type="text" class="form-control" id="editTeacherPosition" name="teacher_position">
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="editTeacherDepartment" class="form-label">แผนก/ฝ่าย <span class="text-danger">*</span></label>
+                        <select class="form-select" id="editTeacherDepartment" name="teacher_department" required>
+                            <option value="">-- เลือกแผนก/ฝ่าย --</option>
+                            <?php foreach ($data['departments'] as $dept): ?>
+                            <option value="<?php echo htmlspecialchars($dept); ?>"><?php echo htmlspecialchars($dept); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                        <div class="invalid-feedback">กรุณาเลือกแผนก/ฝ่าย</div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="editTeacherPhone" class="form-label">เบอร์โทรศัพท์</label>
+                            <input type="tel" class="form-control" id="editTeacherPhone" name="teacher_phone" maxlength="10" pattern="[0-9]{9,10}">
+                            <div class="invalid-feedback">กรุณากรอกเบอร์โทรศัพท์ให้ถูกต้อง</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="editTeacherEmail" class="form-label">อีเมล</label>
+                            <input type="email" class="form-control" id="editTeacherEmail" name="teacher_email">
+                            <div class="invalid-feedback">กรุณากรอกอีเมลให้ถูกต้อง</div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">สถานะ <span class="text-danger">*</span></label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="teacher_status" id="editStatusActive" value="active">
+                            <label class="form-check-label" for="editStatusActive">
+                                ปฏิบัติงานอยู่
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="teacher_status" id="editStatusInactive" value="inactive">
+                            <label class="form-check-label" for="editStatusInactive">
+                                ไม่ได้ปฏิบัติงาน
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ยกเลิก</button>
+                    <button type="submit" class="btn btn-primary">บันทึกการเปลี่ยนแปลง</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- โมดัลนำเข้าข้อมูล -->
+<div class="modal fade" id="importModal" tabindex="-1" aria-labelledby="importModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="importModalLabel">นำเข้าข้อมูลครูที่ปรึกษา</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="importTeacherForm" method="post" enctype="multipart/form-data" class="needs-validation" novalidate>
+                <div class="modal-body">
+                    <input type="hidden" name="import_teachers" value="1">
+                    
+                    <div class="mb-3">
+                        <label for="importFile" class="form-label">ไฟล์ข้อมูล <span class="text-danger">*</span></label>
+                        <input type="file" class="form-control" id="importFile" name="import_file" accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" required>
+                        <div class="invalid-feedback">กรุณาเลือกไฟล์ข้อมูล</div>
+                        <div class="form-text">รองรับไฟล์ .csv, .xlsx, .xls</div>
+                    </div>
+                    
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="overwriteExisting" name="overwrite_existing">
+                        <label class="form-check-label" for="overwriteExisting">อัปเดตข้อมูลที่มีอยู่แล้ว</label>
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <div class="d-flex align-items-center">
+                            <span class="material-icons me-2">info</span>
+                            <div>
+                                <strong>หมายเหตุ:</strong>
+                                <ul class="mb-0 ps-3">
+                                    <li>ไฟล์ต้องมีคอลัมน์: รหัสบัตรประชาชน, คำนำหน้า, ชื่อ, นามสกุล, แผนก, ตำแหน่ง</li>
+                                    <li>ข้อมูลต้องอยู่ในชีท (Sheet) แรกของไฟล์</li>
+                                    <li><a href="templates/teacher_import_template.xlsx" target="_blank">ดาวน์โหลดเทมเพลต</a></li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ยกเลิก</button>
+                    <button type="submit" class="btn btn-primary">นำเข้าข้อมูล</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- โมดัลยืนยันการลบ -->
+<div class="modal fade" id="deleteConfirmationModal" tabindex="-1" aria-labelledby="deleteConfirmationModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteConfirmationModalLabel">ยืนยันการลบข้อมูล</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="d-flex align-items-center text-warning mb-3">
+                    <span class="material-icons me-2" style="font-size: 2rem;">warning</span>
+                    <h5 class="mb-0">คุณแน่ใจหรือไม่?</h5>
+                </div>
+                <p>คุณกำลังจะลบข้อมูลครูที่ปรึกษา: <strong id="deleteTeacherName"></strong></p>
+                <p class="text-danger">การดำเนินการนี้ไม่สามารถเรียกคืนได้</p>
+                
+                <form id="deleteTeacherForm" method="post">
+                    <input type="hidden" name="delete_teacher" value="1">
+                    <input type="hidden" name="teacher_id" id="deleteTeacherId">
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ยกเลิก</button>
+                <button type="button" class="btn btn-danger" onclick="document.getElementById('deleteTeacherForm').submit();">ยืนยันการลบ</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- โมดัลยืนยันการเปลี่ยนสถานะ -->
+<div class="modal fade" id="toggleStatusModal" tabindex="-1" aria-labelledby="toggleStatusModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="toggleStatusModalLabel">ยืนยันการเปลี่ยนสถานะ</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>คุณแน่ใจหรือไม่ที่จะ <span id="toggleAction" class="fw-bold"></span> ครูที่ปรึกษาคนนี้?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ยกเลิก</button>
+                <button type="button" class="btn btn-primary" id="confirmToggleBtn">ยืนยัน</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
