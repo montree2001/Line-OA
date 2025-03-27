@@ -266,7 +266,7 @@ $header_buttons = [
 ];
 
 // จำนวนนักเรียนที่เสี่ยงตกกิจกรรม
-$at_risk_count = getAtRiskStudentCount();
+//$at_risk_count = getAtRiskStudentCount();
 
 // ไฟล์ CSS และ JS เพิ่มเติม
 $extra_css = [
@@ -327,7 +327,7 @@ if ($has_new_academic_year && $active_year_id !== null) {
     $promotion_counts = [];
 }
 
-// ส่งข้อมูลไปยังเทมเพลต
+/* // ส่งข้อมูลไปยังเทมเพลต
 $data = [
     'classes' => $classes,
     'departments' => $departments,
@@ -339,7 +339,7 @@ $data = [
     'teachers' => $teachers,
     'success_message' => $success_message,
     'error_message' => $error_message
-];
+]; */
 
 // กำหนดเส้นทางไปยังไฟล์เนื้อหาเฉพาะหน้า
 $content_path = 'pages/classes_content.php';

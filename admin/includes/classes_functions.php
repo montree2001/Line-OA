@@ -2,8 +2,8 @@
 /**
  * classes_functions.php - ฟังก์ชันการจัดการชั้นเรียนและนักเรียน
  */
-header('Content-Type: application/json; charset=utf-8');
-$response = ['success' => false, 'message' => 'ยังไม่ได้ดำเนินการ'];
+
+
 // เพิ่มชั้นเรียนใหม่
 function addClass($data) {
     try {
