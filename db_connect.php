@@ -3,7 +3,7 @@
 
 // กำหนดค่าการเชื่อมต่อฐานข้อมูล
 define('DB_HOST', 'localhost');
-define('DB_NAME', 'stp-prasat');
+define('DB_NAME', 'stp_prasat');
 define('DB_USER', 'root');        // เปลี่ยนตาม username จริง
 define('DB_PASS', '');           // เปลี่ยนตาม password จริง
 define('DB_CHARSET', 'utf8mb4');

@@ -48,6 +48,34 @@ if (isset($_POST['national_id']) && !empty($_POST['national_id'])) {
         // ถ้าพบข้อมูลซ้ำ
         if ($count > 0) {
             $response['duplicate'] = true;
+            
+            // ดึงข้อมูลเพิ่มเติมของครูที่มีเลขบัตรประชาชนนี้
+            $detailSql = "SELECT t.teacher_id, t.title, t.first_name, t.last_name, d.department_name 
+                          FROM teachers t
+                          LEFT JOIN departments d ON t.department_id = d.department_id
+                          WHERE t.national_id = :national_id";
+            
+            if ($excludeId > 0) {
+                $detailSql .= " AND t.teacher_id != :exclude_id";
+            }
+            
+            $detailStmt = $db->prepare($detailSql);
+            $detailStmt->bindValue(':national_id', $nationalId);
+            
+            if ($excludeId > 0) {
+                $detailStmt->bindValue(':exclude_id', $excludeId, PDO::PARAM_INT);
+            }
+            
+            $detailStmt->execute();
+            $teacherDetail = $detailStmt->fetch();
+            
+            if ($teacherDetail) {
+                $response['teacher_detail'] = [
+                    'id' => $teacherDetail['teacher_id'],
+                    'name' => $teacherDetail['title'] . ' ' . $teacherDetail['first_name'] . ' ' . $teacherDetail['last_name'],
+                    'department' => $teacherDetail['department_name']
+                ];
+            }
         }
         
     } catch (PDOException $e) {
