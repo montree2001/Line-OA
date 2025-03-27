@@ -8,8 +8,8 @@
 // เริ่ม session (ใช้สำหรับการเก็บข้อมูลผู้ใช้ที่ล็อกอินและข้อมูลอื่นๆ)
 session_start();
 
-/* // ตรวจสอบการล็อกอิน (หากไม่ได้ล็อกอินให้ redirect ไปหน้า login.php)
-if (!isset($_SESSION['user_id']) || !isset($_SESSION['user_type']) || $_SESSION['user_type'] != 'admin') {
+// ตรวจสอบการล็อกอิน (หากไม่ได้ล็อกอินให้ redirect ไปหน้า login.php)
+/* if (!isset($_SESSION['user_id']) || !isset($_SESSION['user_type']) || $_SESSION['user_type'] != 'admin') {
     header('Location: login.php');
     exit;
 } */
@@ -22,20 +22,216 @@ require_once 'includes/classes_functions.php';
 require_once 'includes/department_functions.php';
 require_once 'includes/api_handlers.php';
 
-if (isset($_POST['action']) || isset($_GET['action'])) {
-    // กำหนดค่าตัวแปร $response เริ่มต้น
-    $response = ['success' => false, 'message' => 'ไม่มีการดำเนินการ'];
-    
-    // เรียกใช้ฟังก์ชัน handleApiRequest ด้วย try-catch เพื่อจับข้อผิดพลาด
-    try {
-        handleApiRequest();
-    } catch (Exception $e) {
-        // บันทึกข้อผิดพลาดและแสดงข้อความแจ้งเตือน
-        error_log("API error: " . $e->getMessage());
-        echo json_encode(['success' => false, 'message' => 'เกิดข้อผิดพลาดในการประมวลผลคำขอ: ' . $e->getMessage()], 
-                        JSON_UNESCAPED_UNICODE);
+// ตรวจสอบการส่ง Form หรือการเรียก API
+if (isset($_POST['form_action']) || isset($_GET['action'])) {
+    // จัดการ Form Action
+    if (isset($_POST['form_action'])) {
+        $action = $_POST['form_action'];
+        
+        switch ($action) {
+            case 'add_department':
+                $department_name = $_POST['department_name'] ?? '';
+                $department_code = $_POST['department_code'] ?? '';
+                
+                if (empty($department_name)) {
+                    $_SESSION['error_message'] = 'กรุณาระบุชื่อแผนกวิชา';
+                    header('Location: classes.php');
+                    exit;
+                }
+                
+                $result = addDepartment([
+                    'department_name' => $department_name,
+                    'department_code' => $department_code
+                ]);
+                
+                if ($result['success']) {
+                    $_SESSION['success_message'] = $result['message'];
+                } else {
+                    $_SESSION['error_message'] = $result['message'];
+                }
+                
+                header('Location: classes.php');
+                exit;
+                break;
+                
+            case 'edit_department':
+                $department_id = $_POST['department_id'] ?? '';
+                $department_name = $_POST['department_name'] ?? '';
+                
+                if (empty($department_id) || empty($department_name)) {
+                    $_SESSION['error_message'] = 'กรุณาระบุข้อมูลให้ครบถ้วน';
+                    header('Location: classes.php');
+                    exit;
+                }
+                
+                $result = updateDepartment([
+                    'department_id' => $department_id,
+                    'department_name' => $department_name
+                ]);
+                
+                if ($result['success']) {
+                    $_SESSION['success_message'] = $result['message'];
+                } else {
+                    $_SESSION['error_message'] = $result['message'];
+                }
+                
+                header('Location: classes.php');
+                exit;
+                break;
+                
+            case 'delete_department':
+                $department_id = $_POST['department_id'] ?? '';
+                
+                if (empty($department_id)) {
+                    $_SESSION['error_message'] = 'กรุณาระบุรหัสแผนกวิชา';
+                    header('Location: classes.php');
+                    exit;
+                }
+                
+                $result = deleteDepartment($department_id);
+                
+                if ($result['success']) {
+                    $_SESSION['success_message'] = $result['message'];
+                } else {
+                    $_SESSION['error_message'] = $result['message'];
+                }
+                
+                header('Location: classes.php');
+                exit;
+                break;
+                
+            case 'add_class':
+                $academic_year_id = $_POST['academic_year_id'] ?? '';
+                $level = $_POST['level'] ?? '';
+                $department_id = $_POST['department_id'] ?? '';
+                $group_number = $_POST['group_number'] ?? '';
+                $classroom = $_POST['classroom'] ?? '';
+                
+                if (empty($academic_year_id) || empty($level) || empty($department_id) || empty($group_number)) {
+                    $_SESSION['error_message'] = 'กรุณากรอกข้อมูลให้ครบถ้วน';
+                    header('Location: classes.php');
+                    exit;
+                }
+                
+                $result = addClass([
+                    'academic_year_id' => $academic_year_id,
+                    'level' => $level,
+                    'department_id' => $department_id,
+                    'group_number' => $group_number,
+                    'classroom' => $classroom
+                ]);
+                
+                if ($result['success']) {
+                    $_SESSION['success_message'] = $result['message'];
+                } else {
+                    $_SESSION['error_message'] = $result['message'];
+                }
+                
+                header('Location: classes.php');
+                exit;
+                break;
+                
+            case 'edit_class':
+                $class_id = $_POST['class_id'] ?? '';
+                $academic_year_id = $_POST['academic_year_id'] ?? '';
+                $level = $_POST['level'] ?? '';
+                $department_id = $_POST['department_id'] ?? '';
+                $group_number = $_POST['group_number'] ?? '';
+                $classroom = $_POST['classroom'] ?? '';
+                
+                if (empty($class_id) || empty($academic_year_id) || empty($level) || 
+                    empty($department_id) || empty($group_number)) {
+                    $_SESSION['error_message'] = 'กรุณากรอกข้อมูลให้ครบถ้วน';
+                    header('Location: classes.php');
+                    exit;
+                }
+                
+                $result = updateClass([
+                    'class_id' => $class_id,
+                    'academic_year_id' => $academic_year_id,
+                    'level' => $level,
+                    'department_id' => $department_id,
+                    'group_number' => $group_number,
+                    'classroom' => $classroom
+                ]);
+                
+                if ($result['success']) {
+                    $_SESSION['success_message'] = $result['message'];
+                } else {
+                    $_SESSION['error_message'] = $result['message'];
+                }
+                
+                header('Location: classes.php');
+                exit;
+                break;
+                
+            case 'delete_class':
+                $class_id = $_POST['class_id'] ?? '';
+                
+                if (empty($class_id)) {
+                    $_SESSION['error_message'] = 'กรุณาระบุรหัสชั้นเรียน';
+                    header('Location: classes.php');
+                    exit;
+                }
+                
+                $result = deleteClass($class_id);
+                
+                if ($result['success']) {
+                    $_SESSION['success_message'] = $result['message'];
+                } else {
+                    $_SESSION['error_message'] = $result['message'];
+                }
+                
+                header('Location: classes.php');
+                exit;
+                break;
+        }
     }
-    exit;
+    
+    // จัดการ GET Action
+    if (isset($_GET['action'])) {
+        $action = $_GET['action'];
+        
+        switch ($action) {
+            case 'view_class':
+                $class_id = $_GET['class_id'] ?? '';
+                
+                if (empty($class_id)) {
+                    $_SESSION['error_message'] = 'ไม่ระบุรหัสชั้นเรียน';
+                    header('Location: classes.php');
+                    exit;
+                }
+                
+                // ดึงข้อมูลชั้นเรียนและส่งไปยังหน้าแสดงรายละเอียด
+                $class_details = getDetailedClassInfo($class_id);
+                
+                if ($class_details['status'] == 'success') {
+                    // บันทึกข้อมูลชั้นเรียนลงใน session สำหรับแสดงผล
+                    $_SESSION['class_details'] = $class_details;
+                    header('Location: class_details.php?id=' . $class_id);
+                    exit;
+                } else {
+                    $_SESSION['error_message'] = $class_details['message'] ?? 'ไม่พบข้อมูลชั้นเรียน';
+                    header('Location: classes.php');
+                    exit;
+                }
+                break;
+                
+            case 'download_report':
+                $class_id = $_GET['class_id'] ?? '';
+                
+                if (empty($class_id)) {
+                    $_SESSION['error_message'] = 'ไม่ระบุรหัสชั้นเรียน';
+                    header('Location: classes.php');
+                    exit;
+                }
+                
+                // ดาวน์โหลดรายงานชั้นเรียน
+                downloadClassReport($class_id);
+                exit;
+                break;
+        }
+    }
 }
 
 // กำหนดข้อมูลสำหรับหน้าปัจจุบัน
@@ -79,8 +275,17 @@ $extra_css = [
 
 $extra_js = [
     'assets/js/classes.js',
+    'https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js',
     'assets/js/charts.js'
 ];
+
+// แสดงข้อความแจ้งเตือน
+$success_message = $_SESSION['success_message'] ?? null;
+$error_message = $_SESSION['error_message'] ?? null;
+
+// เคลียร์ข้อความแจ้งเตือนใน session
+unset($_SESSION['success_message']);
+unset($_SESSION['error_message']);
 
 // ดึงข้อมูลจากฐานข้อมูล
 $classes = getClassesFromDB();
@@ -131,7 +336,9 @@ $data = [
     'current_academic_year' => $current_academic_year,
     'next_academic_year' => $next_academic_year,
     'promotion_counts' => $promotion_counts,
-    'teachers' => $teachers
+    'teachers' => $teachers,
+    'success_message' => $success_message,
+    'error_message' => $error_message
 ];
 
 // กำหนดเส้นทางไปยังไฟล์เนื้อหาเฉพาะหน้า

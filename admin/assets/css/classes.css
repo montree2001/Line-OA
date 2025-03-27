@@ -1,172 +1,875 @@
-/* classes.css - Styles for Classroom Management Page */
+/* CSS สำหรับหน้าจัดการชั้นเรียนและแผนกวิชา */
 
-/* Class Card Styles */
-.class-info {
+:root {
+    --primary-color: #4a6cf7;
+    --primary-light: rgba(74, 108, 247, 0.1);
+    --secondary-color: #2A3042;
+    --success-color: #2ecc71;
+    --success-light: rgba(46, 204, 113, 0.1);
+    --warning-color: #f39c12;
+    --warning-light: rgba(243, 156, 18, 0.1);
+    --danger-color: #e74c3c;
+    --danger-light: rgba(231, 76, 60, 0.1);
+    --info-color: #17a2b8;
+    --info-light: rgba(23, 162, 184, 0.1);
+    --light-color: #f8f9fa;
+    --dark-color: #343a40;
+    --text-color: #333;
+    --text-muted: #6c757d;
+    --border-color: #dee2e6;
+    --border-radius: 8px;
+    --box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    --font-family: 'Prompt', sans-serif;
+  }
+  
+  body {
+    font-family: var(--font-family);
+    color: var(--text-color);
+    background-color: #f5f7fb;
+  }
+  
+  /* Cards สรุปข้อมูล */
+  .dashboard-summary {
+    margin-bottom: 1.5rem;
+  }
+  
+  .info-card {
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    box-shadow: var(--box-shadow);
+    margin-bottom: 1rem;
+    transition: all 0.3s;
+  }
+  
+  .info-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+  }
+  
+  .info-card.primary {
+    border-left: 4px solid var(--primary-color);
+  }
+  
+  .info-card.success {
+    border-left: 4px solid var(--success-color);
+  }
+  
+  .info-card.warning {
+    border-left: 4px solid var(--warning-color);
+  }
+  
+  .info-card.danger {
+    border-left: 4px solid var(--danger-color);
+  }
+  
+  .info-card-inner {
     display: flex;
     align-items: center;
-}
-
-.class-avatar {
+    padding: 1.5rem;
+    background-color: white;
+  }
+  
+  .icon-container {
+    width: 45px;
+    height: 45px;
+    border-radius: var(--border-radius);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-right: 1rem;
+  }
+  
+  .info-card.primary .icon-container {
+    background-color: var(--primary-light);
+    color: var(--primary-color);
+  }
+  
+  .info-card.success .icon-container {
+    background-color: var(--success-light);
+    color: var(--success-color);
+  }
+  
+  .info-card.warning .icon-container {
+    background-color: var(--warning-light);
+    color: var(--warning-color);
+  }
+  
+  .info-card.danger .icon-container {
+    background-color: var(--danger-light);
+    color: var(--danger-color);
+  }
+  
+  .info-container h3 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin: 0;
+    line-height: 1.2;
+  }
+  
+  .info-container p {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 0.875rem;
+  }
+  
+  /* การ์ดทั่วไป */
+  .card {
+    border: none;
+    box-shadow: var(--box-shadow);
+    border-radius: var(--border-radius);
+    background-color: white;
+    margin-bottom: 1.5rem;
+  }
+  
+  .card-header {
+    background-color: white;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    padding: 1rem 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  
+  .card-title {
+    display: flex;
+    align-items: center;
+    margin-bottom: 0;
+    font-weight: 600;
+  }
+  
+  .card-title .material-icons {
+    margin-right: 0.5rem;
+  }
+  
+  .card-body {
+    padding: 1.25rem;
+  }
+  
+  /* ตัวกรองข้อมูล */
+  .filter-box {
+    background-color: var(--light-color);
+    border-radius: var(--border-radius);
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  
+  .form-group {
+    margin-bottom: 1rem;
+  }
+  
+  .form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+  }
+  
+  .form-control {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    font-size: 1rem;
+    line-height: 1.5;
+    color: var(--text-color);
+    background-color: #fff;
+    background-clip: padding-box;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+  }
+  
+  .form-control:focus {
+    border-color: var(--primary-color);
+    outline: 0;
+    box-shadow: 0 0 0 0.2rem rgba(74, 108, 247, 0.25);
+  }
+  
+  /* ตารางข้อมูล */
+  .table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .data-table {
+    width: 100%;
+    margin-bottom: 1rem;
+    color: var(--text-color);
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+  
+  .data-table th,
+  .data-table td {
+    padding: 0.75rem;
+    vertical-align: middle;
+    border-bottom: 1px solid var(--border-color);
+  }
+  
+  .data-table thead th {
+    background-color: var(--light-color);
+    color: var(--secondary-color);
+    font-weight: 600;
+    border-bottom: 2px solid var(--border-color);
+    white-space: nowrap;
+  }
+  
+  .data-table tbody tr {
+    transition: all 0.3s;
+  }
+  
+  .data-table tbody tr:hover {
+    background-color: rgba(74, 108, 247, 0.03);
+  }
+  
+  /* แถบแสดงอัตราการเข้าแถว */
+  .attendance-bar-container {
+    width: 100%;
+    height: 20px;
+    background-color: #f1f1f1;
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  
+  .attendance-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #4a6cf7 0%, #3a5de5 100%);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 0 8px;
+    transition: width 0.5s ease-in-out;
+  }
+  
+  .attendance-rate {
+    color: white;
+    font-size: 12px;
+    font-weight: 600;
+    text-shadow: 0 0 2px rgba(0, 0, 0, 0.3);
+  }
+  
+  .good {
+    background: linear-gradient(90deg, #2ecc71 0%, #27ae60 100%);
+  }
+  
+  .warning {
+    background: linear-gradient(90deg, #f39c12 0%, #e67e22 100%);
+  }
+  
+  .danger {
+    background: linear-gradient(90deg, #e74c3c 0%, #c0392b 100%);
+  }
+  
+  /* ปุ่มและแบดจ์ */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 500;
+    text-align: center;
+    white-space: nowrap;
+    vertical-align: middle;
+    user-select: none;
+    border: 1px solid transparent;
+    padding: 0.375rem 0.75rem;
+    font-size: 1rem;
+    line-height: 1.5;
+    border-radius: 4px;
+    transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out, border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+    cursor: pointer;
+  }
+  
+  .btn-primary {
+    color: #fff;
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+  }
+  
+  .btn-primary:hover {
+    background-color: #3a5de5;
+    border-color: #3a5de5;
+  }
+  
+  .btn-success {
+    color: #fff;
+    background-color: var(--success-color);
+    border-color: var(--success-color);
+  }
+  
+  .btn-success:hover {
+    background-color: #27ae60;
+    border-color: #27ae60;
+  }
+  
+  .btn-warning {
+    color: #fff;
+    background-color: var(--warning-color);
+    border-color: var(--warning-color);
+  }
+  
+  .btn-warning:hover {
+    background-color: #e67e22;
+    border-color: #e67e22;
+  }
+  
+  .btn-danger {
+    color: #fff;
+    background-color: var(--danger-color);
+    border-color: var(--danger-color);
+  }
+  
+  .btn-danger:hover {
+    background-color: #c0392b;
+    border-color: #c0392b;
+  }
+  
+  .btn-outline-primary {
+    color: var(--primary-color);
+    background-color: transparent;
+    border-color: var(--primary-color);
+  }
+  
+  .btn-outline-primary:hover {
+    color: #fff;
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+  }
+  
+  .btn-sm {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    border-radius: 3px;
+  }
+  
+  .btn .material-icons {
+    font-size: 18px;
+    margin-right: 0.25rem;
+  }
+  
+  .badge {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    font-size: 75%;
+    font-weight: 600;
+    line-height: 1;
+    text-align: center;
+    white-space: nowrap;
+    vertical-align: baseline;
+    border-radius: 10px;
+  }
+  
+  .badge-primary {
+    color: #fff;
+    background-color: var(--primary-color);
+  }
+  
+  .status-badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-align: center;
+  }
+  
+  .status-badge.success {
+    background-color: var(--success-light);
+    color: var(--success-color);
+  }
+  
+  .status-badge.warning {
+    background-color: var(--warning-light);
+    color: var(--warning-color);
+  }
+  
+  .status-badge.danger {
+    background-color: var(--danger-light);
+    color: var(--danger-color);
+  }
+  
+  /* ข้อมูลชั้นเรียนและการแสดงผล */
+  .class-info {
+    display: flex;
+    align-items: center;
+  }
+  
+  .class-avatar {
     width: 40px;
     height: 40px;
     border-radius: 50%;
-    background-color: var(--secondary-color-light);
-    color: var(--secondary-color);
+    background-color: var(--primary-color);
+    color: white;
     display: flex;
     align-items: center;
     justify-content: center;
     margin-right: 10px;
     font-weight: bold;
-}
-
-.class-details {
+    font-size: 1rem;
+  }
+  
+  .class-details {
     flex: 1;
-}
-
-.class-name {
+  }
+  
+  .class-name {
     font-weight: 600;
     margin-bottom: 3px;
-}
-
-.class-stats {
+  }
+  
+  .class-dept {
     font-size: 12px;
-    color: var(--text-light);
-}
-
-/* Attendance Rate Styles */
-.attendance-rate {
-    font-weight: 600;
-}
-
-.attendance-rate.good {
-    color: var(--success-color);
-}
-
-.attendance-rate.warning {
-    color: var(--warning-color);
-}
-
-.attendance-rate.danger {
-    color: var(--danger-color);
-}
-
-/* Modal Styles */
-.class-details-content {
-    padding: 20px;
-}
-
-.details-table {
-    width: 100%;
-    margin-bottom: 20px;
-}
-
-.details-table th {
-    width: 40%;
-    text-align: right;
-    padding-right: 10px;
-    color: var(--text-light);
-    font-weight: 500;
-}
-
-.details-table td {
-    width: 60%;
-}
-
-.attendance-chart-container {
-    height: 250px;
-    background-color: var(--bg-light);
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-/* Responsive Adjustments */
-@media (max-width: 768px) {
-    .details-table {
-        width: 100%;
-    }
-    
-    .details-table th {
-        text-align: left;
-        padding-right: 10px;
-    }
-    
-    .row {
-        flex-direction: column;
-    }
-    
-    .col-6 {
-        width: 100%;
-        margin-bottom: 20px;
-    }
-}
-
-/* Modal Specific Styles */
-.modal-content h3 {
-    font-size: 16px;
-    margin-bottom: 15px;
-    padding-bottom: 5px;
-    border-bottom: 1px solid var(--border-color);
-}
-
-.class-details-content .data-table {
-    margin-top: 15px;
-}
-
-/* Action Buttons */
-.action-buttons {
+    color: var(--text-muted);
+  }
+  
+  /* ปุ่มการจัดการ */
+  .action-buttons {
     display: flex;
     gap: 5px;
-}
-
-.table-action-btn {
-    width: 30px;
-    height: 30px;
+    justify-content: center;
+  }
+  
+  .table-action-btn {
+    width: 32px;
+    height: 32px;
     border-radius: 50%;
+    border: none;
     display: flex;
     align-items: center;
     justify-content: center;
-    border: none;
     cursor: pointer;
     transition: all 0.2s;
-}
-
-.table-action-btn.primary {
-    background-color: var(--secondary-color-light);
-    color: var(--secondary-color);
-}
-
-.table-action-btn.success {
-    background-color: var(--success-color-light);
+  }
+  
+  .table-action-btn.primary {
+    background-color: var(--primary-light);
+    color: var(--primary-color);
+  }
+  
+  .table-action-btn.success {
+    background-color: var(--success-light);
     color: var(--success-color);
-}
-
-.table-action-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-}
-
-/* Badges */
-.status-badge {
-    display: inline-block;
-    padding: 3px 8px;
-    border-radius: 20px;
-    font-size: 12px;
-    font-weight: 600;
-}
-
-.status-badge.success {
-    background-color: var(--success-color-light);
-    color: var(--success-color);
-}
-
-.status-badge.warning {
-    background-color: var(--warning-color-light);
+  }
+  
+  .table-action-btn.warning {
+    background-color: var(--warning-light);
     color: var(--warning-color);
-}
-
-.status-badge.danger {
-    background-color: var(--danger-color-light);
+  }
+  
+  .table-action-btn.danger {
+    background-color: var(--danger-light);
     color: var(--danger-color);
-}
+  }
+  
+  .table-action-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  }
+  
+  .table-action-btn.primary:hover {
+    background-color: var(--primary-color);
+    color: white;
+  }
+  
+  .table-action-btn.success:hover {
+    background-color: var(--success-color);
+    color: white;
+  }
+  
+  .table-action-btn.warning:hover {
+    background-color: var(--warning-color);
+    color: white;
+  }
+  
+  .table-action-btn.danger:hover {
+    background-color: var(--danger-color);
+    color: white;
+  }
+  
+  /* จัดการที่ปรึกษา */
+  .advisor-management {
+    padding: 1rem;
+    border-radius: var(--border-radius);
+    background-color: var(--light-color);
+  }
+  
+  .current-advisors, 
+  .add-advisor, 
+  .advisor-changes-summary {
+    background-color: white;
+    border-radius: var(--border-radius);
+    padding: 1rem;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+  }
+  
+  .advisor-items {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    max-height: 300px;
+    overflow-y: auto;
+    padding: 0.5rem;
+  }
+  
+  .advisor-item {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem;
+    background-color: var(--light-color);
+    border-radius: var(--border-radius);
+    transition: all 0.2s;
+  }
+  
+  .advisor-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  }
+  
+  .advisor-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: var(--primary-color);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 0.75rem;
+    font-weight: bold;
+  }
+  
+  .advisor-info {
+    flex: 1;
+  }
+  
+  .advisor-position {
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+  
+  .advisor-action {
+    display: flex;
+    gap: 5px;
+  }
+  
+  .section-title {
+    font-weight: 600;
+    margin-bottom: 1rem;
+    font-size: 1rem;
+    color: var(--secondary-color);
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 0.5rem;
+  }
+  
+  .changes-log {
+    font-size: 14px;
+    max-height: 200px;
+    overflow-y: auto;
+    padding: 0.5rem;
+  }
+  
+  .change-item {
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+  }
+  
+  .change-item:last-child {
+    border-bottom: none;
+  }
+  
+  .change-add {
+    color: var(--success-color);
+  }
+  
+  .change-remove {
+    color: var(--danger-color);
+  }
+  
+  .change-primary {
+    color: var(--primary-color);
+  }
+  
+  /* Modal สไตล์ */
+  .modal-content {
+    border: none;
+    border-radius: var(--border-radius);
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+  }
+  
+  .modal-header {
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    padding: 1rem 1.5rem;
+    background-color: white;
+  }
+  
+  .modal-title {
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+  }
+  
+  .modal-title .material-icons {
+    margin-right: 0.5rem;
+  }
+  
+  .modal-body {
+    padding: 1.5rem;
+  }
+  
+  .modal-footer {
+    border-top: 1px solid rgba(0, 0, 0, 0.05);
+    padding: 1rem 1.5rem;
+    background-color: white;
+  }
+  
+  /* Alert บอกสถานะ */
+  .alert {
+    position: relative;
+    padding: 0.75rem 1.25rem;
+    margin-bottom: 1rem;
+    border: 1px solid transparent;
+    border-radius: var(--border-radius);
+    display: flex;
+    align-items: flex-start;
+  }
+  
+  .alert-info {
+    color: #0c5460;
+    background-color: var(--info-light);
+    border-left: 4px solid var(--info-color);
+  }
+  
+  .alert-success {
+    color: #155724;
+    background-color: var(--success-light);
+    border-left: 4px solid var(--success-color);
+  }
+  
+  .alert-warning {
+    color: #856404;
+    background-color: var(--warning-light);
+    border-left: 4px solid var(--warning-color);
+  }
+  
+  .alert-danger {
+    color: #721c24;
+    background-color: var(--danger-light);
+    border-left: 4px solid var(--danger-color);
+  }
+  
+  .alert .material-icons {
+    margin-right: 0.5rem;
+    margin-top: 0.125rem;
+  }
+  
+  /* แผนภูมิและกราฟ */
+  .attendance-chart-container {
+    height: 250px;
+    background-color: var(--light-color);
+    border-radius: var(--border-radius);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+  }
+  
+  .chart-container {
+    height: 200px;
+    background-color: var(--light-color);
+    border-radius: var(--border-radius);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 1rem;
+  }
+  
+  /* การเลื่อนชั้นนักเรียน */
+  .promotion-section {
+    margin-top: 1rem;
+  }
+  
+  .form-section, .promotion-summary {
+    background-color: white;
+    border-radius: var(--border-radius);
+  }
+  
+  .text-success {
+    color: var(--success-color);
+  }
+  
+  .text-warning {
+    color: var(--warning-color);
+  }
+  
+  .text-danger {
+    color: var(--danger-color);
+  }
+  
+  .text-muted {
+    color: var(--text-muted);
+  }
+  
+  /* ตารางรายละเอียด */
+  .details-table {
+    width: 100%;
+  }
+  
+  .details-table th {
+    width: 35%;
+    font-weight: 600;
+    color: var(--text-muted);
+    padding: 0.5rem 0;
+  }
+  
+  .details-table td {
+    padding: 0.5rem 0;
+  }
+  
+  /* การแสดงการแจ้งเตือน */
+  .notification-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .notification {
+    background-color: white;
+    border-radius: var(--border-radius);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    padding: 15px;
+    display: flex;
+    align-items: center;
+    min-width: 300px;
+    max-width: 400px;
+    animation: slideIn 0.3s forwards;
+  }
+  
+  .notification.notification-closing {
+    animation: slideOut 0.3s forwards;
+  }
+  
+  .notification-icon {
+    margin-right: 15px;
+  }
+  
+  .notification-message {
+    flex: 1;
+  }
+  
+  .notification-close {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+  }
+  
+  .notification-info {
+    border-left: 4px solid var(--info-color);
+  }
+  
+  .notification-info .notification-icon {
+    color: var(--info-color);
+  }
+  
+  .notification-success {
+    border-left: 4px solid var(--success-color);
+  }
+  
+  .notification-success .notification-icon {
+    color: var(--success-color);
+  }
+  
+  .notification-warning {
+    border-left: 4px solid var(--warning-color);
+  }
+  
+  .notification-warning .notification-icon {
+    color: var(--warning-color);
+  }
+  
+  .notification-error {
+    border-left: 4px solid var(--danger-color);
+  }
+  
+  .notification-error .notification-icon {
+    color: var(--danger-color);
+  }
+  
+  @keyframes slideIn {
+    from {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+  
+  @keyframes slideOut {
+    from {
+      transform: translateX(0);
+      opacity: 1;
+    }
+    to {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+  }
+  
+  /* Responsive adjustments */
+  @media (max-width: 992px) {
+    .row {
+      flex-direction: column;
+    }
+    
+    .col-md-3,
+    .col-md-4,
+    .col-md-6,
+    .col-md-8,
+    .col-md-12 {
+      width: 100%;
+    }
+    
+    .data-table th, 
+    .data-table td {
+      padding: 0.5rem;
+    }
+    
+    .action-buttons {
+      flex-wrap: wrap;
+    }
+    
+    .card-header {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+    
+    .card-header > div:last-child {
+      margin-top: 0.5rem;
+    }
+  }
+  
+  @media (max-width: 576px) {
+    .filter-box .row {
+      gap: 0.5rem;
+    }
+    
+    .btn {
+      padding: 0.25rem 0.5rem;
+      font-size: 0.875rem;
+    }
+    
+    .modal-dialog {
+      margin: 0.5rem;
+    }
+    
+    .notification {
+      min-width: 250px;
+      max-width: 300px;
+    }
+  }
