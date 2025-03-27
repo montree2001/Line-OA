@@ -14,6 +14,13 @@ session_start();
     exit;
 } */
 
+
+if (isset($_POST['form_action'])) {
+    // เพิ่ม debug output
+    error_log('Form Action: ' . $_POST['form_action']);
+    error_log('POST Data: ' . print_r($_POST, true));
+}
+
 // นำเข้าไฟล์เชื่อมต่อฐานข้อมูล
 require_once '../db_connect.php';
 
@@ -327,7 +334,7 @@ if ($has_new_academic_year && $active_year_id !== null) {
     $promotion_counts = [];
 }
 
-/* // ส่งข้อมูลไปยังเทมเพลต
+
 $data = [
     'classes' => $classes,
     'departments' => $departments,
@@ -339,7 +346,7 @@ $data = [
     'teachers' => $teachers,
     'success_message' => $success_message,
     'error_message' => $error_message
-]; */
+]; 
 
 // กำหนดเส้นทางไปยังไฟล์เนื้อหาเฉพาะหน้า
 $content_path = 'pages/classes_content.php';
