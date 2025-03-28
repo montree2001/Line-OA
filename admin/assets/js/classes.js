@@ -1,5 +1,6 @@
 /**
- * classes.js - JavaScript สำหรับระบบจัดการชั้นเรียนและแผนกวิชา
+ * classes.js - JavaScript สำหรับจัดการหน้าชั้นเรียนและแผนกวิชา
+ * ระบบ STP-Prasat (Student Tracking Platform)
  */
 
 // ตัวแปรสำหรับเก็บข้อมูลชั่วคราว
@@ -14,13 +15,16 @@ document.addEventListener('DOMContentLoaded', function() {
     // ตั้งค่า event listeners
     setupEventListeners();
     
-    // เตรียมโมดัลบูตสแตรป
-    setupBootstrapModals();
+    // ตั้งค่าโมดัล Bootstrap
+    setupModals();
     
     // แสดงชาร์ตถ้ามีโมดัลเลื่อนชั้น
-    if (document.getElementById('promoteStudentsModal')) {
+    if (document.getElementById('promotionChart')) {
         setupPromotionChart();
     }
+    
+    // จัดการกับ URL parameters (ถ้ามี)
+    handleUrlParameters();
     
     // แสดง notification ว่าระบบพร้อมใช้งาน
     showNotification('ระบบจัดการชั้นเรียนพร้อมใช้งาน', 'info');
@@ -46,19 +50,72 @@ function setupEventListeners() {
         });
     });
     
-    // ตัวกรองชั้นเรียน
-    const filterControls = document.querySelectorAll('.filter-box select');
-    filterControls.forEach(control => {
-        control.addEventListener('change', filterClasses);
+    // Event listener สำหรับปุ่มในฟอร์ม
+    document.querySelectorAll('form').forEach(form => {
+        form.addEventListener('submit', function(event) {
+            event.preventDefault();
+        });
     });
+    
+    // ตัวกรองในช่องค้นหาของครูที่ปรึกษา
+    const teacherSearch = document.getElementById('teacherSearch');
+    if (teacherSearch) {
+        teacherSearch.addEventListener('input', function() {
+            filterTeachers(this.value);
+        });
+    }
+    
+    // Event listener สำหรับการเลือกปีการศึกษาใหม่
+    const toAcademicYear = document.getElementById('toAcademicYear');
+    if (toAcademicYear) {
+        toAcademicYear.addEventListener('change', function() {
+            const newAcademicYearForm = document.getElementById('newAcademicYearForm');
+            if (newAcademicYearForm) {
+                newAcademicYearForm.style.display = this.value === 'new' ? 'block' : 'none';
+            }
+        });
+    }
 }
 
 /**
- * ตั้งค่าโมดัลบูตสแตรป
+ * ตั้งค่าโมดัล
  */
-function setupBootstrapModals() {
-    // Bootstrap 5 ไม่มี jQuery ดังนั้นต้องตั้งค่าการแสดงโมดัลด้วย JavaScript
-    // เราจะใช้ vanilla JS สำหรับการแสดงและซ่อนโมดัล
+function setupModals() {
+    // ใช้ Vanilla JS สำหรับการแสดงและซ่อนโมดัล
+}
+
+/**
+ * จัดการกับ URL parameters
+ */
+function handleUrlParameters() {
+    const urlParams = new URLSearchParams(window.location.search);
+    
+    // กรณีมีข้อความแจ้งเตือน
+    const message = urlParams.get('message');
+    const messageType = urlParams.get('type') || 'info';
+    
+    if (message) {
+        showNotification(decodeURIComponent(message), messageType);
+    }
+    
+    // กรณีต้องการเปิดโมดัลทันที
+    const modal = urlParams.get('modal');
+    const id = urlParams.get('id');
+    
+    if (modal && id) {
+        switch (modal) {
+            case 'class':
+                setTimeout(() => {
+                    showClassDetails(id);
+                }, 500);
+                break;
+            case 'advisors':
+                setTimeout(() => {
+                    manageAdvisors(id);
+                }, 500);
+                break;
+        }
+    }
 }
 
 /**
@@ -75,6 +132,14 @@ function showModal(modalId) {
         const backdrop = document.createElement('div');
         backdrop.className = 'modal-backdrop fade show';
         document.body.appendChild(backdrop);
+        
+        // ถ้ามีฟิลด์อินพุท ตั้งโฟกัสที่อินพุทแรก
+        setTimeout(() => {
+            const firstInput = modal.querySelector('input:not([type="hidden"]), select, textarea');
+            if (firstInput) {
+                firstInput.focus();
+            }
+        }, 100);
     }
 }
 
@@ -112,8 +177,7 @@ function showDepartmentModal() {
     document.getElementById('departmentName').value = '';
     
     // แสดงรหัสแผนกวิชาในกรณีเพิ่มใหม่
-    const codeGroup = document.getElementById('departmentCode').parentElement;
-    codeGroup.style.display = 'block';
+    document.getElementById('departmentCode').readOnly = false;
     
     showModal('departmentModal');
 }
@@ -123,19 +187,17 @@ function showDepartmentModal() {
  */
 function viewDepartmentDetails(departmentId) {
     // ส่ง AJAX request เพื่อดึงข้อมูลแผนกวิชา
-    const formData = new FormData();
-    formData.append('action', 'get_department_details');
-    formData.append('department_id', departmentId);
-    
     fetch('api/class_manager.php', {
         method: 'POST',
-        body: formData
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: `action=get_department_details&department_id=${departmentId}`
     })
     .then(response => response.json())
     .then(data => {
         if (data.status === 'success') {
-            // แสดงรายละเอียดในโมดัลแสดงรายละเอียด (ต้องสร้างโมดัลนี้เพิ่ม)
-            // ตัวอย่าง:
+            // แสดงรายละเอียดในโมดัลแสดงรายละเอียด
             showNotification(`ข้อมูลแผนกวิชา ${data.department.department_name}`, 'info');
         } else {
             showNotification(data.message, 'error');
@@ -154,13 +216,12 @@ function editDepartment(departmentId) {
     currentDepartmentId = departmentId;
     
     // ส่ง AJAX request เพื่อดึงข้อมูลแผนกวิชา
-    const formData = new FormData();
-    formData.append('action', 'get_department_details');
-    formData.append('department_id', departmentId);
-    
     fetch('api/class_manager.php', {
         method: 'POST',
-        body: formData
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: `action=get_department_details&department_id=${departmentId}`
     })
     .then(response => response.json())
     .then(data => {
@@ -197,21 +258,23 @@ function saveDepartment() {
         return;
     }
     
+    if (!departmentId && !departmentCode) {
+        showNotification('กรุณาระบุรหัสแผนกวิชา', 'warning');
+        return;
+    }
+    
+    // กำหนด action ตามว่าเป็นการเพิ่มใหม่หรือแก้ไข
+    const action = departmentId ? 'edit_department' : 'add_department';
+    
     // เตรียมข้อมูล
-    const formData = new FormData();
+    let formData = new FormData();
+    formData.append('action', action);
     formData.append('department_name', departmentName);
     
     if (departmentId) {
-        // กรณีแก้ไข
-        formData.append('action', 'edit_department');
         formData.append('department_id', departmentId);
     } else {
-        // กรณีเพิ่มใหม่
-        formData.append('action', 'add_department');
-        
-        if (departmentCode) {
-            formData.append('department_code', departmentCode);
-        }
+        formData.append('department_code', departmentCode);
     }
     
     // ส่งข้อมูลไปยังเซิร์ฟเวอร์
@@ -241,9 +304,9 @@ function saveDepartment() {
 /**
  * ลบแผนกวิชา
  */
-function deleteDepartment(departmentCode) {
+function deleteDepartment(departmentId) {
     // ตรวจสอบว่ามีการส่งรหัสแผนกวิชามาหรือไม่
-    if (!departmentCode) {
+    if (!departmentId) {
         showNotification('ไม่พบรหัสแผนกวิชา', 'error');
         return;
     }
@@ -252,23 +315,25 @@ function deleteDepartment(departmentCode) {
     let departmentName = '';
     const departmentRows = document.querySelectorAll('#departmentTableBody tr');
     for (const row of departmentRows) {
-        if (row.cells[0].textContent === departmentCode) {
-            departmentName = row.cells[1].textContent;
+        const idCell = row.cells[0];
+        const nameCell = row.cells[1];
+        if (idCell && nameCell && idCell.textContent.trim() === departmentId) {
+            departmentName = nameCell.textContent.trim();
             break;
         }
     }
     
     // แสดงข้อความยืนยันการลบ
     document.getElementById('deleteWarningMessage').innerHTML = `
-        คุณต้องการลบแผนกวิชา <strong>${departmentCode}</strong> (${departmentName}) ใช่หรือไม่?<br>
+        คุณต้องการลบแผนกวิชา <strong>${departmentName}</strong> (รหัส ${departmentId}) ใช่หรือไม่?<br>
         <strong class="text-danger">คำเตือน:</strong> การลบแผนกวิชาจะส่งผลต่อชั้นเรียนและนักเรียนทั้งหมดในแผนกนี้
     `;
     
     deleteCallback = function() {
         // เตรียมข้อมูลสำหรับส่ง
-        const formData = new FormData();
+        let formData = new FormData();
         formData.append('action', 'delete_department');
-        formData.append('department_id', departmentCode);
+        formData.append('department_id', departmentId);
         
         // ส่งข้อมูลไปยังเซิร์ฟเวอร์
         fetch('api/class_manager.php', {
@@ -315,12 +380,20 @@ function deleteDepartment(departmentCode) {
 function showAddClassModal() {
     document.getElementById('classModalTitle').textContent = 'เพิ่มชั้นเรียนใหม่';
     document.getElementById('classId').value = '';
-    document.getElementById('classForm').reset();
+    
+    // รีเซ็ตฟอร์ม
+    const classForm = document.getElementById('classForm');
+    if (classForm) {
+        classForm.reset();
+    }
     
     // ตั้งค่าปีการศึกษาปัจจุบันเป็นค่าเริ่มต้น
-    const activeYear = document.querySelector('#academicYear option[selected]');
-    if (activeYear) {
-        document.getElementById('academicYear').value = activeYear.value;
+    const academicYear = document.getElementById('academicYear');
+    if (academicYear) {
+        const activeOption = academicYear.querySelector('option[selected]');
+        if (activeOption) {
+            academicYear.value = activeOption.value;
+        }
     }
     
     showModal('classModal');
@@ -344,20 +417,19 @@ function saveClass() {
     }
     
     // เตรียมข้อมูล
-    const formData = new FormData();
+    let formData = new FormData();
     formData.append('academic_year_id', academicYearId);
     formData.append('level', level);
     formData.append('department_id', departmentId);
     formData.append('group_number', groupNumber);
     formData.append('classroom', classroom);
     
+    // กำหนด action ตามว่าเป็นการเพิ่มใหม่หรือแก้ไข
+    const action = classId ? 'edit_class' : 'add_class';
+    formData.append('action', action);
+    
     if (classId) {
-        // กรณีแก้ไข
-        formData.append('action', 'edit_class');
         formData.append('class_id', classId);
-    } else {
-        // กรณีเพิ่มใหม่
-        formData.append('action', 'add_class');
     }
     
     // ส่งข้อมูลไปยังเซิร์ฟเวอร์
@@ -370,6 +442,7 @@ function saveClass() {
         if (data.status === 'success') {
             showNotification(data.message, 'success');
             closeModal('classModal');
+            
             // รีโหลดหน้าหลังจากบันทึกสำเร็จ
             setTimeout(() => {
                 window.location.reload();
@@ -391,13 +464,12 @@ function editClass(classId) {
     currentClassId = classId;
     
     // ส่ง AJAX request เพื่อดึงข้อมูลชั้นเรียน
-    const formData = new FormData();
-    formData.append('action', 'get_class_details');
-    formData.append('class_id', classId);
-    
     fetch('api/class_manager.php', {
         method: 'POST',
-        body: formData
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: `action=get_class_details&class_id=${classId}`
     })
     .then(response => response.json())
     .then(data => {
@@ -435,8 +507,12 @@ function deleteClass(classId) {
     let className = '';
     const classRows = document.querySelectorAll('.class-row');
     for (const row of classRows) {
-        if (row.cells[0].textContent == classId) {
-            className = row.querySelector('.class-name').textContent;
+        const cells = row.cells;
+        if (cells[0].textContent.trim() == classId) {
+            const classNameElement = row.querySelector('.class-name');
+            if (classNameElement) {
+                className = classNameElement.textContent.trim();
+            }
             break;
         }
     }
@@ -449,7 +525,7 @@ function deleteClass(classId) {
     
     deleteCallback = function() {
         // เตรียมข้อมูลสำหรับส่ง
-        const formData = new FormData();
+        let formData = new FormData();
         formData.append('action', 'delete_class');
         formData.append('class_id', classId);
         
@@ -493,13 +569,12 @@ function showClassDetails(classId) {
     currentClassId = classId;
     
     // ส่ง AJAX request เพื่อดึงข้อมูลรายละเอียดชั้นเรียน
-    const formData = new FormData();
-    formData.append('action', 'get_class_details');
-    formData.append('class_id', classId);
-    
     fetch('api/class_manager.php', {
         method: 'POST',
-        body: formData
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: `action=get_class_details&class_id=${classId}`
     })
     .then(response => response.json())
     .then(data => {
@@ -510,6 +585,7 @@ function showClassDetails(classId) {
             document.getElementById('detailLevel').textContent = data.class.level;
             document.getElementById('detailDepartment').textContent = data.class.department_name;
             document.getElementById('detailGroup').textContent = data.class.group_number;
+            document.getElementById('detailClassroom').textContent = data.class.classroom || '-';
             document.getElementById('detailStudentCount').textContent = `${data.class.student_count} คน`;
             
             // เติมข้อมูลครูที่ปรึกษา
@@ -540,6 +616,8 @@ function showClassDetails(classId) {
  */
 function populateAdvisorsList(advisors) {
     const advisorsList = document.getElementById('advisorsList');
+    if (!advisorsList) return;
+    
     advisorsList.innerHTML = '';
     
     if (!advisors || advisors.length === 0) {
@@ -566,6 +644,8 @@ function populateAdvisorsList(advisors) {
  */
 function populateStudentsList(students) {
     const studentTableBody = document.getElementById('studentTableBody');
+    if (!studentTableBody) return;
+    
     studentTableBody.innerHTML = '';
     
     if (!students || students.length === 0) {
@@ -579,9 +659,13 @@ function populateStudentsList(students) {
         row.innerHTML = `
             <td>${student.code}</td>
             <td>${student.name}</td>
-            <td>${student.attendance}/${student.total} วัน</td>
-            <td>${student.percent.toFixed(1)}%</td>
-            <td><span class="status-badge ${statusClass}">${student.status}</span></td>
+            <td class="text-center">${student.attendance}/${student.total} วัน</td>
+            <td class="text-center">${student.percent.toFixed(1)}%</td>
+            <td>
+                <span class="status-badge ${statusClass}">
+                    ${student.status}
+                </span>
+            </td>
         `;
         studentTableBody.appendChild(row);
     });
@@ -591,6 +675,17 @@ function populateStudentsList(students) {
  * สร้างกราฟการเข้าแถว
  */
 function createAttendanceCharts(attendanceStats) {
+    // ถ้าไม่มีชาร์ต กลับออกไป
+    if (!document.getElementById('classAttendanceChart') || !document.getElementById('monthlyAttendanceChart')) {
+        return;
+    }
+    
+    // ถ้าไม่มีข้อมูลหรือไม่ได้โหลด Chart.js
+    if (!attendanceStats || typeof Chart === 'undefined') {
+        console.error('Missing attendance stats or Chart.js is not loaded');
+        return;
+    }
+    
     // ถ้ามีชาร์ตเก่าให้ทำลายก่อน
     if (chartObjects.attendanceChart) {
         chartObjects.attendanceChart.destroy();
@@ -717,13 +812,12 @@ function manageAdvisors(classId) {
     advisorsChanges = []; // รีเซ็ตการเปลี่ยนแปลง
     
     // ส่ง AJAX request เพื่อดึงข้อมูลครูที่ปรึกษาของชั้นเรียน
-    const formData = new FormData();
-    formData.append('action', 'get_class_advisors');
-    formData.append('class_id', classId);
-    
     fetch('api/class_manager.php', {
         method: 'POST',
-        body: formData
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: `action=get_class_advisors&class_id=${classId}`
     })
     .then(response => response.json())
     .then(data => {
@@ -735,6 +829,10 @@ function manageAdvisors(classId) {
             
             // รีเซ็ตการแสดงการเปลี่ยนแปลง
             document.getElementById('changesLog').innerHTML = '<div class="text-muted">ยังไม่มีการเปลี่ยนแปลง</div>';
+            
+            // รีเซ็ตฟอร์มเพิ่มครูที่ปรึกษา
+            document.getElementById('advisorSelect').value = '';
+            document.getElementById('isPrimaryAdvisor').checked = false;
             
             // แสดงโมดัล
             showModal('advisorsModal');
@@ -749,10 +847,27 @@ function manageAdvisors(classId) {
 }
 
 /**
+ * เรียกใช้จัดการครูที่ปรึกษาจากหน้ารายละเอียดชั้นเรียน
+ */
+function manageAdvisorsFromDetails() {
+    if (currentClassId) {
+        // ซ่อนโมดัลรายละเอียดชั้นเรียน
+        closeModal('classDetailsModal');
+        
+        // แสดงโมดัลจัดการครูที่ปรึกษา
+        setTimeout(() => {
+            manageAdvisors(currentClassId);
+        }, 300);
+    }
+}
+
+/**
  * แสดงรายการครูที่ปรึกษาปัจจุบัน
  */
 function renderCurrentAdvisors(advisors) {
     const currentAdvisorsList = document.getElementById('currentAdvisorsList');
+    if (!currentAdvisorsList) return;
+    
     currentAdvisorsList.innerHTML = '';
     
     if (!advisors || advisors.length === 0) {
@@ -843,7 +958,9 @@ function addAdvisor() {
     updateChangesLog();
     
     // ดึงชื่อครูที่ปรึกษาจาก select
-    const advisorName = document.querySelector(`#advisorSelect option[value="${advisorId}"]`).textContent;
+    const advisorSelect = document.getElementById('advisorSelect');
+    const selectedOption = advisorSelect.options[advisorSelect.selectedIndex];
+    const advisorName = selectedOption ? selectedOption.textContent : `ครูรหัส ${advisorId}`;
     
     // เพิ่มรายการใหม่ลงในรายการครูที่ปรึกษาปัจจุบัน
     const currentAdvisorsList = document.getElementById('currentAdvisorsList');
@@ -884,6 +1001,7 @@ function addAdvisor() {
  */
 function updateChangesLog() {
     const changesLog = document.getElementById('changesLog');
+    if (!changesLog) return;
     
     if (!advisorsChanges || advisorsChanges.length === 0) {
         changesLog.innerHTML = '<div class="text-muted">ยังไม่มีการเปลี่ยนแปลง</div>';
@@ -970,7 +1088,7 @@ function removeNewAdvisor(buttonElement, advisorId) {
     
     // ตรวจสอบว่ายังมีครูที่ปรึกษาในรายการหรือไม่
     const currentAdvisorsList = document.getElementById('currentAdvisorsList');
-    if (currentAdvisorsList.children.length === 0) {
+    if (currentAdvisorsList && currentAdvisorsList.children.length === 0) {
         currentAdvisorsList.innerHTML = '<div class="text-muted">ยังไม่มีครูที่ปรึกษา</div>';
     }
     
@@ -1036,7 +1154,14 @@ function setAsPrimaryAdvisor(advisorId) {
  * ลบครูที่ปรึกษา
  */
 function removeAdvisor(advisorId) {
-    if (confirm(`ต้องการลบครูที่ปรึกษาออกจากชั้นเรียนนี้หรือไม่?`)) {
+    document.getElementById('confirmContent').innerHTML = `
+        <div class="alert alert-warning">
+            <span class="material-icons">warning</span>
+            <div>คุณต้องการลบครูที่ปรึกษาออกจากชั้นเรียนนี้หรือไม่?</div>
+        </div>
+    `;
+    
+    document.getElementById('confirmButton').onclick = function() {
         // บันทึกการเปลี่ยนแปลง
         advisorsChanges.push({
             action: 'remove',
@@ -1057,12 +1182,15 @@ function removeAdvisor(advisorId) {
         
         // ตรวจสอบว่ายังมีครูที่ปรึกษาในรายการหรือไม่
         const currentAdvisorsList = document.getElementById('currentAdvisorsList');
-        if (currentAdvisorsList.children.length === 0) {
+        if (currentAdvisorsList && currentAdvisorsList.children.length === 0) {
             currentAdvisorsList.innerHTML = '<div class="text-muted">ยังไม่มีครูที่ปรึกษา</div>';
         }
         
+        closeModal('confirmModal');
         showNotification('ลบครูที่ปรึกษาออกจากชั้นเรียนแล้ว', 'success');
-    }
+    };
+    
+    showModal('confirmModal');
 }
 
 /**
@@ -1070,10 +1198,20 @@ function removeAdvisor(advisorId) {
  */
 function cancelAdvisorChanges() {
     if (advisorsChanges.length > 0) {
-        if (confirm('คุณแน่ใจหรือไม่ที่จะยกเลิกการเปลี่ยนแปลงทั้งหมด?')) {
+        document.getElementById('confirmContent').innerHTML = `
+            <div class="alert alert-warning">
+                <span class="material-icons">warning</span>
+                <div>คุณแน่ใจหรือไม่ที่จะยกเลิกการเปลี่ยนแปลงทั้งหมด?</div>
+            </div>
+        `;
+        
+        document.getElementById('confirmButton').onclick = function() {
             advisorsChanges = [];
+            closeModal('confirmModal');
             closeModal('advisorsModal');
-        }
+        };
+        
+        showModal('confirmModal');
     } else {
         closeModal('advisorsModal');
     }
@@ -1090,7 +1228,7 @@ function saveAdvisorsChanges() {
     }
     
     // เตรียมข้อมูลสำหรับส่ง
-    const formData = new FormData();
+    let formData = new FormData();
     formData.append('action', 'manage_advisors');
     formData.append('class_id', currentClassId);
     formData.append('changes', JSON.stringify(advisorsChanges));
@@ -1147,8 +1285,9 @@ function setupPromotionChart() {
         const cells = row.querySelectorAll('td');
         if (cells.length >= 3) {
             const currentLevel = cells[0].textContent.trim();
-            const studentText = cells[1].textContent.trim();
-            const studentCount = parseInt(studentText);
+            const studentCountText = cells[1].textContent.trim();
+            // แปลงข้อความจำนวนนักเรียนเป็นตัวเลข (ตัดคำว่า "คน" ออก ถ้ามี)
+            const studentCount = parseInt(studentCountText.replace(/[^0-9]/g, ''));
             const newLevel = cells[2].textContent.trim();
             
             if (!isNaN(studentCount)) {
@@ -1193,6 +1332,7 @@ function setupPromotionChart() {
                 align-items: flex-end;
                 justify-content: space-around;
                 margin-top: 20px;
+                padding: 10px;
             }
             
             .chart-bar-container {
@@ -1239,6 +1379,78 @@ function setupPromotionChart() {
 }
 
 /**
+ * เพิ่มปีการศึกษาใหม่
+ */
+function addNewAcademicYear() {
+    const year = document.getElementById('newYear').value;
+    const semester = document.getElementById('newSemester').value;
+    const startDate = document.getElementById('newStartDate').value;
+    const endDate = document.getElementById('newEndDate').value;
+    
+    if (!year || !semester || !startDate || !endDate) {
+        showNotification('กรุณากรอกข้อมูลให้ครบถ้วน', 'warning');
+        return;
+    }
+    
+    // ปิดปุ่มและแสดงไอคอนโหลด
+    const addButton = document.querySelector('#newAcademicYearForm button');
+    const originalButtonHtml = addButton.innerHTML;
+    addButton.disabled = true;
+    addButton.innerHTML = '<span class="material-icons">sync</span> กำลังดำเนินการ...';
+    
+    // เตรียมข้อมูลสำหรับส่ง
+    let formData = new FormData();
+    formData.append('action', 'add_academic_year');
+    formData.append('year', year);
+    formData.append('semester', semester);
+    formData.append('start_date', startDate);
+    formData.append('end_date', endDate);
+    
+    // ส่งข้อมูลไปยังเซิร์ฟเวอร์
+    fetch('api/class_manager.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            showNotification(data.message, 'success');
+            
+            // เพิ่มตัวเลือกในรายการปีการศึกษาปลายทาง
+            const toAcademicYear = document.getElementById('toAcademicYear');
+            const newOption = document.createElement('option');
+            newOption.value = data.academic_year_id;
+            newOption.text = `${year} (ภาคเรียนที่ ${semester})`;
+            newOption.selected = true;
+            
+            // ลบตัวเลือก "เพิ่มปีการศึกษาใหม่"
+            for (let i = 0; i < toAcademicYear.options.length; i++) {
+                if (toAcademicYear.options[i].value === 'new') {
+                    toAcademicYear.remove(i);
+                    break;
+                }
+            }
+            
+            toAcademicYear.appendChild(newOption);
+            
+            // ซ่อนฟอร์มเพิ่มปีการศึกษา
+            document.getElementById('newAcademicYearForm').style.display = 'none';
+            
+        } else {
+            showNotification(data.message, 'error');
+            addButton.disabled = false;
+            addButton.innerHTML = originalButtonHtml;
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('เกิดข้อผิดพลาดในการเพิ่มปีการศึกษา', 'error');
+        addButton.disabled = false;
+        addButton.innerHTML = originalButtonHtml;
+    });
+}
+
+/**
  * ยืนยันการเลื่อนชั้นนักเรียน
  */
 function confirmPromoteStudents() {
@@ -1257,18 +1469,38 @@ function confirmPromoteStudents() {
         return;
     }
     
-    if (!confirm('คุณแน่ใจหรือไม่ที่จะดำเนินการเลื่อนชั้นนักเรียน? การดำเนินการนี้ไม่สามารถย้อนกลับได้')) {
-        return;
-    }
+    // แสดงข้อความยืนยันการเลื่อนชั้น
+    document.getElementById('confirmContent').innerHTML = `
+        <div class="alert alert-warning">
+            <span class="material-icons">warning</span>
+            <div class="alert-content">
+                <p><strong>คุณกำลังจะเลื่อนชั้นนักเรียนทั้งหมด</strong></p>
+                <p>ปีการศึกษาต้นทาง: <strong>${document.querySelector(`#fromAcademicYear option:checked`).textContent}</strong></p>
+                <p>ปีการศึกษาปลายทาง: <strong>${document.querySelector(`#toAcademicYear option:checked`).textContent}</strong></p>
+                <p class="text-danger">คำเตือน: การดำเนินการนี้ไม่สามารถย้อนกลับได้</p>
+            </div>
+        </div>
+    `;
     
+    document.getElementById('confirmButton').onclick = function() {
+        executePromoteStudents(fromAcademicYear, toAcademicYear, promotionNotes);
+    };
+    
+    showModal('confirmModal');
+}
+
+/**
+ * ดำเนินการเลื่อนชั้นนักเรียน
+ */
+function executePromoteStudents(fromAcademicYear, toAcademicYear, promotionNotes) {
     // แสดงสถานะกำลังโหลด
     const promoteBtn = document.getElementById('promoteBtn');
     const originalBtnHtml = promoteBtn.innerHTML;
     promoteBtn.disabled = true;
-    promoteBtn.innerHTML = '<span class="material-icons">sync</span> กำลังดำเนินการ...';
+    promoteBtn.innerHTML = '<span class="material-icons spinning">sync</span> กำลังดำเนินการ...';
     
     // เตรียมข้อมูลสำหรับส่ง
-    const formData = new FormData();
+    let formData = new FormData();
     formData.append('action', 'promote_students');
     formData.append('from_academic_year_id', fromAcademicYear);
     formData.append('to_academic_year_id', toAcademicYear);
@@ -1282,13 +1514,19 @@ function confirmPromoteStudents() {
     .then(response => response.json())
     .then(data => {
         if (data.status === 'success') {
-            showNotification(data.message, 'success');
+            closeModal('confirmModal');
             closeModal('promoteStudentsModal');
             
-            // รีโหลดหน้าหลังจากเลื่อนชั้นสำเร็จ
+            showNotification(`
+                <div>เลื่อนชั้นนักเรียนสำเร็จ</div>
+                <div>- นักเรียนเลื่อนชั้น: ${data.promoted_count} คน</div>
+                <div>- นักเรียนสำเร็จการศึกษา: ${data.graduated_count} คน</div>
+            `, 'success');
+            
+            // รีโหลดหน้าหลังจากบันทึกสำเร็จ
             setTimeout(() => {
                 window.location.reload();
-            }, 1000);
+            }, 2000);
         } else {
             showNotification(data.message, 'error');
             promoteBtn.disabled = false;
@@ -1337,7 +1575,46 @@ function filterClasses() {
         }
     });
     
+    // แสดงข้อความเมื่อไม่พบข้อมูล
+    const tableBody = document.getElementById('classTableBody');
+    if (tableBody) {
+        if (visibleCount === 0) {
+            // ตรวจสอบว่ามีข้อความไม่พบข้อมูลอยู่แล้วหรือไม่
+            let noDataRow = tableBody.querySelector('.no-data-row');
+            if (!noDataRow) {
+                noDataRow = document.createElement('tr');
+                noDataRow.className = 'no-data-row';
+                noDataRow.innerHTML = '<td colspan="7" class="text-center">ไม่พบข้อมูลที่ตรงกับเงื่อนไขการค้นหา</td>';
+                tableBody.appendChild(noDataRow);
+            }
+        } else {
+            // ลบข้อความไม่พบข้อมูลถ้ามี
+            const noDataRow = tableBody.querySelector('.no-data-row');
+            if (noDataRow) {
+                noDataRow.remove();
+            }
+        }
+    }
+    
     showNotification(`กรองข้อมูลสำเร็จ แสดง ${visibleCount} รายการ`, 'info');
+}
+
+/**
+ * กรองรายชื่อครู
+ */
+function filterTeachers(searchText) {
+    const options = document.querySelectorAll('#advisorSelect option');
+    
+    options.forEach(option => {
+        if (option.value === '') return; // ข้ามตัวเลือกแรก
+        
+        const text = option.textContent.toLowerCase();
+        if (text.includes(searchText.toLowerCase())) {
+            option.style.display = '';
+        } else {
+            option.style.display = 'none';
+        }
+    });
 }
 
 /**
