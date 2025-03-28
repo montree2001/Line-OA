@@ -1,56 +1,4 @@
 <!-- คอนเทนต์หน้าจัดการชั้นเรียนและแผนกวิชา -->
-<div class="card">
-    <div class="card-title">
-        <span class="material-icons">account_balance</span>
-        จัดการแผนกวิชา
-    </div>
-
-    <!-- ส่วนจัดการแผนกวิชา -->
-    <div class="table-responsive">
-        <div class="action-bar">
-            <button class="btn btn-primary" onclick="showDepartmentModal()">
-                <span class="material-icons">add</span>
-                เพิ่มแผนกวิชาใหม่
-            </button>
-        </div>
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th>รหัสแผนก</th>
-                    <th>ชื่อแผนกวิชา</th>
-                    <th>จำนวนนักเรียน</th>
-                    <th>จำนวนชั้นเรียน</th>
-                    <th>จำนวนครู</th>
-                    <th>การจัดการ</th>
-                </tr>
-            </thead>
-            <tbody id="departmentTableBody">
-                <?php foreach ($data['departments'] as $dept_key => $dept): ?>
-                    <tr>
-                        <td><?php echo $dept_key; ?></td>
-                        <td><?php echo $dept['name']; ?></td>
-                        <td><?php echo $dept['student_count']; ?></td>
-                        <td><?php echo $dept['class_count']; ?></td>
-                        <td><?php echo $dept['teacher_count']; ?></td>
-                        <td>
-                            <div class="action-buttons">
-                                <button class="table-action-btn primary" onclick="viewDepartmentDetails('<?php echo $dept_key; ?>')">
-                                    <span class="material-icons">visibility</span>
-                                </button>
-                                <button class="table-action-btn success" onclick="editDepartment('<?php echo $dept_key; ?>')">
-                                    <span class="material-icons">edit</span>
-                                </button>
-                                <button class="table-action-btn danger" onclick="deleteDepartment('<?php echo $dept_key; ?>')">
-                                    <span class="material-icons">delete</span>
-                                </button>
-                            </div>
-                        </td>
-                    </tr>
-                <?php endforeach; ?>
-            </tbody>
-        </table>
-    </div>
-</div>
 
 <div class="card mt-4">
     <div class="card-title">
@@ -185,43 +133,6 @@
     </div>
 </div>
 
-<!-- โมดัลเพิ่ม/แก้ไขแผนกวิชา -->
-<div class="modal" id="departmentModal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h2 class="modal-title" id="departmentModalTitle">เพิ่มแผนกวิชาใหม่</h2>
-            <button class="modal-close" onclick="closeModal('departmentModal')">
-                <span class="material-icons">close</span>
-            </button>
-        </div>
-        <div class="modal-body">
-            <form id="departmentForm">
-                <input type="hidden" id="departmentId" name="department_id" value="">
-                
-                <div class="form-group">
-                    <label class="form-label">รหัสแผนกวิชา</label>
-                    <div class="input-with-hint">
-                        <input type="text" id="departmentCode" class="form-control" name="department_code" placeholder="เช่น IT, AUTO, MECH">
-                        <small class="form-helper-text">*หากไม่ระบุ ระบบจะสร้างรหัสให้อัตโนมัติ</small>
-                    </div>
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label">ชื่อแผนกวิชา <span class="required">*</span></label>
-                    <input type="text" id="departmentName" class="form-control" name="department_name" placeholder="กรอกชื่อแผนกวิชา" required>
-                </div>
-            </form>
-        </div>
-        <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" onclick="closeModal('departmentModal')">ยกเลิก</button>
-            <button type="button" class="btn btn-primary" onclick="saveDepartment()">
-                <span class="material-icons">save</span>
-                บันทึกแผนกวิชา
-            </button>
-        </div>
-    </div>
-</div>
-
 <!-- โมดัลเพิ่มชั้นเรียน -->
 <div class="modal" id="classModal">
     <div class="modal-content">
@@ -289,6 +200,7 @@
         </div>
     </div>
 </div>
+
 <!-- โมดัลรายละเอียดชั้นเรียน -->
 <div class="modal large-modal" id="classDetailsModal">
     <div class="modal-content">

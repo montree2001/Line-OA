@@ -58,29 +58,6 @@
     </div>
 </div>
 
-<!-- สถิติแผนกวิชา -->
-<div class="card mt-4">
-    <div class="card-title">
-        <span class="material-icons">bar_chart</span>
-        สถิติแผนกวิชา
-    </div>
-    <div class="card-body">
-        <div class="row">
-            <div class="col-md-6">
-                <h3>จำนวนนักเรียนตามแผนกวิชา</h3>
-                <div class="chart-container">
-                    <canvas id="departmentStudentChart"></canvas>
-                </div>
-            </div>
-            <div class="col-md-6">
-                <h3>จำนวนครูตามแผนกวิชา</h3>
-                <div class="chart-container">
-                    <canvas id="departmentTeacherChart"></canvas>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
 
 <!-- โมดัลเพิ่ม/แก้ไขแผนกวิชา -->
 <div class="modal" id="departmentModal">
