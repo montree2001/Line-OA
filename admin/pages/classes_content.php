@@ -188,97 +188,107 @@
 <!-- โมดัลเพิ่ม/แก้ไขแผนกวิชา -->
 <div class="modal" id="departmentModal">
     <div class="modal-content">
-        <button class="modal-close" onclick="closeModal('departmentModal')">
-            <span class="material-icons">close</span>
-        </button>
-        <h2 class="modal-title" id="departmentModalTitle">เพิ่มแผนกวิชาใหม่</h2>
-
-      
-        <form id="departmentForm">
-    <input type="hidden" id="departmentId" name="department_id" value="">
-    
-    <div class="form-group">
-        <label class="form-label">ชื่อแผนกวิชา</label>
-        <input type="text" 
-               id="departmentName" 
-               class="form-control" 
-               name="department_name" 
-               placeholder="กรอกชื่อแผนกวิชา" 
-               required>
-    </div>
-    
-    <div class="modal-actions">
-        <button type="button" class="btn btn-secondary" onclick="closeModal('departmentModal')">ยกเลิก</button>
-        <button type="submit" class="btn btn-primary">
-            <span class="material-icons">save</span>
-            บันทึกแผนกวิชา
-        </button>
-    </div>
-</form>
+        <div class="modal-header">
+            <h2 class="modal-title" id="departmentModalTitle">เพิ่มแผนกวิชาใหม่</h2>
+            <button class="modal-close" onclick="closeModal('departmentModal')">
+                <span class="material-icons">close</span>
+            </button>
+        </div>
+        <div class="modal-body">
+            <form id="departmentForm">
+                <input type="hidden" id="departmentId" name="department_id" value="">
+                
+                <div class="form-group">
+                    <label class="form-label">รหัสแผนกวิชา</label>
+                    <div class="input-with-hint">
+                        <input type="text" id="departmentCode" class="form-control" name="department_code" placeholder="เช่น IT, AUTO, MECH">
+                        <small class="form-helper-text">*หากไม่ระบุ ระบบจะสร้างรหัสให้อัตโนมัติ</small>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">ชื่อแผนกวิชา <span class="required">*</span></label>
+                    <input type="text" id="departmentName" class="form-control" name="department_name" placeholder="กรอกชื่อแผนกวิชา" required>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeModal('departmentModal')">ยกเลิก</button>
+            <button type="button" class="btn btn-primary" onclick="saveDepartment()">
+                <span class="material-icons">save</span>
+                บันทึกแผนกวิชา
+            </button>
+        </div>
     </div>
 </div>
 
 <!-- โมดัลเพิ่มชั้นเรียน -->
-<div class="modal" id="addClassModal">
+<div class="modal" id="classModal">
     <div class="modal-content">
-        <button class="modal-close" onclick="closeModal('addClassModal')">
-            <span class="material-icons">close</span>
-        </button>
-        <h2 class="modal-title" id="classModalTitle">เพิ่มชั้นเรียนใหม่</h2>
+        <div class="modal-header">
+            <h2 class="modal-title" id="classModalTitle">เพิ่มชั้นเรียนใหม่</h2>
+            <button class="modal-close" onclick="closeModal('classModal')">
+                <span class="material-icons">close</span>
+            </button>
+        </div>
+        <div class="modal-body">
+            <form id="classForm">
+                <input type="hidden" id="classId" name="class_id" value="">
 
-        <form id="classForm">
-            <input type="hidden" id="classId" name="class_id" value="">
+                <div class="form-group">
+                    <label class="form-label">ปีการศึกษา <span class="required">*</span></label>
+                    <select id="academicYear" class="form-control" name="academic_year_id" required>
+                        <option value="">เลือกปีการศึกษา</option>
+                        <?php foreach ($data['academic_years'] as $year): ?>
+                            <option value="<?php echo $year['academic_year_id']; ?>" <?php echo ($year['is_active'] ? 'selected' : ''); ?>>
+                                <?php echo $year['year']; ?> (ภาคเรียนที่ <?php echo $year['semester']; ?>)
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
 
-            <div class="form-group">
-                <label class="form-label">ปีการศึกษา</label>
-                <select id="academicYear" class="form-control" name="academic_year_id" required>
-                    <option value="">เลือกปีการศึกษา</option>
-                    <?php foreach ($data['academic_years'] as $year): ?>
-                        <option value="<?php echo $year['academic_year_id']; ?>" <?php echo ($year['is_active'] ? 'selected' : ''); ?>>
-                            <?php echo $year['year']; ?> (ภาคเรียนที่ <?php echo $year['semester']; ?>)
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
+                <div class="form-group">
+                    <label class="form-label">ระดับชั้น <span class="required">*</span></label>
+                    <select id="classLevel" class="form-control" name="level" required>
+                        <option value="">เลือกระดับชั้น</option>
+                        <option value="ปวช.1">ปวช.1</option>
+                        <option value="ปวช.2">ปวช.2</option>
+                        <option value="ปวช.3">ปวช.3</option>
+                        <option value="ปวส.1">ปวส.1</option>
+                        <option value="ปวส.2">ปวส.2</option>
+                    </select>
+                </div>
 
-            <div class="form-group">
-                <label class="form-label">ระดับชั้น</label>
-                <select id="classLevel" class="form-control" name="level" required>
-                    <option value="">เลือกระดับชั้น</option>
-                    <option value="ปวช.1">ปวช.1</option>
-                    <option value="ปวช.2">ปวช.2</option>
-                    <option value="ปวช.3">ปวช.3</option>
-                    <option value="ปวส.1">ปวส.1</option>
-                    <option value="ปวส.2">ปวส.2</option>
-                </select>
-            </div>
+                <div class="form-group">
+                    <label class="form-label">แผนกวิชา <span class="required">*</span></label>
+                    <select id="classDepartment" class="form-control" name="department_id" required>
+                        <option value="">เลือกแผนกวิชา</option>
+                        <?php foreach ($data['departments'] as $dept_key => $dept): ?>
+                            <option value="<?php echo $dept_key; ?>"><?php echo $dept['name']; ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
 
-            <div class="form-group">
-                <label class="form-label">แผนกวิชา</label>
-                <select id="classDepartment" class="form-control" name="department" required>
-                    <option value="">เลือกแผนกวิชา</option>
-                    <?php foreach ($data['departments'] as $dept_key => $dept): ?>
-                        <option value="<?php echo $dept_key; ?>"><?php echo $dept['name']; ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
+                <div class="form-group">
+                    <label class="form-label">กลุ่ม <span class="required">*</span></label>
+                    <input type="number" id="groupNumber" class="form-control" name="group_number" min="1" max="20" value="1" required>
+                </div>
 
-            <div class="form-group">
-                <label class="form-label">กลุ่ม</label>
-                <input type="number" id="groupNumber" class="form-control" name="group_number" min="1" max="20" value="1" required>
-            </div>
-
-            <div class="modal-actions">
-                <button type="button" class="btn btn-secondary" onclick="closeModal('addClassModal')">ยกเลิก</button>
-                <button type="submit" class="btn btn-primary">
-                    <span class="material-icons">save</span>
-                    บันทึกชั้นเรียน
-                </button>
-            </div>
-        </form>
+                <div class="form-group">
+                    <label class="form-label">ห้องเรียนประจำ</label>
+                    <input type="text" id="classroom" class="form-control" name="classroom" placeholder="เช่น 501, IT-Lab1">
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeModal('classModal')">ยกเลิก</button>
+            <button type="button" class="btn btn-primary" onclick="saveClass()">
+                <span class="material-icons">save</span>
+                บันทึกชั้นเรียน
+            </button>
+        </div>
     </div>
 </div>
-
 <!-- โมดัลรายละเอียดชั้นเรียน -->
 <div class="modal large-modal" id="classDetailsModal">
     <div class="modal-content">
@@ -365,53 +375,62 @@
 </div>
 
 <!-- โมดัลจัดการครูที่ปรึกษา -->
-<div class="modal" id="advisorsModal">
+<div class="modal large-modal" id="advisorsModal">
     <div class="modal-content">
-        <button class="modal-close" onclick="closeModal('advisorsModal')">
-            <span class="material-icons">close</span>
-        </button>
-        <h2 class="modal-title">จัดการครูที่ปรึกษา <span id="advisorsClassTitle"></span></h2>
+        <div class="modal-header">
+            <h2 class="modal-title">จัดการครูที่ปรึกษา <span id="advisorsClassTitle"></span></h2>
+            <button class="modal-close" onclick="closeModal('advisorsModal')">
+                <span class="material-icons">close</span>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="advisors-management">
+                <div class="current-advisors">
+                    <h3>ครูที่ปรึกษาปัจจุบัน</h3>
+                    <div id="currentAdvisorsList" class="advisor-items scrollable">
+                        <!-- รายการครูที่ปรึกษาปัจจุบัน จะถูกเติมด้วย JavaScript -->
+                    </div>
+                </div>
 
-        <div class="advisors-management">
-            <div class="current-advisors">
-                <h3>ครูที่ปรึกษาปัจจุบัน</h3>
-                <div id="currentAdvisorsList" class="advisor-items">
-                    <!-- รายการครูที่ปรึกษาปัจจุบัน จะถูกเติมด้วย JavaScript -->
-                    <div class="text-muted">กำลังโหลดข้อมูล...</div>
+                <div class="add-advisor">
+                    <h3>เพิ่มครูที่ปรึกษา</h3>
+                    <div class="form-search-box">
+                        <input type="text" id="teacherSearch" class="form-control" placeholder="ค้นหาครู...">
+                        <span class="material-icons search-icon">search</span>
+                    </div>
+                    <div class="form-group">
+                        <select id="advisorSelect" class="form-control" size="8">
+                            <option value="">-- เลือกครูที่ปรึกษา --</option>
+                            <?php foreach ($data['teachers'] as $teacher): ?>
+                                <option value="<?php echo $teacher['teacher_id']; ?>">
+                                    <?php echo $teacher['title'] . ' ' . $teacher['first_name'] . ' ' . $teacher['last_name']; ?>
+                                    (<?php echo $teacher['department_name'] ?? 'ไม่ระบุแผนก'; ?>)
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="form-check primary-advisor-check">
+                        <input type="checkbox" id="isPrimaryAdvisor" class="form-check-input">
+                        <label for="isPrimaryAdvisor" class="form-check-label">ตั้งเป็นครูที่ปรึกษาหลัก</label>
+                    </div>
+                    <div class="form-helper-text">
+                        <small class="text-muted">* ครูที่ปรึกษาหลักจะมีเพียงคนเดียวต่อชั้นเรียน</small>
+                    </div>
+                    <button class="btn btn-primary mt-2" onclick="addAdvisor()">
+                        <span class="material-icons">add</span>
+                        เพิ่มครูที่ปรึกษา
+                    </button>
                 </div>
             </div>
 
-            <div class="add-advisor">
-                <h3>เพิ่มครูที่ปรึกษา</h3>
-                <div class="form-group">
-                    <label>เลือกครู</label>
-                    <select id="advisorSelect" class="form-control">
-                        <option value="">-- เลือกครูที่ปรึกษา --</option>
-                        <!-- รายการครู จะถูกเติมด้วย PHP -->
-                    </select>
+            <div class="advisor-changes-summary">
+                <h3>สรุปการเปลี่ยนแปลง</h3>
+                <div id="changesLog" class="changes-log">
+                    <div class="text-muted">ยังไม่มีการเปลี่ยนแปลง</div>
                 </div>
-                <div class="form-check">
-                    <input type="checkbox" id="isPrimaryAdvisor" class="form-check-input">
-                    <label for="isPrimaryAdvisor" class="form-check-label">ครูที่ปรึกษาหลัก</label>
-                </div>
-                <div class="form-helper-text">
-                    <small class="text-muted">* ครูที่ปรึกษาหลักจะมีเพียงคนเดียวต่อชั้นเรียน</small>
-                </div>
-                <button class="btn btn-primary mt-2" onclick="addAdvisor()">
-                    <span class="material-icons">add</span>
-                    เพิ่มครูที่ปรึกษา
-                </button>
             </div>
         </div>
-
-        <div class="advisor-changes-summary">
-            <h3>สรุปการเปลี่ยนแปลง</h3>
-            <div id="changesLog" class="changes-log">
-                <div class="text-muted">ยังไม่มีการเปลี่ยนแปลง</div>
-            </div>
-        </div>
-
-        <div class="modal-actions">
+        <div class="modal-footer">
             <button class="btn btn-secondary" onclick="cancelAdvisorChanges()">ยกเลิก</button>
             <button class="btn btn-primary" onclick="saveAdvisorsChanges()">
                 <span class="material-icons">save</span>
@@ -588,374 +607,467 @@
     </div>
 </div>
 
+
 <style>
-    .large-modal .modal-content {
-        width: 80%;
-        max-width: 1000px;
+    /* ปรับปรุงการแสดงผลรายการครูที่ปรึกษา */
+.advisor-item {
+    display: flex;
+    align-items: center;
+    padding: 12px 15px;
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    margin-bottom: 10px;
+    transition: all 0.2s ease;
+    border-left: 3px solid transparent;
+}
+
+.advisor-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.advisor-item.primary {
+    border-left-color: var(--primary-color);
+}
+
+.advisor-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: var(--primary-light);
+    color: var(--primary-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 12px;
+    font-weight: 600;
+    font-size: 16px;
+}
+
+.advisor-info {
+    flex: 1;
+}
+
+.advisor-name {
+    font-weight: 500;
+    margin-bottom: 2px;
+}
+
+.advisor-position {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.advisor-action {
+    display: flex;
+    gap: 5px;
+}
+
+.badge-primary {
+    display: inline-flex;
+    align-items: center;
+    background-color: var(--primary-color);
+    color: white;
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 10px;
+    margin-left: 8px;
+}
+
+.badge-primary .material-icons {
+    font-size: 12px;
+    margin-right: 2px;
+}
+
+/* ปรับปรุงการแสดงผลตารางชั้นเรียน */
+.data-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    margin-bottom: 20px;
+}
+
+.data-table th,
+.data-table td {
+    padding: 12px 15px;
+    vertical-align: middle;
+}
+
+.data-table thead th {
+    background-color: var(--light-color);
+    color: var(--secondary-color);
+    font-weight: 600;
+    border-bottom: 2px solid var(--border-color);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.data-table tbody tr {
+    transition: all 0.2s;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.data-table tbody tr:hover {
+    background-color: rgba(74, 108, 247, 0.05);
+}
+
+.class-info {
+    display: flex;
+    align-items: center;
+}
+
+.class-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    background-color: var(--primary-light);
+    color: var(--primary-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 12px;
+    font-weight: 600;
+    font-size: 16px;
+}
+
+.class-details {
+    flex: 1;
+}
+
+.class-name {
+    font-weight: 500;
+    margin-bottom: 2px;
+}
+
+.class-dept {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+/* ปรับปรุงโมดัล */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+    overflow-y: auto;
+    padding: 20px;
+}
+
+.modal-content {
+    background-color: white;
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+    width: 90%;
+    max-width: 600px;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    animation: modalFadeIn 0.3s;
+}
+
+.large-modal .modal-content {
+    max-width: 900px;
+}
+
+.modal-header {
+    padding: 15px 20px;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.modal-title {
+    margin: 0;
+    font-size: 1.2rem;
+    font-weight: 600;
+}
+
+.modal-body {
+    padding: 20px;
+    overflow-y: auto;
+}
+
+.modal-footer {
+    padding: 15px 20px;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 5px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.modal-close:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+    color: var(--text-color);
+}
+
+@keyframes modalFadeIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
     }
-
-    .promotion-info {
-        margin-bottom: 20px;
+    to {
+        opacity: 1;
+        transform: scale(1);
     }
+}
 
-    .alert {
-        display: flex;
-        align-items: flex-start;
-        padding: 15px;
-        border-radius: 8px;
-        margin-bottom: 20px;
+/* ปรับปรุงแถบกรองข้อมูล */
+.filter-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    background-color: var(--light-color);
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.filter-group {
+    flex: 1;
+    min-width: 200px;
+}
+
+.filter-label {
+    font-weight: 500;
+    margin-bottom: 5px;
+    font-size: 0.9rem;
+}
+
+.filter-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 15px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    height: 38px;
+    margin-top: 22px;
+}
+
+.filter-button:hover {
+    background-color: #3a5de5;
+}
+
+.filter-button .material-icons {
+    margin-right: 5px;
+    font-size: 18px;
+}
+
+/* ตัวบ่งชี้การโหลดข้อมูล */
+.loader {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: white;
+    animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
     }
+}
 
-    .alert-info {
-        background-color: #e3f2fd;
-        color: #0d47a1;
-        border-left: 4px solid #1976d2;
+/* การแจ้งเตือน */
+.notification-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.notification {
+    display: flex;
+    align-items: flex-start;
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    padding: 15px;
+    min-width: 300px;
+    max-width: 400px;
+    animation: slideIn 0.3s forwards;
+    border-left: 4px solid var(--primary-color);
+}
+
+.notification-icon {
+    margin-right: 12px;
+    margin-top: 2px;
+}
+
+.notification-message {
+    flex: 1;
+    line-height: 1.4;
+}
+
+.notification-close {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 3px;
+    margin-left: 10px;
+}
+
+.notification.success {
+    border-left-color: var(--success-color);
+}
+
+.notification.success .notification-icon {
+    color: var(--success-color);
+}
+
+.notification.warning {
+    border-left-color: var(--warning-color);
+}
+
+.notification.warning .notification-icon {
+    color: var(--warning-color);
+}
+
+.notification.error {
+    border-left-color: var(--danger-color);
+}
+
+.notification.error .notification-icon {
+    color: var(--danger-color);
+}
+
+.notification.notification-closing {
+    animation: slideOut 0.3s forwards;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
     }
-
-    .alert .material-icons {
-        margin-right: 15px;
-        margin-top: 2px;
+    to {
+        transform: translateX(0);
+        opacity: 1;
     }
+}
 
-    .alert-content {
-        flex: 1;
+@keyframes slideOut {
+    from {
+        transform: translateX(0);
+        opacity: 1;
     }
-
-    .alert-content p {
-        margin: 5px 0;
+    to {
+        transform: translateX(100%);
+        opacity: 0;
     }
+}
 
-    .form-section {
-        background-color: #f5f5f5;
-        border-radius: 8px;
-        padding: 20px;
-        margin-bottom: 20px;
-    }
+/* ส่วนเพิ่มเติมเฉพาะหน้า */
+.scrollable {
+    max-height: 400px;
+    overflow-y: auto;
+    padding-right: 5px;
+}
 
-    .form-group {
-        margin-bottom: 15px;
-    }
+.scrollable::-webkit-scrollbar {
+    width: 6px;
+}
 
-    .helper-text {
-        color: #666;
-    }
+.scrollable::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+}
 
-    .promotion-summary {
-        background-color: #fff;
-        border: 1px solid #e0e0e0;
-        border-radius: 8px;
-        padding: 20px;
-        margin-bottom: 20px;
-    }
+.scrollable::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 10px;
+}
 
-    .promotion-summary h3 {
-        margin-top: 0;
-        margin-bottom: 15px;
-        padding-bottom: 10px;
-        border-bottom: 1px solid #e0e0e0;
-    }
+.scrollable::-webkit-scrollbar-thumb:hover {
+    background: #a1a1a1;
+}
 
-    .promotion-stats {
-        display: flex;
-        gap: 20px;
-    }
+.form-search-box {
+    position: relative;
+    margin-bottom: 10px;
+}
 
-    .promotion-chart {
-        flex: 1;
-        min-height: 200px;
-    }
+.form-search-box .search-icon {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    pointer-events: none;
+}
 
-    .promotion-table {
-        flex: 1;
-    }
+.required {
+    color: var(--danger-color);
+}
 
-    .chart-container {
-        height: 250px;
-        background-color: #f9f9f9;
-        border-radius: 8px;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        padding: 10px;
-    }
+.input-with-hint {
+    position: relative;
+}
 
-    .text-success {
-        color: #4caf50;
-    }
+.form-helper-text {
+    color: var(--text-muted);
+    font-size: 12px;
+    margin-top: 5px;
+}
 
-    @media (max-width: 768px) {
-        .promotion-stats {
-            flex-direction: column;
-        }
+.spinning {
+    animation: spin 1s linear infinite;
+}
 
-        .large-modal .modal-content {
-            width: 95%;
-        }
-    }
+/* ส่วนสำหรับการเลื่อนชั้น */
+.promotion-confirm {
+    background-color: var(--light-color);
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+}
 
-    .advisors-management {
-        display: flex;
-        gap: 20px;
-        margin-bottom: 20px;
-    }
+.promotion-summary {
+    margin-top: 20px;
+}
 
-    .current-advisors,
-    .add-advisor {
-        flex: 1;
-        padding: 15px;
-        background-color: #f9f9f9;
-        border-radius: 8px;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    }
-
-    .advisor-items {
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-        max-height: 300px;
-        overflow-y: auto;
-        padding-right: 5px;
-    }
-
-    .advisor-item {
-        display: flex;
-        align-items: center;
-        padding: 10px 15px;
-        background-color: white;
-        border-radius: 8px;
-        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-        transition: all 0.2s ease;
-    }
-
-    .advisor-item:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    }
-
-    .advisor-avatar {
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        background-color: var(--secondary-color-light);
-        color: var(--secondary-color);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin-right: 10px;
-        font-weight: bold;
-        font-size: 16px;
-    }
-
-    .advisor-info {
-        flex: 1;
-    }
-
-    .advisor-action {
-        display: flex;
-        gap: 5px;
-    }
-
-    .primary-badge {
-        background-color: #4caf50;
-        color: white;
-        font-size: 10px;
-        padding: 2px 6px;
-        border-radius: 10px;
-        margin-left: 10px;
-    }
-
-    .advisor-changes-summary {
-        background-color: #f5f5f5;
-        border-radius: 8px;
-        padding: 15px;
-        margin-bottom: 20px;
-        max-height: 200px;
-        overflow-y: auto;
-    }
-
-    .changes-log {
-        font-size: 14px;
-    }
-
-    .change-item {
-        padding: 8px 0;
-        border-bottom: 1px solid #e0e0e0;
-    }
-
-    .change-item:last-child {
-        border-bottom: none;
-    }
-
-    .change-add {
-        color: #4caf50;
-    }
-
-    .change-remove {
-        color: #f44336;
-    }
-
-    .change-primary {
-        color: #2196f3;
-    }
-
-    .form-helper-text {
-        margin-top: 5px;
-        font-size: 12px;
-    }
-
-    /* Responsive */
-    @media (max-width: 768px) {
-        .advisors-management {
-            flex-direction: column;
-        }
-    }
-
-    /* สไตล์เพิ่มเติมสำหรับหน้าจัดการชั้นเรียน */
-    .class-dept {
-        font-size: 12px;
-        color: #666;
-    }
-
-    .action-bar {
-        margin-bottom: 15px;
-        display: flex;
-        gap: 10px;
-    }
-
-    .advisors-list {
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-    }
-
-    .advisor-item {
-        display: flex;
-        align-items: center;
-        padding: 10px;
-        background-color: #f5f5f5;
-        border-radius: 8px;
-    }
-
-    .advisor-avatar {
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        background-color: #e3f2fd;
-        color: #1976d2;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin-right: 10px;
-        font-weight: bold;
-    }
-
-    .advisor-info {
-        flex: 1;
-    }
-
-    .primary-badge {
-        background-color: #4caf50;
-        color: white;
-        font-size: 10px;
-        padding: 2px 6px;
-        border-radius: 10px;
-        margin-left: 10px;
-    }
-
-    .advisors-management {
-        display: flex;
-        gap: 20px;
-        margin-bottom: 20px;
-    }
-
-    .current-advisors {
-        flex: 1;
-        padding: 15px;
-        background-color: #f9f9f9;
-        border-radius: 8px;
-    }
-
-    .add-advisor {
-        flex: 1;
-        padding: 15px;
-        background-color: #f9f9f9;
-        border-radius: 8px;
-    }
-
-    .advisor-items {
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-        max-height: 300px;
-        overflow-y: auto;
-    }
-
-    .advisor-action {
-        display: flex;
-        gap: 5px;
-    }
-
-    .alert {
-        display: flex;
-        align-items: flex-start;
-        padding: 15px;
-        border-radius: 8px;
-        margin-bottom: 20px;
-    }
-
-    .alert-info {
-        background-color: #e3f2fd;
-        color: #0d47a1;
-    }
-
-    .alert-danger {
-        background-color: #ffebee;
-        color: #b71c1c;
-    }
-
-    .alert .material-icons {
-        margin-right: 10px;
-        margin-top: 2px;
-    }
-
-    .alert-content {
-        flex: 1;
-    }
-
-    .alert-content p {
-        margin: 5px 0;
-    }
-
-    .promotion-count-table {
-        margin-top: 20px;
-    }
-
-    .large-modal .modal-content {
-        width: 80%;
-        max-width: 1000px;
-    }
-
-    @media (max-width: 768px) {
-        .advisors-management {
-            flex-direction: column;
-        }
-
-        .large-modal .modal-content {
-            width: 95%;
-        }
-    }
-
-    /* Styles for table action buttons */
-    .table-action-btn.danger {
-        background-color: var(--danger-color-light);
-        color: var(--danger-color);
-    }
-
-    .table-action-btn.warning {
-        background-color: var(--warning-color-light);
-        color: var(--warning-color);
-    }
-</style>
+.promotion-chart {
+    background-color: var(--light-color);
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+    </style>
 
 
 
@@ -1428,66 +1540,85 @@
     // ฟังก์ชันยืนยันการเลื่อนชั้นนักเรียน
 
     // ฟังก์ชันสำหรับยืนยันการเลื่อนชั้นนักเรียน
-    function confirmPromoteStudents() {
-        // ตรวจสอบว่ามีปีการศึกษาปลายทางหรือไม่
-        const toAcademicYear = document.getElementById('toAcademicYear').value;
-        const fromAcademicYear = document.getElementById('fromAcademicYear').value;
-        const promotionNotes = document.getElementById('promotionNotes').value;
-
-        if (toAcademicYear === 'new') {
-            showModal('newAcademicYearModal');
-            return;
-        }
-
-        if (!toAcademicYear || !fromAcademicYear) {
-            showNotification('กรุณาเลือกปีการศึกษาต้นทางและปลายทาง', 'warning');
-            return;
-        }
-
-        if (!confirm('คุณแน่ใจหรือไม่ที่จะดำเนินการเลื่อนชั้นนักเรียน? การดำเนินการนี้ไม่สามารถย้อนกลับได้')) {
-            return;
-        }
-
-        // แสดงสถานะกำลังโหลด
-        const promoteBtn = document.getElementById('promoteBtn');
-        promoteBtn.disabled = true;
-        promoteBtn.innerHTML = '<span class="material-icons spinning">sync</span> กำลังดำเนินการ...';
-
-        // เตรียมข้อมูลสำหรับส่ง
-        const formData = new FormData();
-        formData.append('action', 'promote_students');
-        formData.append('from_academic_year_id', fromAcademicYear);
-        formData.append('to_academic_year_id', toAcademicYear);
-        formData.append('notes', promotionNotes);
-
-        // ส่งข้อมูลผ่าน AJAX
-        ajaxRequest(
-            'api/class_manager.php',
-            'POST',
-            formData,
-            function(data) {
-                if (data.status === 'success') {
-                    showNotification(data.message, 'success');
-                    closeModal('promoteStudentsModal');
-
-                    // รอสักครู่แล้วโหลดหน้าใหม่
-                    setTimeout(function() {
-                        window.location.reload();
-                    }, 1500);
-                } else {
-                    showNotification(data.message || 'เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ', 'error');
-                    promoteBtn.disabled = false;
-                    promoteBtn.innerHTML = '<span class="material-icons">upgrade</span> ดำเนินการเลื่อนชั้น';
-                }
-            },
-            function(error) {
-                console.error('Error:', error);
-                showNotification('เกิดข้อผิดพลาดในการเลื่อนชั้นนักเรียน: ' + error, 'error');
-                promoteBtn.disabled = false;
-                promoteBtn.innerHTML = '<span class="material-icons">upgrade</span> ดำเนินการเลื่อนชั้น';
-            }
-        );
+   // ฟังก์ชันยืนยันการเลื่อนชั้นนักเรียน
+function confirmPromoteStudents() {
+    // ตรวจสอบว่ามีปีการศึกษาปลายทางหรือไม่
+    const toAcademicYear = document.getElementById('toAcademicYear').value;
+    const fromAcademicYear = document.getElementById('fromAcademicYear').value;
+    const promotionNotes = document.getElementById('promotionNotes').value;
+    
+    if (toAcademicYear === 'new') {
+        showNotification('กรุณาเพิ่มปีการศึกษาใหม่ก่อนทำการเลื่อนชั้น', 'warning');
+        return;
     }
+    
+    if (!toAcademicYear || !fromAcademicYear) {
+        showNotification('กรุณาเลือกปีการศึกษาต้นทางและปลายทาง', 'warning');
+        return;
+    }
+    
+    // แสดงข้อความยืนยันพร้อมรายละเอียด
+    const confirmMessage = `
+        <div class="promotion-confirm">
+            <p><strong>กรุณายืนยันการเลื่อนชั้นนักเรียน</strong></p>
+            <p>ปีการศึกษาต้นทาง: <strong>${document.querySelector(`#fromAcademicYear option[value="${fromAcademicYear}"]`).textContent}</strong></p>
+            <p>ปีการศึกษาปลายทาง: <strong>${document.querySelector(`#toAcademicYear option[value="${toAcademicYear}"]`).textContent}</strong></p>
+            <p class="text-danger">คำเตือน: การดำเนินการนี้ไม่สามารถย้อนกลับได้</p>
+        </div>
+    `;
+    
+    document.getElementById('confirmContent').innerHTML = confirmMessage;
+    document.getElementById('confirmButton').onclick = function() {
+        executePromoteStudents(fromAcademicYear, toAcademicYear, promotionNotes);
+    };
+    
+    showModal('confirmModal');
+}
+
+// ฟังก์ชันดำเนินการเลื่อนชั้นนักเรียน
+function executePromoteStudents(fromAcademicYear, toAcademicYear, promotionNotes) {
+    // แสดงสถานะกำลังโหลด
+    const promoteBtn = document.getElementById('promoteBtn');
+    const originalBtnHtml = promoteBtn.innerHTML;
+    promoteBtn.disabled = true;
+    promoteBtn.innerHTML = '<span class="material-icons spinning">sync</span> กำลังดำเนินการ...';
+    
+    // เตรียมข้อมูลสำหรับส่ง
+    const formData = new FormData();
+    formData.append('action', 'promote_students');
+    formData.append('from_academic_year_id', fromAcademicYear);
+    formData.append('to_academic_year_id', toAcademicYear);
+    formData.append('notes', promotionNotes);
+    
+    // ส่งข้อมูลไปยังเซิร์ฟเวอร์
+    fetch('api/class_manager.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            closeModal('confirmModal');
+            closeModal('promoteStudentsModal');
+            showNotification(`<div>เลื่อนชั้นนักเรียนสำเร็จ<br>- นักเรียนเลื่อนชั้น: ${data.promoted_count} คน<br>- นักเรียนสำเร็จการศึกษา: ${data.graduated_count} คน</div>`, 'success');
+            
+            // รีโหลดหน้าหลังจากบันทึกสำเร็จ
+            setTimeout(() => {
+                window.location.reload();
+            }, 2000);
+        } else {
+            showNotification(data.message, 'error');
+            promoteBtn.disabled = false;
+            promoteBtn.innerHTML = originalBtnHtml;
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('เกิดข้อผิดพลาดในการเลื่อนชั้นนักเรียน', 'error');
+        promoteBtn.disabled = false;
+        promoteBtn.innerHTML = originalBtnHtml;
+    });
+}
 
     // ฟังก์ชันสร้างกราฟแสดงจำนวนนักเรียนที่จะเลื่อนชั้น
     function renderPromotionChart() {
@@ -1644,6 +1775,135 @@
         });
     }
 
+
+
+    function showNotification(message, type = 'info') {
+    // สร้าง container ถ้ายังไม่มี
+    let notificationContainer = document.querySelector('.notification-container');
+    if (!notificationContainer) {
+        notificationContainer = document.createElement('div');
+        notificationContainer.className = 'notification-container';
+        document.body.appendChild(notificationContainer);
+    }
+    
+    // สร้างการแจ้งเตือน
+    const notification = document.createElement('div');
+    notification.className = `notification ${type}`;
+    
+    // เลือกไอคอนตามประเภท
+    let icon = 'info';
+    switch (type) {
+        case 'success': icon = 'check_circle'; break;
+        case 'warning': icon = 'warning'; break;
+        case 'error': icon = 'error'; break;
+    }
+    
+    notification.innerHTML = `
+        <span class="material-icons notification-icon">${icon}</span>
+        <div class="notification-message">${message}</div>
+        <button class="notification-close"><span class="material-icons">close</span></button>
+    `;
+    
+    // เพิ่มลงใน container
+    notificationContainer.appendChild(notification);
+    
+    // ตั้งค่าปุ่มปิด
+    const closeButton = notification.querySelector('.notification-close');
+    closeButton.addEventListener('click', () => {
+        notification.classList.add('notification-closing');
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.parentNode.removeChild(notification);
+            }
+        }, 300);
+    });
+    
+    // ปิดอัตโนมัติหลังจาก 5 วินาที
+    setTimeout(() => {
+        if (notification.parentNode) {
+            notification.classList.add('notification-closing');
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.parentNode.removeChild(notification);
+                }
+            }, 300);
+        }
+    }, 5000);
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const teacherSearch = document.getElementById('teacherSearch');
+    if (teacherSearch) {
+        teacherSearch.addEventListener('input', function() {
+            const searchValue = this.value.toLowerCase();
+            const options = document.querySelectorAll('#advisorSelect option');
+            
+            options.forEach(option => {
+                if (option.value === '') return; // ข้ามตัวเลือกแรก
+                
+                const text = option.textContent.toLowerCase();
+                if (text.includes(searchValue)) {
+                    option.style.display = '';
+                } else {
+                    option.style.display = 'none';
+                }
+            });
+        });
+    }
+    
+    // ผูกเหตุการณ์กับโมดัล
+    window.addEventListener('click', function(event) {
+        const modals = document.querySelectorAll('.modal');
+        modals.forEach(modal => {
+            if (event.target === modal) {
+                closeModal(modal.id);
+            }
+        });
+    });
+});
+
+
+// ปรับปรุงฟังก์ชันค้นหานักเรียน
+function filterClasses() {
+    const academicYearFilter = document.getElementById('academicYearFilter').value;
+    const levelFilter = document.getElementById('levelFilter').value;
+    const departmentFilter = document.getElementById('departmentFilter').value;
+    
+    const classRows = document.querySelectorAll('.class-row');
+    let visibleCount = 0;
+    
+    classRows.forEach(row => {
+        const academicYear = row.getAttribute('data-academic-year');
+        const level = row.getAttribute('data-level');
+        const department = row.getAttribute('data-department');
+        
+        const academicYearMatch = !academicYearFilter || academicYear === academicYearFilter;
+        const levelMatch = !levelFilter || level === levelFilter;
+        const departmentMatch = !departmentFilter || department === departmentFilter;
+        
+        if (academicYearMatch && levelMatch && departmentMatch) {
+            row.style.display = '';
+            visibleCount++;
+        } else {
+            row.style.display = 'none';
+        }
+    });
+    
+    // แสดงข้อความเมื่อไม่พบข้อมูล
+    const noDataMessage = document.getElementById('noDataMessage');
+    if (noDataMessage) {
+        if (visibleCount === 0) {
+            noDataMessage.style.display = 'block';
+        } else {
+            noDataMessage.style.display = 'none';
+        }
+    }
+    
+    showNotification(`กรองข้อมูลสำเร็จ แสดง ${visibleCount} รายการ`, 'info');
+}
+
+
+
     // ฟังก์ชันดาวน์โหลดรายงานชั้นเรียน
     function downloadClassReport() {
         window.location.href = `classes.php?action=download_report&class_id=${currentClassId}`;
@@ -1651,12 +1911,28 @@
 
     // ฟังก์ชันแสดงโมดัล
     function showModal(modalId) {
-        const modal = document.getElementById(modalId);
-        if (modal) {
-            modal.style.display = 'flex';
-        }
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        document.body.classList.add('modal-open');
+        modal.style.display = 'flex';
+        
+        // Focus ที่ input แรกในฟอร์ม (ถ้ามี)
+        setTimeout(() => {
+            const firstInput = modal.querySelector('input:not([type="hidden"]), select, textarea');
+            if (firstInput) {
+                firstInput.focus();
+            }
+        }, 100);
     }
+}
 
+function closeModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        document.body.classList.remove('modal-open');
+        modal.style.display = 'none';
+    }
+}
     // ฟังก์ชันปิดโมดัล
     function closeModal(modalId) {
         const modal = document.getElementById(modalId);
