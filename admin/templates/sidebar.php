@@ -51,10 +51,7 @@
             <span class="menu-text">ชั้นเรียน</span>
         </a>
 
-        <a href="departments.php" class="menu-item <?php echo ($current_page == 'departments') ? 'active' : ''; ?>">
-            <span class="material-icons">group_work</span>
-            <span class="menu-text">แผนกวิชา</span>
-        </a>
+       
         
         <div class="menu-category">ตั้งค่า</div>
         <a href="settings.php" class="menu-item <?php echo ($current_page == 'settings') ? 'active' : ''; ?>">

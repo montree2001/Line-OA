@@ -349,67 +349,39 @@ function generateDepartmentCode($department_name) {
  * @return array ข้อมูลแผนกวิชาทั้งหมด
  */
 function getDepartmentsFromDB() {
+    $conn = getDB();
+    if ($conn === null) {
+        error_log('Database connection is not established.');
+        return [];
+    }
+    
     try {
-        $db = getDB();
-        $query = "SELECT 
-                department_id,
-                department_code,
-                department_name 
-            FROM departments
-            WHERE is_active = 1
-            ORDER BY department_name";
-            
-        $stmt = $db->prepare($query);
+        $stmt = $conn->prepare("
+            SELECT 
+                d.department_id, 
+                d.department_code, 
+                d.department_name,
+                (SELECT COUNT(*) FROM classes c WHERE c.department_id = d.department_id) as class_count,
+                (SELECT COUNT(*) FROM students s 
+                 JOIN classes c ON s.current_class_id = c.class_id 
+                 WHERE c.department_id = d.department_id AND s.status = 'กำลังศึกษา') as student_count
+            FROM departments d
+        ");
         $stmt->execute();
-        $departmentsResult = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $departments = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
-        $departments = [];
-        foreach ($departmentsResult as $row) {
-            // ดึงจำนวนนักเรียน
-            $studentCountQuery = "SELECT COUNT(*) AS count 
-                FROM students s 
-                JOIN classes c ON s.current_class_id = c.class_id 
-                WHERE c.department_id = :department_id 
-                AND s.status = 'กำลังศึกษา'";
-                
-            $studentStmt = $db->prepare($studentCountQuery);
-            $studentStmt->bindParam(':department_id', $row['department_id'], PDO::PARAM_INT);
-            $studentStmt->execute();
-            $studentData = $studentStmt->fetch(PDO::FETCH_ASSOC);
-            
-            // ดึงจำนวนชั้นเรียน
-            $classCountQuery = "SELECT COUNT(DISTINCT class_id) AS count 
-                FROM classes 
-                WHERE department_id = :department_id 
-                AND is_active = 1";
-                
-            $classStmt = $db->prepare($classCountQuery);
-            $classStmt->bindParam(':department_id', $row['department_id'], PDO::PARAM_INT);
-            $classStmt->execute();
-            $classData = $classStmt->fetch(PDO::FETCH_ASSOC);
-            
-            // ดึงจำนวนครู
-            $teacherCountQuery = "SELECT COUNT(*) AS count 
-                FROM teachers 
-                WHERE department_id = :department_id";
-                
-            $teacherStmt = $db->prepare($teacherCountQuery);
-            $teacherStmt->bindParam(':department_id', $row['department_id'], PDO::PARAM_INT);
-            $teacherStmt->execute();
-            $teacherData = $teacherStmt->fetch(PDO::FETCH_ASSOC);
-            
-            $departments[$row['department_code']] = [
-                'name' => $row['department_name'],
-                'student_count' => $studentData['count'],
-                'class_count' => $classData['count'],
-                'teacher_count' => $teacherData['count']
-            ];
+        // เพิ่มค่า default หากไม่มีข้อมูล
+        foreach ($departments as &$dept) {
+            $dept['department_code'] = $dept['department_code'] ?? 'N/A';
+            $dept['department_name'] = $dept['department_name'] ?? 'ไม่ระบุ';
+            $dept['class_count'] = $dept['class_count'] ?? 0;
+            $dept['student_count'] = $dept['student_count'] ?? 0;
         }
         
         return $departments;
     } catch (PDOException $e) {
-        error_log("Error fetching departments: " . $e->getMessage());
-        return false;
+        error_log('Database error: ' . $e->getMessage());
+        return [];
     }
 }
 ?>

@@ -9,7 +9,7 @@
                     <span class="material-icons">groups</span>
                 </div>
                 <div class="info-container">
-                    <h3><?php echo count($data['classes']); ?></h3>
+                    <h3><?php echo is_array($data['classes']) ? count($data['classes']) : 0; ?></h3>
                     <p>ชั้นเรียนทั้งหมด</p>
                 </div>
             </div>
@@ -22,7 +22,7 @@
                     <span class="material-icons">business</span>
                 </div>
                 <div class="info-container">
-                    <h3><?php echo count($data['departments']); ?></h3>
+                    <h3><?php echo is_array($data['departments']) ? count($data['departments']) : 0; ?></h3>
                     <p>แผนกวิชา</p>
                 </div>
             </div>
@@ -35,7 +35,7 @@
                     <span class="material-icons">supervisor_account</span>
                 </div>
                 <div class="info-container">
-                    <h3><?php echo count($data['teachers']); ?></h3>
+                    <h3><?php echo is_array($data['teachers']) ? count($data['teachers']) : 0; ?></h3>
                     <p>ครูที่ปรึกษา</p>
                 </div>
             </div>
@@ -273,36 +273,36 @@
                     </tr>
                 </thead>
                 <tbody id="departmentTableBody">
-                    <?php if (empty($data['departments'])): ?>
-                        <tr>
-                            <td colspan="5" class="text-center">ไม่พบข้อมูลแผนกวิชา</td>
-                        </tr>
-                    <?php else: ?>
-                        <?php foreach ($data['departments'] as $dept): ?>
-                            <tr>
-                                <td><?php echo $dept['department_code']; ?></td>
-                                <td><?php echo $dept['department_name']; ?></td>
-                                <td class="text-center"><?php echo $dept['class_count'] ?? 0; ?></td>
-                                <td class="text-center"><?php echo $dept['student_count'] ?? 0; ?></td>
-                                <td>
-                                    <div class="action-buttons">
-                                        <button class="table-action-btn success" 
-                                                onclick="editDepartment('<?php echo $dept['department_id']; ?>')" 
-                                                title="แก้ไข">
-                                            <span class="material-icons">edit</span>
-                                        </button>
-                                        
-                                        <button class="table-action-btn danger" 
-                                                onclick="deleteDepartment('<?php echo $dept['department_id']; ?>')" 
-                                                title="ลบ">
-                                            <span class="material-icons">delete</span>
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
-                    <?php endif; ?>
-                </tbody>
+    <?php if (empty($data['departments'])): ?>
+        <tr>
+            <td colspan="5" class="text-center">ไม่พบข้อมูลแผนกวิชา</td>
+        </tr>
+    <?php else: ?>
+        <?php foreach ($data['departments'] as $dept): ?>
+            <tr>
+                <td><?php echo htmlspecialchars($dept['department_code'] ?? 'N/A'); ?></td>
+                <td><?php echo htmlspecialchars($dept['department_name'] ?? 'ไม่ระบุ'); ?></td>
+                <td class="text-center"><?php echo isset($dept['class_count']) ? $dept['class_count'] : 0; ?></td>
+                <td class="text-center"><?php echo isset($dept['student_count']) ? $dept['student_count'] : 0; ?></td>
+                <td>
+                    <div class="action-buttons">
+                        <button class="table-action-btn success" 
+                                onclick="editDepartment('<?php echo $dept['department_id'] ?? ''; ?>')" 
+                                title="แก้ไข">
+                            <span class="material-icons">edit</span>
+                        </button>
+                        
+                        <button class="table-action-btn danger" 
+                                onclick="deleteDepartment('<?php echo $dept['department_id'] ?? ''; ?>')" 
+                                title="ลบ">
+                            <span class="material-icons">delete</span>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        <?php endforeach; ?>
+    <?php endif; ?>
+</tbody>
             </table>
         </div>
     </div>
