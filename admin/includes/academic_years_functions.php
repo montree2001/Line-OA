@@ -5,7 +5,11 @@
 
 // ดึงข้อมูลปีการศึกษาทั้งหมด
 function getAcademicYearsFromDB() {
-    global $conn;
+    $conn = getDB();  // ใช้ getDB() แทน global $conn;
+    if ($conn === null) {
+        error_log('Database connection is not established.');
+        return false;
+    }
     
     try {
         $stmt = $conn->prepare("

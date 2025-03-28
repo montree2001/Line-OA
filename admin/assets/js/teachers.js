@@ -174,6 +174,9 @@ function setupAlerts() {
  * แสดงโมดัลเพิ่มครูที่ปรึกษา
  */
 function showAddTeacherModal() {
+    // ปิด modal อื่นๆ ที่อาจเปิดอยู่
+    closeAllModals();
+    
     // รีเซ็ตฟอร์ม
     const form = document.getElementById('addTeacherForm');
     if (form) {
@@ -189,6 +192,34 @@ function showAddTeacherModal() {
     }
 }
 
+// เพิ่มฟังก์ชันใหม่สำหรับปิด modal ทั้งหมด
+function closeAllModals() {
+    // ปิด modal ทั้งหมดที่อาจเปิดอยู่
+    const modals = document.querySelectorAll('.modal');
+    modals.forEach(modal => {
+        try {
+            const bsModal = bootstrap.Modal.getInstance(modal);
+            if (bsModal) {
+                bsModal.hide();
+            }
+        } catch (e) {
+            console.error("Error closing modal:", e);
+        }
+    });
+    
+    // ลบ backdrop ที่อาจค้างอยู่
+    const backdrops = document.querySelectorAll('.modal-backdrop');
+    backdrops.forEach(backdrop => {
+        if (backdrop && backdrop.parentNode) {
+            backdrop.parentNode.removeChild(backdrop);
+        }
+    });
+    
+    // รีเซ็ต body styles ที่อาจถูกเพิ่มโดย Bootstrap
+    document.body.classList.remove('modal-open');
+    document.body.style.overflow = '';
+    document.body.style.paddingRight = '';
+}
 /**
  * แสดงโมดัลแก้ไขครูที่ปรึกษา
  * 
@@ -196,7 +227,7 @@ function showAddTeacherModal() {
  */
 function showEditTeacherModal(teacherId) {
     console.log("Edit teacher ID:", teacherId);
-    
+    closeAllModals()
     // ค้นหาแถวของครูในตาราง
     const teacherRow = document.querySelector(`tr[data-id="${teacherId}"]`);
     if (!teacherRow) {
@@ -283,6 +314,7 @@ function showEditTeacherModal(teacherId) {
  */
 function showImportModal() {
     // รีเซ็ตฟอร์ม
+    closeAllModals()
     const form = document.getElementById('importTeacherForm');
     if (form) {
         form.reset();
@@ -304,6 +336,7 @@ function showImportModal() {
  * @param {string} teacherName - ชื่อครูที่ต้องการลบ
  */
 function showDeleteConfirmation(teacherId, teacherName) {
+    closeAllModals()
     document.getElementById('deleteTeacherId').value = teacherId;
     document.getElementById('deleteTeacherName').textContent = teacherName;
     
@@ -322,6 +355,7 @@ function showDeleteConfirmation(teacherId, teacherName) {
  * @param {string} action - การกระทำ (ระงับ/เปิดใช้งาน)
  */
 function confirmToggleStatus(teacherId, action) {
+    closeAllModals();
     document.getElementById('toggleAction').textContent = action;
     
     // ตั้งค่าปุ่มยืนยัน
@@ -404,6 +438,14 @@ function getAlertIcon(type) {
 // เพิ่มตรวจสอบความถูกต้องของฟอร์มเพิ่มครู
 document.addEventListener('DOMContentLoaded', function() {
     // ตรวจสอบฟอร์มเพิ่มครู
+
+    document.querySelectorAll('.modal .btn-close, .modal .btn-secondary').forEach(closeBtn => {
+        closeBtn.addEventListener('click', function() {
+            closeAllModals();
+        });
+    });
+
+
     const addTeacherForm = document.getElementById('addTeacherForm');
     if (addTeacherForm) {
         addTeacherForm.addEventListener('submit', function(event) {
@@ -441,6 +483,11 @@ document.addEventListener('DOMContentLoaded', function() {
         input.addEventListener('blur', function() {
             validateNationalId(this);
         });
+    });
+    document.addEventListener('click', function(event) {
+        if (event.target.classList.contains('modal')) {
+            closeAllModals();
+        }
     });
 });
 

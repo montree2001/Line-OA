@@ -5,7 +5,11 @@
 
 // ดึงข้อมูลครูจากฐานข้อมูล
 function getTeachersFromDB() {
-    global $conn;
+    $conn = getDB();  // ใช้ getDB() เพื่อรับการเชื่อมต่อฐานข้อมูล
+    if ($conn === null) {
+        error_log('Database connection is not established.');
+        return false;
+    }
     
     try {
         $stmt = $conn->prepare("

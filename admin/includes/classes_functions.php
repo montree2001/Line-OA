@@ -1,11 +1,13 @@
 <?php
-/**
- * classes_functions.php - ฟังก์ชันสำหรับจัดการชั้นเรียน
- */
+// classes_functions.php - ฟังก์ชันสำหรับจัดการชั้นเรียน
 
 // ดึงข้อมูลชั้นเรียนจากฐานข้อมูล
 function getClassesFromDB() {
-    global $conn;
+    $conn = getDB();  // ใช้ getDB() เพื่อรับ connection
+    if ($conn === null) {
+        error_log('Database connection is not established.');
+        return false;
+    }
     
     try {
         // ดึงข้อมูลชั้นเรียนพร้อมรายละเอียด
@@ -18,7 +20,7 @@ function getClassesFromDB() {
         ");
         $stmt->execute();
         $classes = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
+    
         // เพิ่มข้อมูลครูที่ปรึกษาและจำนวนนักเรียน
         foreach ($classes as &$class) {
             // ดึงข้อมูลครูที่ปรึกษา
@@ -74,7 +76,11 @@ function getClassesFromDB() {
 
 // ดึงข้อมูลจำนวนนักเรียนที่เสี่ยงตกกิจกรรม
 function getAtRiskStudentCount() {
-    global $conn;
+    $conn = getDB();  // ใช้ getDB() เพื่อรับ connection
+    if ($conn === null) {
+        error_log('Database connection is not established.');
+        return 0;
+    }
     
     try {
         $stmt = $conn->prepare("
@@ -92,7 +98,11 @@ function getAtRiskStudentCount() {
 
 // ดึงข้อมูลการเลื่อนชั้น
 function getPromotionCounts($activeYearId) {
-    global $conn;
+    $conn = getDB();  // ใช้ getDB() เพื่อรับ connection
+    if ($conn === null) {
+        error_log('Database connection is not established.');
+        return false;
+    }
     
     try {
         $result = [];
