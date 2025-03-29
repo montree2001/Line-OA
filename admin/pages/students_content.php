@@ -7,49 +7,96 @@
     
     <div class="filter-container">
         <form method="get" action="students.php" class="filter-form">
-            <div class="filter-group">
-                <div class="filter-label">ชื่อ-นามสกุล</div>
-                <input type="text" class="form-control" name="name" placeholder="ป้อนชื่อนักเรียน..." value="<?php echo isset($_GET['name']) ? htmlspecialchars($_GET['name']) : ''; ?>">
+            <div class="row">
+                <div class="col-md-3">
+                    <div class="filter-group">
+                        <div class="filter-label">ชื่อ-นามสกุล</div>
+                        <input type="text" class="form-control" name="name" placeholder="ป้อนชื่อนักเรียน..." value="<?php echo isset($_GET['name']) ? htmlspecialchars($_GET['name']) : ''; ?>">
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="filter-group">
+                        <div class="filter-label">รหัสนักเรียน</div>
+                        <input type="text" class="form-control" name="student_code" placeholder="ป้อนรหัสนักเรียน..." value="<?php echo isset($_GET['student_code']) ? htmlspecialchars($_GET['student_code']) : ''; ?>">
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="filter-group">
+                        <div class="filter-label">ระดับชั้น</div>
+                        <select class="form-control" name="level">
+                            <option value="">-- ทุกระดับชั้น --</option>
+                            <option value="ปวช.1" <?php echo (isset($_GET['level']) && $_GET['level'] === 'ปวช.1') ? 'selected' : ''; ?>>ปวช.1</option>
+                            <option value="ปวช.2" <?php echo (isset($_GET['level']) && $_GET['level'] === 'ปวช.2') ? 'selected' : ''; ?>>ปวช.2</option>
+                            <option value="ปวช.3" <?php echo (isset($_GET['level']) && $_GET['level'] === 'ปวช.3') ? 'selected' : ''; ?>>ปวช.3</option>
+                            <option value="ปวส.1" <?php echo (isset($_GET['level']) && $_GET['level'] === 'ปวส.1') ? 'selected' : ''; ?>>ปวส.1</option>
+                            <option value="ปวส.2" <?php echo (isset($_GET['level']) && $_GET['level'] === 'ปวส.2') ? 'selected' : ''; ?>>ปวส.2</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="filter-group">
+                        <div class="filter-label">กลุ่ม</div>
+                        <select class="form-control" name="group_number">
+                            <option value="">-- ทุกกลุ่ม --</option>
+                            <?php for ($i = 1; $i <= 5; $i++): ?>
+                            <option value="<?php echo $i; ?>" <?php echo (isset($_GET['group_number']) && $_GET['group_number'] == $i) ? 'selected' : ''; ?>><?php echo $i; ?></option>
+                            <?php endfor; ?>
+                        </select>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="filter-group">
+                        <div class="filter-label">แผนกวิชา</div>
+                        <select class="form-control" name="department_id">
+                            <option value="">-- ทุกแผนก --</option>
+                            <?php foreach ($data['departments'] as $department): ?>
+                            <option value="<?php echo $department['department_id']; ?>" <?php echo (isset($_GET['department_id']) && $_GET['department_id'] == $department['department_id']) ? 'selected' : ''; ?>><?php echo $department['department_name']; ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                </div>
             </div>
-            <div class="filter-group">
-                <div class="filter-label">รหัสนักเรียน</div>
-                <input type="text" class="form-control" name="student_code" placeholder="ป้อนรหัสนักเรียน..." value="<?php echo isset($_GET['student_code']) ? htmlspecialchars($_GET['student_code']) : ''; ?>">
+            <div class="row mt-2">
+                <div class="col-md-3">
+                    <div class="filter-group">
+                        <div class="filter-label">สถานะการเข้าแถว</div>
+                        <select class="form-control" name="attendance_status">
+                            <option value="">-- ทุกสถานะ --</option>
+                            <option value="เสี่ยงตกกิจกรรม" <?php echo (isset($_GET['attendance_status']) && $_GET['attendance_status'] === 'เสี่ยงตกกิจกรรม') ? 'selected' : ''; ?>>เสี่ยงตกกิจกรรม</option>
+                            <option value="ต้องระวัง" <?php echo (isset($_GET['attendance_status']) && $_GET['attendance_status'] === 'ต้องระวัง') ? 'selected' : ''; ?>>ต้องระวัง</option>
+                            <option value="ปกติ" <?php echo (isset($_GET['attendance_status']) && $_GET['attendance_status'] === 'ปกติ') ? 'selected' : ''; ?>>ปกติ</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="filter-group">
+                        <div class="filter-label">สถานะการศึกษา</div>
+                        <select class="form-control" name="status">
+                            <option value="">-- ทุกสถานะ --</option>
+                            <option value="กำลังศึกษา" <?php echo (isset($_GET['status']) && $_GET['status'] === 'กำลังศึกษา') ? 'selected' : ''; ?>>กำลังศึกษา</option>
+                            <option value="พักการเรียน" <?php echo (isset($_GET['status']) && $_GET['status'] === 'พักการเรียน') ? 'selected' : ''; ?>>พักการเรียน</option>
+                            <option value="พ้นสภาพ" <?php echo (isset($_GET['status']) && $_GET['status'] === 'พ้นสภาพ') ? 'selected' : ''; ?>>พ้นสภาพ</option>
+                            <option value="สำเร็จการศึกษา" <?php echo (isset($_GET['status']) && $_GET['status'] === 'สำเร็จการศึกษา') ? 'selected' : ''; ?>>สำเร็จการศึกษา</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="filter-group">
+                        <div class="filter-label">การเชื่อมต่อ LINE</div>
+                        <select class="form-control" name="line_status">
+                            <option value="">-- ทุกสถานะ --</option>
+                            <option value="connected" <?php echo (isset($_GET['line_status']) && $_GET['line_status'] === 'connected') ? 'selected' : ''; ?>>เชื่อมต่อแล้ว</option>
+                            <option value="not_connected" <?php echo (isset($_GET['line_status']) && $_GET['line_status'] === 'not_connected') ? 'selected' : ''; ?>>ยังไม่เชื่อมต่อ</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary btn-block">
+                        <span class="material-icons">search</span>
+                        ค้นหา
+                    </button>
+                </div>
             </div>
-            <div class="filter-group">
-                <div class="filter-label">ระดับชั้น</div>
-                <select class="form-control" name="level">
-                    <option value="">-- ทุกระดับชั้น --</option>
-                    <option value="ปวช.1" <?php echo (isset($_GET['level']) && $_GET['level'] === 'ปวช.1') ? 'selected' : ''; ?>>ปวช.1</option>
-                    <option value="ปวช.2" <?php echo (isset($_GET['level']) && $_GET['level'] === 'ปวช.2') ? 'selected' : ''; ?>>ปวช.2</option>
-                    <option value="ปวช.3" <?php echo (isset($_GET['level']) && $_GET['level'] === 'ปวช.3') ? 'selected' : ''; ?>>ปวช.3</option>
-                    <option value="ปวส.1" <?php echo (isset($_GET['level']) && $_GET['level'] === 'ปวส.1') ? 'selected' : ''; ?>>ปวส.1</option>
-                    <option value="ปวส.2" <?php echo (isset($_GET['level']) && $_GET['level'] === 'ปวส.2') ? 'selected' : ''; ?>>ปวส.2</option>
-                </select>
-            </div>
-            <div class="filter-group">
-                <div class="filter-label">ห้องเรียน</div>
-                <select class="form-control" name="room">
-                    <option value="">-- ทุกห้อง --</option>
-                    <option value="1" <?php echo (isset($_GET['room']) && $_GET['room'] === '1') ? 'selected' : ''; ?>>1</option>
-                    <option value="2" <?php echo (isset($_GET['room']) && $_GET['room'] === '2') ? 'selected' : ''; ?>>2</option>
-                    <option value="3" <?php echo (isset($_GET['room']) && $_GET['room'] === '3') ? 'selected' : ''; ?>>3</option>
-                    <option value="4" <?php echo (isset($_GET['room']) && $_GET['room'] === '4') ? 'selected' : ''; ?>>4</option>
-                    <option value="5" <?php echo (isset($_GET['room']) && $_GET['room'] === '5') ? 'selected' : ''; ?>>5</option>
-                </select>
-            </div>
-            <div class="filter-group">
-                <div class="filter-label">สถานะการเข้าแถว</div>
-                <select class="form-control" name="status">
-                    <option value="">-- ทุกสถานะ --</option>
-                    <option value="เสี่ยงตกกิจกรรม" <?php echo (isset($_GET['status']) && $_GET['status'] === 'เสี่ยงตกกิจกรรม') ? 'selected' : ''; ?>>เสี่ยงตกกิจกรรม</option>
-                    <option value="ต้องระวัง" <?php echo (isset($_GET['status']) && $_GET['status'] === 'ต้องระวัง') ? 'selected' : ''; ?>>ต้องระวัง</option>
-                    <option value="ปกติ" <?php echo (isset($_GET['status']) && $_GET['status'] === 'ปกติ') ? 'selected' : ''; ?>>ปกติ</option>
-                </select>
-            </div>
-            <button type="submit" class="filter-button">
-                <span class="material-icons">search</span>
-                ค้นหา
-            </button>
         </form>
     </div>
 </div>
@@ -158,18 +205,19 @@
             <thead>
                 <tr>
                     <th width="5%">รหัส</th>
-                    <th width="25%">ชื่อ-นามสกุล</th>
+                    <th width="20%">ชื่อ-นามสกุล</th>
                     <th width="10%">ชั้น/ห้อง</th>
+                    <th width="15%">แผนกวิชา</th>
                     <th width="10%">ไลน์</th>
-                    <th width="15%">การเข้าแถว</th>
-                    <th width="15%">สถานะ</th>
+                    <th width="10%">การเข้าแถว</th>
+                    <th width="10%">สถานะ</th>
                     <th width="20%">จัดการ</th>
                 </tr>
             </thead>
             <tbody>
                 <?php if (empty($data['students'])): ?>
                 <tr>
-                    <td colspan="7" class="text-center">ไม่พบข้อมูลนักเรียน</td>
+                    <td colspan="8" class="text-center">ไม่พบข้อมูลนักเรียน</td>
                 </tr>
                 <?php else: ?>
                 <?php foreach ($data['students'] as $student): ?>
@@ -182,16 +230,17 @@
                             </div>
                             <div class="student-details">
                                 <div class="student-name"><?php echo $student['title'] . $student['first_name'] . ' ' . $student['last_name']; ?></div>
-                                <div class="student-class"><?php echo $student['department_name'] ?? ''; ?></div>
+                                <div class="student-class"><?php echo $student['status']; ?></div>
                             </div>
                         </div>
                     </td>
                     <td><?php echo $student['class']; ?></td>
+                    <td><?php echo $student['department_name'] ?? '-'; ?></td>
                     <td>
                         <?php if (isset($student['line_connected']) && $student['line_connected']): ?>
                         <span class="status-badge success">เชื่อมต่อแล้ว</span>
                         <?php else: ?>
-                        <span class="status-badge warning">ยังไม่เชื่อมต่อ</span>
+                        <button class="btn btn-sm btn-outline-primary" onclick="generateLineQR(<?php echo $student['student_id']; ?>)">สร้าง QR</button>
                         <?php endif; ?>
                     </td>
                     <td><?php echo number_format($student['attendance_rate'], 1); ?>%</td>
@@ -212,13 +261,13 @@
                     </td>
                     <td>
                         <div class="action-buttons">
-                            <button class="table-action-btn primary" title="ดูข้อมูล" onclick="viewStudent(<?php echo $student['student_id']; ?>)">
+                            <button class="btn btn-sm btn-info" title="ดูข้อมูล" onclick="viewStudent(<?php echo $student['student_id']; ?>)">
                                 <span class="material-icons">visibility</span>
                             </button>
-                            <button class="table-action-btn success" title="แก้ไข" onclick="editStudent(<?php echo $student['student_id']; ?>)">
+                            <button class="btn btn-sm btn-warning" title="แก้ไข" onclick="editStudent(<?php echo $student['student_id']; ?>)">
                                 <span class="material-icons">edit</span>
                             </button>
-                            <button class="table-action-btn danger" title="ลบ" onclick="deleteStudent(<?php echo $student['student_id']; ?>)">
+                            <button class="btn btn-sm btn-danger" title="ลบ" onclick="deleteStudent(<?php echo $student['student_id']; ?>, '<?php echo htmlspecialchars($student['title'] . $student['first_name'] . ' ' . $student['last_name']); ?>')">
                                 <span class="material-icons">delete</span>
                             </button>
                         </div>
@@ -246,7 +295,7 @@
                 <h3 class="section-title">ข้อมูลส่วนตัว</h3>
                 
                 <div class="row">
-                    <div class="col-3">
+                    <div class="col-md-3">
                         <div class="form-group">
                             <label class="form-label">คำนำหน้า</label>
                             <select class="form-control" name="title" required>
@@ -258,13 +307,13 @@
                             </select>
                         </div>
                     </div>
-                    <div class="col-4">
+                    <div class="col-md-4">
                         <div class="form-group">
                             <label class="form-label">ชื่อ</label>
                             <input type="text" class="form-control" name="firstname" required>
                         </div>
                     </div>
-                    <div class="col-5">
+                    <div class="col-md-5">
                         <div class="form-group">
                             <label class="form-label">นามสกุล</label>
                             <input type="text" class="form-control" name="lastname" required>
@@ -273,33 +322,24 @@
                 </div>
                 
                 <div class="row">
-                    <div class="col-4">
+                    <div class="col-md-4">
                         <div class="form-group">
                             <label class="form-label">รหัสนักเรียน</label>
-                            <input type="text" class="form-control" name="student_id" required>
+                            <input type="text" class="form-control" name="student_code" required>
                         </div>
                     </div>
-                    <div class="col-4">
+                    <div class="col-md-4">
                         <div class="form-group">
-                            <label class="form-label">เพศ</label>
-                            <select class="form-control" name="gender" required>
-                                <option value="">-- เลือก --</option>
-                                <option value="ชาย">ชาย</option>
-                                <option value="หญิง">หญิง</option>
-                            </select>
+                            <label class="form-label">เบอร์โทรศัพท์</label>
+                            <input type="tel" class="form-control" name="phone_number">
                         </div>
                     </div>
-                    <div class="col-4">
+                    <div class="col-md-4">
                         <div class="form-group">
-                            <label class="form-label">วันเกิด</label>
-                            <input type="date" class="form-control" name="birth_date">
+                            <label class="form-label">อีเมล</label>
+                            <input type="email" class="form-control" name="email">
                         </div>
                     </div>
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label">ที่อยู่</label>
-                    <textarea class="form-control" name="address" rows="2"></textarea>
                 </div>
             </div>
             
@@ -307,89 +347,43 @@
                 <h3 class="section-title">ข้อมูลการศึกษา</h3>
                 
                 <div class="row">
-                    <div class="col-3">
+                    <div class="col-md-6">
                         <div class="form-group">
-                            <label class="form-label">ระดับชั้น</label>
-                            <select class="form-control" name="class_level" required>
-                                <option value="">-- เลือก --</option>
-                                <option value="ปวช.1">ปวช.1</option>
-                                <option value="ปวช.2">ปวช.2</option>
-                                <option value="ปวช.3">ปวช.3</option>
-                                <option value="ปวส.1">ปวส.1</option>
-                                <option value="ปวส.2">ปวส.2</option>
+                            <label class="form-label">ชั้นเรียน</label>
+                            <select class="form-control" name="class_id">
+                                <option value="">-- เลือกชั้นเรียน --</option>
+                                <?php 
+                                $classGroups = [];
+                                foreach ($data['classes'] as $class) {
+                                    $level = $class['level'];
+                                    if (!isset($classGroups[$level])) {
+                                        $classGroups[$level] = [];
+                                    }
+                                    $classGroups[$level][] = $class;
+                                }
+                                
+                                foreach ($classGroups as $level => $classes):
+                                ?>
+                                <optgroup label="<?php echo $level; ?>">
+                                    <?php foreach ($classes as $class): ?>
+                                    <option value="<?php echo $class['class_id']; ?>"><?php echo $level . '/' . $class['group_number'] . ' ' . $class['department_name']; ?></option>
+                                    <?php endforeach; ?>
+                                </optgroup>
+                                <?php endforeach; ?>
                             </select>
                         </div>
                     </div>
-                    <div class="col-3">
+                    <div class="col-md-6">
                         <div class="form-group">
-                            <label class="form-label">ห้อง</label>
-                            <select class="form-control" name="class_room" required>
-                                <option value="">-- เลือก --</option>
-                                <option value="1">1</option>
-                                <option value="2">2</option>
-                                <option value="3">3</option>
-                                <option value="4">4</option>
-                                <option value="5">5</option>
+                            <label class="form-label">สถานะการศึกษา</label>
+                            <select class="form-control" name="status" required>
+                                <option value="กำลังศึกษา">กำลังศึกษา</option>
+                                <option value="พักการเรียน">พักการเรียน</option>
+                                <option value="พ้นสภาพ">พ้นสภาพ</option>
+                                <option value="สำเร็จการศึกษา">สำเร็จการศึกษา</option>
                             </select>
                         </div>
                     </div>
-                    <div class="col-3">
-                        <div class="form-group">
-                            <label class="form-label">เลขที่</label>
-                            <input type="number" class="form-control" name="class_number" required min="1" max="50">
-                        </div>
-                    </div>
-                    <div class="col-3">
-                        <div class="form-group">
-                            <label class="form-label">ครูที่ปรึกษา</label>
-                            <select class="form-control" name="advisor">
-                                <option value="">-- เลือก --</option>
-                                <option value="อ.ประสิทธิ์ ดีเลิศ">อ.ประสิทธิ์ ดีเลิศ</option>
-                                <option value="อ.วันดี สดใส">อ.วันดี สดใส</option>
-                                <option value="อ.ใจดี มากเมตตา">อ.ใจดี มากเมตตา</option>
-                                <option value="อ.วิชัย สุขสวัสดิ์">อ.วิชัย สุขสวัสดิ์</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="form-section">
-                <h3 class="section-title">ข้อมูลผู้ปกครอง</h3>
-                
-                <div class="row">
-                    <div class="col-6">
-                        <div class="form-group">
-                            <label class="form-label">ชื่อ-นามสกุลผู้ปกครอง</label>
-                            <input type="text" class="form-control" name="parent_name">
-                        </div>
-                    </div>
-                    <div class="col-3">
-                        <div class="form-group">
-                            <label class="form-label">ความสัมพันธ์</label>
-                            <select class="form-control" name="parent_relation">
-                                <option value="">-- เลือก --</option>
-                                <option value="บิดา">บิดา</option>
-                                <option value="มารดา">มารดา</option>
-                                <option value="ลุง">ลุง</option>
-                                <option value="ป้า">ป้า</option>
-                                <option value="อา">อา</option>
-                                <option value="น้า">น้า</option>
-                                <option value="อื่นๆ">อื่นๆ</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="col-3">
-                        <div class="form-group">
-                            <label class="form-label">เบอร์โทรศัพท์</label>
-                            <input type="tel" class="form-control" name="parent_phone">
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label">LINE ID (สำหรับรับการแจ้งเตือน)</label>
-                    <input type="text" class="form-control" name="line_id">
                 </div>
             </div>
             
@@ -404,7 +398,7 @@
     </div>
 </div>
 
-<!-- โมดัลแก้ไขข้อมูลนักเรียน (โครงสร้างคล้ายกับโมดัลเพิ่ม) -->
+<!-- โมดัลแก้ไขข้อมูลนักเรียน -->
 <div class="modal" id="editStudentModal">
     <div class="modal-content">
         <button class="modal-close" onclick="closeModal('editStudentModal')">
@@ -416,7 +410,92 @@
             <input type="hidden" name="action" value="edit">
             <input type="hidden" name="student_id" id="edit_student_id">
             
-            <!-- ฟอร์มแก้ไขข้อมูลนักเรียน (เหมือนกับฟอร์มเพิ่ม) -->
+            <div class="form-section">
+                <h3 class="section-title">ข้อมูลส่วนตัว</h3>
+                
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            <label class="form-label">คำนำหน้า</label>
+                            <select class="form-control" name="title" id="edit_title" required>
+                                <option value="">-- เลือก --</option>
+                                <option value="นาย">นาย</option>
+                                <option value="นางสาว">นางสาว</option>
+                                <option value="เด็กชาย">เด็กชาย</option>
+                                <option value="เด็กหญิง">เด็กหญิง</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label class="form-label">ชื่อ</label>
+                            <input type="text" class="form-control" name="firstname" id="edit_firstname" required>
+                        </div>
+                    </div>
+                    <div class="col-md-5">
+                        <div class="form-group">
+                            <label class="form-label">นามสกุล</label>
+                            <input type="text" class="form-control" name="lastname" id="edit_lastname" required>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label class="form-label">รหัสนักเรียน</label>
+                            <input type="text" class="form-control" name="student_code" id="edit_student_code" required>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label class="form-label">เบอร์โทรศัพท์</label>
+                            <input type="tel" class="form-control" name="phone_number" id="edit_phone_number">
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label class="form-label">อีเมล</label>
+                            <input type="email" class="form-control" name="email" id="edit_email">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-section">
+                <h3 class="section-title">ข้อมูลการศึกษา</h3>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label class="form-label">ชั้นเรียน</label>
+                            <select class="form-control" name="class_id" id="edit_class_id">
+                                <option value="">-- เลือกชั้นเรียน --</option>
+                                <?php 
+                                foreach ($classGroups as $level => $classes):
+                                ?>
+                                <optgroup label="<?php echo $level; ?>">
+                                    <?php foreach ($classes as $class): ?>
+                                    <option value="<?php echo $class['class_id']; ?>"><?php echo $level . '/' . $class['group_number'] . ' ' . $class['department_name']; ?></option>
+                                    <?php endforeach; ?>
+                                </optgroup>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label class="form-label">สถานะการศึกษา</label>
+                            <select class="form-control" name="status" id="edit_status" required>
+                                <option value="กำลังศึกษา">กำลังศึกษา</option>
+                                <option value="พักการเรียน">พักการเรียน</option>
+                                <option value="พ้นสภาพ">พ้นสภาพ</option>
+                                <option value="สำเร็จการศึกษา">สำเร็จการศึกษา</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
             
             <div class="modal-actions">
                 <button type="button" class="btn btn-secondary" onclick="closeModal('editStudentModal')">ยกเลิก</button>
@@ -439,48 +518,44 @@
         
         <div class="student-profile">
             <div class="student-profile-header">
-                <div class="student-profile-avatar">ธ</div>
+                <div class="student-profile-avatar" id="view_avatar"></div>
                 <div class="student-profile-info">
-                    <h3>นายธนกฤต สุขใจ</h3>
-                    <p>รหัสนักเรียน: 16478</p>
-                    <p>ชั้น ม.6/2 เลขที่ 12</p>
-                    <p>เพศ: ชาย | อายุ: 17 ปี (เกิด: 15 พ.ค. 2551)</p>
+                    <h3 id="view_full_name"></h3>
+                    <p id="view_student_code"></p>
+                    <p id="view_class"></p>
                 </div>
             </div>
             
             <div class="info-sections">
                 <div class="info-section">
                     <h4>ข้อมูลติดต่อ</h4>
-                    <p><strong>ที่อยู่:</strong> 123 หมู่ 4 ต.ปราสาท อ.เมือง จ.สุรินทร์ 32000</p>
-                    <p><strong>LINE ID:</strong> tanakit_s</p>
-                </div>
-                
-                <div class="info-section">
-                    <h4>ข้อมูลผู้ปกครอง</h4>
-                    <p><strong>ชื่อผู้ปกครอง:</strong> นางวันดี สุขใจ (มารดา)</p>
-                    <p><strong>เบอร์โทรศัพท์:</strong> 081-234-5678</p>
+                    <p id="view_phone"><strong>เบอร์โทรศัพท์:</strong> <span></span></p>
+                    <p id="view_email"><strong>อีเมล:</strong> <span></span></p>
+                    <p id="view_line"><strong>LINE:</strong> <span></span></p>
                 </div>
                 
                 <div class="info-section">
                     <h4>ข้อมูลการศึกษา</h4>
-                    <p><strong>ครูที่ปรึกษา:</strong> อ.ประสิทธิ์ ดีเลิศ</p>
-                    <p><strong>สถานะการเข้าแถว:</strong> <span class="status-badge danger">เสี่ยงตกกิจกรรม (65.8%)</span></p>
+                    <p id="view_advisor"><strong>ครูที่ปรึกษา:</strong> <span></span></p>
+                    <p id="view_department"><strong>แผนกวิชา:</strong> <span></span></p>
+                    <p id="view_status"><strong>สถานะการศึกษา:</strong> <span></span></p>
                 </div>
                 
                 <div class="info-section">
-                    <h4>สถิติการเข้าแถว</h4>
+                    <h4>การเข้าแถว</h4>
+                    <p id="view_attendance_status"><strong>สถานะการเข้าแถว:</strong> <span></span></p>
                     <div class="attendance-stats">
                         <div class="attendance-stat">
-                            <div class="attendance-stat-value">26</div>
+                            <div class="attendance-stat-value" id="view_attendance_days">0</div>
                             <div class="attendance-stat-label">วันที่เข้าแถว</div>
                         </div>
                         <div class="attendance-stat">
-                            <div class="attendance-stat-value">14</div>
+                            <div class="attendance-stat-value" id="view_absence_days">0</div>
                             <div class="attendance-stat-label">วันที่ขาดแถว</div>
                         </div>
                         <div class="attendance-stat">
-                            <div class="attendance-stat-value">40</div>
-                            <div class="attendance-stat-label">วันทั้งหมด</div>
+                            <div class="attendance-stat-value" id="view_attendance_rate">0%</div>
+                            <div class="attendance-stat-label">อัตราการเข้าแถว</div>
                         </div>
                     </div>
                 </div>
@@ -488,9 +563,13 @@
             
             <div class="modal-actions">
                 <button type="button" class="btn btn-secondary" onclick="closeModal('viewStudentModal')">ปิด</button>
-                <button type="button" class="btn btn-primary" onclick="editStudent(1)">
+                <button type="button" class="btn btn-warning" id="edit_btn" onclick="">
                     <span class="material-icons">edit</span>
                     แก้ไขข้อมูล
+                </button>
+                <button type="button" class="btn btn-primary" id="generate_qr_btn" onclick="">
+                    <span class="material-icons">qr_code</span>
+                    สร้าง QR LINE
                 </button>
             </div>
         </div>
@@ -506,8 +585,8 @@
         <h2 class="modal-title">ยืนยันการลบข้อมูล</h2>
         
         <div class="confirmation-message">
-            <p>คุณต้องการลบข้อมูลนักเรียน <strong id="delete_student_name">นายธนกฤต สุขใจ</strong> ใช่หรือไม่?</p>
-            <p class="warning-text">คำเตือน: การลบข้อมูลจะไม่สามารถกู้คืนได้</p>
+            <p>คุณต้องการลบข้อมูลนักเรียน <strong id="delete_student_name">-</strong> ใช่หรือไม่?</p>
+            <p class="warning-text text-danger">คำเตือน: การลบข้อมูลจะไม่สามารถกู้คืนได้</p>
         </div>
         
         <form id="deleteStudentForm" method="post" action="students.php">
@@ -537,16 +616,16 @@
             <input type="hidden" name="action" value="import">
             
             <div class="form-group">
-                <label class="form-label">เลือกไฟล์ Excel (.xlsx, .xls)</label>
-                <input type="file" class="form-control" name="import_file" accept=".xlsx,.xls" required>
+                <label class="form-label">เลือกไฟล์ Excel (.xlsx, .xls) หรือ CSV</label>
+                <input type="file" class="form-control" name="import_file" accept=".xlsx,.xls,.csv" required>
             </div>
             
             <div class="import-instructions">
                 <h4>คำแนะนำการนำเข้าข้อมูล</h4>
                 <ol>
-                    <li>ไฟล์ Excel ต้องมีรูปแบบตามที่กำหนด (คลิก <a href="#">ดาวน์โหลดตัวอย่าง</a>)</li>
+                    <li>ไฟล์ต้องมีรูปแบบตามที่กำหนด (คลิก <a href="#" id="downloadTemplateBtn">ดาวน์โหลดตัวอย่าง</a>)</li>
                     <li>ต้องมีหัวตารางในแถวแรกเสมอ</li>
-                    <li>ข้อมูลที่จำเป็นต้องมี: รหัสนักเรียน, คำนำหน้า, ชื่อ, นามสกุล, ระดับชั้น, ห้อง, เลขที่</li>
+                    <li>ข้อมูลที่จำเป็นต้องมี: รหัสนักเรียน, คำนำหน้า, ชื่อ, นามสกุล</li>
                     <li>ระบบจะข้ามรายการที่มีข้อมูลไม่ครบถ้วน</li>
                     <li>ระบบจะอัพเดทข้อมูลอัตโนมัติ หากพบรหัสนักเรียนซ้ำ</li>
                 </ol>
@@ -561,6 +640,21 @@
                     <input type="checkbox" id="skip_header" name="skip_header" checked>
                     <label for="skip_header">ข้ามแถวแรก (หัวตาราง)</label>
                 </div>
+                <div class="form-group mt-3">
+                    <label for="import_class">นำเข้านักเรียนเข้าชั้นเรียน</label>
+                    <select class="form-control" name="import_class_id" id="import_class">
+                        <option value="">-- ไม่ระบุชั้นเรียน --</option>
+                        <?php 
+                        foreach ($classGroups as $level => $classes):
+                        ?>
+                        <optgroup label="<?php echo $level; ?>">
+                            <?php foreach ($classes as $class): ?>
+                            <option value="<?php echo $class['class_id']; ?>"><?php echo $level . '/' . $class['group_number'] . ' ' . $class['department_name']; ?></option>
+                            <?php endforeach; ?>
+                        </optgroup>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
             </div>
             
             <div class="modal-actions">
@@ -574,112 +668,46 @@
     </div>
 </div>
 
+<!-- โมดัลแสดง QR Code LINE -->
+<div class="modal" id="lineQRModal">
+    <div class="modal-content">
+        <button class="modal-close" onclick="closeModal('lineQRModal')">
+            <span class="material-icons">close</span>
+        </button>
+        <h2 class="modal-title">QR Code สำหรับเชื่อมต่อ LINE</h2>
+        
+        <div class="text-center p-4">
+            <p>ให้นักเรียนสแกน QR Code ด้านล่างเพื่อเชื่อมต่อกับ LINE</p>
+            <div id="qrcode-container" class="my-4">
+                <img id="qrcode-image" src="" alt="QR Code" class="img-fluid" style="max-width: 250px;">
+            </div>
+            <p class="text-info">หมายเหตุ: QR Code นี้จะหมดอายุภายใน 24 ชั่วโมง</p>
+            <p>หรือคลิกลิงก์: <a href="#" id="line-connect-url" target="_blank">ลิงก์เชื่อมต่อ LINE</a></p>
+        </div>
+        
+        <div class="modal-actions">
+            <button type="button" class="btn btn-secondary" onclick="closeModal('lineQRModal')">ปิด</button>
+            <button type="button" class="btn btn-primary" onclick="checkLineStatus()">
+                <span class="material-icons">refresh</span>
+                ตรวจสอบสถานะ
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- แสดงข้อความแจ้งเตือน (ถ้ามี) -->
+<?php if (isset($success_message)): ?>
 <script>
-// เรียกใช้ฟังก์ชันเริ่มต้นเมื่อ DOM โหลดเสร็จสมบูรณ์
-document.addEventListener('DOMContentLoaded', function() {
-    // แสดงข้อความสำเร็จหรือข้อผิดพลาด (ถ้ามี)
-    <?php if (isset($success_message)): ?>
-    showAlert('<?php echo $success_message; ?>', 'success');
-    <?php endif; ?>
-    
-    <?php if (isset($error_message)): ?>
-    showAlert('<?php echo $error_message; ?>', 'danger');
-    <?php endif; ?>
-});
-
-// ฟังก์ชันแสดงโมดัล
-function showModal(modalId) {
-    const modal = document.getElementById(modalId);
-    if (modal) {
-        modal.classList.add('active');
-    }
-}
-
-// ฟังก์ชันซ่อนโมดัล
-function closeModal(modalId) {
-    const modal = document.getElementById(modalId);
-    if (modal) {
-        modal.classList.remove('active');
-    }
-}
-
-// ฟังก์ชันแสดงการแจ้งเตือน
-function showAlert(message, type = 'info') {
-    // สร้าง Alert Container ถ้ายังไม่มี
-    let alertContainer = document.querySelector('.alert-container');
-    if (!alertContainer) {
-        alertContainer = document.createElement('div');
-        alertContainer.className = 'alert-container';
-        document.body.appendChild(alertContainer);
-    }
-    
-    // สร้าง Alert
-    const alert = document.createElement('div');
-    alert.className = `alert alert-${type}`;
-    alert.innerHTML = `
-        <div class="alert-content">${message}</div>
-        <button class="alert-close">&times;</button>
-    `;
-    
-    // เพิ่ม Alert ไปยัง Container
-    alertContainer.appendChild(alert);
-    
-    // กำหนด Event Listener สำหรับปุ่มปิด
-    const closeButton = alert.querySelector('.alert-close');
-    closeButton.addEventListener('click', function() {
-        alert.classList.add('alert-closing');
-        setTimeout(() => {
-            if (alertContainer.contains(alert)) {
-                alertContainer.removeChild(alert);
-            }
-        }, 300);
+    document.addEventListener('DOMContentLoaded', function() {
+        showAlert('<?php echo $success_message; ?>', 'success');
     });
-    
-    // ให้ Alert ปิดโดยอัตโนมัติหลังจาก 5 วินาที
-    setTimeout(() => {
-        if (alertContainer.contains(alert)) {
-            alert.classList.add('alert-closing');
-            setTimeout(() => {
-                if (alertContainer.contains(alert)) {
-                    alertContainer.removeChild(alert);
-                }
-            }, 300);
-        }
-    }, 5000);
-}
-
-// ฟังก์ชันดูข้อมูลนักเรียน
-function viewStudent(studentId) {
-    // จำลองการแสดงโมดัล (ในทางปฏิบัติจริงจะดึงข้อมูลจากฐานข้อมูล)
-    showModal('viewStudentModal');
-}
-
-// ฟังก์ชันแก้ไขข้อมูลนักเรียน
-function editStudent(studentId) {
-    document.getElementById('edit_student_id').value = studentId;
-    // จำลองการแสดงโมดัล (ในทางปฏิบัติจริงจะดึงข้อมูลจากฐานข้อมูล)
-    showModal('editStudentModal');
-}
-
-// ฟังก์ชันลบข้อมูลนักเรียน
-function deleteStudent(studentId) {
-    document.getElementById('delete_student_id').value = studentId;
-    // จำลองการแสดงโมดัล (ในทางปฏิบัติจริงจะดึงข้อมูลจากฐานข้อมูล)
-    showModal('deleteStudentModal');
-}
-
-// ฟังก์ชันพิมพ์รายชื่อนักเรียน
-function printStudentList() {
-    window.print();
-}
-
-// ฟังก์ชันดาวน์โหลดไฟล์ Excel
-function downloadExcel() {
-    alert('กำลังพัฒนาฟังก์ชันดาวน์โหลดไฟล์ Excel...');
-}
-
-// ฟังก์ชันแสดงโมดัลนำเข้าข้อมูล
-function showImportModal() {
-    showModal('importModal');
-}
 </script>
+<?php endif; ?>
+
+<?php if (isset($error_message)): ?>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        showAlert('<?php echo $error_message; ?>', 'error');
+    });
+</script>
+<?php endif; ?>
