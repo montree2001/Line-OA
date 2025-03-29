@@ -106,6 +106,73 @@ function handlePostRequest() {
     }
 }
 
+
+function getAllStudents($filters = []) {
+    try {
+        $conn = getDB();
+        
+        // สร้างเงื่อนไขการค้นหา
+        $where_conditions = [];
+        $params = [];
+        
+        if (isset($filters['name']) && !empty($filters['name'])) {
+            $where_conditions[] = "(u.first_name LIKE ? OR u.last_name LIKE ?)";
+            $search_name = '%' . $filters['name'] . '%';
+            $params[] = $search_name;
+            $params[] = $search_name;
+        }
+        
+        if (isset($filters['student_code']) && !empty($filters['student_code'])) {
+            $where_conditions[] = "s.student_code LIKE ?";
+            $params[] = '%' . $filters['student_code'] . '%';
+        }
+        
+        // เพิ่มเงื่อนไขอื่นๆ ตามความเหมาะสม
+        
+        // สร้าง SQL condition
+        $sql_condition = "";
+        if (!empty($where_conditions)) {
+            $sql_condition = " WHERE " . implode(" AND ", $where_conditions);
+        }
+        
+        // ดึงข้อมูลนักเรียน - เพิ่ม DISTINCT เพื่อป้องกันข้อมูลซ้ำซ้อน
+        $query = "SELECT DISTINCT s.student_id, s.student_code, s.status, 
+                 u.title, u.first_name, u.last_name, u.line_id, u.phone_number, u.email,
+                 c.level, c.group_number, c.class_id,
+                 d.department_name, d.department_id,
+                 (SELECT CONCAT(t.title, ' ', t.first_name, ' ', t.last_name) 
+                  FROM class_advisors ca 
+                  JOIN teachers t ON ca.teacher_id = t.teacher_id 
+                  WHERE ca.class_id = c.class_id AND ca.is_primary = 1
+                  LIMIT 1) as advisor_name,
+                 IFNULL((SELECT COUNT(*) FROM attendance a WHERE a.student_id = s.student_id AND a.is_present = 1), 0) as attendance_days,
+                 IFNULL((SELECT COUNT(*) FROM attendance a WHERE a.student_id = s.student_id AND a.is_present = 0), 0) as absence_days
+                 FROM students s
+                 JOIN users u ON s.user_id = u.user_id
+                 LEFT JOIN classes c ON s.current_class_id = c.class_id
+                 LEFT JOIN departments d ON c.department_id = d.department_id
+                 $sql_condition
+                 ORDER BY s.student_code";
+        
+        if (!empty($params)) {
+            $stmt = $conn->prepare($query);
+            $stmt->execute($params);
+        } else {
+            $stmt = $conn->query($query);
+        }
+        
+        $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        return $students;
+    } catch (PDOException $e) {
+        error_log("Error fetching students: " . $e->getMessage());
+        return [];
+    }
+}
+
+
+
+
 /**
  * ดึงข้อมูลนักเรียน
  */
@@ -331,6 +398,47 @@ function getStatistics() {
     }
 }
 
+
+
+function checkStudentCodeExists() {
+    // ตรวจสอบว่ามีการส่ง student_code มาหรือไม่
+    if (!isset($_POST['student_code']) || empty($_POST['student_code'])) {
+        echo json_encode([
+            'success' => true,
+            'exists' => false
+        ]);
+        return;
+    }
+    
+    $student_code = trim($_POST['student_code']);
+    
+    try {
+        $conn = getDB();
+        
+        // ตรวจสอบว่ามีรหัสนักเรียนนี้ในระบบแล้วหรือไม่
+        $query = "SELECT COUNT(*) AS count FROM students WHERE student_code = ?";
+        $stmt = $conn->prepare($query);
+        $stmt->execute([$student_code]);
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        echo json_encode([
+            'success' => true,
+            'exists' => ($result['count'] > 0)
+        ]);
+    } catch (PDOException $e) {
+        echo json_encode([
+            'success' => false,
+            'message' => 'เกิดข้อผิดพลาดในการตรวจสอบรหัสนักเรียน: ' . $e->getMessage()
+        ]);
+    }
+}
+
+
+
+
+
+
+
 /**
  * เพิ่มนักเรียนใหม่
  */
@@ -351,7 +459,7 @@ function addStudent() {
         // ตรวจสอบว่ามีรหัสนักเรียนนี้ในระบบแล้วหรือไม่
         $checkQuery = "SELECT student_id FROM students WHERE student_code = ?";
         $checkStmt = $conn->prepare($checkQuery);
-        $checkStmt->execute([$_POST['student_code']]);
+        $checkStmt->execute([trim($_POST['student_code'])]);
         
         if ($checkStmt->rowCount() > 0) {
             echo json_encode([
@@ -361,11 +469,17 @@ function addStudent() {
             return;
         }
         
+        // ใช้ line_id ชั่วคราวที่ส่งมาจาก client หรือสร้างใหม่
+        $tempLineId = isset($_POST['temp_line_id']) 
+            ? $_POST['temp_line_id'] 
+            : 'TEMP_' . $_POST['student_code'] . '_' . time() . '_' . substr(md5(rand()), 0, 6);
+        
         // 1. เพิ่มข้อมูลในตาราง users ก่อน
         $userQuery = "INSERT INTO users (line_id, role, title, first_name, last_name, phone_number, email, gdpr_consent)
-                    VALUES ('', 'student', ?, ?, ?, ?, ?, 1)";
+                    VALUES (?, 'student', ?, ?, ?, ?, ?, 1)";
         $userStmt = $conn->prepare($userQuery);
         $userStmt->execute([
+            $tempLineId, // ใช้ line_id ชั่วคราวที่ไม่ซ้ำกัน
             $_POST['title'],
             $_POST['firstname'],
             $_POST['lastname'],
@@ -381,9 +495,9 @@ function addStudent() {
         $studentStmt = $conn->prepare($studentQuery);
         $studentStmt->execute([
             $user_id,
-            $_POST['student_code'],
+            trim($_POST['student_code']), // ใช้ trim เพื่อตัดช่องว่างที่อาจมี
             $_POST['title'],
-            $_POST['class_id'] ?? null,
+            !empty($_POST['class_id']) ? $_POST['class_id'] : null,
             $_POST['status'] ?? 'กำลังศึกษา'
         ]);
         
@@ -407,23 +521,42 @@ function addStudent() {
         
         $conn->commit();
         
+        // ดึงข้อมูลนักเรียนที่เพิ่งเพิ่มเพื่อยืนยันว่าข้อมูลถูกต้อง
+        $confirmQuery = "SELECT s.student_code, u.first_name, u.last_name 
+                        FROM students s 
+                        JOIN users u ON s.user_id = u.user_id
+                        WHERE s.student_id = ?";
+        $confirmStmt = $conn->prepare($confirmQuery);
+        $confirmStmt->execute([$student_id]);
+        $student = $confirmStmt->fetch(PDO::FETCH_ASSOC);
+        
         echo json_encode([
             'success' => true,
             'message' => 'เพิ่มข้อมูลนักเรียนเรียบร้อยแล้ว',
-            'student_id' => $student_id
+            'student_id' => $student_id,
+            'student_data' => $student // ส่งข้อมูลกลับเพื่อยืนยัน
         ]);
     } catch (PDOException $e) {
         if ($conn) {
             $conn->rollBack();
         }
         
+        $errorMessage = $e->getMessage();
+        // จัดการข้อความแสดงข้อผิดพลาดที่เข้าใจง่ายขึ้น
+        if (strpos($errorMessage, 'Duplicate entry') !== false && strpos($errorMessage, 'line_id') !== false) {
+            $errorMessage = 'เกิดข้อผิดพลาดในการบันทึกข้อมูล: รหัส LINE ซ้ำกัน กรุณาลองใหม่อีกครั้ง';
+        } elseif (strpos($errorMessage, 'Duplicate entry') !== false && strpos($errorMessage, 'student_code') !== false) {
+            $errorMessage = 'รหัสนักเรียนนี้มีอยู่ในระบบแล้ว';
+        }
+        
+        error_log("Error adding student: " . $e->getMessage());
+        
         echo json_encode([
             'success' => false,
-            'message' => 'เกิดข้อผิดพลาด: ' . $e->getMessage()
+            'message' => $errorMessage
         ]);
     }
 }
-
 /**
  * อัปเดตข้อมูลนักเรียน
  */

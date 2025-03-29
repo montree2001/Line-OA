@@ -158,50 +158,8 @@ function showAddStudentModal() {
 
 /**
  * เพิ่มนักเรียนใหม่
- */
-function addStudent() {
-    // ดึงข้อมูลจากฟอร์ม
-    const form = document.getElementById('addStudentForm');
-    const formData = new FormData(form);
-    
-    // ตรวจสอบข้อมูลที่จำเป็น
-    if (!formData.get('student_id') || !formData.get('firstname') || !formData.get('lastname')) {
-        showAlert('กรุณากรอกข้อมูลให้ครบถ้วน', 'warning');
-        return;
-    }
-    
-    // เพิ่ม action สำหรับการระบุการกระทำ
-    formData.append('action', 'add_student');
-    
-    // แสดงการโหลด
-    showAlert('กำลังเพิ่มข้อมูลนักเรียน...', 'info');
-    
-    // ส่งข้อมูลไปยัง API
-    fetch('api/students_api.php', {
-        method: 'POST',
-        body: formData
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            showAlert(data.message, 'success');
-            closeModal('addStudentModal');
-            
-            // รีโหลดหน้าหลังจาก 2 วินาที
-            setTimeout(() => {
-                window.location.reload();
-            }, 2000);
-        } else {
-            showAlert(data.message, 'danger');
-        }
-    })
-    .catch(error => {
-        console.error('Error adding student:', error);
-        showAlert('เกิดข้อผิดพลาดในการเพิ่มข้อมูลนักเรียน', 'danger');
-    });
-}
 
-/**
+
  * แสดงโมดัลแก้ไขข้อมูลนักเรียน
  * 
  * @param {number} studentId - รหัสนักเรียน
@@ -807,13 +765,36 @@ function setSelectValue(selectElement, value) {
     }
 }
 
+
+
 /**
  * แสดงการแจ้งเตือน
  * 
  * @param {string} message - ข้อความที่ต้องการแสดง
  * @param {string} type - ประเภทของการแจ้งเตือน (success, info, warning, danger)
+ * @param {string} title - หัวข้อการแจ้งเตือน (optional)
  */
-function showAlert(message, type = 'info') {
+function showAlert(message, type = 'info', title = '') {
+    // กำหนดหัวข้อตามประเภทถ้าไม่ได้ระบุ
+    if (!title) {
+        switch (type) {
+            case 'success':
+                title = 'สำเร็จ';
+                break;
+            case 'info':
+                title = 'ข้อมูล';
+                break;
+            case 'warning':
+                title = 'คำเตือน';
+                break;
+            case 'danger':
+                title = 'ข้อผิดพลาด';
+                break;
+            default:
+                title = 'แจ้งเตือน';
+        }
+    }
+
     // สร้าง Alert Container ถ้ายังไม่มี
     let alertContainer = document.querySelector('.alert-container');
     if (!alertContainer) {
@@ -822,16 +803,47 @@ function showAlert(message, type = 'info') {
         document.body.appendChild(alertContainer);
     }
     
+    // กำหนดไอคอนตามประเภท
+    let iconName;
+    switch (type) {
+        case 'success':
+            iconName = 'check_circle';
+            break;
+        case 'info':
+            iconName = 'info';
+            break;
+        case 'warning':
+            iconName = 'warning';
+            break;
+        case 'danger':
+            iconName = 'error';
+            break;
+        default:
+            iconName = 'notifications';
+    }
+    
     // สร้าง Alert
     const alert = document.createElement('div');
     alert.className = `alert alert-${type}`;
     alert.innerHTML = `
-        <div class="alert-content">${message}</div>
+        <div class="alert-icon">
+            <span class="material-icons">${iconName}</span>
+        </div>
+        <div class="alert-content">
+            <div class="alert-title">${title}</div>
+            <div class="alert-message">${message}</div>
+        </div>
         <button class="alert-close">&times;</button>
     `;
     
     // เพิ่ม Alert ไปยัง Container
     alertContainer.appendChild(alert);
+    
+    // แสดงการเลื่อนเข้ามา (slide in)
+    setTimeout(() => {
+        alert.style.transform = 'translateX(0)';
+        alert.style.opacity = '1';
+    }, 10);
     
     // กำหนด Event Listener สำหรับปุ่มปิด
     const closeButton = alert.querySelector('.alert-close');
@@ -860,7 +872,7 @@ function showAlert(message, type = 'info') {
 }
 
 /**
- * ซ่อนการแจ้งเตือน
+ * ซ่อนการแจ้งเตือนทั้งหมด
  */
 function hideAlert() {
     const alertContainer = document.querySelector('.alert-container');
@@ -876,3 +888,334 @@ function hideAlert() {
         });
     }
 }
+
+
+/**
+ * ตรวจสอบสถานะการเชื่อมต่อ LINE
+ */
+function checkLineStatus() {
+    // ตรวจสอบว่ามีข้อมูลนักเรียนที่กำลังเชื่อมต่อหรือไม่
+    if (!window.currentConnectingStudent) {
+        showAlert('ไม่พบข้อมูลนักเรียนที่กำลังเชื่อมต่อ', 'warning');
+        return;
+    }
+    
+    // แสดงการโหลด
+    showAlert('กำลังตรวจสอบสถานะการเชื่อมต่อ...', 'info');
+    
+    // เตรียมข้อมูลสำหรับส่งไปยัง API
+    const formData = new FormData();
+    formData.append('action', 'check_line_status');
+    formData.append('student_id', window.currentConnectingStudent.id);
+    
+    // ส่งข้อมูลไปยัง API เพื่อตรวจสอบสถานะ
+    fetch('api/line_connect_api.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            if (data.is_connected) {
+                showAlert('เชื่อมต่อ LINE สำเร็จแล้ว', 'success');
+                closeModal('lineQRModal');
+                
+                // รีโหลดหน้าหลังจาก 2 วินาที
+                setTimeout(() => {
+                    window.location.reload();
+                }, 2000);
+            } else {
+                showAlert('ยังไม่ได้เชื่อมต่อ LINE กรุณาให้นักเรียนสแกน QR Code', 'warning');
+            }
+        } else {
+            showAlert(data.message, 'danger');
+        }
+    })
+    .catch(error => {
+        console.error('Error checking LINE status:', error);
+        showAlert('เกิดข้อผิดพลาดในการตรวจสอบสถานะ LINE', 'danger');
+    });
+}
+
+/**
+ * ดาวน์โหลดเทมเพลตสำหรับนำเข้าข้อมูลนักเรียน
+ */
+function downloadTemplate() {
+    // สร้าง URL สำหรับดาวน์โหลดเทมเพลต
+    const url = 'api/download_template.php?type=students';
+    
+    // เปิดหน้าต่างใหม่หรือสร้าง link สำหรับดาวน์โหลด
+    window.open(url, '_blank');
+}
+
+// เพิ่ม event listener สำหรับปุ่มดาวน์โหลดเทมเพลต
+document.addEventListener('DOMContentLoaded', function() {
+    const downloadTemplateBtn = document.getElementById('downloadTemplateBtn');
+    if (downloadTemplateBtn) {
+        downloadTemplateBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            downloadTemplate();
+        });
+    }
+});
+
+
+
+
+/**
+ * ตรวจสอบความถูกต้องของฟอร์มเพิ่มนักเรียน
+ * 
+ * @param {HTMLFormElement} form - ฟอร์มที่ต้องการตรวจสอบ
+ * @return {Object} ผลการตรวจสอบ { isValid: boolean, errorMessages: array }
+ */
+function validateStudentForm(form) {
+    // เก็บข้อความแสดงความผิดพลาด
+    let errorMessages = [];
+    
+    // ตรวจสอบฟิลด์ที่จำเป็น
+    const requiredFields = [
+        { name: 'student_code', label: 'รหัสนักเรียน' },
+        { name: 'firstname', label: 'ชื่อ' },
+        { name: 'lastname', label: 'นามสกุล' },
+        { name: 'title', label: 'คำนำหน้า' }
+    ];
+    
+    for (const field of requiredFields) {
+        const element = form.querySelector(`[name="${field.name}"]`);
+        if (!element || !element.value.trim()) {
+            errorMessages.push(`กรุณากรอก${field.label}`);
+            if (element) {
+                element.classList.add('is-invalid');
+            }
+        } else {
+            if (element) {
+                element.classList.remove('is-invalid');
+            }
+        }
+    }
+    
+    // ตรวจสอบรหัสนักเรียนว่าเป็นตัวเลขหรือไม่
+    const studentCodeField = form.querySelector('[name="student_code"]');
+    if (studentCodeField && studentCodeField.value.trim() && !/^\d+$/.test(studentCodeField.value.trim())) {
+        errorMessages.push('รหัสนักเรียนต้องเป็นตัวเลขเท่านั้น');
+        studentCodeField.classList.add('is-invalid');
+    }
+    
+    // ตรวจสอบอีเมลว่าถูกต้องหรือไม่ (ถ้ามี)
+    const emailField = form.querySelector('[name="email"]');
+    if (emailField && emailField.value.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailField.value.trim())) {
+        errorMessages.push('รูปแบบอีเมลไม่ถูกต้อง');
+        emailField.classList.add('is-invalid');
+    }
+    
+    // ตรวจสอบเบอร์โทรศัพท์ว่าถูกต้องหรือไม่ (ถ้ามี)
+    const phoneField = form.querySelector('[name="phone_number"]');
+    if (phoneField && phoneField.value.trim() && !/^\d{9,10}$/.test(phoneField.value.trim().replace(/[- ]/g, ''))) {
+        errorMessages.push('รูปแบบเบอร์โทรศัพท์ไม่ถูกต้อง');
+        phoneField.classList.add('is-invalid');
+    }
+    
+    return {
+        isValid: errorMessages.length === 0,
+        errorMessages: errorMessages
+    };
+}
+
+/**
+ * เพิ่มนักเรียนใหม่
+ */
+function addStudent() {
+    // ดึงข้อมูลจากฟอร์ม
+    const form = document.getElementById('addStudentForm');
+    
+    // ล้างการแจ้งเตือนเดิม
+    hideAlert();
+    
+    // ตรวจสอบความถูกต้องของข้อมูล
+    const validation = validateStudentForm(form);
+    
+    if (!validation.isValid) {
+        showAlert(validation.errorMessages.join('<br>'), 'warning', 'กรุณากรอกข้อมูลให้ครบถ้วน');
+        return;
+    }
+    
+    // ปิดการใช้งานปุ่มบันทึก
+    const submitBtn = form.querySelector('button[type="submit"]');
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.classList.add('btn-loading');
+    }
+    
+    // สร้าง FormData สำหรับส่งข้อมูล
+    const formData = new FormData(form);
+    
+    // เพิ่ม action และ temp_line_id
+    formData.append('action', 'add_student');
+    const studentCode = formData.get('student_code');
+    const tempLineId = `TEMP_${studentCode}_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+    formData.append('temp_line_id', tempLineId);
+    
+    // แสดงการโหลด
+    showAlert('กำลังเพิ่มข้อมูลนักเรียน...', 'info');
+    
+    // ส่งข้อมูลไปยัง API
+    fetch('api/students_api.php', {
+        method: 'POST',
+        body: formData,
+        cache: 'no-store' // ป้องกันการใช้ cache
+    })
+    .then(response => response.json())
+    .then(data => {
+        hideAlert();
+        
+        if (data.success) {
+            showAlert(data.message, 'success');
+            closeModal('addStudentModal');
+            
+            // รีโหลดหน้าแบบไม่ใช้ cache
+            setTimeout(() => {
+                const timestamp = new Date().getTime();
+                window.location.href = window.location.pathname + '?_=' + timestamp;
+            }, 2000);
+        } else {
+            // เปิดใช้งานปุ่มอีกครั้ง
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.classList.remove('btn-loading');
+            }
+            showAlert(data.message, 'danger');
+        }
+    })
+    .catch(error => {
+        console.error('Error adding student:', error);
+        hideAlert();
+        
+        // เปิดใช้งานปุ่มอีกครั้ง
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.classList.remove('btn-loading');
+        }
+        
+        showAlert('เกิดข้อผิดพลาดในการเพิ่มข้อมูลนักเรียน', 'danger');
+    });
+}
+function checkStudentCodeExists(studentCode, callback) {
+    if (!studentCode) return callback(false);
+    
+    fetch(`api/students_api.php?action=check_student_code&student_code=${studentCode}`, {
+        cache: 'no-store'
+    })
+    .then(response => response.json())
+    .then(data => {
+        callback(data.exists === true);
+    })
+    .catch(error => {
+        console.error('Error checking student code:', error);
+        callback(false);
+    });
+}
+/**
+ * ปรับปรุงฟังก์ชัน showAlert และ hideAlert
+ * (ใช้จากโค้ดที่ให้ไว้ก่อนหน้า)
+ */
+
+/**
+ * เพิ่ม Event Listener สำหรับการตรวจสอบฟอร์มแบบ Real-time
+ */
+function setupFormValidation() {
+    const form = document.getElementById('addStudentForm');
+    if (!form) return;
+    
+    // รายการฟิลด์ที่ต้องการตรวจสอบแบบ real-time
+    const fieldsToValidate = ['student_code', 'firstname', 'lastname', 'title', 'email', 'phone_number'];
+    
+    fieldsToValidate.forEach(fieldName => {
+        const field = form.querySelector(`[name="${fieldName}"]`);
+        if (field) {
+            field.addEventListener('blur', function() {
+                // ตรวจสอบเฉพาะฟิลด์นี้
+                validateSingleField(field);
+            });
+            
+            // เพิ่ม event listener สำหรับ input เพื่อลบ class is-invalid เมื่อผู้ใช้เริ่มพิมพ์
+            field.addEventListener('input', function() {
+                this.classList.remove('is-invalid');
+                
+                // ลบข้อความแสดงข้อผิดพลาดหากมี
+                const feedbackElement = this.parentNode.querySelector('.invalid-feedback');
+                if (feedbackElement) {
+                    feedbackElement.remove();
+                }
+            });
+        }
+    });
+}
+
+/**
+ * ตรวจสอบความถูกต้องของฟิลด์เดียว
+ * 
+ * @param {HTMLElement} field - ฟิลด์ที่ต้องการตรวจสอบ
+ */
+function validateSingleField(field) {
+    // ลบสถานะที่ไม่ถูกต้องเดิม
+    field.classList.remove('is-invalid');
+    
+    // ลบข้อความแสดงข้อผิดพลาดเดิม (ถ้ามี)
+    const existingFeedback = field.parentNode.querySelector('.invalid-feedback');
+    if (existingFeedback) {
+        existingFeedback.remove();
+    }
+    
+    let errorMessage = null;
+    
+    // ตรวจสอบว่าเป็นฟิลด์ที่จำเป็นหรือไม่
+    const isRequired = field.hasAttribute('required');
+    
+    if (isRequired && !field.value.trim()) {
+        errorMessage = 'กรุณากรอกข้อมูลในช่องนี้';
+    } else if (field.value.trim()) {
+        // ตรวจสอบเฉพาะเมื่อมีการกรอกข้อมูล
+        switch (field.name) {
+            case 'student_code':
+                if (!/^\d+$/.test(field.value.trim())) {
+                    errorMessage = 'รหัสนักเรียนต้องเป็นตัวเลขเท่านั้น';
+                }
+                break;
+                
+            case 'email':
+                if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(field.value.trim())) {
+                    errorMessage = 'รูปแบบอีเมลไม่ถูกต้อง';
+                }
+                break;
+                
+            case 'phone_number':
+                if (!/^\d{9,10}$/.test(field.value.trim().replace(/[- ]/g, ''))) {
+                    errorMessage = 'รูปแบบเบอร์โทรศัพท์ไม่ถูกต้อง';
+                }
+                break;
+        }
+    }
+    
+    // ถ้ามีข้อความแสดงข้อผิดพลาด
+    if (errorMessage) {
+        field.classList.add('is-invalid');
+        
+        // สร้างและแสดงข้อความแสดงข้อผิดพลาด
+        const feedbackElement = document.createElement('div');
+        feedbackElement.className = 'invalid-feedback';
+        feedbackElement.textContent = errorMessage;
+        field.parentNode.appendChild(feedbackElement);
+    }
+}
+
+// เมื่อโหลด DOM เสร็จสมบูรณ์
+document.addEventListener('DOMContentLoaded', function() {
+    // ตั้งค่า event listeners
+    initEventListeners();
+    
+    // ตั้งค่าการตรวจสอบฟอร์มแบบ real-time
+    setupFormValidation();
+    
+    // แสดงข้อมูลสถิติ
+    loadStatistics();
+});
