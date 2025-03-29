@@ -83,30 +83,33 @@ $sql_condition = "";
 if (!empty($where_conditions)) {
     $sql_condition = " WHERE " . implode(" AND ", $where_conditions);
 }
-
+$sql_condition = "";
+if (!empty($where_conditions)) {
+    $sql_condition = " WHERE " . implode(" AND ", $where_conditions);
+}
 // ดึงข้อมูลนักเรียนจากฐานข้อมูล
 $students = [];
 try {
     $conn = getDB();
     
     // ดึงข้อมูลนักเรียน
-    $query = "SELECT s.student_id, s.student_code, s.status, 
-              u.title, u.first_name, u.last_name, u.line_id, u.phone_number, u.email,
-              c.level, c.group_number, c.class_id,
-              d.department_name, d.department_id,
-              (SELECT CONCAT(t.title, ' ', t.first_name, ' ', t.last_name) 
-               FROM class_advisors ca 
-               JOIN teachers t ON ca.teacher_id = t.teacher_id 
-               WHERE ca.class_id = c.class_id AND ca.is_primary = 1
-               LIMIT 1) as advisor_name,
-              IFNULL((SELECT COUNT(*) FROM attendance a WHERE a.student_id = s.student_id AND a.is_present = 1), 0) as attendance_days,
-              IFNULL((SELECT COUNT(*) FROM attendance a WHERE a.student_id = s.student_id AND a.is_present = 0), 0) as absence_days
-              FROM students s
-              JOIN users u ON s.user_id = u.user_id
-              LEFT JOIN classes c ON s.current_class_id = c.class_id
-              LEFT JOIN departments d ON c.department_id = d.department_id
-              $sql_condition
-              ORDER BY s.student_code";
+    $query = "SELECT DISTINCT s.student_id, s.student_code, s.status, 
+          u.title, u.first_name, u.last_name, u.line_id, u.phone_number, u.email,
+          c.level, c.group_number, c.class_id,
+          d.department_name, d.department_id,
+          (SELECT CONCAT(t.title, ' ', t.first_name, ' ', t.last_name) 
+           FROM class_advisors ca 
+           JOIN teachers t ON ca.teacher_id = t.teacher_id 
+           WHERE ca.class_id = c.class_id AND ca.is_primary = 1
+           LIMIT 1) as advisor_name,
+          IFNULL((SELECT COUNT(*) FROM attendance a WHERE a.student_id = s.student_id AND a.is_present = 1), 0) as attendance_days,
+          IFNULL((SELECT COUNT(*) FROM attendance a WHERE a.student_id = s.student_id AND a.is_present = 0), 0) as absence_days
+          FROM students s
+          JOIN users u ON s.user_id = u.user_id
+          LEFT JOIN classes c ON s.current_class_id = c.class_id
+          LEFT JOIN departments d ON c.department_id = d.department_id
+          $sql_condition
+          ORDER BY s.student_code";
     
     if (!empty($params)) {
         $stmt = $conn->prepare($query);

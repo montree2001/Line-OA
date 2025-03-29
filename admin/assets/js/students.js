@@ -15,6 +15,35 @@ document.addEventListener('DOMContentLoaded', function() {
     setupFormValidation();
 });
 
+function loadStudents() {
+    // แสดงการโหลด
+    showAlert('กำลังโหลดข้อมูลนักเรียน...', 'info');
+    
+    // สร้าง URL พร้อม timestamp เพื่อป้องกัน cache
+    const timestamp = new Date().getTime();
+    const url = `api/students_api.php?action=get_students&_nocache=${timestamp}`;
+    
+    fetch(url, {
+        cache: 'no-store'
+    })
+    .then(response => response.json())
+    .then(data => {
+        hideAlert();
+        if (data.success) {
+            // อัปเดตการแสดงผลรายการนักเรียน
+            updateStudentList(data.students);
+        } else {
+            showAlert('ไม่สามารถโหลดข้อมูลนักเรียนได้', 'warning');
+        }
+    })
+    .catch(error => {
+        console.error('Error loading students:', error);
+        hideAlert();
+        showAlert('เกิดข้อผิดพลาดในการโหลดข้อมูลนักเรียน', 'danger');
+    });
+}
+
+
 /**
  * ตั้งค่า event listeners
  */
