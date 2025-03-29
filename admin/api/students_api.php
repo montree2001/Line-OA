@@ -22,7 +22,9 @@ require_once '../../db_connect.php';
 
 // กำหนด header เป็น JSON
 header('Content-Type: application/json; charset=UTF-8');
-
+header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
+header("Cache-Control: post-check=0, pre-check=0", false);
+header("Pragma: no-cache");
 // ตรวจสอบการร้องขอ
 if (isset($_GET['action'])) {
     // ร้องขอแบบ GET
@@ -400,9 +402,12 @@ function getStatistics() {
 
 
 
-function checkStudentCodeExists() {
+/**
+ * ตรวจสอบว่ามีรหัสนักเรียนซ้ำหรือไม่
+ */
+function checkStudentCode() {
     // ตรวจสอบว่ามีการส่ง student_code มาหรือไม่
-    if (!isset($_POST['student_code']) || empty($_POST['student_code'])) {
+    if (!isset($_GET['student_code']) || empty($_GET['student_code'])) {
         echo json_encode([
             'success' => true,
             'exists' => false
@@ -410,7 +415,7 @@ function checkStudentCodeExists() {
         return;
     }
     
-    $student_code = trim($_POST['student_code']);
+    $student_code = $_GET['student_code'];
     
     try {
         $conn = getDB();
@@ -433,6 +438,253 @@ function checkStudentCodeExists() {
     }
 }
 
+/**
+ * ดึงข้อมูลสถิติทั้งหมดของนักเรียน
+ */
+function getDetailedStatistics() {
+    try {
+        $conn = getDB();
+        
+        // ดึงจำนวนนักเรียนตามระดับชั้น
+        $levelQuery = "SELECT c.level, COUNT(*) as count 
+                      FROM students s 
+                      JOIN classes c ON s.current_class_id = c.class_id 
+                      WHERE s.status = 'กำลังศึกษา' 
+                      GROUP BY c.level 
+                      ORDER BY c.level";
+        $levelStmt = $conn->prepare($levelQuery);
+        $levelStmt->execute();
+        $levelStats = $levelStmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // ดึงจำนวนนักเรียนตามแผนกวิชา
+        $deptQuery = "SELECT d.department_name, COUNT(*) as count 
+                     FROM students s 
+                     JOIN classes c ON s.current_class_id = c.class_id 
+                     JOIN departments d ON c.department_id = d.department_id 
+                     WHERE s.status = 'กำลังศึกษา' 
+                     GROUP BY d.department_id 
+                     ORDER BY count DESC";
+        $deptStmt = $conn->prepare($deptQuery);
+        $deptStmt->execute();
+        $deptStats = $deptStmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // ดึงข้อมูลการเข้าแถวรายเดือน
+        $attendanceQuery = "SELECT 
+                          YEAR(a.date) as year,
+                          MONTH(a.date) as month,
+                          SUM(CASE WHEN a.is_present = 1 THEN 1 ELSE 0 END) as present_count,
+                          COUNT(*) - SUM(CASE WHEN a.is_present = 1 THEN 1 ELSE 0 END) as absent_count
+                          FROM attendance a
+                          GROUP BY YEAR(a.date), MONTH(a.date)
+                          ORDER BY YEAR(a.date), MONTH(a.date)";
+        $attendanceStmt = $conn->prepare($attendanceQuery);
+        $attendanceStmt->execute();
+        $attendanceStats = $attendanceStmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // รวมข้อมูลสถิติ
+        $statistics = [
+            'levels' => $levelStats,
+            'departments' => $deptStats,
+            'attendance_monthly' => $attendanceStats
+        ];
+        
+        echo json_encode([
+            'success' => true,
+            'statistics' => $statistics
+        ]);
+    } catch (PDOException $e) {
+        echo json_encode([
+            'success' => false,
+            'message' => 'เกิดข้อผิดพลาดในการดึงข้อมูลสถิติ: ' . $e->getMessage()
+        ]);
+    }
+}
+
+/**
+ * ดึงข้อมูลนักเรียนที่เสี่ยงตกกิจกรรม
+ */
+function getRiskStudents() {
+    try {
+        $conn = getDB();
+        
+        // ดึงข้อมูลนักเรียนที่เสี่ยงตกกิจกรรม
+        $query = "SELECT s.student_id, s.student_code, u.title, u.first_name, u.last_name,
+                 c.level, c.group_number, d.department_name,
+                 rs.risk_level, rs.absence_count,
+                 (SELECT CONCAT(t.title, ' ', t.first_name, ' ', t.last_name)
+                  FROM class_advisors ca
+                  JOIN teachers t ON ca.teacher_id = t.teacher_id
+                  WHERE ca.class_id = c.class_id AND ca.is_primary = 1
+                  LIMIT 1) as advisor_name
+                 FROM risk_students rs
+                 JOIN students s ON rs.student_id = s.student_id
+                 JOIN users u ON s.user_id = u.user_id
+                 JOIN classes c ON s.current_class_id = c.class_id
+                 JOIN departments d ON c.department_id = d.department_id
+                 WHERE rs.risk_level IN ('high', 'critical')
+                 AND s.status = 'กำลังศึกษา'
+                 ORDER BY rs.risk_level DESC, rs.absence_count DESC";
+        
+        $stmt = $conn->prepare($query);
+        $stmt->execute();
+        $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // แปลงระดับความเสี่ยงเป็นภาษาไทย
+        foreach ($students as &$student) {
+            switch ($student['risk_level']) {
+                case 'low':
+                    $student['risk_level_th'] = 'ต่ำ';
+                    break;
+                case 'medium':
+                    $student['risk_level_th'] = 'ปานกลาง';
+                    break;
+                case 'high':
+                    $student['risk_level_th'] = 'สูง';
+                    break;
+                case 'critical':
+                    $student['risk_level_th'] = 'วิกฤต';
+                    break;
+                default:
+                    $student['risk_level_th'] = 'ไม่ระบุ';
+            }
+            
+            // เพิ่มคลาสสำหรับการแสดงสีตามระดับความเสี่ยง
+            switch ($student['risk_level']) {
+                case 'low':
+                    $student['risk_class'] = 'success';
+                    break;
+                case 'medium':
+                    $student['risk_class'] = 'warning';
+                    break;
+                case 'high':
+                    $student['risk_class'] = 'danger';
+                    break;
+                case 'critical':
+                    $student['risk_class'] = 'critical';
+                    break;
+                default:
+                    $student['risk_class'] = '';
+            }
+        }
+        
+        echo json_encode([
+            'success' => true,
+            'students' => $students
+        ]);
+    } catch (PDOException $e) {
+        echo json_encode([
+            'success' => false,
+            'message' => 'เกิดข้อผิดพลาดในการดึงข้อมูลนักเรียนที่เสี่ยงตกกิจกรรม: ' . $e->getMessage()
+        ]);
+    }
+}
+
+/**
+ * แจ้งเตือนผู้ปกครองของนักเรียนที่เสี่ยงตกกิจกรรม
+ */
+function notifyRiskStudentParents() {
+    try {
+        $conn = getDB();
+        
+        // ดึงข้อมูลเฉพาะนักเรียนที่เสียงต่อการตกกิจกรรม
+        $student_ids = [];
+        if (isset($_POST['student_ids']) && is_array($_POST['student_ids'])) {
+            $student_ids = $_POST['student_ids'];
+        } elseif (isset($_POST['student_id'])) {
+            $student_ids = [$_POST['student_id']];
+        }
+        
+        if (empty($student_ids)) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'ไม่ได้ระบุรหัสนักเรียน'
+            ]);
+            return;
+        }
+        
+        // ประมวลผลการแจ้งเตือน
+        $successful = 0;
+        $failed = 0;
+        
+        foreach ($student_ids as $student_id) {
+            // ดึงข้อมูลผู้ปกครองของนักเรียน
+            $parentsQuery = "SELECT p.parent_id, u.line_id, u.first_name, u.last_name
+                           FROM parent_student_relation psr
+                           JOIN parents p ON psr.parent_id = p.parent_id
+                           JOIN users u ON p.user_id = u.user_id
+                           WHERE psr.student_id = ? AND u.line_id IS NOT NULL AND u.line_id != ''";
+            $parentsStmt = $conn->prepare($parentsQuery);
+            $parentsStmt->execute([$student_id]);
+            $parents = $parentsStmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            // ดึงข้อมูลนักเรียน
+            $studentQuery = "SELECT s.student_id, s.student_code, u.title, u.first_name, u.last_name,
+                            rs.risk_level, rs.absence_count,
+                            (SELECT a.date FROM attendance a 
+                             WHERE a.student_id = s.student_id AND a.is_present = 0
+                             ORDER BY a.date DESC LIMIT 1) as last_absence,
+                            ay.required_attendance_days
+                            FROM students s
+                            JOIN users u ON s.user_id = u.user_id
+                            JOIN risk_students rs ON s.student_id = rs.student_id
+                            JOIN student_academic_records sar ON s.student_id = sar.student_id
+                            JOIN academic_years ay ON sar.academic_year_id = ay.academic_year_id
+                            WHERE s.student_id = ? AND ay.is_active = 1";
+            $studentStmt = $conn->prepare($studentQuery);
+            $studentStmt->execute([$student_id]);
+            $student = $studentStmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$student) {
+                $failed++;
+                continue;
+            }
+            
+            // สร้างข้อความแจ้งเตือน
+            $message = "แจ้งเตือนการขาดเข้าแถว\n\n";
+            $message .= "นักเรียน: {$student['title']}{$student['first_name']} {$student['last_name']}\n";
+            $message .= "รหัสนักศึกษา: {$student['student_code']}\n";
+            $message .= "วันที่ขาดล่าสุด: " . date('d/m/Y', strtotime($student['last_absence'])) . "\n";
+            $message .= "จำนวนวันที่ขาดสะสม: {$student['absence_count']} วัน\n";
+            
+            // คำนวณวันที่ต้องมาเข้าแถวขั้นต่ำ
+            $required_attendance = $student['required_attendance_days'];
+            $message .= "จำนวนวันที่ต้องเข้าแถวตามเกณฑ์: {$required_attendance} วัน\n";
+            
+            // สำหรับแต่ละผู้ปกครอง
+            foreach ($parents as $parent) {
+                try {
+                    // บันทึกการแจ้งเตือนไปยัง LINE
+                    $notifyQuery = "INSERT INTO line_notifications (user_id, message, status, notification_type)
+                                   VALUES (?, ?, 'pending', 'risk_alert')";
+                    $notifyStmt = $conn->prepare($notifyQuery);
+                    $notifyStmt->execute([$parent['parent_id'], $message]);
+                    
+                    // อัปเดตสถานะการแจ้งเตือนในตาราง risk_students
+                    $updateQuery = "UPDATE risk_students SET notification_sent = 1, notification_date = NOW()
+                                   WHERE student_id = ?";
+                    $updateStmt = $conn->prepare($updateQuery);
+                    $updateStmt->execute([$student_id]);
+                    
+                    $successful++;
+                } catch (Exception $e) {
+                    $failed++;
+                }
+            }
+        }
+        
+        echo json_encode([
+            'success' => true,
+            'message' => "แจ้งเตือนผู้ปกครองสำเร็จ {$successful} คน, ล้มเหลว {$failed} คน",
+            'successful_count' => $successful,
+            'failed_count' => $failed
+        ]);
+    } catch (PDOException $e) {
+        echo json_encode([
+            'success' => false,
+            'message' => 'เกิดข้อผิดพลาดในการแจ้งเตือนผู้ปกครอง: ' . $e->getMessage()
+        ]);
+    }
+}
 
 
 
@@ -557,6 +809,15 @@ function addStudent() {
         ]);
     }
 }
+
+
+
+
+
+
+
+
+
 /**
  * อัปเดตข้อมูลนักเรียน
  */
