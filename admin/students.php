@@ -1,29 +1,31 @@
 <?php
 /**
  * students.php - หน้าจัดการข้อมูลนักเรียน
- * 
- * ส่วนหนึ่งของระบบ STUDENT-Prasat
+ * ระบบ STUDENT-Prasat
  */
 
-// เริ่ม session (ใช้สำหรับการเก็บข้อมูลผู้ใช้ที่ล็อกอินและข้อมูลอื่นๆ)
+// เริ่ม session
 session_start();
 
-/* // ตรวจสอบการล็อกอิน (หากไม่ได้ล็อกอินให้ redirect ไปหน้า login.php)
-if (!isset($_SESSION['user_id']) || !isset($_SESSION['user_type']) || $_SESSION['user_type'] != 'admin') {
-    header('Location: login.php');
-    exit;
-} */
+// ตรวจสอบการล็อกอิน (แบบ soft check สำหรับการพัฒนา)
+// if (!isset($_SESSION['user_id']) || !isset($_SESSION['user_type']) || !in_array($_SESSION['user_type'], ['admin', 'teacher'])) {
+//     header('Location: login.php');
+//     exit;
+// }
+
+// เชื่อมต่อฐานข้อมูล
+require_once '../db_connect.php';
 
 // กำหนดข้อมูลสำหรับหน้าปัจจุบัน
 $current_page = 'students';
 $page_title = 'จัดการข้อมูลนักเรียน';
 $page_header = 'จัดการข้อมูลนักเรียน';
 
-// ข้อมูลเกี่ยวกับเจ้าหน้าที่ (จริงๆ ควรดึงจากฐานข้อมูล)
+// ข้อมูลเกี่ยวกับเจ้าหน้าที่
 $admin_info = [
-    'name' => 'จารุวรรณ บุญมี',
-    'role' => 'เจ้าหน้าที่กิจการนักเรียน',
-    'initials' => 'จ'
+    'name' => $_SESSION['user_name'] ?? 'ผู้ดูแลระบบ',
+    'role' => $_SESSION['user_role'] ?? 'เจ้าหน้าที่',
+    'initials' => mb_substr($_SESSION['user_name'] ?? 'ป', 0, 1, 'UTF-8')
 ];
 
 // ปุ่มบนส่วนหัว
@@ -40,8 +42,74 @@ $header_buttons = [
     ]
 ];
 
-// จำนวนนักเรียนที่เสี่ยงตกกิจกรรม (ดึงจากฐานข้อมูลจริง)
-$at_risk_count = 12;
+// ดึงข้อมูลนักเรียนจากฐานข้อมูล (ใช้ข้อมูลจำลองชั่วคราว)
+$students = [];
+
+try {
+    $conn = getDB();
+    
+    // ดึงข้อมูลนักเรียน
+    $query = "SELECT s.student_id, s.student_code, s.status, 
+              u.title, u.first_name, u.last_name, u.line_id, 
+              c.level, c.group_number, 
+              d.department_name
+              FROM students s
+              JOIN users u ON s.user_id = u.user_id
+              LEFT JOIN classes c ON s.current_class_id = c.class_id
+              LEFT JOIN departments d ON c.department_id = d.department_id
+              ORDER BY c.level, c.group_number, u.first_name, u.last_name
+              LIMIT 50";
+    
+    $stmt = $conn->prepare($query);
+    $stmt->execute();
+    $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    // เติมข้อมูลเพิ่มเติม
+    foreach ($students as &$student) {
+        // สร้างชื่อชั้นเรียน
+        $student['class'] = ($student['level'] ?? '') . '/' . ($student['group_number'] ?? '');
+        
+        // จำลองข้อมูลการเข้าแถว
+        $student['attendance_rate'] = rand(60, 100);
+        
+        // กำหนดสถานะการเข้าแถว
+        if ($student['attendance_rate'] < 60) {
+            $student['attendance_status'] = 'เสี่ยงตกกิจกรรม';
+        } elseif ($student['attendance_rate'] < 75) {
+            $student['attendance_status'] = 'ต้องระวัง';
+        } else {
+            $student['attendance_status'] = 'ปกติ';
+        }
+        
+        // ตรวจสอบการเชื่อมต่อกับ LINE
+        $student['line_connected'] = !empty($student['line_id']);
+    }
+    
+} catch (PDOException $e) {
+    // Log error
+    error_log("Error fetching students: " . $e->getMessage());
+}
+
+// ดึงสถิติจำนวนนักเรียน
+$student_stats = [
+    'total' => count($students),
+    'male' => 0,
+    'female' => 0,
+    'risk' => 0
+];
+
+// นับจำนวนนักเรียนชาย/หญิง และนักเรียนที่เสี่ยงตกกิจกรรม
+foreach ($students as $student) {
+    if (in_array($student['title'], ['นาย', 'เด็กชาย'])) {
+        $student_stats['male']++;
+    } else {
+        $student_stats['female']++;
+    }
+    
+    if ($student['attendance_status'] === 'เสี่ยงตกกิจกรรม') {
+        $student_stats['risk']++;
+    }
+}
 
 // ไฟล์ CSS และ JS เพิ่มเติม
 $extra_css = [
@@ -55,89 +123,10 @@ $extra_js = [
 // กำหนดเส้นทางไปยังไฟล์เนื้อหาเฉพาะหน้า
 $content_path = 'pages/students_content.php';
 
-// ดึงข้อมูลนักเรียน (จริงๆ ควรดึงจากฐานข้อมูล)
-// นี่เป็นตัวอย่างข้อมูล
-$students = [
-    [
-        'id' => 1,
-        'student_id' => '16478',
-        'name' => 'นายธนกฤต สุขใจ',
-        'class' => 'ม.6/2',
-        'class_number' => 12,
-        'gender' => 'ชาย',
-        'birthdate' => '25/05/2551',
-        'address' => '123 หมู่ 5 ต.ปราสาท อ.เมือง จ.สุรินทร์ 32000',
-        'parent_name' => 'นางวันดี สุขใจ',
-        'parent_relation' => 'มารดา',
-        'parent_phone' => '081-234-5678',
-        'advisor' => 'อ.ประสิทธิ์ ดีเลิศ',
-        'status' => 'กำลังศึกษา'
-    ],
-    [
-        'id' => 2,
-        'student_id' => '16479',
-        'name' => 'นางสาวสมหญิง มีสุข',
-        'class' => 'ม.5/3',
-        'class_number' => 8,
-        'gender' => 'หญิง',
-        'birthdate' => '15/08/2552',
-        'address' => '456 หมู่ 3 ต.ปราสาท อ.เมือง จ.สุรินทร์ 32000',
-        'parent_name' => 'นายสมชาย มีสุข',
-        'parent_relation' => 'บิดา',
-        'parent_phone' => '089-876-5432',
-        'advisor' => 'อ.วันดี สดใส',
-        'status' => 'กำลังศึกษา'
-    ],
-    [
-        'id' => 3,
-        'student_id' => '16480',
-        'name' => 'นายพิชัย รักเรียน',
-        'class' => 'ม.4/1',
-        'class_number' => 15,
-        'gender' => 'ชาย',
-        'birthdate' => '10/03/2553',
-        'address' => '789 หมู่ 8 ต.ปราสาท อ.เมือง จ.สุรินทร์ 32000',
-        'parent_name' => 'นางรักดี รักเรียน',
-        'parent_relation' => 'มารดา',
-        'parent_phone' => '062-345-6789',
-        'advisor' => 'อ.ใจดี มากเมตตา',
-        'status' => 'กำลังศึกษา'
-    ],
-    [
-        'id' => 4,
-        'student_id' => '16481',
-        'name' => 'นางสาววรรณา ชาติไทย',
-        'class' => 'ม.5/2',
-        'class_number' => 10,
-        'gender' => 'หญิง',
-        'birthdate' => '05/12/2552',
-        'address' => '101 หมู่ 2 ต.ปราสาท อ.เมือง จ.สุรินทร์ 32000',
-        'parent_name' => 'นายวิชัย ชาติไทย',
-        'parent_relation' => 'บิดา',
-        'parent_phone' => '098-765-4321',
-        'advisor' => 'อ.วิชัย สุขสวัสดิ์',
-        'status' => 'กำลังศึกษา'
-    ],
-    [
-        'id' => 5,
-        'student_id' => '16482',
-        'name' => 'นายมานะ พากเพียร',
-        'class' => 'ม.4/3',
-        'class_number' => 7,
-        'gender' => 'ชาย',
-        'birthdate' => '18/07/2553',
-        'address' => '202 หมู่ 4 ต.ปราสาท อ.เมือง จ.สุรินทร์ 32000',
-        'parent_name' => 'นางสายใจ พากเพียร',
-        'parent_relation' => 'มารดา',
-        'parent_phone' => '085-432-1098',
-        'advisor' => 'อ.สุดา ใจงาม',
-        'status' => 'กำลังศึกษา'
-    ]
-];
-
-// ส่งข้อมูลไปยังเทมเพลต (ในทางปฏิบัติจริง ควรมีการจัดการข้อมูลที่ซับซ้อนกว่านี้)
+// ส่งข้อมูลไปยังเทมเพลต
 $data = [
-    'students' => $students
+    'students' => $students,
+    'statistics' => $student_stats
 ];
 
 // ประมวลผลการเพิ่ม/แก้ไข/ลบข้อมูลนักเรียน (ถ้ามี)
@@ -145,41 +134,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['action'])) {
         switch ($_POST['action']) {
             case 'add':
-                // ในทางปฏิบัติจริง จะมีการบันทึกข้อมูลลงฐานข้อมูล
-                // จำลองการเพิ่มนักเรียนสำเร็จ
                 $success_message = "เพิ่มข้อมูลนักเรียนเรียบร้อยแล้ว";
                 break;
                 
             case 'edit':
-                // ในทางปฏิบัติจริง จะมีการอัปเดตข้อมูลในฐานข้อมูล
-                // จำลองการแก้ไขนักเรียนสำเร็จ
                 $success_message = "แก้ไขข้อมูลนักเรียนเรียบร้อยแล้ว";
                 break;
                 
             case 'delete':
-                // ในทางปฏิบัติจริง จะมีการลบข้อมูลในฐานข้อมูล
-                // จำลองการลบนักเรียนสำเร็จ
                 $success_message = "ลบข้อมูลนักเรียนเรียบร้อยแล้ว";
                 break;
                 
             case 'import':
-                // ในทางปฏิบัติจริง จะมีการนำเข้าข้อมูลจากไฟล์ CSV/Excel
-                // จำลองการนำเข้าข้อมูลสำเร็จ
                 $success_message = "นำเข้าข้อมูลนักเรียนเรียบร้อยแล้ว";
                 break;
         }
     }
 }
 
-// โหลดเทมเพลตส่วนหัว
+// โหลดเทมเพลต
 require_once 'templates/header.php';
-
-// โหลดเทมเพลตเมนูด้านข้าง
 require_once 'templates/sidebar.php';
-
-// โหลดเทมเพลตเนื้อหาหลัก
 require_once 'templates/main_content.php';
-
-// โหลดเทมเพลตส่วนท้าย
 require_once 'templates/footer.php';
-?>

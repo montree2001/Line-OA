@@ -6,50 +6,51 @@
     </div>
     
     <div class="filter-container">
-        <div class="filter-group">
-            <div class="filter-label">ชื่อ-นามสกุล</div>
-            <input type="text" class="form-control" placeholder="ป้อนชื่อนักเรียน...">
-        </div>
-        <div class="filter-group">
-            <div class="filter-label">รหัสนักเรียน</div>
-            <input type="text" class="form-control" placeholder="ป้อนรหัสนักเรียน...">
-        </div>
-        <div class="filter-group">
-            <div class="filter-label">ระดับชั้น</div>
-            <select class="form-control">
-                <option value="">-- ทุกระดับชั้น --</option>
-                <option>ม.1</option>
-                <option>ม.2</option>
-                <option>ม.3</option>
-                <option>ม.4</option>
-                <option>ม.5</option>
-                <option>ม.6</option>
-            </select>
-        </div>
-        <div class="filter-group">
-            <div class="filter-label">ห้องเรียน</div>
-            <select class="form-control">
-                <option value="">-- ทุกห้อง --</option>
-                <option>1</option>
-                <option>2</option>
-                <option>3</option>
-                <option>4</option>
-                <option>5</option>
-            </select>
-        </div>
-        <div class="filter-group">
-            <div class="filter-label">สถานะการเข้าแถว</div>
-            <select class="form-control">
-                <option value="">-- ทุกสถานะ --</option>
-                <option>เสี่ยงตกกิจกรรม</option>
-                <option>ต้องระวัง</option>
-                <option>ปกติ</option>
-            </select>
-        </div>
-        <button class="filter-button">
-            <span class="material-icons">search</span>
-            ค้นหา
-        </button>
+        <form method="get" action="students.php" class="filter-form">
+            <div class="filter-group">
+                <div class="filter-label">ชื่อ-นามสกุล</div>
+                <input type="text" class="form-control" name="name" placeholder="ป้อนชื่อนักเรียน..." value="<?php echo isset($_GET['name']) ? htmlspecialchars($_GET['name']) : ''; ?>">
+            </div>
+            <div class="filter-group">
+                <div class="filter-label">รหัสนักเรียน</div>
+                <input type="text" class="form-control" name="student_code" placeholder="ป้อนรหัสนักเรียน..." value="<?php echo isset($_GET['student_code']) ? htmlspecialchars($_GET['student_code']) : ''; ?>">
+            </div>
+            <div class="filter-group">
+                <div class="filter-label">ระดับชั้น</div>
+                <select class="form-control" name="level">
+                    <option value="">-- ทุกระดับชั้น --</option>
+                    <option value="ปวช.1" <?php echo (isset($_GET['level']) && $_GET['level'] === 'ปวช.1') ? 'selected' : ''; ?>>ปวช.1</option>
+                    <option value="ปวช.2" <?php echo (isset($_GET['level']) && $_GET['level'] === 'ปวช.2') ? 'selected' : ''; ?>>ปวช.2</option>
+                    <option value="ปวช.3" <?php echo (isset($_GET['level']) && $_GET['level'] === 'ปวช.3') ? 'selected' : ''; ?>>ปวช.3</option>
+                    <option value="ปวส.1" <?php echo (isset($_GET['level']) && $_GET['level'] === 'ปวส.1') ? 'selected' : ''; ?>>ปวส.1</option>
+                    <option value="ปวส.2" <?php echo (isset($_GET['level']) && $_GET['level'] === 'ปวส.2') ? 'selected' : ''; ?>>ปวส.2</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <div class="filter-label">ห้องเรียน</div>
+                <select class="form-control" name="room">
+                    <option value="">-- ทุกห้อง --</option>
+                    <option value="1" <?php echo (isset($_GET['room']) && $_GET['room'] === '1') ? 'selected' : ''; ?>>1</option>
+                    <option value="2" <?php echo (isset($_GET['room']) && $_GET['room'] === '2') ? 'selected' : ''; ?>>2</option>
+                    <option value="3" <?php echo (isset($_GET['room']) && $_GET['room'] === '3') ? 'selected' : ''; ?>>3</option>
+                    <option value="4" <?php echo (isset($_GET['room']) && $_GET['room'] === '4') ? 'selected' : ''; ?>>4</option>
+                    <option value="5" <?php echo (isset($_GET['room']) && $_GET['room'] === '5') ? 'selected' : ''; ?>>5</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <div class="filter-label">สถานะการเข้าแถว</div>
+                <select class="form-control" name="status">
+                    <option value="">-- ทุกสถานะ --</option>
+                    <option value="เสี่ยงตกกิจกรรม" <?php echo (isset($_GET['status']) && $_GET['status'] === 'เสี่ยงตกกิจกรรม') ? 'selected' : ''; ?>>เสี่ยงตกกิจกรรม</option>
+                    <option value="ต้องระวัง" <?php echo (isset($_GET['status']) && $_GET['status'] === 'ต้องระวัง') ? 'selected' : ''; ?>>ต้องระวัง</option>
+                    <option value="ปกติ" <?php echo (isset($_GET['status']) && $_GET['status'] === 'ปกติ') ? 'selected' : ''; ?>>ปกติ</option>
+                </select>
+            </div>
+            <button type="submit" class="filter-button">
+                <span class="material-icons">search</span>
+                ค้นหา
+            </button>
+        </form>
     </div>
 </div>
 
@@ -62,10 +63,9 @@
                 <span class="material-icons">groups</span>
             </div>
         </div>
-        <div class="stat-value">1,250</div>
-        <div class="stat-comparison up">
-            <span class="material-icons">arrow_upward</span>
-            เพิ่มขึ้น 2.5% จากปีที่แล้ว
+        <div class="stat-value"><?php echo isset($data['statistics']['total']) ? number_format($data['statistics']['total']) : 0; ?></div>
+        <div class="stat-comparison">
+            จำนวนนักเรียนที่กำลังศึกษา
         </div>
     </div>
     
@@ -76,9 +76,14 @@
                 <span class="material-icons">person</span>
             </div>
         </div>
-        <div class="stat-value">600</div>
+        <div class="stat-value"><?php echo isset($data['statistics']['male']) ? number_format($data['statistics']['male']) : 0; ?></div>
         <div class="stat-comparison">
-            48% ของนักเรียนทั้งหมด
+            <?php
+            $totalStudents = isset($data['statistics']['total']) ? $data['statistics']['total'] : 0;
+            $maleStudents = isset($data['statistics']['male']) ? $data['statistics']['male'] : 0;
+            $malePercent = ($totalStudents > 0) ? round(($maleStudents / $totalStudents) * 100) : 0;
+            echo $malePercent . '% ของนักเรียนทั้งหมด';
+            ?>
         </div>
     </div>
     
@@ -89,9 +94,14 @@
                 <span class="material-icons">person</span>
             </div>
         </div>
-        <div class="stat-value">650</div>
+        <div class="stat-value"><?php echo isset($data['statistics']['female']) ? number_format($data['statistics']['female']) : 0; ?></div>
         <div class="stat-comparison">
-            52% ของนักเรียนทั้งหมด
+            <?php
+            $totalStudents = isset($data['statistics']['total']) ? $data['statistics']['total'] : 0;
+            $femaleStudents = isset($data['statistics']['female']) ? $data['statistics']['female'] : 0;
+            $femalePercent = ($totalStudents > 0) ? round(($femaleStudents / $totalStudents) * 100) : 0;
+            echo $femalePercent . '% ของนักเรียนทั้งหมด';
+            ?>
         </div>
     </div>
     
@@ -102,10 +112,14 @@
                 <span class="material-icons">warning</span>
             </div>
         </div>
-        <div class="stat-value">12</div>
-        <div class="stat-comparison down">
-            <span class="material-icons">arrow_downward</span>
-            ลดลง 5 คนจากสัปดาห์ที่แล้ว
+        <div class="stat-value"><?php echo isset($data['statistics']['risk']) ? number_format($data['statistics']['risk']) : 0; ?></div>
+        <div class="stat-comparison">
+            <?php
+            $totalStudents = isset($data['statistics']['total']) ? $data['statistics']['total'] : 0;
+            $riskStudents = isset($data['statistics']['risk']) ? $data['statistics']['risk'] : 0;
+            $riskPercent = ($totalStudents > 0) ? round(($riskStudents / $totalStudents) * 100) : 0;
+            echo $riskPercent . '% ของนักเรียนทั้งหมด';
+            ?>
         </div>
     </div>
 </div>
@@ -115,20 +129,27 @@
     <div class="card-title">
         <span class="material-icons">people</span>
         รายชื่อนักเรียน
+        <?php if (!empty($_GET)): ?>
+        <span class="badge"><?php echo count($data['students']); ?> รายการ</span>
+        <?php endif; ?>
     </div>
     
     <div class="bulk-actions">
-        <button class="btn btn-secondary">
+        <button class="btn btn-secondary" onclick="printStudentList()">
             <span class="material-icons">print</span>
             พิมพ์รายชื่อ
         </button>
-        <button class="btn btn-secondary">
+        <button class="btn btn-secondary" onclick="downloadExcel()">
             <span class="material-icons">file_download</span>
             ดาวน์โหลด Excel
         </button>
         <button class="btn btn-primary" onclick="showAddStudentModal()">
             <span class="material-icons">person_add</span>
             เพิ่มนักเรียนใหม่
+        </button>
+        <button class="btn btn-success" onclick="showImportModal()">
+            <span class="material-icons">upload_file</span>
+            นำเข้าข้อมูล
         </button>
     </div>
     
@@ -139,66 +160,74 @@
                     <th width="5%">รหัส</th>
                     <th width="25%">ชื่อ-นามสกุล</th>
                     <th width="10%">ชั้น/ห้อง</th>
-                    <th width="10%">เลขที่</th>
+                    <th width="10%">ไลน์</th>
                     <th width="15%">การเข้าแถว</th>
                     <th width="15%">สถานะ</th>
                     <th width="20%">จัดการ</th>
                 </tr>
             </thead>
             <tbody>
+                <?php if (empty($data['students'])): ?>
+                <tr>
+                    <td colspan="7" class="text-center">ไม่พบข้อมูลนักเรียน</td>
+                </tr>
+                <?php else: ?>
                 <?php foreach ($data['students'] as $student): ?>
                 <tr>
-                    <td><?php echo $student['student_id']; ?></td>
+                    <td><?php echo $student['student_code']; ?></td>
                     <td>
                         <div class="student-info">
-                            <div class="student-avatar"><?php echo mb_substr($student['firstname'], 0, 1, 'UTF-8'); ?></div>
+                            <div class="student-avatar">
+                                <?php echo mb_substr($student['first_name'], 0, 1, 'UTF-8'); ?>
+                            </div>
                             <div class="student-details">
-                                <div class="student-name"><?php echo $student['title'] . $student['firstname'] . ' ' . $student['lastname']; ?></div>
-                                <div class="student-class">เลขที่ <?php echo $student['class_number']; ?></div>
+                                <div class="student-name"><?php echo $student['title'] . $student['first_name'] . ' ' . $student['last_name']; ?></div>
+                                <div class="student-class"><?php echo $student['department_name'] ?? ''; ?></div>
                             </div>
                         </div>
                     </td>
                     <td><?php echo $student['class']; ?></td>
-                    <td><?php echo $student['class_number']; ?></td>
-                    <td><?php echo $student['attendance_rate']; ?>%</td>
+                    <td>
+                        <?php if (isset($student['line_connected']) && $student['line_connected']): ?>
+                        <span class="status-badge success">เชื่อมต่อแล้ว</span>
+                        <?php else: ?>
+                        <span class="status-badge warning">ยังไม่เชื่อมต่อ</span>
+                        <?php endif; ?>
+                    </td>
+                    <td><?php echo number_format($student['attendance_rate'], 1); ?>%</td>
                     <td>
                         <?php
                         $status_class = '';
-                        if ($student['attendance_status'] === 'เสี่ยงตกกิจกรรม') {
-                            $status_class = 'danger';
-                        } elseif ($student['attendance_status'] === 'ต้องระวัง') {
-                            $status_class = 'warning';
-                        } else {
-                            $status_class = 'success';
+                        if (isset($student['attendance_status'])) {
+                            if ($student['attendance_status'] === 'เสี่ยงตกกิจกรรม') {
+                                $status_class = 'danger';
+                            } elseif ($student['attendance_status'] === 'ต้องระวัง') {
+                                $status_class = 'warning';
+                            } else {
+                                $status_class = 'success';
+                            }
                         }
                         ?>
-                        <span class="status-badge <?php echo $status_class; ?>"><?php echo $student['attendance_status']; ?></span>
+                        <span class="status-badge <?php echo $status_class; ?>"><?php echo $student['attendance_status'] ?? 'ไม่มีข้อมูล'; ?></span>
                     </td>
                     <td>
                         <div class="action-buttons">
-                            <button class="table-action-btn primary" title="ดูข้อมูล" onclick="viewStudent(<?php echo $student['id']; ?>)">
+                            <button class="table-action-btn primary" title="ดูข้อมูล" onclick="viewStudent(<?php echo $student['student_id']; ?>)">
                                 <span class="material-icons">visibility</span>
                             </button>
-                            <button class="table-action-btn success" title="แก้ไข" onclick="editStudent(<?php echo $student['id']; ?>)">
+                            <button class="table-action-btn success" title="แก้ไข" onclick="editStudent(<?php echo $student['student_id']; ?>)">
                                 <span class="material-icons">edit</span>
                             </button>
-                            <button class="table-action-btn danger" title="ลบ" onclick="deleteStudent(<?php echo $student['id']; ?>)">
+                            <button class="table-action-btn danger" title="ลบ" onclick="deleteStudent(<?php echo $student['student_id']; ?>)">
                                 <span class="material-icons">delete</span>
                             </button>
                         </div>
                     </td>
                 </tr>
                 <?php endforeach; ?>
+                <?php endif; ?>
             </tbody>
         </table>
-    </div>
-    
-    <div class="pagination">
-        <a href="#" class="page-item active">1</a>
-        <a href="#" class="page-item">2</a>
-        <a href="#" class="page-item">3</a>
-        <span class="page-separator">...</span>
-        <a href="#" class="page-item">10</a>
     </div>
 </div>
 
@@ -283,12 +312,11 @@
                             <label class="form-label">ระดับชั้น</label>
                             <select class="form-control" name="class_level" required>
                                 <option value="">-- เลือก --</option>
-                                <option value="ม.1">ม.1</option>
-                                <option value="ม.2">ม.2</option>
-                                <option value="ม.3">ม.3</option>
-                                <option value="ม.4">ม.4</option>
-                                <option value="ม.5">ม.5</option>
-                                <option value="ม.6">ม.6</option>
+                                <option value="ปวช.1">ปวช.1</option>
+                                <option value="ปวช.2">ปวช.2</option>
+                                <option value="ปวช.3">ปวช.3</option>
+                                <option value="ปวส.1">ปวส.1</option>
+                                <option value="ปวส.2">ปวส.2</option>
                             </select>
                         </div>
                     </div>
@@ -547,268 +575,111 @@
 </div>
 
 <script>
-// ฟังก์ชันแสดงโมดัลเพิ่มนักเรียน
-function showAddStudentModal() {
-    // รีเซ็ตฟอร์ม
-    document.getElementById('addStudentForm').reset();
+// เรียกใช้ฟังก์ชันเริ่มต้นเมื่อ DOM โหลดเสร็จสมบูรณ์
+document.addEventListener('DOMContentLoaded', function() {
+    // แสดงข้อความสำเร็จหรือข้อผิดพลาด (ถ้ามี)
+    <?php if (isset($success_message)): ?>
+    showAlert('<?php echo $success_message; ?>', 'success');
+    <?php endif; ?>
     
-    // แสดงโมดัล
-    showModal('addStudentModal');
-}
-
-// ฟังก์ชันแสดงโมดัลแก้ไขข้อมูลนักเรียน
-function editStudent(studentId) {
-    // ในทางปฏิบัติจริง จะดึงข้อมูลนักเรียนมาแสดงในฟอร์ม
-    document.getElementById('edit_student_id').value = studentId;
-    
-    // แสดงโมดัล
-    showModal('editStudentModal');
-    
-    // จำลองการดึงข้อมูล
-    console.log('Edit student ID: ' + studentId);
-}
-
-// ฟังก์ชันแสดงโมดัลดูข้อมูลนักเรียน
-function viewStudent(studentId) {
-    // ในทางปฏิบัติจริง จะดึงข้อมูลนักเรียนมาแสดง
-    
-    // แสดงโมดัล
-    showModal('viewStudentModal');
-    
-    // จำลองการดึงข้อมูล
-    console.log('View student ID: ' + studentId);
-}
-
-// ฟังก์ชันแสดงโมดัลลบข้อมูลนักเรียน
-function deleteStudent(studentId) {
-    // ในทางปฏิบัติจริง จะดึงข้อมูลชื่อนักเรียนมาแสดง
-    document.getElementById('delete_student_id').value = studentId;
-    
-    // แสดงโมดัล
-    showModal('deleteStudentModal');
-    
-    // จำลองการดึงข้อมูล
-    console.log('Delete student ID: ' + studentId);
-}
-
-// ฟังก์ชันแสดงโมดัลนำเข้าข้อมูล
-function showImportModal() {
-    // รีเซ็ตฟอร์ม
-    document.getElementById('importForm').reset();
-    
-    // แสดงโมดัล
-    showModal('importModal');
-}
+    <?php if (isset($error_message)): ?>
+    showAlert('<?php echo $error_message; ?>', 'danger');
+    <?php endif; ?>
+});
 
 // ฟังก์ชันแสดงโมดัล
 function showModal(modalId) {
-    document.getElementById(modalId).classList.add('active');
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.classList.add('active');
+    }
 }
 
 // ฟังก์ชันซ่อนโมดัล
 function closeModal(modalId) {
-    document.getElementById(modalId).classList.remove('active');
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.classList.remove('active');
+    }
+}
+
+// ฟังก์ชันแสดงการแจ้งเตือน
+function showAlert(message, type = 'info') {
+    // สร้าง Alert Container ถ้ายังไม่มี
+    let alertContainer = document.querySelector('.alert-container');
+    if (!alertContainer) {
+        alertContainer = document.createElement('div');
+        alertContainer.className = 'alert-container';
+        document.body.appendChild(alertContainer);
+    }
+    
+    // สร้าง Alert
+    const alert = document.createElement('div');
+    alert.className = `alert alert-${type}`;
+    alert.innerHTML = `
+        <div class="alert-content">${message}</div>
+        <button class="alert-close">&times;</button>
+    `;
+    
+    // เพิ่ม Alert ไปยัง Container
+    alertContainer.appendChild(alert);
+    
+    // กำหนด Event Listener สำหรับปุ่มปิด
+    const closeButton = alert.querySelector('.alert-close');
+    closeButton.addEventListener('click', function() {
+        alert.classList.add('alert-closing');
+        setTimeout(() => {
+            if (alertContainer.contains(alert)) {
+                alertContainer.removeChild(alert);
+            }
+        }, 300);
+    });
+    
+    // ให้ Alert ปิดโดยอัตโนมัติหลังจาก 5 วินาที
+    setTimeout(() => {
+        if (alertContainer.contains(alert)) {
+            alert.classList.add('alert-closing');
+            setTimeout(() => {
+                if (alertContainer.contains(alert)) {
+                    alertContainer.removeChild(alert);
+                }
+            }, 300);
+        }
+    }, 5000);
+}
+
+// ฟังก์ชันดูข้อมูลนักเรียน
+function viewStudent(studentId) {
+    // จำลองการแสดงโมดัล (ในทางปฏิบัติจริงจะดึงข้อมูลจากฐานข้อมูล)
+    showModal('viewStudentModal');
+}
+
+// ฟังก์ชันแก้ไขข้อมูลนักเรียน
+function editStudent(studentId) {
+    document.getElementById('edit_student_id').value = studentId;
+    // จำลองการแสดงโมดัล (ในทางปฏิบัติจริงจะดึงข้อมูลจากฐานข้อมูล)
+    showModal('editStudentModal');
+}
+
+// ฟังก์ชันลบข้อมูลนักเรียน
+function deleteStudent(studentId) {
+    document.getElementById('delete_student_id').value = studentId;
+    // จำลองการแสดงโมดัล (ในทางปฏิบัติจริงจะดึงข้อมูลจากฐานข้อมูล)
+    showModal('deleteStudentModal');
+}
+
+// ฟังก์ชันพิมพ์รายชื่อนักเรียน
+function printStudentList() {
+    window.print();
+}
+
+// ฟังก์ชันดาวน์โหลดไฟล์ Excel
+function downloadExcel() {
+    alert('กำลังพัฒนาฟังก์ชันดาวน์โหลดไฟล์ Excel...');
+}
+
+// ฟังก์ชันแสดงโมดัลนำเข้าข้อมูล
+function showImportModal() {
+    showModal('importModal');
 }
 </script>
-
-<style>
-/* เพิ่มเติมสำหรับหน้าจัดการข้อมูลนักเรียน */
-.form-section {
-    margin-bottom: 20px;
-    padding-bottom: 20px;
-    border-bottom: 1px solid var(--border-color);
-}
-
-.form-section:last-child {
-    border-bottom: none;
-    margin-bottom: 0;
-    padding-bottom: 0;
-}
-
-.section-title {
-    font-size: 16px;
-    margin-bottom: 15px;
-    color: var(--text-dark);
-}
-
-.bulk-actions {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 20px;
-}
-
-.student-profile {
-    padding: 15px 0;
-}
-
-.student-profile-header {
-    display: flex;
-    margin-bottom: 20px;
-}
-
-.student-profile-avatar {
-    width: 80px;
-    height: 80px;
-    border-radius: 50%;
-    background-color: var(--secondary-color-light);
-    margin-right: 20px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--secondary-color);
-    font-size: 32px;
-    font-weight: bold;
-}
-
-.student-profile-info h3 {
-    font-size: 20px;
-    margin-bottom: 5px;
-}
-
-.student-profile-info p {
-    margin: 0 0 5px 0;
-    color: var(--text-light);
-}
-
-.info-sections {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 20px;
-}
-
-.info-section {
-    background-color: #f9f9f9;
-    border-radius: 8px;
-    padding: 15px;
-    margin-bottom: 15px;
-}
-
-.info-section h4 {
-    font-size: 16px;
-    margin-bottom: 10px;
-    color: var(--text-dark);
-    padding-bottom: 5px;
-    border-bottom: 1px solid var(--border-color);
-}
-
-.info-section p {
-    margin: 0 0 5px 0;
-}
-
-.attendance-stats {
-    display: flex;
-    gap: 15px;
-}
-
-.attendance-stat {
-    flex: 1;
-    background-color: white;
-    border-radius: 8px;
-    padding: 10px;
-    text-align: center;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-}
-
-.attendance-stat-value {
-    font-size: 24px;
-    font-weight: bold;
-    color: var(--primary-color);
-}
-
-.attendance-stat-label {
-    font-size: 12px;
-    color: var(--text-light);
-}
-
-.confirmation-message {
-    text-align: center;
-    margin: 20px 0;
-}
-
-.warning-text {
-    color: var(--danger-color);
-    font-weight: bold;
-    margin-top: 10px;
-}
-
-.import-instructions {
-    background-color: #f9f9f9;
-    border-radius: 8px;
-    padding: 15px;
-    margin: 15px 0;
-}
-
-.import-instructions h4 {
-    font-size: 16px;
-    margin-bottom: 10px;
-}
-
-.import-instructions ol {
-    margin-left: 20px;
-}
-
-.import-instructions li {
-    margin-bottom: 5px;
-}
-
-.import-options {
-    margin: 15px 0;
-}
-
-.checkbox-item {
-    display: flex;
-    align-items: center;
-    margin-bottom: 10px;
-}
-
-.checkbox-item input {
-    margin-right: 10px;
-}
-
-.pagination {
-    display: flex;
-    justify-content: center;
-    margin-top: 20px;
-    gap: 5px;
-}
-
-.page-item {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 32px;
-    height: 32px;
-    border-radius: 4px;
-    background-color: #f5f5f5;
-    color: var(--text-dark);
-    text-decoration: none;
-}
-
-.page-item.active {
-    background-color: var(--primary-color);
-    color: white;
-}
-
-.page-separator {
-    display: flex;
-    align-items: center;
-    padding: 0 5px;
-}
-
-@media (max-width: 768px) {
-    .info-sections {
-        grid-template-columns: 1fr;
-    }
-    
-    .student-profile-header {
-        flex-direction: column;
-        align-items: center;
-        text-align: center;
-    }
-    
-    .student-profile-avatar {
-        margin-right: 0;
-        margin-bottom: 15px;
-    }
-}
-</style>
