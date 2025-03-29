@@ -22,7 +22,9 @@ require_once '../../db_connect.php';
 
 // กำหนด header เป็น JSON
 header('Content-Type: application/json; charset=UTF-8');
-
+header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
+header("Cache-Control: post-check=0, pre-check=0", false);
+header("Pragma: no-cache");
 // ตรวจสอบการร้องขอ
 if (isset($_GET['action'])) {
     // ร้องขอแบบ GET
@@ -107,10 +109,6 @@ function handlePostRequest() {
 }
 
 
-header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
-header("Cache-Control: post-check=0, pre-check=0", false);
-header("Pragma: no-cache");
-
 function getAllStudents($filters = []) {
     try {
         $conn = getDB();
@@ -173,6 +171,7 @@ function getAllStudents($filters = []) {
         return [];
     }
 }
+
 
 
 

@@ -224,11 +224,15 @@ function addStudent($data) {
             ];
         }
         
-        // สร้างข้อมูลในตาราง users
+        // ใช้ line_id ชั่วคราวที่ไม่ซ้ำกัน แทนค่าว่าง
+        $tempLineId = 'TEMP_' . $data['student_code'] . '_' . time() . '_' . substr(md5(rand()), 0, 6);
+        
+        // 1. เพิ่มข้อมูลในตาราง users ก่อน
         $userQuery = "INSERT INTO users (line_id, role, title, first_name, last_name, phone_number, email, gdpr_consent)
-                     VALUES ('', 'student', ?, ?, ?, ?, ?, 1)";
+                     VALUES (?, 'student', ?, ?, ?, ?, ?, 1)";
         $userStmt = $conn->prepare($userQuery);
         $userStmt->execute([
+            $tempLineId, // ใช้ line_id ชั่วคราวที่ไม่ซ้ำกัน
             $data['title'],
             $data['firstname'],
             $data['lastname'],
@@ -238,7 +242,7 @@ function addStudent($data) {
         
         $user_id = $conn->lastInsertId();
         
-        // สร้างข้อมูลในตาราง students
+        // 2. เพิ่มข้อมูลนักเรียน
         $studentQuery = "INSERT INTO students (user_id, student_code, title, current_class_id, status)
                         VALUES (?, ?, ?, ?, ?)";
         $studentStmt = $conn->prepare($studentQuery);
@@ -246,13 +250,13 @@ function addStudent($data) {
             $user_id,
             trim($data['student_code']),
             $data['title'],
-            $data['class_id'] ?? null,
+            !empty($data['class_id']) ? $data['class_id'] : null,
             $data['status'] ?? 'กำลังศึกษา'
         ]);
         
         $student_id = $conn->lastInsertId();
         
-        // ถ้ามีการเลือกชั้นเรียน ให้สร้างประวัติการศึกษา
+        // 3. เพิ่มข้อมูลในตาราง student_academic_records ถ้ามีการเลือกชั้นเรียน
         if (!empty($data['class_id'])) {
             // ดึงข้อมูล academic_year_id จากชั้นเรียน
             $yearQuery = "SELECT academic_year_id FROM classes WHERE class_id = ?";
@@ -264,11 +268,7 @@ function addStudent($data) {
                 $recordQuery = "INSERT INTO student_academic_records (student_id, academic_year_id, class_id)
                               VALUES (?, ?, ?)";
                 $recordStmt = $conn->prepare($recordQuery);
-                $recordStmt->execute([
-                    $student_id,
-                    $academic_year_id,
-                    $data['class_id']
-                ]);
+                $recordStmt->execute([$student_id, $academic_year_id, $data['class_id']]);
             }
         }
         
