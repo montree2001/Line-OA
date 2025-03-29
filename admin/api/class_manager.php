@@ -11,14 +11,14 @@ header('Content-Type: application/json; charset=UTF-8');
 // เริ่ม session
 session_start();
 
-// ตรวจสอบสิทธิ์การเข้าถึง (ถ้าไม่ใช่ admin ไม่อนุญาตให้เข้าถึง API นี้)
+/* // ตรวจสอบสิทธิ์การเข้าถึง (ถ้าไม่ใช่ admin ไม่อนุญาตให้เข้าถึง API นี้)
 if (!isset($_SESSION['user_id']) || !isset($_SESSION['user_type']) || $_SESSION['user_type'] !== 'admin') {
     echo json_encode([
         'status' => 'error',
         'message' => 'ไม่มีสิทธิ์เข้าถึง API นี้'
     ]);
     exit;
-}
+} */
 
 // เชื่อมต่อฐานข้อมูล
 require_once '../../db_connect.php';
