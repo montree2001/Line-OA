@@ -1,73 +1,108 @@
 <?php
 /**
- * students_model.php - ฟังก์ชันจัดการข้อมูลนักเรียน
+ * students_model.php - โมเดลสำหรับจัดการข้อมูลนักเรียน
  * ระบบ STUDENT-Prasat
  */
 
-// ฟังก์ชันดึงข้อมูลนักเรียนทั้งหมด
+/**
+ * ดึงข้อมูลนักเรียนทั้งหมด
+ * 
+ * @param array $filters ตัวกรองข้อมูล
+ * @return array ข้อมูลนักเรียน
+ */
 function getAllStudents($filters = []) {
-    $conn = getDB();
     try {
-        $sql = "SELECT s.student_id, s.student_code, s.status, 
-                u.title, u.first_name, u.last_name, u.line_id, u.profile_picture, 
-                c.level, c.group_number, d.department_name,
-                sar.total_attendance_days, sar.total_absence_days
-                FROM students s
-                JOIN users u ON s.user_id = u.user_id
-                LEFT JOIN classes c ON s.current_class_id = c.class_id
-                LEFT JOIN departments d ON c.department_id = d.department_id
-                LEFT JOIN student_academic_records sar ON s.student_id = sar.student_id 
-                    AND sar.academic_year_id = (SELECT academic_year_id FROM academic_years WHERE is_active = 1 LIMIT 1)
-                WHERE 1=1";
+        $conn = getDB();
         
+        // สร้างเงื่อนไขการค้นหา
+        $where_conditions = [];
         $params = [];
         
-        // เพิ่มเงื่อนไขการกรอง
-        if (!empty($filters['name'])) {
-            $sql .= " AND (u.first_name LIKE ? OR u.last_name LIKE ?)";
-            $params[] = "%{$filters['name']}%";
-            $params[] = "%{$filters['name']}%";
+        if (isset($filters['name']) && !empty($filters['name'])) {
+            $where_conditions[] = "(u.first_name LIKE ? OR u.last_name LIKE ?)";
+            $search_name = '%' . $filters['name'] . '%';
+            $params[] = $search_name;
+            $params[] = $search_name;
         }
         
-        if (!empty($filters['student_code'])) {
-            $sql .= " AND s.student_code LIKE ?";
-            $params[] = "%{$filters['student_code']}%";
+        if (isset($filters['student_code']) && !empty($filters['student_code'])) {
+            $where_conditions[] = "s.student_code LIKE ?";
+            $params[] = '%' . $filters['student_code'] . '%';
         }
         
-        if (!empty($filters['level'])) {
-            $sql .= " AND c.level = ?";
+        if (isset($filters['level']) && !empty($filters['level'])) {
+            $where_conditions[] = "c.level = ?";
             $params[] = $filters['level'];
         }
         
-        if (!empty($filters['room'])) {
-            $sql .= " AND c.group_number = ?";
-            $params[] = $filters['room'];
+        if (isset($filters['group_number']) && !empty($filters['group_number'])) {
+            $where_conditions[] = "c.group_number = ?";
+            $params[] = $filters['group_number'];
         }
         
-        if (!empty($filters['status'])) {
-            if ($filters['status'] == 'เสี่ยงตกกิจกรรม') {
-                $sql .= " AND ((sar.total_attendance_days / (sar.total_attendance_days + sar.total_absence_days)) * 100 < 60)";
-            } elseif ($filters['status'] == 'ต้องระวัง') {
-                $sql .= " AND ((sar.total_attendance_days / (sar.total_attendance_days + sar.total_absence_days)) * 100 BETWEEN 60 AND 75)";
-            } elseif ($filters['status'] == 'ปกติ') {
-                $sql .= " AND ((sar.total_attendance_days / (sar.total_attendance_days + sar.total_absence_days)) * 100 > 75)";
+        if (isset($filters['department_id']) && !empty($filters['department_id'])) {
+            $where_conditions[] = "c.department_id = ?";
+            $params[] = $filters['department_id'];
+        }
+        
+        if (isset($filters['status']) && !empty($filters['status'])) {
+            $where_conditions[] = "s.status = ?";
+            $params[] = $filters['status'];
+        }
+        
+        if (isset($filters['line_status']) && !empty($filters['line_status'])) {
+            if ($filters['line_status'] === 'connected') {
+                $where_conditions[] = "u.line_id IS NOT NULL AND u.line_id != ''";
+            } else if ($filters['line_status'] === 'not_connected') {
+                $where_conditions[] = "(u.line_id IS NULL OR u.line_id = '')";
             }
         }
         
-        $sql .= " ORDER BY c.level, c.group_number, u.first_name, u.last_name";
+        // สร้าง SQL condition
+        $sql_condition = "";
+        if (!empty($where_conditions)) {
+            $sql_condition = " WHERE " . implode(" AND ", $where_conditions);
+        }
         
-        $stmt = $conn->prepare($sql);
-        $stmt->execute($params);
+        // ดึงข้อมูลนักเรียน
+        $query = "SELECT DISTINCT s.student_id, s.student_code, s.status, 
+                 u.title, u.first_name, u.last_name, u.line_id, u.phone_number, u.email, u.user_id,
+                 c.level, c.group_number, c.class_id, c.academic_year_id,
+                 d.department_name, d.department_id,
+                 (SELECT CONCAT(t.title, ' ', t.first_name, ' ', t.last_name) 
+                  FROM class_advisors ca 
+                  JOIN teachers t ON ca.teacher_id = t.teacher_id 
+                  WHERE ca.class_id = c.class_id AND ca.is_primary = 1
+                  LIMIT 1) as advisor_name,
+                 IFNULL((SELECT COUNT(*) FROM attendance a WHERE a.student_id = s.student_id AND a.is_present = 1), 0) as attendance_days,
+                 IFNULL((SELECT COUNT(*) FROM attendance a WHERE a.student_id = s.student_id AND a.is_present = 0), 0) as absence_days
+                 FROM students s
+                 JOIN users u ON s.user_id = u.user_id
+                 LEFT JOIN classes c ON s.current_class_id = c.class_id
+                 LEFT JOIN departments d ON c.department_id = d.department_id
+                 $sql_condition
+                 ORDER BY s.student_code";
+        
+        if (!empty($params)) {
+            $stmt = $conn->prepare($query);
+            $stmt->execute($params);
+        } else {
+            $stmt = $conn->query($query);
+        }
+        
         $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
-        // คำนวณข้อมูลเพิ่มเติมสำหรับแต่ละนักเรียน
+        // เติมข้อมูลเพิ่มเติม
         foreach ($students as &$student) {
+            // สร้างชื่อชั้นเรียน
+            $student['class'] = ($student['level'] ?? '') . '/' . ($student['group_number'] ?? '');
+            
             // คำนวณอัตราการเข้าแถว
-            $total_days = ($student['total_attendance_days'] ?? 0) + ($student['total_absence_days'] ?? 0);
+            $total_days = $student['attendance_days'] + $student['absence_days'];
             if ($total_days > 0) {
-                $student['attendance_rate'] = ($student['total_attendance_days'] / $total_days) * 100;
+                $student['attendance_rate'] = ($student['attendance_days'] / $total_days) * 100;
             } else {
-                $student['attendance_rate'] = 100; // ถ้าไม่มีข้อมูล ให้เป็น 100%
+                $student['attendance_rate'] = 100; // ถ้ายังไม่มีข้อมูลให้เป็น 100%
             }
             
             // กำหนดสถานะการเข้าแถว
@@ -81,291 +116,287 @@ function getAllStudents($filters = []) {
             
             // ตรวจสอบการเชื่อมต่อกับ LINE
             $student['line_connected'] = !empty($student['line_id']);
-            
-            // สร้างชื่อชั้นเรียน
-            $student['class'] = ($student['level'] ?? '') . '/' . ($student['group_number'] ?? '');
+        }
+        
+        // กรองตามสถานะการเข้าแถว (ถ้ามี)
+        if (isset($filters['attendance_status']) && !empty($filters['attendance_status'])) {
+            $attendance_status = $filters['attendance_status'];
+            $students = array_filter($students, function($student) use ($attendance_status) {
+                return $student['attendance_status'] === $attendance_status;
+            });
+            // Reset array keys
+            $students = array_values($students);
         }
         
         return $students;
     } catch (PDOException $e) {
-        error_log("Error getting students: " . $e->getMessage());
+        error_log("Error fetching students: " . $e->getMessage());
         return [];
     }
 }
 
-// ฟังก์ชันดึงข้อมูลนักเรียนตาม ID
+/**
+ * ดึงข้อมูลนักเรียนตาม ID
+ * 
+ * @param int $student_id รหัสนักเรียน
+ * @return array|bool ข้อมูลนักเรียนหรือ false ถ้าไม่พบ
+ */
 function getStudentById($student_id) {
-    $conn = getDB();
     try {
-        $sql = "SELECT s.*, 
-                u.title, u.first_name, u.last_name, u.line_id, u.profile_picture, u.phone_number, u.email,
-                c.level, c.group_number, d.department_name,
-                ca.teacher_id,
-                sar.total_attendance_days, sar.total_absence_days
-                FROM students s
-                JOIN users u ON s.user_id = u.user_id
-                LEFT JOIN classes c ON s.current_class_id = c.class_id
-                LEFT JOIN departments d ON c.department_id = d.department_id
-                LEFT JOIN class_advisors ca ON c.class_id = ca.class_id AND ca.is_primary = 1
-                LEFT JOIN student_academic_records sar ON s.student_id = sar.student_id 
-                    AND sar.academic_year_id = (SELECT academic_year_id FROM academic_years WHERE is_active = 1 LIMIT 1)
-                WHERE s.student_id = ?";
-                
-        $stmt = $conn->prepare($sql);
+        $conn = getDB();
+        
+        // ดึงข้อมูลนักเรียน
+        $query = "SELECT s.student_id, s.student_code, s.current_class_id as class_id, s.status, 
+                  u.title, u.first_name, u.last_name, u.line_id, u.phone_number, u.email, u.user_id,
+                  c.level, c.group_number, c.academic_year_id,
+                  d.department_name, d.department_id,
+                  (SELECT CONCAT(t.title, ' ', t.first_name, ' ', t.last_name) 
+                   FROM class_advisors ca 
+                   JOIN teachers t ON ca.teacher_id = t.teacher_id 
+                   WHERE ca.class_id = c.class_id AND ca.is_primary = 1
+                   LIMIT 1) as advisor_name,
+                  IFNULL((SELECT COUNT(*) FROM attendance a WHERE a.student_id = s.student_id AND a.is_present = 1), 0) as attendance_days,
+                  IFNULL((SELECT COUNT(*) FROM attendance a WHERE a.student_id = s.student_id AND a.is_present = 0), 0) as absence_days
+                  FROM students s
+                  JOIN users u ON s.user_id = u.user_id
+                  LEFT JOIN classes c ON s.current_class_id = c.class_id
+                  LEFT JOIN departments d ON c.department_id = d.department_id
+                  WHERE s.student_id = ?";
+        
+        $stmt = $conn->prepare($query);
         $stmt->execute([$student_id]);
         $student = $stmt->fetch(PDO::FETCH_ASSOC);
         
-        if ($student) {
-            // คำนวณอัตราการเข้าแถว
-            $total_days = ($student['total_attendance_days'] ?? 0) + ($student['total_absence_days'] ?? 0);
-            if ($total_days > 0) {
-                $student['attendance_rate'] = ($student['total_attendance_days'] / $total_days) * 100;
-            } else {
-                $student['attendance_rate'] = 100; // ถ้าไม่มีข้อมูล ให้เป็น 100%
-            }
-            
-            // กำหนดสถานะการเข้าแถว
-            if ($student['attendance_rate'] < 60) {
-                $student['attendance_status'] = 'เสี่ยงตกกิจกรรม';
-            } elseif ($student['attendance_rate'] < 75) {
-                $student['attendance_status'] = 'ต้องระวัง';
-            } else {
-                $student['attendance_status'] = 'ปกติ';
-            }
-            
-            // ตรวจสอบการเชื่อมต่อกับ LINE
-            $student['line_connected'] = !empty($student['line_id']);
-            
-            // สร้างชื่อชั้นเรียน
-            $student['class'] = ($student['level'] ?? '') . '/' . ($student['group_number'] ?? '');
-            
-            // ดึงข้อมูลครูที่ปรึกษา
-            if (!empty($student['teacher_id'])) {
-                $teacherSql = "SELECT 
-                               t.teacher_id, 
-                               CONCAT(t.title, ' ', t.first_name, ' ', t.last_name) as name,
-                               t.position 
-                               FROM teachers t 
-                               WHERE t.teacher_id = ?";
-                $teacherStmt = $conn->prepare($teacherSql);
-                $teacherStmt->execute([$student['teacher_id']]);
-                $student['advisor'] = $teacherStmt->fetch(PDO::FETCH_ASSOC);
-            }
-            
-            // ดึงข้อมูลผู้ปกครอง
-            $parentSql = "SELECT 
-                         p.parent_id, 
-                         u.title, u.first_name, u.last_name, u.phone_number, u.line_id,
-                         p.relationship
-                         FROM parent_student_relation psr
-                         JOIN parents p ON psr.parent_id = p.parent_id
-                         JOIN users u ON p.user_id = u.user_id
-                         WHERE psr.student_id = ?";
-            $parentStmt = $conn->prepare($parentSql);
-            $parentStmt->execute([$student_id]);
-            $student['parents'] = $parentStmt->fetchAll(PDO::FETCH_ASSOC);
+        if (!$student) {
+            return false;
         }
+        
+        // เพิ่มข้อมูลเพิ่มเติม
+        $student['class'] = ($student['level'] ?? '') . '/' . ($student['group_number'] ?? '');
+        
+        // คำนวณอัตราการเข้าแถว
+        $total_days = $student['attendance_days'] + $student['absence_days'];
+        if ($total_days > 0) {
+            $student['attendance_rate'] = ($student['attendance_days'] / $total_days) * 100;
+        } else {
+            $student['attendance_rate'] = 100; // ถ้ายังไม่มีข้อมูลให้เป็น 100%
+        }
+        
+        // กำหนดสถานะการเข้าแถว
+        if ($student['attendance_rate'] < 60) {
+            $student['attendance_status'] = 'เสี่ยงตกกิจกรรม';
+        } elseif ($student['attendance_rate'] < 75) {
+            $student['attendance_status'] = 'ต้องระวัง';
+        } else {
+            $student['attendance_status'] = 'ปกติ';
+        }
+        
+        // ตรวจสอบการเชื่อมต่อกับ LINE
+        $student['line_connected'] = !empty($student['line_id']);
         
         return $student;
     } catch (PDOException $e) {
-        error_log("Error getting student details: " . $e->getMessage());
-        return null;
+        error_log("Error fetching student: " . $e->getMessage());
+        return false;
     }
 }
 
-// ฟังก์ชันเพิ่มนักเรียนใหม่
+/**
+ * เพิ่มนักเรียนใหม่
+ * 
+ * @param array $data ข้อมูลนักเรียน
+ * @return array ผลลัพธ์การดำเนินการ
+ */
 function addStudent($data) {
-    $conn = getDB();
     try {
+        $conn = getDB();
         $conn->beginTransaction();
         
-        // 1. เพิ่มข้อมูลในตาราง users ก่อน
-        $userSql = "INSERT INTO users (role, title, first_name, last_name, phone_number, email, gdpr_consent)
-                   VALUES ('student', ?, ?, ?, ?, ?, 1)";
-        $userStmt = $conn->prepare($userSql);
+        // ตรวจสอบว่ามีรหัสนักเรียนซ้ำหรือไม่
+        $checkQuery = "SELECT student_id FROM students WHERE student_code = ?";
+        $checkStmt = $conn->prepare($checkQuery);
+        $checkStmt->execute([trim($data['student_code'])]);
+        
+        if ($checkStmt->rowCount() > 0) {
+            return [
+                'success' => false,
+                'message' => 'รหัสนักเรียนนี้มีอยู่ในระบบแล้ว'
+            ];
+        }
+        
+        // สร้างข้อมูลในตาราง users
+        $userQuery = "INSERT INTO users (line_id, role, title, first_name, last_name, phone_number, email, gdpr_consent)
+                     VALUES ('', 'student', ?, ?, ?, ?, ?, 1)";
+        $userStmt = $conn->prepare($userQuery);
         $userStmt->execute([
             $data['title'],
             $data['firstname'],
             $data['lastname'],
-            $data['phone_number'] ?? null,
-            $data['email'] ?? null
+            $data['phone_number'] ?? '',
+            $data['email'] ?? ''
         ]);
         
-        $userId = $conn->lastInsertId();
+        $user_id = $conn->lastInsertId();
         
-        // 2. เพิ่มข้อมูลในตาราง students
-        $studentSql = "INSERT INTO students (user_id, student_code, title, current_class_id, status)
-                      VALUES (?, ?, ?, ?, 'กำลังศึกษา')";
-        $studentStmt = $conn->prepare($studentSql);
+        // สร้างข้อมูลในตาราง students
+        $studentQuery = "INSERT INTO students (user_id, student_code, title, current_class_id, status)
+                        VALUES (?, ?, ?, ?, ?)";
+        $studentStmt = $conn->prepare($studentQuery);
         $studentStmt->execute([
-            $userId,
-            $data['student_id'],
+            $user_id,
+            trim($data['student_code']),
             $data['title'],
-            $data['class_id'] ?? null
+            $data['class_id'] ?? null,
+            $data['status'] ?? 'กำลังศึกษา'
         ]);
         
-        $studentId = $conn->lastInsertId();
+        $student_id = $conn->lastInsertId();
         
-        // 3. สร้างประวัติการศึกษาถ้ามีชั้นเรียน
+        // ถ้ามีการเลือกชั้นเรียน ให้สร้างประวัติการศึกษา
         if (!empty($data['class_id'])) {
-            // ดึง academic_year_id ปัจจุบัน
-            $acadYearSql = "SELECT academic_year_id FROM academic_years WHERE is_active = 1 LIMIT 1";
-            $acadYearStmt = $conn->prepare($acadYearSql);
-            $acadYearStmt->execute();
-            $academicYearId = $acadYearStmt->fetchColumn();
+            // ดึงข้อมูล academic_year_id จากชั้นเรียน
+            $yearQuery = "SELECT academic_year_id FROM classes WHERE class_id = ?";
+            $yearStmt = $conn->prepare($yearQuery);
+            $yearStmt->execute([$data['class_id']]);
+            $academic_year_id = $yearStmt->fetchColumn();
             
-            if ($academicYearId) {
-                $recordSql = "INSERT INTO student_academic_records (student_id, academic_year_id, class_id)
-                             VALUES (?, ?, ?)";
-                $recordStmt = $conn->prepare($recordSql);
+            if ($academic_year_id) {
+                $recordQuery = "INSERT INTO student_academic_records (student_id, academic_year_id, class_id)
+                              VALUES (?, ?, ?)";
+                $recordStmt = $conn->prepare($recordQuery);
                 $recordStmt->execute([
-                    $studentId,
-                    $academicYearId,
+                    $student_id,
+                    $academic_year_id,
                     $data['class_id']
                 ]);
             }
         }
         
-        // 4. เพิ่มข้อมูลผู้ปกครองถ้ามี
-        if (!empty($data['parent_name'])) {
-            // เพิ่มผู้ปกครองในตาราง users
-            $parentUserSql = "INSERT INTO users (role, title, first_name, last_name, phone_number, gdpr_consent)
-                            VALUES ('parent', 'นาย/นาง/นางสาว', ?, '', ?, 1)";
-            $parentUserStmt = $conn->prepare($parentUserSql);
-            $parentUserStmt->execute([
-                $data['parent_name'],
-                $data['parent_phone'] ?? null
-            ]);
-            
-            $parentUserId = $conn->lastInsertId();
-            
-            // เพิ่มในตาราง parents
-            $parentSql = "INSERT INTO parents (user_id, relationship)
-                         VALUES (?, ?)";
-            $parentStmt = $conn->prepare($parentSql);
-            $parentStmt->execute([
-                $parentUserId,
-                $data['parent_relation'] ?? 'ผู้ปกครอง'
-            ]);
-            
-            $parentId = $conn->lastInsertId();
-            
-            // เชื่อมความสัมพันธ์กับนักเรียน
-            $relationSql = "INSERT INTO parent_student_relation (parent_id, student_id)
-                           VALUES (?, ?)";
-            $relationStmt = $conn->prepare($relationSql);
-            $relationStmt->execute([
-                $parentId,
-                $studentId
-            ]);
-        }
-        
         $conn->commit();
+        
         return [
             'success' => true,
             'message' => 'เพิ่มข้อมูลนักเรียนเรียบร้อยแล้ว',
-            'student_id' => $studentId
+            'student_id' => $student_id
         ];
     } catch (PDOException $e) {
-        $conn->rollBack();
+        if ($conn) {
+            $conn->rollBack();
+        }
+        
         error_log("Error adding student: " . $e->getMessage());
+        
         return [
             'success' => false,
-            'message' => 'เกิดข้อผิดพลาดในการเพิ่มข้อมูล: ' . $e->getMessage()
+            'message' => 'เกิดข้อผิดพลาดในการเพิ่มข้อมูลนักเรียน: ' . $e->getMessage()
         ];
     }
 }
 
-// ฟังก์ชันแก้ไขข้อมูลนักเรียน
+/**
+ * อัปเดตข้อมูลนักเรียน
+ * 
+ * @param array $data ข้อมูลนักเรียน
+ * @return array ผลลัพธ์การดำเนินการ
+ */
 function updateStudent($data) {
-    $conn = getDB();
     try {
+        $conn = getDB();
         $conn->beginTransaction();
         
-        // ดึงข้อมูล user_id ของนักเรียน
-        $getUserIdSql = "SELECT user_id FROM students WHERE student_id = ?";
-        $getUserIdStmt = $conn->prepare($getUserIdSql);
-        $getUserIdStmt->execute([$data['student_id']]);
-        $userId = $getUserIdStmt->fetchColumn();
+        // ตรวจสอบว่ามีนักเรียนคนนี้ในระบบหรือไม่
+        $checkQuery = "SELECT user_id, current_class_id FROM students WHERE student_id = ?";
+        $checkStmt = $conn->prepare($checkQuery);
+        $checkStmt->execute([$data['student_id']]);
+        $studentData = $checkStmt->fetch(PDO::FETCH_ASSOC);
         
-        if (!$userId) {
+        if (!$studentData) {
             return [
                 'success' => false,
-                'message' => 'ไม่พบข้อมูลนักเรียน'
+                'message' => 'ไม่พบข้อมูลนักเรียนในระบบ'
             ];
         }
         
-        // 1. อัปเดตข้อมูลในตาราง users
-        $userSql = "UPDATE users SET 
-                   title = ?, 
-                   first_name = ?, 
-                   last_name = ?, 
-                   phone_number = ?, 
-                   email = ?
-                   WHERE user_id = ?";
-        $userStmt = $conn->prepare($userSql);
+        // ตรวจสอบว่ามีรหัสนักเรียนซ้ำหรือไม่ (ยกเว้นนักเรียนคนนี้)
+        $dupeQuery = "SELECT student_id FROM students 
+                     WHERE student_code = ? AND student_id != ?";
+        $dupeStmt = $conn->prepare($dupeQuery);
+        $dupeStmt->execute([
+            trim($data['student_code']),
+            $data['student_id']
+        ]);
+        
+        if ($dupeStmt->rowCount() > 0) {
+            return [
+                'success' => false,
+                'message' => 'รหัสนักเรียนนี้มีอยู่ในระบบแล้ว'
+            ];
+        }
+        
+        // อัปเดตข้อมูลในตาราง users
+        $userQuery = "UPDATE users 
+                     SET title = ?, first_name = ?, last_name = ?, phone_number = ?, email = ?, updated_at = CURRENT_TIMESTAMP
+                     WHERE user_id = ?";
+        $userStmt = $conn->prepare($userQuery);
         $userStmt->execute([
             $data['title'],
             $data['firstname'],
             $data['lastname'],
-            $data['phone_number'] ?? null,
-            $data['email'] ?? null,
-            $userId
+            $data['phone_number'] ?? '',
+            $data['email'] ?? '',
+            $studentData['user_id']
         ]);
         
-        // 2. อัปเดตข้อมูลในตาราง students
-        $studentSql = "UPDATE students SET 
-                      student_code = ?, 
-                      title = ?, 
-                      current_class_id = ?, 
-                      status = ?
-                      WHERE student_id = ?";
-        $studentStmt = $conn->prepare($studentSql);
+        // อัปเดตข้อมูลในตาราง students
+        $studentQuery = "UPDATE students 
+                        SET student_code = ?, title = ?, current_class_id = ?, status = ?, updated_at = CURRENT_TIMESTAMP
+                        WHERE student_id = ?";
+        $studentStmt = $conn->prepare($studentQuery);
         $studentStmt->execute([
-            $data['student_code'],
+            trim($data['student_code']),
             $data['title'],
             $data['class_id'] ?? null,
-            $data['status'],
+            $data['status'] ?? 'กำลังศึกษา',
             $data['student_id']
         ]);
         
-        // 3. อัปเดตประวัติการศึกษาถ้ามีชั้นเรียน
-        if (!empty($data['class_id'])) {
-            // ดึง academic_year_id ปัจจุบัน
-            $acadYearSql = "SELECT academic_year_id FROM academic_years WHERE is_active = 1 LIMIT 1";
-            $acadYearStmt = $conn->prepare($acadYearSql);
-            $acadYearStmt->execute();
-            $academicYearId = $acadYearStmt->fetchColumn();
+        // ถ้ามีการเปลี่ยนชั้นเรียน
+        if (!empty($data['class_id']) && $data['class_id'] != $studentData['current_class_id']) {
+            // ดึงข้อมูล academic_year_id จากชั้นเรียนใหม่
+            $yearQuery = "SELECT academic_year_id FROM classes WHERE class_id = ?";
+            $yearStmt = $conn->prepare($yearQuery);
+            $yearStmt->execute([$data['class_id']]);
+            $academic_year_id = $yearStmt->fetchColumn();
             
-            if ($academicYearId) {
-                // ตรวจสอบว่ามีประวัติการศึกษาสำหรับปีการศึกษานี้หรือไม่
-                $checkRecordSql = "SELECT record_id FROM student_academic_records 
-                                  WHERE student_id = ? AND academic_year_id = ?";
-                $checkRecordStmt = $conn->prepare($checkRecordSql);
-                $checkRecordStmt->execute([
+            if ($academic_year_id) {
+                // ตรวจสอบว่ามีประวัติการศึกษาในปีการศึกษานี้หรือไม่
+                $recordQuery = "SELECT record_id FROM student_academic_records 
+                               WHERE student_id = ? AND academic_year_id = ?";
+                $recordStmt = $conn->prepare($recordQuery);
+                $recordStmt->execute([
                     $data['student_id'],
-                    $academicYearId
+                    $academic_year_id
                 ]);
+                $record_id = $recordStmt->fetchColumn();
                 
-                if ($checkRecordStmt->rowCount() > 0) {
-                    // อัปเดตประวัติการศึกษา
-                    $updateRecordSql = "UPDATE student_academic_records 
-                                       SET class_id = ? 
-                                       WHERE student_id = ? AND academic_year_id = ?";
-                    $updateRecordStmt = $conn->prepare($updateRecordSql);
+                if ($record_id) {
+                    // อัปเดตประวัติการศึกษาที่มีอยู่แล้ว
+                    $updateRecordQuery = "UPDATE student_academic_records 
+                                         SET class_id = ?, updated_at = CURRENT_TIMESTAMP
+                                         WHERE record_id = ?";
+                    $updateRecordStmt = $conn->prepare($updateRecordQuery);
                     $updateRecordStmt->execute([
                         $data['class_id'],
-                        $data['student_id'],
-                        $academicYearId
+                        $record_id
                     ]);
                 } else {
                     // สร้างประวัติการศึกษาใหม่
-                    $createRecordSql = "INSERT INTO student_academic_records (student_id, academic_year_id, class_id)
+                    $newRecordQuery = "INSERT INTO student_academic_records (student_id, academic_year_id, class_id)
                                       VALUES (?, ?, ?)";
-                    $createRecordStmt = $conn->prepare($createRecordSql);
-                    $createRecordStmt->execute([
+                    $newRecordStmt = $conn->prepare($newRecordQuery);
+                    $newRecordStmt->execute([
                         $data['student_id'],
-                        $academicYearId,
+                        $academic_year_id,
                         $data['class_id']
                     ]);
                 }
@@ -373,289 +404,365 @@ function updateStudent($data) {
         }
         
         $conn->commit();
+        
         return [
             'success' => true,
-            'message' => 'แก้ไขข้อมูลนักเรียนเรียบร้อยแล้ว'
+            'message' => 'อัปเดตข้อมูลนักเรียนเรียบร้อยแล้ว'
         ];
     } catch (PDOException $e) {
-        $conn->rollBack();
+        if ($conn) {
+            $conn->rollBack();
+        }
+        
         error_log("Error updating student: " . $e->getMessage());
+        
         return [
             'success' => false,
-            'message' => 'เกิดข้อผิดพลาดในการแก้ไขข้อมูล: ' . $e->getMessage()
+            'message' => 'เกิดข้อผิดพลาดในการอัปเดตข้อมูลนักเรียน: ' . $e->getMessage()
         ];
     }
 }
 
-// ฟังก์ชันลบข้อมูลนักเรียน
+/**
+ * ลบข้อมูลนักเรียน
+ * 
+ * @param int $student_id รหัสนักเรียน
+ * @return array ผลลัพธ์การดำเนินการ
+ */
 function deleteStudent($student_id) {
-    $conn = getDB();
     try {
+        $conn = getDB();
         $conn->beginTransaction();
         
-        // ดึงข้อมูล user_id ของนักเรียน
-        $getUserIdSql = "SELECT user_id FROM students WHERE student_id = ?";
-        $getUserIdStmt = $conn->prepare($getUserIdSql);
-        $getUserIdStmt->execute([$student_id]);
-        $userId = $getUserIdStmt->fetchColumn();
+        // ตรวจสอบว่ามีนักเรียนคนนี้ในระบบหรือไม่
+        $checkQuery = "SELECT user_id FROM students WHERE student_id = ?";
+        $checkStmt = $conn->prepare($checkQuery);
+        $checkStmt->execute([$student_id]);
+        $user_id = $checkStmt->fetchColumn();
         
-        if (!$userId) {
+        if (!$user_id) {
             return [
                 'success' => false,
-                'message' => 'ไม่พบข้อมูลนักเรียน'
+                'message' => 'ไม่พบข้อมูลนักเรียนในระบบ'
             ];
         }
         
-        // 1. ลบข้อมูลความสัมพันธ์กับผู้ปกครอง
-        $deleteRelationSql = "DELETE FROM parent_student_relation WHERE student_id = ?";
-        $deleteRelationStmt = $conn->prepare($deleteRelationSql);
-        $deleteRelationStmt->execute([$student_id]);
+        // ลบข้อมูลในตารางที่เกี่ยวข้อง
+        $tables = [
+            'student_academic_records',
+            'attendance',
+            'risk_students',
+            'qr_codes',
+            'parent_student_relation',
+            'class_history',
+            'notifications'
+        ];
         
-        // 2. ลบประวัติการศึกษา
-        $deleteRecordSql = "DELETE FROM student_academic_records WHERE student_id = ?";
-        $deleteRecordStmt = $conn->prepare($deleteRecordSql);
-        $deleteRecordStmt->execute([$student_id]);
+        foreach ($tables as $table) {
+            $deleteQuery = "DELETE FROM $table WHERE student_id = ?";
+            $deleteStmt = $conn->prepare($deleteQuery);
+            $deleteStmt->execute([$student_id]);
+        }
         
-        // 3. ลบประวัติการเข้าแถว
-        $deleteAttendanceSql = "DELETE FROM attendance WHERE student_id = ?";
-        $deleteAttendanceStmt = $conn->prepare($deleteAttendanceSql);
-        $deleteAttendanceStmt->execute([$student_id]);
+        // ลบข้อมูลในตาราง students
+        $studentQuery = "DELETE FROM students WHERE student_id = ?";
+        $studentStmt = $conn->prepare($studentQuery);
+        $studentStmt->execute([$student_id]);
         
-        // 4. ลบข้อมูลความเสี่ยง
-        $deleteRiskSql = "DELETE FROM risk_students WHERE student_id = ?";
-        $deleteRiskStmt = $conn->prepare($deleteRiskSql);
-        $deleteRiskStmt->execute([$student_id]);
-        
-        // 5. ลบข้อมูลการเลื่อนชั้น
-        $deleteHistorySql = "DELETE FROM class_history WHERE student_id = ?";
-        $deleteHistoryStmt = $conn->prepare($deleteHistorySql);
-        $deleteHistoryStmt->execute([$student_id]);
-        
-        // 6. ลบข้อมูลนักเรียน
-        $deleteStudentSql = "DELETE FROM students WHERE student_id = ?";
-        $deleteStudentStmt = $conn->prepare($deleteStudentSql);
-        $deleteStudentStmt->execute([$student_id]);
-        
-        // 7. ลบข้อมูลผู้ใช้
-        $deleteUserSql = "DELETE FROM users WHERE user_id = ?";
-        $deleteUserStmt = $conn->prepare($deleteUserSql);
-        $deleteUserStmt->execute([$userId]);
+        // ลบข้อมูลในตาราง users
+        $userQuery = "DELETE FROM users WHERE user_id = ?";
+        $userStmt = $conn->prepare($userQuery);
+        $userStmt->execute([$user_id]);
         
         $conn->commit();
+        
         return [
             'success' => true,
             'message' => 'ลบข้อมูลนักเรียนเรียบร้อยแล้ว'
         ];
     } catch (PDOException $e) {
-        $conn->rollBack();
+        if ($conn) {
+            $conn->rollBack();
+        }
+        
         error_log("Error deleting student: " . $e->getMessage());
+        
         return [
             'success' => false,
-            'message' => 'เกิดข้อผิดพลาดในการลบข้อมูล: ' . $e->getMessage()
+            'message' => 'เกิดข้อผิดพลาดในการลบข้อมูลนักเรียน: ' . $e->getMessage()
         ];
     }
 }
 
-// ฟังก์ชันนำเข้าข้อมูลนักเรียนจากไฟล์ Excel
+/**
+ * นำเข้าข้อมูลนักเรียนจากไฟล์ Excel
+ * 
+ * @param array $file ข้อมูลไฟล์ที่อัปโหลด
+ * @param array $options ตัวเลือกการนำเข้า
+ * @return array ผลลัพธ์การดำเนินการ
+ */
 function importStudentsFromExcel($file, $options = []) {
-    $conn = getDB();
     try {
         // ตรวจสอบไฟล์
-        if ($file['error'] !== UPLOAD_ERR_OK) {
+        if (!$file || $file['error'] !== UPLOAD_ERR_OK) {
             return [
                 'success' => false,
-                'message' => 'เกิดข้อผิดพลาดในการอัปโหลดไฟล์'
+                'message' => 'ไม่มีไฟล์หรือเกิดข้อผิดพลาดในการอัปโหลดไฟล์'
             ];
         }
         
         // ตรวจสอบนามสกุลไฟล์
-        $fileExt = pathinfo($file['name'], PATHINFO_EXTENSION);
-        if (!in_array($fileExt, ['xlsx', 'xls'])) {
+        $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+        if (!in_array($ext, ['xlsx', 'xls', 'csv'])) {
             return [
                 'success' => false,
-                'message' => 'รองรับเฉพาะไฟล์ Excel (.xlsx, .xls) เท่านั้น'
+                'message' => 'รองรับเฉพาะไฟล์ Excel (.xlsx, .xls) หรือ CSV เท่านั้น'
             ];
         }
         
-        // ในทางปฏิบัติจริง ต้องใช้ไลบรารี เช่น PhpSpreadsheet หรือ PHPExcel
-        require 'vendor/autoload.php';
+        // อ่านข้อมูลจากไฟล์ Excel
+        require_once 'vendor/autoload.php'; // PhpSpreadsheet
         
-        // อ่านไฟล์ Excel
-        $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($file['tmp_name']);
+        $reader = \PhpOffice\PhpSpreadsheet\IOFactory::createReaderForFile($file['tmp_name']);
+        $spreadsheet = $reader->load($file['tmp_name']);
         $worksheet = $spreadsheet->getActiveSheet();
         $rows = $worksheet->toArray();
         
-        // ข้ามแถวแรกถ้าเป็นหัวตาราง
-        if ($options['skip_header'] ?? true) {
-            array_shift($rows);
-        }
+        // ข้ามแถวแรก (หัวตาราง) ถ้าเลือกตัวเลือก skip_header
+        $startRow = ($options['skip_header']) ? 1 : 0;
         
-        $conn->beginTransaction();
+        // กำหนดชั้นเรียนสำหรับนักเรียนที่นำเข้า
+        $class_id = $options['import_class_id'] ?? null;
         
-        $success = 0;
-        $failed = 0;
+        // สร้างการเชื่อมต่อฐานข้อมูล
+        $conn = getDB();
+        
+        // ตัวแปรสำหรับนับจำนวนการนำเข้า
+        $imported = 0;
         $updated = 0;
+        $skipped = 0;
         
-        // ดึง academic_year_id ปัจจุบัน
-        $acadYearSql = "SELECT academic_year_id FROM academic_years WHERE is_active = 1 LIMIT 1";
-        $acadYearStmt = $conn->prepare($acadYearSql);
-        $acadYearStmt->execute();
-        $academicYearId = $acadYearStmt->fetchColumn();
-        
-        foreach ($rows as $row) {
+        // วนลูปแต่ละแถวในไฟล์
+        for ($i = $startRow; $i < count($rows); $i++) {
+            $row = $rows[$i];
+            
             // ตรวจสอบข้อมูลที่จำเป็น
             if (empty($row[0]) || empty($row[1]) || empty($row[2]) || empty($row[3])) {
-                $failed++;
+                $skipped++;
                 continue;
             }
             
-            $student_code = $row[0];
-            $title = $row[1];
-            $firstname = $row[2];
-            $lastname = $row[3];
-            $level = $row[4] ?? null;
-            $room = $row[5] ?? null;
-            $advisor = $row[6] ?? null;
+            $student_code = trim($row[0]);
+            $title = trim($row[1]);
+            $firstname = trim($row[2]);
+            $lastname = trim($row[3]);
+            $phone = isset($row[4]) ? trim($row[4]) : '';
+            $email = isset($row[5]) ? trim($row[5]) : '';
+            $level = isset($row[6]) ? trim($row[6]) : '';
+            $group = isset($row[7]) ? trim($row[7]) : '';
+            $department = isset($row[8]) ? trim($row[8]) : '';
+            $status = isset($row[9]) ? trim($row[9]) : 'กำลังศึกษา';
             
             // ตรวจสอบว่ามีนักเรียนคนนี้ในระบบหรือไม่
-            $checkSql = "SELECT s.student_id, s.user_id 
-                        FROM students s 
-                        WHERE s.student_code = ?";
-            $checkStmt = $conn->prepare($checkSql);
+            $checkQuery = "SELECT s.student_id, s.user_id FROM students s WHERE s.student_code = ?";
+            $checkStmt = $conn->prepare($checkQuery);
             $checkStmt->execute([$student_code]);
-            $existingStudent = $checkStmt->fetch(PDO::FETCH_ASSOC);
+            $checkResult = $checkStmt->fetch(PDO::FETCH_ASSOC);
             
-            // ถ้ามีชั้นเรียน ให้หา class_id
-            $class_id = null;
-            if (!empty($level) && !empty($room)) {
-                $classSql = "SELECT c.class_id 
-                            FROM classes c 
-                            JOIN departments d ON c.department_id = d.department_id
-                            WHERE c.level = ? AND c.group_number = ? AND c.academic_year_id = ?
-                            LIMIT 1";
-                $classStmt = $conn->prepare($classSql);
-                $classStmt->execute([$level, $room, $academicYearId]);
-                $class_id = $classStmt->fetchColumn();
-            }
-            
-            if ($existingStudent) {
-                // ถ้าเลือกอัปเดตข้อมูลที่มีอยู่
-                if ($options['update_existing'] ?? true) {
-                    // อัปเดตข้อมูลผู้ใช้
-                    $updateUserSql = "UPDATE users 
-                                    SET title = ?, first_name = ?, last_name = ? 
-                                    WHERE user_id = ?";
-                    $updateUserStmt = $conn->prepare($updateUserSql);
-                    $updateUserStmt->execute([
-                        $title,
-                        $firstname,
-                        $lastname,
-                        $existingStudent['user_id']
-                    ]);
-                    
-                    // อัปเดตข้อมูลนักเรียน
-                    $updateStudentSql = "UPDATE students 
-                                        SET title = ?, current_class_id = ? 
-                                        WHERE student_id = ?";
-                    $updateStudentStmt = $conn->prepare($updateStudentSql);
-                    $updateStudentStmt->execute([
-                        $title,
-                        $class_id,
-                        $existingStudent['student_id']
-                    ]);
-                    
-                    // อัปเดตหรือสร้างประวัติการศึกษา
-                    if ($class_id && $academicYearId) {
-                        $checkRecordSql = "SELECT record_id 
-                                          FROM student_academic_records 
-                                          WHERE student_id = ? AND academic_year_id = ?";
-                        $checkRecordStmt = $conn->prepare($checkRecordSql);
-                        $checkRecordStmt->execute([
-                            $existingStudent['student_id'],
-                            $academicYearId
-                        ]);
-                        
-                        if ($checkRecordStmt->rowCount() > 0) {
-                            $updateRecordSql = "UPDATE student_academic_records 
-                                              SET class_id = ? 
-                                              WHERE student_id = ? AND academic_year_id = ?";
-                            $updateRecordStmt = $conn->prepare($updateRecordSql);
-                            $updateRecordStmt->execute([
-                                $class_id,
-                                $existingStudent['student_id'],
-                                $academicYearId
-                            ]);
-                        } else {
-                            $insertRecordSql = "INSERT INTO student_academic_records 
-                                              (student_id, academic_year_id, class_id) 
-                                              VALUES (?, ?, ?)";
-                            $insertRecordStmt = $conn->prepare($insertRecordSql);
-                            $insertRecordStmt->execute([
-                                $existingStudent['student_id'],
-                                $academicYearId,
-                                $class_id
-                            ]);
-                        }
-                    }
-                    
-                    $updated++;
-                } else {
-                    $failed++;
-                }
-            } else {
-                // เพิ่มข้อมูลใหม่
-                // 1. เพิ่มข้อมูลในตาราง users ก่อน
-                $userSql = "INSERT INTO users (role, title, first_name, last_name, gdpr_consent)
-                           VALUES ('student', ?, ?, ?, 1)";
-                $userStmt = $conn->prepare($userSql);
+            if ($checkResult && $options['update_existing']) {
+                // อัปเดตข้อมูลนักเรียนที่มีอยู่แล้ว
+                $student_id = $checkResult['student_id'];
+                $user_id = $checkResult['user_id'];
+                
+                // อัปเดตข้อมูลในตาราง users
+                $userQuery = "UPDATE users 
+                             SET title = ?, first_name = ?, last_name = ?, phone_number = ?, email = ?, updated_at = CURRENT_TIMESTAMP
+                             WHERE user_id = ?";
+                $userStmt = $conn->prepare($userQuery);
                 $userStmt->execute([
                     $title,
                     $firstname,
-                    $lastname
+                    $lastname,
+                    $phone,
+                    $email,
+                    $user_id
                 ]);
                 
-                $userId = $conn->lastInsertId();
-                
-                // 2. เพิ่มข้อมูลในตาราง students
-                $studentSql = "INSERT INTO students (user_id, student_code, title, current_class_id, status)
-                              VALUES (?, ?, ?, ?, 'กำลังศึกษา')";
-                $studentStmt = $conn->prepare($studentSql);
+                // อัปเดตข้อมูลในตาราง students
+                $studentQuery = "UPDATE students 
+                                SET title = ?, status = ?, updated_at = CURRENT_TIMESTAMP
+                                WHERE student_id = ?";
+                $studentStmt = $conn->prepare($studentQuery);
                 $studentStmt->execute([
-                    $userId,
-                    $student_code,
                     $title,
-                    $class_id
+                    $status,
+                    $student_id
                 ]);
                 
-                $studentId = $conn->lastInsertId();
-                
-                // 3. สร้างประวัติการศึกษาถ้ามีชั้นเรียน
-                if ($class_id && $academicYearId) {
-                    $recordSql = "INSERT INTO student_academic_records (student_id, academic_year_id, class_id)
-                                 VALUES (?, ?, ?)";
-                    $recordStmt = $conn->prepare($recordSql);
-                    $recordStmt->execute([
-                        $studentId,
-                        $academicYearId,
-                        $class_id
-                    ]);
+                // อัปเดตชั้นเรียนถ้ามีการระบุ
+                if ($class_id) {
+                    $updateClassQuery = "UPDATE students SET current_class_id = ? WHERE student_id = ?";
+                    $updateClassStmt = $conn->prepare($updateClassQuery);
+                    $updateClassStmt->execute([$class_id, $student_id]);
+                    
+                    // ตรวจสอบประวัติการศึกษา
+                    $yearQuery = "SELECT academic_year_id FROM classes WHERE class_id = ?";
+                    $yearStmt = $conn->prepare($yearQuery);
+                    $yearStmt->execute([$class_id]);
+                    $academic_year_id = $yearStmt->fetchColumn();
+                    
+                    if ($academic_year_id) {
+                        $recordQuery = "SELECT record_id FROM student_academic_records 
+                                       WHERE student_id = ? AND academic_year_id = ?";
+                        $recordStmt = $conn->prepare($recordQuery);
+                        $recordStmt->execute([$student_id, $academic_year_id]);
+                        $record_id = $recordStmt->fetchColumn();
+                        
+                        if ($record_id) {
+                            // อัปเดตประวัติการศึกษา
+                            $updateRecordQuery = "UPDATE student_academic_records 
+                                                 SET class_id = ?, updated_at = CURRENT_TIMESTAMP
+                                                 WHERE record_id = ?";
+                            $updateRecordStmt = $conn->prepare($updateRecordQuery);
+                            $updateRecordStmt->execute([$class_id, $record_id]);
+                        } else {
+                            // สร้างประวัติการศึกษาใหม่
+                            $newRecordQuery = "INSERT INTO student_academic_records (student_id, academic_year_id, class_id)
+                                              VALUES (?, ?, ?)";
+                            $newRecordStmt = $conn->prepare($newRecordQuery);
+                            $newRecordStmt->execute([$student_id, $academic_year_id, $class_id]);
+                        }
+                    }
+                } else if ($level && $group && $department) {
+                    // ค้นหาชั้นเรียนตามระดับ กลุ่ม และแผนก
+                    $findClassQuery = "SELECT c.class_id FROM classes c 
+                                      JOIN departments d ON c.department_id = d.department_id
+                                      JOIN academic_years ay ON c.academic_year_id = ay.academic_year_id
+                                      WHERE c.level = ? AND c.group_number = ? AND d.department_name = ? AND ay.is_active = 1";
+                    $findClassStmt = $conn->prepare($findClassQuery);
+                    $findClassStmt->execute([$level, $group, $department]);
+                    $foundClass = $findClassStmt->fetchColumn();
+                    
+                    if ($foundClass) {
+                        // อัปเดตชั้นเรียน
+                        $updateClassQuery = "UPDATE students SET current_class_id = ? WHERE student_id = ?";
+                        $updateClassStmt = $conn->prepare($updateClassQuery);
+                        $updateClassStmt->execute([$foundClass, $student_id]);
+                        
+                        // ตรวจสอบประวัติการศึกษา
+                        $yearQuery = "SELECT academic_year_id FROM classes WHERE class_id = ?";
+                        $yearStmt = $conn->prepare($yearQuery);
+                        $yearStmt->execute([$foundClass]);
+                        $academic_year_id = $yearStmt->fetchColumn();
+                        
+                        if ($academic_year_id) {
+                            $recordQuery = "SELECT record_id FROM student_academic_records 
+                                           WHERE student_id = ? AND academic_year_id = ?";
+                            $recordStmt = $conn->prepare($recordQuery);
+                            $recordStmt->execute([$student_id, $academic_year_id]);
+                            $record_id = $recordStmt->fetchColumn();
+                            
+                            if ($record_id) {
+                                // อัปเดตประวัติการศึกษา
+                                $updateRecordQuery = "UPDATE student_academic_records 
+                                                     SET class_id = ?, updated_at = CURRENT_TIMESTAMP
+                                                     WHERE record_id = ?";
+                                $updateRecordStmt = $conn->prepare($updateRecordQuery);
+                                $updateRecordStmt->execute([$foundClass, $record_id]);
+                            } else {
+                                // สร้างประวัติการศึกษาใหม่
+                                $newRecordQuery = "INSERT INTO student_academic_records (student_id, academic_year_id, class_id)
+                                                  VALUES (?, ?, ?)";
+                                $newRecordStmt = $conn->prepare($newRecordQuery);
+                                $newRecordStmt->execute([$student_id, $academic_year_id, $foundClass]);
+                            }
+                        }
+                    }
                 }
                 
-                $success++;
+                $updated++;
+            } else if (!$checkResult) {
+                // สร้างข้อมูลนักเรียนใหม่
+                $conn->beginTransaction();
+                
+                // สร้างข้อมูลในตาราง users
+                $userQuery = "INSERT INTO users (line_id, role, title, first_name, last_name, phone_number, email, gdpr_consent)
+                             VALUES ('', 'student', ?, ?, ?, ?, ?, 1)";
+                $userStmt = $conn->prepare($userQuery);
+                $userStmt->execute([
+                    $title,
+                    $firstname,
+                    $lastname,
+                    $phone,
+                    $email
+                ]);
+                
+                $user_id = $conn->lastInsertId();
+                
+                // กำหนดชั้นเรียน
+                $current_class_id = null;
+                
+                // ถ้ามีการระบุชั้นเรียนโดยตรง
+                if ($class_id) {
+                    $current_class_id = $class_id;
+                } else if ($level && $group && $department) {
+                    // ค้นหาชั้นเรียนตามระดับ กลุ่ม และแผนก
+                    $findClassQuery = "SELECT c.class_id FROM classes c 
+                                      JOIN departments d ON c.department_id = d.department_id
+                                      JOIN academic_years ay ON c.academic_year_id = ay.academic_year_id
+                                      WHERE c.level = ? AND c.group_number = ? AND d.department_name = ? AND ay.is_active = 1";
+                    $findClassStmt = $conn->prepare($findClassQuery);
+                    $findClassStmt->execute([$level, $group, $department]);
+                    $current_class_id = $findClassStmt->fetchColumn();
+                }
+                
+                // สร้างข้อมูลในตาราง students
+                $studentQuery = "INSERT INTO students (user_id, student_code, title, current_class_id, status)
+                                VALUES (?, ?, ?, ?, ?)";
+                $studentStmt = $conn->prepare($studentQuery);
+                $studentStmt->execute([
+                    $user_id,
+                    $student_code,
+                    $title,
+                    $current_class_id,
+                    $status
+                ]);
+                
+                $student_id = $conn->lastInsertId();
+                
+                // สร้างประวัติการศึกษาถ้ามีชั้นเรียน
+                if ($current_class_id) {
+                    $yearQuery = "SELECT academic_year_id FROM classes WHERE class_id = ?";
+                    $yearStmt = $conn->prepare($yearQuery);
+                    $yearStmt->execute([$current_class_id]);
+                    $academic_year_id = $yearStmt->fetchColumn();
+                    
+                    if ($academic_year_id) {
+                        $recordQuery = "INSERT INTO student_academic_records (student_id, academic_year_id, class_id)
+                                       VALUES (?, ?, ?)";
+                        $recordStmt = $conn->prepare($recordQuery);
+                        $recordStmt->execute([$student_id, $academic_year_id, $current_class_id]);
+                    }
+                }
+                
+                $conn->commit();
+                $imported++;
+            } else {
+                // ข้ามรายการถ้าไม่อัปเดตข้อมูลที่มีอยู่แล้ว
+                $skipped++;
             }
         }
         
-        $conn->commit();
-        
         return [
             'success' => true,
-            'message' => "นำเข้าข้อมูลสำเร็จ: เพิ่มใหม่ $success รายการ, อัปเดต $updated รายการ, ไม่สำเร็จ $failed รายการ"
+            'message' => "นำเข้าข้อมูลสำเร็จ: เพิ่มใหม่ $imported รายการ, อัปเดต $updated รายการ, ข้าม $skipped รายการ",
+            'imported' => $imported,
+            'updated' => $updated,
+            'skipped' => $skipped
         ];
     } catch (Exception $e) {
-        if (isset($conn) && $conn->inTransaction()) {
-            $conn->rollBack();
-        }
         error_log("Error importing students: " . $e->getMessage());
+        
         return [
             'success' => false,
             'message' => 'เกิดข้อผิดพลาดในการนำเข้าข้อมูล: ' . $e->getMessage()
@@ -663,44 +770,50 @@ function importStudentsFromExcel($file, $options = []) {
     }
 }
 
-// ฟังก์ชันดึงสถิติจำนวนนักเรียน
+/**
+ * ดึงข้อมูลสถิตินักเรียน
+ * 
+ * @return array ข้อมูลสถิติ
+ */
 function getStudentStatistics() {
-    $conn = getDB();
     try {
+        $conn = getDB();
+        
         // ดึงจำนวนนักเรียนทั้งหมด
-        $totalSql = "SELECT COUNT(*) FROM students WHERE status = 'กำลังศึกษา'";
-        $totalStmt = $conn->prepare($totalSql);
-        $totalStmt->execute();
-        $total = $totalStmt->fetchColumn();
+        $totalQuery = "SELECT COUNT(*) as total FROM students WHERE status = 'กำลังศึกษา'";
+        $totalStmt = $conn->query($totalQuery);
+        $total = $totalStmt->fetch(PDO::FETCH_ASSOC)['total'];
         
         // ดึงจำนวนนักเรียนชาย
-        $maleSql = "SELECT COUNT(*) 
-                   FROM students s 
-                   JOIN users u ON s.user_id = u.user_id 
-                   WHERE s.status = 'กำลังศึกษา' AND u.title IN ('นาย', 'เด็กชาย')";
-        $maleStmt = $conn->prepare($maleSql);
-        $maleStmt->execute();
-        $male = $maleStmt->fetchColumn();
+        $maleQuery = "SELECT COUNT(*) as male 
+                     FROM students s 
+                     JOIN users u ON s.user_id = u.user_id 
+                     WHERE s.status = 'กำลังศึกษา' AND u.title IN ('นาย', 'เด็กชาย')";
+        $maleStmt = $conn->query($maleQuery);
+        $male = $maleStmt->fetch(PDO::FETCH_ASSOC)['male'];
         
-        // คำนวณจำนวนนักเรียนหญิง
-        $female = $total - $male;
+        // ดึงจำนวนนักเรียนหญิง
+        $femaleQuery = "SELECT COUNT(*) as female 
+                       FROM students s 
+                       JOIN users u ON s.user_id = u.user_id 
+                       WHERE s.status = 'กำลังศึกษา' AND u.title IN ('นางสาว', 'เด็กหญิง', 'นาง')";
+        $femaleStmt = $conn->query($femaleQuery);
+        $female = $femaleStmt->fetch(PDO::FETCH_ASSOC)['female'];
         
         // ดึงจำนวนนักเรียนที่เสี่ยงตกกิจกรรม
-        $riskSql = "SELECT COUNT(*) 
-                   FROM risk_students
-                   WHERE risk_level IN ('high', 'critical')";
-        $riskStmt = $conn->prepare($riskSql);
-        $riskStmt->execute();
-        $risk = $riskStmt->fetchColumn();
+        $riskQuery = "SELECT COUNT(*) as risk FROM risk_students WHERE risk_level IN ('high', 'critical')";
+        $riskStmt = $conn->query($riskQuery);
+        $risk = $riskStmt->fetch(PDO::FETCH_ASSOC)['risk'];
         
         return [
-            'total' => $total,
-            'male' => $male,
-            'female' => $female,
-            'risk' => $risk
+            'total' => (int)$total,
+            'male' => (int)$male,
+            'female' => (int)$female,
+            'risk' => (int)$risk
         ];
     } catch (PDOException $e) {
         error_log("Error getting student statistics: " . $e->getMessage());
+        
         return [
             'total' => 0,
             'male' => 0,
@@ -710,37 +823,54 @@ function getStudentStatistics() {
     }
 }
 
-// ฟังก์ชันดึงข้อมูลชั้นเรียนทั้งหมด
+/**
+ * ดึงข้อมูลชั้นเรียนทั้งหมด
+ * 
+ * @return array ข้อมูลชั้นเรียน
+ */
 function getAllClasses() {
-    $conn = getDB();
     try {
-        $sql = "SELECT c.class_id, c.level, c.group_number, d.department_name 
-               FROM classes c 
-               JOIN departments d ON c.department_id = d.department_id 
-               JOIN academic_years a ON c.academic_year_id = a.academic_year_id 
-               WHERE a.is_active = 1 
-               ORDER BY c.level, c.group_number";
-        $stmt = $conn->prepare($sql);
-        $stmt->execute();
+        $conn = getDB();
+        
+        $query = "SELECT c.class_id, c.level, c.group_number, d.department_name, d.department_id
+                 FROM classes c
+                 JOIN departments d ON c.department_id = d.department_id
+                 JOIN academic_years ay ON c.academic_year_id = ay.academic_year_id
+                 WHERE ay.is_active = 1
+                 ORDER BY c.level, c.group_number";
+        
+        $stmt = $conn->query($query);
+        
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     } catch (PDOException $e) {
         error_log("Error getting classes: " . $e->getMessage());
+        
         return [];
     }
 }
 
-// ฟังก์ชันดึงข้อมูลครูที่ปรึกษาทั้งหมด
+/**
+ * ดึงข้อมูลครูที่ปรึกษาทั้งหมด
+ * 
+ * @return array ข้อมูลครูที่ปรึกษา
+ */
 function getAllAdvisors() {
-    $conn = getDB();
     try {
-        $sql = "SELECT t.teacher_id, CONCAT(t.title, ' ', t.first_name, ' ', t.last_name) as name 
-               FROM teachers t 
-               ORDER BY t.first_name, t.last_name";
-        $stmt = $conn->prepare($sql);
-        $stmt->execute();
+        $conn = getDB();
+        
+        $query = "SELECT t.teacher_id, t.title, t.first_name, t.last_name, 
+                 d.department_name, d.department_id
+                 FROM teachers t
+                 LEFT JOIN departments d ON t.department_id = d.department_id
+                 ORDER BY t.first_name, t.last_name";
+        
+        $stmt = $conn->query($query);
+        
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     } catch (PDOException $e) {
         error_log("Error getting advisors: " . $e->getMessage());
+        
         return [];
     }
 }
+?>
