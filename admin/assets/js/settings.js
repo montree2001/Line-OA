@@ -995,7 +995,7 @@ function saveSettings() {
     showLoadingIndicator();
     
     // ส่งข้อมูลไปบันทึกที่เซิร์ฟเวอร์
-    fetch('api/settings.php', {
+    fetch('/api/settings.php', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -1028,7 +1028,7 @@ function backupDatabase() {
     showLoadingIndicator();
     
     // ส่งคำขอสำรองข้อมูลไปยังเซิร์ฟเวอร์
-    fetch('api/backup.php', {
+    fetch('/api/backup.php', {
         method: 'POST',
     })
     .then(response => response.json())
@@ -1041,6 +1041,232 @@ function backupDatabase() {
             }
         } else {
             showErrorMessage(result.message || 'เกิดข้อผิดพลาดในการสำรองข้อมูล');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showErrorMessage('เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่อีกครั้ง');
+    })
+    .finally(() => {
+        hideLoadingIndicator();
+    });
+}
+
+/**
+ * กู้คืนฐานข้อมูล
+ */
+function restoreDatabase(formData) {
+    // แสดง loading
+    showLoadingIndicator();
+    
+    // ส่งไฟล์สำรองข้อมูลไปยังเซิร์ฟเวอร์เพื่อกู้คืน
+    fetch('/api/restore.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            showSuccessMessage('กู้คืนข้อมูลเรียบร้อยแล้ว จะรีเฟรชหน้าในอีก 3 วินาที...');
+            // รีเฟรชหน้าหลังจากกู้คืนเสร็จ
+            setTimeout(function() {
+                window.location.reload();
+            }, 3000);
+        } else {
+            showErrorMessage(result.message || 'เกิดข้อผิดพลาดในการกู้คืนข้อมูล');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showErrorMessage('เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่อีกครั้ง');
+    })
+    .finally(() => {
+        hideLoadingIndicator();
+    });
+}
+
+/**
+ * ส่ง SMS ทดสอบ
+ */
+function sendTestSms() {
+    const phoneNumber = document.getElementById('test_phone_number').value;
+    const message = document.getElementById('test_sms_message').value;
+    
+    if (!phoneNumber) {
+        showErrorMessage('กรุณาระบุเบอร์โทรศัพท์ทดสอบ');
+        return;
+    }
+    
+    if (!message) {
+        showErrorMessage('กรุณาระบุข้อความทดสอบ');
+        return;
+    }
+    
+    // แสดง loading
+    showLoadingIndicator();
+    
+    // ส่งข้อมูลไปทดสอบที่เซิร์ฟเวอร์
+    fetch('/api/test-sms.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            phone_number: phoneNumber,
+            message: message,
+            provider: document.getElementById('sms_provider').value,
+            api_key: document.getElementById('sms_api_key').value,
+            api_secret: document.getElementById('sms_api_secret').value,
+            api_url: document.getElementById('sms_api_url').value,
+            sender_id: document.getElementById('sms_sender_id').value,
+            use_unicode: document.getElementById('sms_use_unicode').checked
+        })
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            showSuccessMessage('ส่ง SMS ทดสอบเรียบร้อยแล้ว');
+        } else {
+            showErrorMessage(result.message || 'เกิดข้อผิดพลาดในการส่ง SMS');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showErrorMessage('เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่อีกครั้ง');
+    })
+    .finally(() => {
+        hideLoadingIndicator();
+    });
+}
+
+/**
+ * อัปเดตการตั้งค่า LIFF
+ */
+function updateLiffSettings() {
+    const liffId = document.getElementById('liff_id').value;
+    const liffType = document.getElementById('liff_type').value;
+    const liffUrl = document.getElementById('liff_url').value;
+    
+    if (!liffId) {
+        showErrorMessage('กรุณาระบุ LIFF ID');
+        return;
+    }
+    
+    if (!liffUrl) {
+        showErrorMessage('กรุณาระบุ LIFF URL');
+        return;
+    }
+    
+    // แสดง loading
+    showLoadingIndicator();
+    
+    // ส่งข้อมูลไปอัปเดตที่เซิร์ฟเวอร์
+    fetch('/api/update-liff.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            liff_id: liffId,
+            liff_type: liffType,
+            liff_url: liffUrl
+        })
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            showSuccessMessage('อัปเดตการตั้งค่า LIFF เรียบร้อยแล้ว');
+        } else {
+            showErrorMessage(result.message || 'เกิดข้อผิดพลาดในการอัปเดตการตั้งค่า LIFF');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showErrorMessage('เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่อีกครั้ง');
+    })
+    .finally(() => {
+        hideLoadingIndicator();
+    });
+}
+
+/**
+ * อัปเดตการตั้งค่า Rich Menu
+ */
+function updateRichMenuSettings() {
+    // รวบรวมข้อมูล Rich Menu
+    const richMenuData = {
+        parent: {
+            name: document.getElementById('parent_rich_menu_name').value,
+            id: document.getElementById('parent_rich_menu_id').value
+        },
+        student: {
+            name: document.getElementById('student_rich_menu_name').value,
+            id: document.getElementById('student_rich_menu_id').value
+        },
+        teacher: {
+            name: document.getElementById('teacher_rich_menu_name').value,
+            id: document.getElementById('teacher_rich_menu_id').value
+        },
+        enable: document.getElementById('enable_rich_menu').checked
+    };
+    
+    // แสดง loading
+    showLoadingIndicator();
+    
+    // ส่งข้อมูลไปอัปเดตที่เซิร์ฟเวอร์
+    fetch('/api/update-rich-menu.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(richMenuData)
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            showSuccessMessage('อัปเดต Rich Menu เรียบร้อยแล้ว');
+        } else {
+            showErrorMessage(result.message || 'เกิดข้อผิดพลาดในการอัปเดต Rich Menu');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showErrorMessage('เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่อีกครั้ง');
+    })
+    .finally(() => {
+        hideLoadingIndicator();
+    });
+}
+
+/**
+ * บันทึกปีการศึกษาใหม่
+ */
+function saveAcademicYear(year, semester, startDate, endDate, isActive) {
+    // แสดง loading
+    showLoadingIndicator();
+    
+    // ส่งข้อมูลไปบันทึกที่เซิร์ฟเวอร์
+    fetch('/api/academic-years.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            year: year,
+            semester: semester,
+            start_date: startDate,
+            end_date: endDate,
+            is_active: isActive
+        })
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            showSuccessMessage('เพิ่มปีการศึกษาใหม่เรียบร้อยแล้ว');
+            // อัปเดตตัวเลือกในรายการเลือกปีการศึกษา
+            updateAcademicYearOptions(year, semester, isActive);
+        } else {
+            showErrorMessage(result.message || 'เกิดข้อผิดพลาดในการเพิ่มปีการศึกษา');
         }
     })
     .catch(error => {
