@@ -2,18 +2,11 @@
 session_start();
 require_once 'config/db_config.php';
 require_once 'lib/line_api.php';
+require_once 'config_manager.php'; // เพิ่มไฟล์ ConfigManager
 
-// กำหนดค่า LINE Login
-$client_id = '2007088707'; // แก้เป็น Client ID จริงของคุณ
-$client_secret = 'ebd6dffa14e54908a835c59c3bd3a7cf'; // แก้เป็น Client Secret จริงของคุณ
-<<<<<<< HEAD
-$redirect_uri = 'https://5dc7-202-29-240-27.ngrok-free.app/line-OA/callback.php';
-=======
-$redirect_uri = 'https://8daa-202-29-240-27.ngrok-free.app/line-oa/callback.php';
->>>>>>> f8bbd0aeb63ef4c6f9922ff6b667ef36e78c81ab
-
-// สร้างอ็อบเจ็กต์ LINE API
-$line_api = new LineAPI($client_id, $client_secret, $redirect_uri);
+// ดึงการตั้งค่า LINE จากฐานข้อมูล
+$configManager = ConfigManager::getInstance();
+$lineSettings = $configManager->getLineSettings();
 
 // ตรวจสอบพารามิเตอร์ state เพื่อระบุบทบาท
 $role = isset($_GET['state']) ? $_GET['state'] : '';
@@ -25,6 +18,22 @@ if (!in_array($role, ['student', 'teacher', 'parent', 'admin'])) {
 
 // บันทึกบทบาทไว้ในเซสชัน
 $_SESSION['role'] = $role;
+
+// ใช้การตั้งค่าให้ถูกต้องตามบทบาท
+if ($configManager->getBoolSetting('single_line_oa', true)) {
+    // กรณีใช้ LINE OA เดียว
+    $client_id = $lineSettings['client_id'];
+    $client_secret = $lineSettings['client_secret'];
+    $redirect_uri = $lineSettings['redirect_uri'];
+} else {
+    // กรณีใช้หลาย LINE OA
+    $client_id = $lineSettings[$role]['client_id'];
+    $client_secret = $lineSettings[$role]['client_secret'];
+    $redirect_uri = $lineSettings[$role]['redirect_uri'];
+}
+
+// สร้างอ็อบเจ็กต์ LINE API
+$line_api = new LineAPI($client_id, $client_secret, $redirect_uri);
 
 // สร้าง URL สำหรับ LINE Login
 $login_url = $line_api->getLoginUrl($role);

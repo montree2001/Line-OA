@@ -983,10 +983,6 @@ function markSettingsModified() {
         return 'คุณมีการเปลี่ยนแปลงการตั้งค่าที่ยังไม่ได้บันทึก ต้องการออกจากหน้านี้หรือไม่?';
     };
 }
-
-/**
- * บันทึกการตั้งค่า
- */
 /**
  * บันทึกการตั้งค่า
  */
@@ -1002,32 +998,41 @@ function saveSettings() {
     formData.append('action', 'save_settings');
     formData.append('settings_data', JSON.stringify(settingsData));
     
-    // ส่งข้อมูลไปบันทึกที่เซิร์ฟเวอร์ (ส่งไปที่หน้าปัจจุบัน)
+    // ส่งข้อมูลไปบันทึกที่เซิร์ฟเวอร์
     fetch(window.location.href, {
         method: 'POST',
-        body: formData
+        body: formData,
+        credentials: 'same-origin' // เพิ่มตัวเลือกนี้เพื่อให้ส่ง cookie ไปด้วย
     })
     .then(response => {
-        // ตรวจสอบว่าการตอบกลับเป็น JSON หรือไม่
+        if (!response.ok) {
+            throw new Error('การเชื่อมต่อล้มเหลว: ' + response.status);
+        }
+        // พยายามแปลงเป็น JSON ถ้าเป็นไปได้
         const contentType = response.headers.get("content-type");
         if (contentType && contentType.indexOf("application/json") !== -1) {
             return response.json();
         } else {
-            // กรณีไม่ใช่ JSON ให้แปลงเป็น object ว่าสำเร็จ
-            return { success: response.ok, message: response.ok ? 'บันทึกการตั้งค่าเรียบร้อยแล้ว' : 'เกิดข้อผิดพลาด' };
+            // หากไม่ใช่ JSON ให้ใช้ response เป็น text และรีโหลดหน้า
+            window.location.reload();
+            return { success: true, message: 'บันทึกการตั้งค่าเรียบร้อยแล้ว' };
         }
     })
     .then(result => {
         if (result.success) {
-            showSuccessMessage('บันทึกการตั้งค่าเรียบร้อยแล้ว');
+            showSuccessMessage(result.message || 'บันทึกการตั้งค่าเรียบร้อยแล้ว');
             resetModifiedState();
+            // รีโหลดหน้าหลังบันทึกสำเร็จ
+            setTimeout(() => {
+                window.location.reload();
+            }, 1500);
         } else {
             showErrorMessage(result.message || 'เกิดข้อผิดพลาดในการบันทึกการตั้งค่า');
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        showErrorMessage('เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่อีกครั้ง');
+        showErrorMessage('เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่อีกครั้ง: ' + error.message);
     })
     .finally(() => {
         hideLoadingIndicator();
