@@ -14,7 +14,7 @@ ini_set('display_errors', 1);
 
 // เพิ่มการตรวจสอบ session และการล็อกอิน
 session_start();
-
+$adminId = $_SESSION['user_id'] ?? 1; // ใช้ ID 1 เป็นค่าเริ่มต้นถ้าไม่มี session
 // ตรวจสอบการล็อกอิน
 /* if (!isset($_SESSION['user_id']) || !isset($_SESSION['user_role'])) {
     // ถ้าไม่ได้ล็อกอิน ให้เปลี่ยนเส้นทางไปยังหน้าล็อกอิน

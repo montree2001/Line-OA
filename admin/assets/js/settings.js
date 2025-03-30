@@ -987,6 +987,9 @@ function markSettingsModified() {
 /**
  * บันทึกการตั้งค่า
  */
+/**
+ * บันทึกการตั้งค่า
+ */
 function saveSettings() {
     // รวบรวมข้อมูลการตั้งค่า
     const settingsData = collectSettingsData();
@@ -994,15 +997,26 @@ function saveSettings() {
     // แสดง loading
     showLoadingIndicator();
     
-    // ส่งข้อมูลไปบันทึกที่เซิร์ฟเวอร์
-    fetch('/api/settings.php', {
+    // สร้าง FormData สำหรับส่งข้อมูล
+    const formData = new FormData();
+    formData.append('action', 'save_settings');
+    formData.append('settings_data', JSON.stringify(settingsData));
+    
+    // ส่งข้อมูลไปบันทึกที่เซิร์ฟเวอร์ (ส่งไปที่หน้าปัจจุบัน)
+    fetch(window.location.href, {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(settingsData)
+        body: formData
     })
-    .then(response => response.json())
+    .then(response => {
+        // ตรวจสอบว่าการตอบกลับเป็น JSON หรือไม่
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.indexOf("application/json") !== -1) {
+            return response.json();
+        } else {
+            // กรณีไม่ใช่ JSON ให้แปลงเป็น object ว่าสำเร็จ
+            return { success: response.ok, message: response.ok ? 'บันทึกการตั้งค่าเรียบร้อยแล้ว' : 'เกิดข้อผิดพลาด' };
+        }
+    })
     .then(result => {
         if (result.success) {
             showSuccessMessage('บันทึกการตั้งค่าเรียบร้อยแล้ว');

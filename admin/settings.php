@@ -36,9 +36,26 @@ $header_buttons = [
     ]
 ];
 
+// เชื่อมต่อฐานข้อมูล
+require_once '../db_connect.php';
+$conn = getDB(); // แก้ไขปัญหาตัวแปร $conn ที่ไม่ได้ถูกกำหนดค่า
 
-
-// ใส่โค้ดนี้ที่ด้านบนของไฟล์ settings.php หลังจาก session_start()
+// ดึงข้อมูลการตั้งค่าจากฐานข้อมูล
+try {
+    $stmt = $conn->prepare("SELECT setting_key, setting_value FROM system_settings");
+    $stmt->execute();
+    $settings_rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    // แปลงให้อยู่ในรูปแบบ key => value
+    $settings = [];
+    foreach ($settings_rows as $row) {
+        $settings[$row['setting_key']] = $row['setting_value'];
+    }
+} catch (PDOException $e) {
+    // กรณีเกิดข้อผิดพลาดในการดึงข้อมูล
+    $settings = [];
+    error_log("Error fetching settings: " . $e->getMessage());
+}
 
 // ตรวจสอบการส่งฟอร์มบันทึกการตั้งค่า
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'save_settings') {
@@ -49,7 +66,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     if ($settingsData) {
         try {
             // เชื่อมต่อฐานข้อมูล
-            require_once '../db_connect.php';
             $db = getDB();
             
             // เริ่ม transaction
@@ -236,20 +252,17 @@ function saveWebhookSettings($db, $settings) {
     // จัดการกับคำสั่งและการตอบกลับ
     if (isset($settings['commands']) && is_array($settings['commands'])) {
         try {
-            // ลบคำสั่งที่มีอยู่เดิม
-            $stmt = $db->prepare("DELETE FROM system_settings WHERE setting_key LIKE 'command_%'");
+            // ลบคำสั่งทั้งหมดที่มีอยู่เดิม
+            $stmt = $db->prepare("DELETE FROM bot_commands");
             $stmt->execute();
             
             // เพิ่มคำสั่งใหม่
-            foreach ($settings['commands'] as $index => $command) {
-                $keyKey = 'command_key_' . $index;
-                $replyKey = 'command_reply_' . $index;
-                
-                $stmt = $db->prepare("INSERT INTO system_settings (setting_key, setting_value, setting_group, created_at) VALUES (?, ?, 'webhook', NOW())");
-                $stmt->execute([$keyKey, $command['key'] ?? '']);
-                
-                $stmt = $db->prepare("INSERT INTO system_settings (setting_key, setting_value, setting_group, created_at) VALUES (?, ?, 'webhook', NOW())");
-                $stmt->execute([$replyKey, $command['reply'] ?? '']);
+            foreach ($settings['commands'] as $command) {
+                if (!empty($command['key']) && !empty($command['reply'])) {
+                    $stmt = $db->prepare("INSERT INTO bot_commands (command_key, command_reply, is_active, created_at) 
+                                         VALUES (?, ?, 1, NOW())");
+                    $stmt->execute([$command['key'], $command['reply']]);
+                }
             }
         } catch (PDOException $e) {
             error_log('Error saving webhook commands: ' . $e->getMessage());
@@ -358,81 +371,267 @@ document.addEventListener('DOMContentLoaded', function() {
 if (typeof saveSettings !== 'function') {
     function saveSettings() {
         console.log('Using fallback saveSettings function');
-        alert('กำลังบันทึกการตั้งค่า... (ฟังก์ชันสำรอง)');
         
         // รวบรวมข้อมูลการตั้งค่า
         const formData = new FormData();
-        document.querySelectorAll('input, select, textarea').forEach(input => {
-            if (input.type === 'checkbox') {
-                formData.append(input.name, input.checked ? '1' : '0');
-            } else if (input.name) {
-                formData.append(input.name, input.value);
-            }
-        });
+        formData.append('action', 'save_settings');
         
-        // ส่งข้อมูลไปยังเซิร์ฟเวอร์
-        fetch('../api/settings.php', {
+        // จัดเตรียมข้อมูลการตั้งค่าตามแท็บ
+        const settingsData = collectSettingsData();
+        formData.append('settings_data', JSON.stringify(settingsData));
+        
+        // แสดง loading
+        showLoadingIndicator();
+        
+        // ส่งข้อมูลไปยังหน้าเดิม
+        fetch(window.location.href, {
             method: 'POST',
             body: formData
         })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                alert('บันทึกการตั้งค่าเรียบร้อยแล้ว');
-            } else {
-                alert('เกิดข้อผิดพลาดในการบันทึกการตั้งค่า: ' + (data.message || 'ไม่ทราบสาเหตุ'));
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('การเชื่อมต่อล้มเหลว');
             }
+            
+            // รีเฟรชหน้าเพื่อแสดงการเปลี่ยนแปลง
+            window.location.reload();
         })
         .catch(error => {
             console.error('Error:', error);
-            alert('เกิดข้อผิดพลาดในการเชื่อมต่อกับเซิร์ฟเวอร์');
+            if (typeof hideLoadingIndicator === 'function') {
+                hideLoadingIndicator();
+            }
+            if (typeof showErrorMessage === 'function') {
+                showErrorMessage('เกิดข้อผิดพลาดในการบันทึกการตั้งค่า: ' + error.message);
+            } else {
+                alert('เกิดข้อผิดพลาดในการบันทึกการตั้งค่า: ' + error.message);
+            }
         });
     }
 }
 
-// ฟังก์ชัน showSuccessMessage แบบเบสิก ในกรณีที่ไม่มีในไฟล์ settings.js
-if (typeof showSuccessMessage !== 'function') {
-    function showSuccessMessage(message) {
-        const alertContainer = document.querySelector('.alert-container');
-        if (!alertContainer) return;
+// ฟังก์ชันรวบรวมข้อมูลการตั้งค่า
+function collectSettingsData() {
+    // สร้างออบเจ็กต์สำหรับเก็บการตั้งค่าทั้งหมด
+    const settings = {
+        system: {},
+        notification: {},
+        attendance: {},
+        gps: {},
+        line: {},
+        sms: {},
+        webhook: {}
+    };
+
+    // รวบรวมการตั้งค่าระบบ
+    const systemTab = document.getElementById('system-tab');
+    if (systemTab) {
+        systemTab.querySelectorAll('input, select, textarea').forEach(input => {
+            if (input.name && input.name.trim() !== '') {
+                if (input.type === 'checkbox') {
+                    settings.system[input.name] = input.checked;
+                } else {
+                    settings.system[input.name] = input.value;
+                }
+            }
+        });
+    }
+
+    // รวบรวมการตั้งค่าการแจ้งเตือน
+    const notificationTab = document.getElementById('notification-tab');
+    if (notificationTab) {
+        notificationTab.querySelectorAll('input, select, textarea').forEach(input => {
+            if (input.name && input.name.trim() !== '') {
+                if (input.type === 'checkbox') {
+                    settings.notification[input.name] = input.checked;
+                } else {
+                    settings.notification[input.name] = input.value;
+                }
+            }
+        });
+    }
+
+    // รวบรวมการตั้งค่าการเช็คชื่อ
+    const attendanceTab = document.getElementById('attendance-tab');
+    if (attendanceTab) {
+        attendanceTab.querySelectorAll('input, select, textarea').forEach(input => {
+            if (input.name && input.name.trim() !== '') {
+                if (input.type === 'checkbox') {
+                    settings.attendance[input.name] = input.checked;
+                } else {
+                    settings.attendance[input.name] = input.value;
+                }
+            }
+        });
+    }
+
+    // รวบรวมการตั้งค่า GPS
+    const gpsTab = document.getElementById('gps-tab');
+    if (gpsTab) {
+        gpsTab.querySelectorAll('input, select, textarea').forEach(input => {
+            if (input.name && input.name.trim() !== '') {
+                if (input.type === 'checkbox') {
+                    settings.gps[input.name] = input.checked;
+                } else {
+                    settings.gps[input.name] = input.value;
+                }
+            }
+        });
         
-        const alert = document.createElement('div');
-        alert.className = 'alert alert-success alert-dismissible fade show';
-        alert.innerHTML = `
-            <strong>สำเร็จ!</strong> ${message}
-            <button type="button" class="close" onclick="this.parentElement.remove()">
-                <span>&times;</span>
-            </button>
-        `;
+        // รวบรวมข้อมูลตำแหน่งเพิ่มเติม
+        if (settings.gps.enable_multiple_locations) {
+            settings.gps.locations = [];
+            gpsTab.querySelectorAll('.additional-location-item').forEach(item => {
+                const nameInput = item.querySelector('[name="location_name[]"]');
+                const radiusInput = item.querySelector('[name="location_radius[]"]');
+                const latInput = item.querySelector('[name="location_latitude[]"]');
+                const lngInput = item.querySelector('[name="location_longitude[]"]');
+                
+                if (nameInput && radiusInput && latInput && lngInput) {
+                    settings.gps.locations.push({
+                        name: nameInput.value,
+                        radius: radiusInput.value,
+                        latitude: latInput.value,
+                        longitude: lngInput.value
+                    });
+                }
+            });
+        }
+    }
+
+    // รวบรวมการตั้งค่า LINE
+    const lineTab = document.getElementById('line-tab');
+    if (lineTab) {
+        lineTab.querySelectorAll('input, select, textarea').forEach(input => {
+            if (input.name && input.name.trim() !== '') {
+                if (input.type === 'checkbox') {
+                    settings.line[input.name] = input.checked;
+                } else {
+                    settings.line[input.name] = input.value;
+                }
+            }
+        });
+    }
+
+    // รวบรวมการตั้งค่า SMS
+    const smsTab = document.getElementById('sms-tab');
+    if (smsTab) {
+        smsTab.querySelectorAll('input, select, textarea').forEach(input => {
+            if (input.name && input.name.trim() !== '') {
+                if (input.type === 'checkbox') {
+                    settings.sms[input.name] = input.checked;
+                } else {
+                    settings.sms[input.name] = input.value;
+                }
+            }
+        });
+    }
+
+    // รวบรวมการตั้งค่า Webhook
+    const webhookTab = document.getElementById('webhook-tab');
+    if (webhookTab) {
+        webhookTab.querySelectorAll('input, select, textarea').forEach(input => {
+            if (input.name && input.name.trim() !== '' && input.name !== 'command_key[]' && input.name !== 'command_reply[]') {
+                if (input.type === 'checkbox') {
+                    settings.webhook[input.name] = input.checked;
+                } else {
+                    settings.webhook[input.name] = input.value;
+                }
+            }
+        });
         
-        alertContainer.appendChild(alert);
-        
-        setTimeout(() => {
-            alert.remove();
-        }, 5000);
+        // รวบรวมคำสั่งและการตอบกลับ
+        settings.webhook.commands = [];
+        const commandsContainer = document.getElementById('commands-container');
+        if (commandsContainer) {
+            const rows = commandsContainer.querySelectorAll('tr');
+            rows.forEach(row => {
+                const keyInput = row.querySelector('[name="command_key[]"]');
+                const replyInput = row.querySelector('[name="command_reply[]"]');
+                
+                if (keyInput && replyInput && keyInput.value.trim() !== '') {
+                    settings.webhook.commands.push({
+                        key: keyInput.value,
+                        reply: replyInput.value
+                    });
+                }
+            });
+        }
+    }
+
+    return settings;
+}
+
+// ฟังก์ชันแสดง loading indicator
+function showLoadingIndicator() {
+    const loadingOverlay = document.createElement('div');
+    loadingOverlay.className = 'loading-overlay';
+    loadingOverlay.style.position = 'fixed';
+    loadingOverlay.style.top = '0';
+    loadingOverlay.style.left = '0';
+    loadingOverlay.style.width = '100%';
+    loadingOverlay.style.height = '100%';
+    loadingOverlay.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+    loadingOverlay.style.display = 'flex';
+    loadingOverlay.style.justifyContent = 'center';
+    loadingOverlay.style.alignItems = 'center';
+    loadingOverlay.style.zIndex = '9999';
+    
+    const spinner = document.createElement('div');
+    spinner.className = 'spinner';
+    spinner.innerHTML = '<div class="spinner-border text-light" role="status"><span class="sr-only">กำลังบันทึก...</span></div>';
+    loadingOverlay.appendChild(spinner);
+    
+    document.body.appendChild(loadingOverlay);
+}
+
+// ฟังก์ชันซ่อน loading indicator
+function hideLoadingIndicator() {
+    const loadingOverlay = document.querySelector('.loading-overlay');
+    if (loadingOverlay) {
+        document.body.removeChild(loadingOverlay);
     }
 }
 
-// ฟังก์ชัน showErrorMessage แบบเบสิก ในกรณีที่ไม่มีในไฟล์ settings.js
-if (typeof showErrorMessage !== 'function') {
-    function showErrorMessage(message) {
-        const alertContainer = document.querySelector('.alert-container');
-        if (!alertContainer) return;
-        
-        const alert = document.createElement('div');
-        alert.className = 'alert alert-danger alert-dismissible fade show';
-        alert.innerHTML = `
-            <strong>ข้อผิดพลาด!</strong> ${message}
-            <button type="button" class="close" onclick="this.parentElement.remove()">
-                <span>&times;</span>
-            </button>
-        `;
-        
-        alertContainer.appendChild(alert);
-        
-        setTimeout(() => {
-            alert.remove();
-        }, 5000);
-    }
+// ฟังก์ชันแสดงข้อความสำเร็จ
+function showSuccessMessage(message) {
+    const alertContainer = document.querySelector('.alert-container');
+    if (!alertContainer) return;
+    
+    const alert = document.createElement('div');
+    alert.className = 'alert alert-success alert-dismissible fade show';
+    alert.innerHTML = `
+        <strong>สำเร็จ!</strong> ${message}
+        <button type="button" class="close" onclick="this.parentElement.remove()">
+            <span>&times;</span>
+        </button>
+    `;
+    
+    alertContainer.appendChild(alert);
+    
+    setTimeout(() => {
+        alert.remove();
+    }, 5000);
+}
+
+// ฟังก์ชันแสดงข้อความผิดพลาด
+function showErrorMessage(message) {
+    const alertContainer = document.querySelector('.alert-container');
+    if (!alertContainer) return;
+    
+    const alert = document.createElement('div');
+    alert.className = 'alert alert-danger alert-dismissible fade show';
+    alert.innerHTML = `
+        <strong>ข้อผิดพลาด!</strong> ${message}
+        <button type="button" class="close" onclick="this.parentElement.remove()">
+            <span>&times;</span>
+        </button>
+    `;
+    
+    alertContainer.appendChild(alert);
+    
+    setTimeout(() => {
+        alert.remove();
+    }, 5000);
 }
 </script>
