@@ -1,12 +1,12 @@
 <?php
 // db_connect.php
 
-// กำหนดค่าการเชื่อมต่อฐานข้อมูล
-define('DB_HOST', 'localhost');
-define('DB_NAME', 'stp_prasat');
-define('DB_USER', 'root');        // เปลี่ยนตาม username จริง
-define('DB_PASS', '');           // เปลี่ยนตาม password จริง
-define('DB_CHARSET', 'utf8mb4');
+// กำหนดค่าการเชื่อมต่อฐานข้อมูลโดยตรวจสอบว่ามีการกำหนดค่าไว้แล้วหรือไม่
+if (!defined('DB_HOST')) define('DB_HOST', 'localhost');
+if (!defined('DB_NAME')) define('DB_NAME', 'stp_prasat');
+if (!defined('DB_USER')) define('DB_USER', 'root');
+if (!defined('DB_PASS')) define('DB_PASS', '');
+if (!defined('DB_CHARSET')) define('DB_CHARSET', 'utf8mb4');
 
 class Database {
     private static $instance = null;
@@ -47,4 +47,3 @@ function getDB() {
     $db = Database::getInstance();
     return $db->getConnection();
 }
-

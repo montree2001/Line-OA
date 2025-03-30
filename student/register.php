@@ -4,8 +4,8 @@
  * ระบบลงทะเบียนสำหรับนักเรียนที่เข้าใช้งานครั้งแรกผ่าน LINE
  */
 session_start();
+require_once '../config/db_config.php';
 require_once '../db_connect.php';
-
 
 // ตรวจสอบว่ามีการล็อกอินหรือไม่
 if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
@@ -52,6 +52,7 @@ try {
 
 // จัดการการส่งฟอร์ม
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // นำเข้าไฟล์สำหรับประมวลผลฟอร์ม
     require_once 'register_process.php';
 }
 
@@ -59,12 +60,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $page_title = "STD-Prasat - ลงทะเบียนนักเรียน";
 
 // เริ่มแสดงเพจ
-include 'includes/header.php';
+include 'templates/header.php';
 ?>
 
 <div class="container">
     <!-- Step Indicator -->
-    <?php include 'includes/step_indicator.php'; ?>
+    <div class="steps">
+        <div class="step <?php echo ($step == 1 || $step == 'error') ? 'active' : ($step > 1 ? 'completed' : ''); ?>">
+            <div class="step-number">1</div>
+            <div class="step-title">เริ่มต้น</div>
+        </div>
+        
+        <div class="step-line <?php echo $step > 1 ? 'completed' : ''; ?>"></div>
+        
+        <div class="step <?php echo $step == 2 ? 'active' : ($step > 2 ? 'completed' : ''); ?>">
+            <div class="step-number">2</div>
+            <div class="step-title">ค้นหาข้อมูล</div>
+        </div>
+        
+        <div class="step-line <?php echo $step > 2 ? 'completed' : ''; ?>"></div>
+        
+        <div class="step <?php echo ($step == 3 || $step == 33) ? 'active' : ($step > 3 ? 'completed' : ''); ?>">
+            <div class="step-number">3</div>
+            <div class="step-title">ยืนยันข้อมูล</div>
+        </div>
+        
+        <div class="step-line <?php echo $step > 3 ? 'completed' : ''; ?>"></div>
+        
+        <div class="step <?php echo $step == 4 ? 'active' : ($step > 4 ? 'completed' : ''); ?>">
+            <div class="step-number">4</div>
+            <div class="step-title">ครูที่ปรึกษา</div>
+        </div>
+        
+        <div class="step-line <?php echo $step > 4 ? 'completed' : ''; ?>"></div>
+        
+        <div class="step <?php echo $step == 5 || $step == 55 ? 'active' : ($step > 5 ? 'completed' : ''); ?>">
+            <div class="step-number">5</div>
+            <div class="step-title">สรุปข้อมูล</div>
+        </div>
+    </div>
 
     <!-- แสดงข้อความข้อผิดพลาดและสำเร็จ -->
     <?php if (!empty($error_message)): ?>
@@ -154,4 +188,4 @@ include 'includes/header.php';
     ?>
 </div>
 
-<?php include 'includes/footer.php'; ?>
+<?php include 'templates/footer.php'; ?>

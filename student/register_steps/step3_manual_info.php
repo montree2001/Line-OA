@@ -1,131 +1,68 @@
-<!-- ขั้นตอนกรอกข้อมูลนักศึกษาเอง -->
 <div class="card">
-    <div class="card-title">กรอกข้อมูลนักศึกษา</div>
-
-    <div class="card-message">
-        <div class="alert alert-info">
-            <span class="material-icons">info</span>
-            <span>ไม่พบข้อมูลรหัสนักศึกษา <strong><?php echo isset($_SESSION['student_code']) ? $_SESSION['student_code'] : ''; ?></strong> ในระบบ กรุณากรอกข้อมูลด้วยตนเอง</span>
+    <h2 class="card-title">กรอกข้อมูลนักศึกษา</h2>
+    
+    <div class="alert alert-warning">
+        <span class="material-icons">info</span>
+        <span>ไม่พบข้อมูลนักศึกษารหัส <?php echo htmlspecialchars($_SESSION['student_code']); ?> ในระบบ กรุณากรอกข้อมูลเพิ่มเติม</span>
+    </div>
+    
+    <form method="post" action="register.php?step=33" id="manual-info-form">
+        <input type="hidden" name="action" value="manual_info">
+        
+        <div class="input-container">
+            <label for="title" class="input-label">คำนำหน้า <span class="text-danger">*</span></label>
+            <select id="title" name="title" class="input-field" required>
+                <option value="">เลือกคำนำหน้า</option>
+                <option value="นาย">นาย</option>
+                <option value="นางสาว">นางสาว</option>
+                <option value="อื่นๆ">อื่นๆ</option>
+            </select>
         </div>
-    </div>
-
-    <div class="card-content">
-        <form method="POST" action="register.php?step=33">
-            <div class="section-divider">
-                <span class="section-title">ข้อมูลส่วนตัว</span>
-            </div>
-
-            <div class="input-container">
-                <label class="input-label">รหัสนักศึกษา</label>
-                <input type="text" class="input-field" value="<?php echo isset($_SESSION['student_code']) ? $_SESSION['student_code'] : ''; ?>" readonly>
-                <div class="help-text">รหัสนักศึกษาที่คุณกรอกในขั้นตอนก่อนหน้า</div>
-            </div>
-
-            <div class="input-group">
-                <div class="input-container title-select">
-                    <label class="input-label">คำนำหน้า<span class="required-mark">*</span></label>
-                    <select class="input-field" name="title" required>
-                        <option value="" disabled selected>เลือกคำนำหน้า</option>
-                        <option value="นาย">นาย</option>
-                        <option value="นางสาว">นางสาว</option>
-                        <option value="อื่นๆ">อื่นๆ</option>
-                    </select>
-                </div>
-
-                <div class="input-container">
-                    <label class="input-label">ชื่อ<span class="required-mark">*</span></label>
-                    <input type="text" class="input-field" name="first_name" placeholder="กรอกชื่อจริง" required>
-                </div>
-            </div>
-
-            <div class="input-container">
-                <label class="input-label">นามสกุล<span class="required-mark">*</span></label>
-                <input type="text" class="input-field" name="last_name" placeholder="กรอกนามสกุล" required>
-            </div>
-            <div class="action-buttons">
-                <button type="button" class="btn secondary" onclick="window.location.href='register.php?step=2'">
-                    <span class="material-icons">arrow_back</span> ย้อนกลับ
-                </button>
-                <button type="submit" class="btn primary">
-                    ดำเนินการต่อ <span class="material-icons">arrow_forward</span>
-                </button>
-            </div>
-        </form>
-    </div>
+        
+        <div class="input-container">
+            <label for="first_name" class="input-label">ชื่อ <span class="text-danger">*</span></label>
+            <input type="text" id="first_name" name="first_name" class="input-field" placeholder="กรอกชื่อจริง" required>
+        </div>
+        
+        <div class="input-container">
+            <label for="last_name" class="input-label">นามสกุล <span class="text-danger">*</span></label>
+            <input type="text" id="last_name" name="last_name" class="input-field" placeholder="กรอกนามสกุล" required>
+        </div>
+        
+        <div class="text-center mt-30">
+            <a href="register.php?step=2" class="btn secondary">
+                <span class="material-icons">arrow_back</span> กลับ
+            </a>
+            <button type="submit" class="btn primary">
+                ถัดไป <span class="material-icons">arrow_forward</span>
+            </button>
+        </div>
+    </form>
 </div>
 
-<style>
-    .card-message {
-        padding: 0 20px;
-        margin-top: 15px;
-    }
+<div class="skip-section">
+    <p>หากไม่แน่ใจว่าข้อมูลที่กรอกถูกต้องหรือไม่ กรุณาติดต่อครูที่ปรึกษาหรือเจ้าหน้าที่ทะเบียน</p>
+</div>
 
-    .alert-info {
-        background-color: #e3f2fd;
-        color: #0d47a1;
-        padding: 12px 15px;
-        border-radius: 8px;
-        margin-bottom: 15px;
-        display: flex;
-        align-items: center;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-    }
-
-    .alert-info .material-icons {
-        margin-right: 10px;
-        color: #1976d2;
-    }
-
-    .section-divider {
-        position: relative;
-        text-align: left;
-        margin: 25px 0 15px;
-        border-bottom: 1px solid #e0e0e0;
-    }
-
-    .section-title {
-        position: relative;
-        top: 10px;
-        background-color: white;
-        padding-right: 10px;
-        font-weight: 500;
-        color: #1976d2;
-        font-size: 0.9em;
-    }
-
-    .input-group {
-        display: flex;
-        gap: 15px;
-        margin-bottom: 5px;
-    }
-
-    .three-columns {
-        justify-content: space-between;
-    }
-
-    .title-select {
-        flex: 0 0 35%;
-    }
-
-    .required-mark {
-        color: #f44336;
-        margin-left: 3px;
-    }
-
-    .action-buttons {
-        display: flex;
-        justify-content: space-between;
-        margin-top: 30px;
-    }
-
-    @media (max-width: 600px) {
-        .input-group {
-            flex-direction: column;
-            gap: 0;
+<script>
+    // ตรวจสอบความถูกต้องของฟอร์ม
+    document.getElementById('manual-info-form').addEventListener('submit', function(e) {
+        const title = document.getElementById('title').value.trim();
+        const firstName = document.getElementById('first_name').value.trim();
+        const lastName = document.getElementById('last_name').value.trim();
+        
+        if (title === '' || firstName === '' || lastName === '') {
+            e.preventDefault();
+            alert('กรุณากรอกข้อมูลให้ครบถ้วน');
+            return;
         }
-
-        .title-select {
-            flex: 1;
+        
+        // ตรวจสอบว่าชื่อและนามสกุลเป็นภาษาไทยหรือภาษาอังกฤษเท่านั้น
+        const namePattern = /^[ก-๙a-zA-Z\s]+$/;
+        if (!namePattern.test(firstName) || !namePattern.test(lastName)) {
+            e.preventDefault();
+            alert('ชื่อและนามสกุลต้องเป็นภาษาไทยหรือภาษาอังกฤษเท่านั้น');
+            return;
         }
-    }
-</style>
+    });
+</script>

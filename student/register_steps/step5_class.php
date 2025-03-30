@@ -1,65 +1,77 @@
-<!-- ขั้นตอนเลือกครูที่ปรึกษาและชั้นเรียน -->
+<?php
+// ดึงข้อมูลครูที่ปรึกษาที่เลือก
+$teacher_id = $_SESSION['teacher_id'] ?? 0;
+$teacher_name = "";
+
+try {
+    if ($teacher_id > 0) {
+        $teacher_sql = "SELECT t.title, t.first_name, t.last_name FROM teachers t WHERE t.teacher_id = :teacher_id";
+        $teacher_stmt = $conn->prepare($teacher_sql);
+        $teacher_stmt->bindParam(':teacher_id', $teacher_id, PDO::PARAM_INT);
+        $teacher_stmt->execute();
+        $teacher = $teacher_stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if ($teacher) {
+            $teacher_name = $teacher['title'] . ' ' . $teacher['first_name'] . ' ' . $teacher['last_name'];
+        }
+    }
+} catch (PDOException $e) {
+    $error_message = "เกิดข้อผิดพลาดในการดึงข้อมูลครูที่ปรึกษา: " . $e->getMessage();
+}
+?>
+
 <div class="card">
-    <div class="card-title">เลือกครูที่ปรึกษาและชั้นเรียน</div>
-    <div class="card-content">
-        <p>ผลการค้นหา: <?php echo count($_SESSION['search_teacher_results']); ?> รายการ</p>
-
-        <?php if (empty($_SESSION['search_teacher_results'])): ?>
-            <div class="no-results">
-                <p>ไม่พบข้อมูลครูที่ปรึกษา</p>
-                <a href="register.php?step=55" class="btn secondary">ระบุข้อมูลชั้นเรียนเอง</a>
-            </div>
-        <?php else: ?>
-            <form method="POST" action="register.php?step=5">
-                <div class="teacher-list">
-                    <?php foreach ($_SESSION['search_teacher_results'] as $key => $teacher): ?>
-                        <div class="teacher-card">
-                            <div class="radio-container">
-                                <input type="radio" name="teacher_id" id="teacher_<?php echo $teacher['teacher_id']; ?>" value="<?php echo $teacher['teacher_id']; ?>" required>
-                                <label for="teacher_<?php echo $teacher['teacher_id']; ?>" class="radio-label">
-                                    <div class="teacher-name"><?php echo $teacher['first_name'] . ' ' . $teacher['last_name']; ?></div>
-                                    <div class="teacher-department"><?php echo $teacher['department']; ?></div>
-                                </label>
-                            </div>
-                        </div>
-                    <?php endforeach; ?>
-                </div>
-
-                <div class="input-container">
-                    <label class="input-label">เลือกชั้นเรียน</label>
-                    <select class="input-field" name="class_id" required>
-                        <option value="" disabled selected>เลือกชั้นเรียน</option>
-                        <?php
-                        // ดึงข้อมูลชั้นเรียนของครูที่ปรึกษา
-                        try {
-                            $first_teacher = $_SESSION['search_teacher_results'][0]['teacher_id'];
-                            $classes_stmt = $conn->prepare("SELECT c.class_id, c.level, c.department, c.group_number 
-                                                FROM classes c 
-                                                JOIN class_advisors ca ON c.class_id = ca.class_id
-                                                WHERE ca.teacher_id = :teacher_id
-                                                AND c.academic_year_id = :academic_year_id");
-                            $classes_stmt->execute([
-                                ':teacher_id' => $first_teacher,
-                                ':academic_year_id' => $current_academic_year_id
-                            ]);
-                            
-                            while ($class = $classes_stmt->fetch(PDO::FETCH_ASSOC)) {
-                                echo "<option value='" . $class['class_id'] . "'>"
-                                    . $class['level'] . " สาขา" . $class['department']
-                                    . " กลุ่ม " . $class['group_number'] . "</option>";
-                            }
-                        } catch (PDOException $e) {
-                            echo "<option value=''>เกิดข้อผิดพลาดในการดึงข้อมูลชั้นเรียน</option>";
-                        }
-                        ?>
-                    </select>
-                </div>
-
-                <button type="submit" class="btn primary">
-                    ดำเนินการต่อ <span class="material-icons">arrow_forward</span>
-                </button>
-            </form>
-
-        <?php endif; ?>
+    <h2 class="card-title">เลือกชั้นเรียน</h2>
+    
+    <div class="profile-info-section mb-20">
+        <h3>ครูที่ปรึกษาที่เลือก</h3>
+        <div class="info-item">
+            <div class="info-label">ชื่อ-นามสกุล:</div>
+            <div class="info-value"><?php echo htmlspecialchars($teacher_name); ?></div>
+        </div>
     </div>
+    
+    <p class="mb-20">
+        กรุณาเลือกชั้นเรียนของคุณจากรายการด้านล่าง ซึ่งเป็นชั้นเรียนที่ครูที่ปรึกษาของคุณดูแลอยู่
+    </p>
+    
+    <?php if (isset($_SESSION['teacher_classes']) && !empty($_SESSION['teacher_classes'])): ?>
+        <form method="post" action="register.php?step=5" id="select-class-form">
+            <input type="hidden" name="action" value="select_class">
+            
+            <div class="teacher-list">
+                <?php foreach ($_SESSION['teacher_classes'] as $index => $class): ?>
+                    <div class="teacher-card">
+                        <label class="radio-container">
+                            <input type="radio" name="class_id" value="<?php echo $class['class_id']; ?>" required
+                                   <?php echo $index === 0 ? 'checked' : ''; ?>>
+                            <div class="teacher-info">
+                                <div class="teacher-name">
+                                    <?php echo htmlspecialchars($class['level'] . ' แผนก' . $class['department_name'] . ' กลุ่ม ' . $class['group_number']); ?>
+                                </div>
+                            </div>
+                        </label>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+            
+            <div class="text-center mt-30">
+                <a href="register.php?step=4" class="btn secondary">
+                    <span class="material-icons">arrow_back</span> กลับ
+                </a>
+                <button type="submit" class="btn primary">
+                    ถัดไป <span class="material-icons">arrow_forward</span>
+                </button>
+            </div>
+        </form>
+    <?php else: ?>
+        <div class="no-results">
+            <p>ไม่พบข้อมูลชั้นเรียนที่ครูที่ปรึกษาดูแล</p>
+            <div class="text-center mt-20">
+                <a href="register.php?step=55" class="btn primary">
+                    กรอกข้อมูลชั้นเรียนเอง <span class="material-icons">arrow_forward</span>
+                </a>
+            </div>
+        </div>
+    <?php endif; ?>
 </div>

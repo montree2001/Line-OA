@@ -2,7 +2,7 @@
 /**
  * config_manager.php - ระบบดึงและจัดการการตั้งค่าต่างๆ ของระบบน้องชูใจ AI
  */
-
+require_once 'db_connect.php';
 class ConfigManager {
     private static $instance = null;
     private $settings = [];
@@ -301,4 +301,3 @@ class ConfigManager {
     // ป้องกันการ clone object
     private function __clone() {}
 }
-?>

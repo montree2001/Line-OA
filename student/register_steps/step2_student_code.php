@@ -1,71 +1,52 @@
-<!-- ขั้นตอนค้นหารหัสนักศึกษา -->
 <div class="card">
-    <div class="card-title">กรอกรหัสนักศึกษา</div>
-    <div class="card-content">
-        <form method="POST" action="register.php?step=2" id="student-code-form">
-            <div class="input-container">
-                <label class="input-label">รหัสนักศึกษา (11 หลัก)</label>
-                <input type="text" class="input-field" placeholder="กรอกรหัสนักศึกษา 11 หลัก" maxlength="11" name="student_code" pattern="[0-9]{11}" inputmode="numeric" required>
-                <div class="help-text">กรุณากรอกเฉพาะตัวเลข 11 หลัก</div>
-            </div>
-
+    <h2 class="card-title">ค้นหาข้อมูลนักศึกษา</h2>
+    
+    <p class="mb-20">
+        กรุณากรอกรหัสนักศึกษา 11 หลักของคุณ เพื่อค้นหาข้อมูลในระบบ หากไม่พบข้อมูล คุณสามารถลงทะเบียนได้ในขั้นตอนถัดไป
+    </p>
+    
+    <form method="post" action="register.php?step=2" id="search-form">
+        <input type="hidden" name="action" value="search_student">
+        
+        <div class="input-container">
+            <label for="student_code" class="input-label">รหัสนักศึกษา</label>
+            <input type="text" id="student_code" name="student_code" class="input-field" 
+                placeholder="กรอกรหัสนักศึกษา 11 หลัก" maxlength="11" required>
+            <div class="help-text">เช่น 64309010001</div>
+        </div>
+        
+        <div class="text-center mt-30">
+            <a href="register.php?step=1" class="btn secondary">
+                <span class="material-icons">arrow_back</span> กลับ
+            </a>
             <button type="submit" class="btn primary">
-                <span class="material-icons">search</span> ค้นหาข้อมูล
+                ค้นหาข้อมูล <span class="material-icons">search</span>
             </button>
-        </form>
-
-        <?php if (isset($_SESSION['search_attempted']) && $_SESSION['search_attempted']): ?>
-        <div class="search-result not-found">
-            <div class="alert alert-warning">
-                <span class="material-icons">info</span>
-                <span>ไม่พบข้อมูลรหัสนักศึกษา <?php echo isset($_SESSION['student_code']) ? $_SESSION['student_code'] : ''; ?> ในระบบ</span>
-            </div>
-            <div class="manual-entry-section">
-                <p>คุณสามารถกรอกข้อมูลด้วยตนเองได้</p>
-                <form method="POST" action="register.php">
-                    <input type="hidden" name="manual_entry" value="1">
-                    <input type="hidden" name="student_code" value="<?php echo isset($_SESSION['student_code']) ? $_SESSION['student_code'] : ''; ?>">
-                    <button type="submit" class="btn secondary">
-                        <span class="material-icons">edit</span> กรอกข้อมูลด้วยตนเอง
-                    </button>
-                </form>
-            </div>
         </div>
-        <?php endif; ?>
-
-        <div class="contact-admin">
-            หากมีปัญหาในการค้นหาข้อมูล กรุณา<a href="#">ติดต่อเจ้าหน้าที่</a>
-        </div>
-    </div>
+    </form>
 </div>
 
-<style>
-    .search-result {
-        margin-top: 20px;
-        padding: 15px;
-        border-radius: 8px;
-        background-color: #f9f9f9;
-    }
-    
-    .search-result.not-found {
-        border-left: 4px solid #ff9800;
-    }
-    
-    .manual-entry-section {
-        margin-top: 15px;
-        text-align: center;
-    }
-    
-    .alert-warning {
-        background-color: #fff3e0;
-        color: #e65100;
-        padding: 10px;
-        border-radius: 4px;
-        display: flex;
-        align-items: center;
-    }
-    
-    .alert-warning .material-icons {
-        margin-right: 8px;
-    }
-</style>
+<div class="skip-section">
+    <p>ไม่ทราบรหัสนักศึกษา? คุณสามารถสอบถามจากครูที่ปรึกษาหรือเจ้าหน้าที่ทะเบียน</p>
+</div>
+
+<script>
+    // ตรวจสอบความถูกต้องของรหัสนักศึกษา
+    document.getElementById('search-form').addEventListener('submit', function(e) {
+        const studentCode = document.getElementById('student_code').value.trim();
+        
+        // ตรวจสอบว่ากรอกรหัสนักศึกษาหรือไม่
+        if (studentCode === '') {
+            e.preventDefault();
+            alert('กรุณากรอกรหัสนักศึกษา');
+            return;
+        }
+        
+        // ตรวจสอบรูปแบบรหัสนักศึกษา (ตัวเลข 11 หลัก)
+        if (!/^\d{11}$/.test(studentCode)) {
+            e.preventDefault();
+            alert('รหัสนักศึกษาต้องเป็นตัวเลข 11 หลักเท่านั้น');
+            return;
+        }
+    });
+</script>
