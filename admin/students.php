@@ -16,6 +16,57 @@ session_start();
 // เชื่อมต่อฐานข้อมูล
 require_once '../db_connect.php';
 
+
+
+
+// ใน students.php - ปรับปรุงส่วนการดึงข้อมูลนักเรียน
+// โดยใช้ฟังก์ชันจาก Model มาแทนการเขียนคำสั่ง SQL โดยตรง
+
+// เพิ่ม include ไฟล์ model
+require_once '../models/students_model.php';
+
+// สร้างตัวแปรสำหรับเก็บเงื่อนไขการกรอง
+$filters = [
+    'name' => $_GET['name'] ?? '',
+    'student_code' => $_GET['student_code'] ?? '',
+    'level' => $_GET['level'] ?? '',
+    'group_number' => $_GET['group_number'] ?? '',
+    'department_id' => $_GET['department_id'] ?? '',
+    'status' => $_GET['status'] ?? '',
+    'attendance_status' => $_GET['attendance_status'] ?? '',
+    'line_status' => $_GET['line_status'] ?? ''
+];
+
+// ดึงข้อมูลนักเรียนผ่าน model function
+$students = getAllStudents($filters);
+
+// ดึงข้อมูลสถิติจำนวนนักเรียน
+$student_stats = getStudentStatistics();
+
+// ดึงข้อมูลชั้นเรียนทั้งหมด
+$classes = getAllClasses();
+
+// ดึงข้อมูลแผนกวิชา
+$departments = []; // ดึงข้อมูลแผนกวิชาจากฐานข้อมูล
+try {
+    $conn = getDB();
+    $stmt = $conn->query("SELECT department_id, department_name FROM departments ORDER BY department_name");
+    $departments = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    error_log("Error fetching departments: " . $e->getMessage());
+}
+
+// ส่งข้อมูลไปยังเทมเพลต
+$data = [
+    'students' => $students,
+    'statistics' => $student_stats,
+    'departments' => $departments,
+    'classes' => $classes
+];
+
+
+
+
 // กำหนดข้อมูลสำหรับหน้าปัจจุบัน
 $current_page = 'students';
 $page_title = 'จัดการข้อมูลนักเรียน';
@@ -258,293 +309,98 @@ try {
     error_log("Error fetching student statistics: " . $e->getMessage());
 }
 
-// ประมวลผลการเพิ่ม/แก้ไข/ลบข้อมูลนักเรียน (ถ้ามี)
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (isset($_POST['action'])) {
-        switch ($_POST['action']) {
-            case 'add':
-                // ตรวจสอบข้อมูล
-                if (empty($_POST['student_code']) || empty($_POST['firstname']) || empty($_POST['lastname'])) {
-                    $error_message = "กรุณากรอกข้อมูลให้ครบถ้วน";
-                } else {
-                    try {
-                        $conn = getDB();
-                        $conn->beginTransaction();
-                        
-                        // 1. เพิ่มข้อมูลในตาราง users ก่อน
-                        $stmt = $conn->prepare("
-                            INSERT INTO users (line_id, role, title, first_name, last_name, phone_number, email, gdpr_consent)
-                            VALUES ('', 'student', ?, ?, ?, ?, ?, 1)
-                        ");
-                        $stmt->execute([
-                            $_POST['title'],
-                            $_POST['firstname'],
-                            $_POST['lastname'],
-                            $_POST['phone_number'] ?? '',
-                            $_POST['email'] ?? ''
-                        ]);
-                        
-                        $user_id = $conn->lastInsertId();
-                        
-                        // 2. เพิ่มข้อมูลนักเรียน
-                        $stmt = $conn->prepare("
-                            INSERT INTO students (user_id, student_code, title, current_class_id, status)
-                            VALUES (?, ?, ?, ?, ?)
-                        ");
-                        $stmt->execute([
-                            $user_id,
-                            $_POST['student_code'],
-                            $_POST['title'],
-                            $_POST['class_id'] ?? null,
-                            $_POST['status'] ?? 'กำลังศึกษา'
-                        ]);
-                        
-                        $student_id = $conn->lastInsertId();
-                        
-                        // 3. เพิ่มข้อมูลในตาราง student_academic_records ถ้ามีการเลือกชั้นเรียน
-                        if (!empty($_POST['class_id'])) {
-                            // ดึงข้อมูล academic_year_id จากชั้นเรียน
-                            $stmt = $conn->prepare("
-                                SELECT academic_year_id FROM classes WHERE class_id = ?
-                            ");
-                            $stmt->execute([$_POST['class_id']]);
-                            $academic_year_id = $stmt->fetchColumn();
-                            
-                            if ($academic_year_id) {
-                                $stmt = $conn->prepare("
-                                    INSERT INTO student_academic_records (student_id, academic_year_id, class_id)
-                                    VALUES (?, ?, ?)
-                                ");
-                                $stmt->execute([$student_id, $academic_year_id, $_POST['class_id']]);
-                            }
-                        }
-                        
-                        $conn->commit();
-                        $success_message = "เพิ่มข้อมูลนักเรียนเรียบร้อยแล้ว";
-                        
-                        // รีเฟรชหน้าเพื่อแสดงข้อมูลล่าสุด
-                        header("Location: students.php?success=add");
-                        exit;
-                    } catch (PDOException $e) {
-                        $conn->rollBack();
-                        $error_message = "เกิดข้อผิดพลาด: " . $e->getMessage();
-                        error_log("Error adding student: " . $e->getMessage());
-                    }
-                }
-                break;
-                
-            case 'edit':
-                // ตรวจสอบข้อมูล
-                if (empty($_POST['student_id']) || empty($_POST['student_code']) || empty($_POST['firstname']) || empty($_POST['lastname'])) {
-                    $error_message = "กรุณากรอกข้อมูลให้ครบถ้วน";
-                } else {
-                    try {
-                        $conn = getDB();
-                        $conn->beginTransaction();
-                        
-                        // 1. ดึงข้อมูล user_id จากตาราง students
-                        $stmt = $conn->prepare("SELECT user_id, current_class_id FROM students WHERE student_id = ?");
-                        $stmt->execute([$_POST['student_id']]);
-                        $student_data = $stmt->fetch(PDO::FETCH_ASSOC);
-                        
-                        if (!$student_data) {
-                            throw new Exception("ไม่พบข้อมูลนักเรียน");
-                        }
-                        
-                        // 2. อัปเดตข้อมูลในตาราง users
-                        $stmt = $conn->prepare("
-                            UPDATE users 
-                            SET title = ?, first_name = ?, last_name = ?, phone_number = ?, email = ?, updated_at = CURRENT_TIMESTAMP
-                            WHERE user_id = ?
-                        ");
-                        $stmt->execute([
-                            $_POST['title'],
-                            $_POST['firstname'],
-                            $_POST['lastname'],
-                            $_POST['phone_number'] ?? '',
-                            $_POST['email'] ?? '',
-                            $student_data['user_id']
-                        ]);
-                        
-                        // 3. อัปเดตข้อมูลในตาราง students
-                        $stmt = $conn->prepare("
-                            UPDATE students 
-                            SET student_code = ?, title = ?, current_class_id = ?, status = ?, updated_at = CURRENT_TIMESTAMP
-                            WHERE student_id = ?
-                        ");
-                        $stmt->execute([
-                            $_POST['student_code'],
-                            $_POST['title'],
-                            $_POST['class_id'] ?? null,
-                            $_POST['status'] ?? 'กำลังศึกษา',
-                            $_POST['student_id']
-                        ]);
-                        
-                        // 4. อัปเดตหรือเพิ่มข้อมูลในตาราง student_academic_records
-                        if (!empty($_POST['class_id']) && $_POST['class_id'] != $student_data['current_class_id']) {
-                            // ดึงข้อมูล academic_year_id จากชั้นเรียนใหม่
-                            $stmt = $conn->prepare("
-                                SELECT academic_year_id FROM classes WHERE class_id = ?
-                            ");
-                            $stmt->execute([$_POST['class_id']]);
-                            $academic_year_id = $stmt->fetchColumn();
-                            
-                            if ($academic_year_id) {
-                                // ตรวจสอบว่ามี record อยู่แล้วหรือไม่
-                                $stmt = $conn->prepare("
-                                    SELECT record_id FROM student_academic_records 
-                                    WHERE student_id = ? AND academic_year_id = ?
-                                ");
-                                $stmt->execute([$_POST['student_id'], $academic_year_id]);
-                                $record_id = $stmt->fetchColumn();
-                                
-                                if ($record_id) {
-                                    // อัปเดต record ที่มีอยู่
-                                    $stmt = $conn->prepare("
-                                        UPDATE student_academic_records 
-                                        SET class_id = ?, updated_at = CURRENT_TIMESTAMP
-                                        WHERE record_id = ?
-                                    ");
-                                    $stmt->execute([$_POST['class_id'], $record_id]);
-                                } else {
-                                    // สร้าง record ใหม่
-                                    $stmt = $conn->prepare("
-                                        INSERT INTO student_academic_records (student_id, academic_year_id, class_id)
-                                        VALUES (?, ?, ?)
-                                    ");
-                                    $stmt->execute([$_POST['student_id'], $academic_year_id, $_POST['class_id']]);
-                                }
-                            }
-                        }
-                        
-                        $conn->commit();
-                        $success_message = "แก้ไขข้อมูลนักเรียนเรียบร้อยแล้ว";
-                        
-                        // รีเฟรชหน้าเพื่อแสดงข้อมูลล่าสุด
-                        header("Location: students.php?success=edit");
-                        exit;
-                    } catch (Exception $e) {
-                        $conn->rollBack();
-                        $error_message = "เกิดข้อผิดพลาด: " . $e->getMessage();
-                        error_log("Error editing student: " . $e->getMessage());
-                    }
-                }
-                break;
-                
-            case 'delete':
-                if (empty($_POST['student_id'])) {
-                    $error_message = "ไม่ระบุรหัสนักเรียนที่ต้องการลบ";
-                } else {
-                    try {
-                        $conn = getDB();
-                        $conn->beginTransaction();
-                        
-                        // 1. ดึง user_id จากตาราง students
-                        $stmt = $conn->prepare("SELECT user_id FROM students WHERE student_id = ?");
-                        $stmt->execute([$_POST['student_id']]);
-                        $user_id = $stmt->fetchColumn();
-                        
-                        if (!$user_id) {
-                            throw new Exception("ไม่พบข้อมูลนักเรียน");
-                        }
-                        
-                        // 2. ลบข้อมูลที่เกี่ยวข้องในตารางอื่นๆ
-                        $stmt = $conn->prepare("DELETE FROM student_academic_records WHERE student_id = ?");
-                        $stmt->execute([$_POST['student_id']]);
-                        
-                        $stmt = $conn->prepare("DELETE FROM attendance WHERE student_id = ?");
-                        $stmt->execute([$_POST['student_id']]);
-                        
-                        $stmt = $conn->prepare("DELETE FROM risk_students WHERE student_id = ?");
-                        $stmt->execute([$_POST['student_id']]);
-                        
-                        $stmt = $conn->prepare("DELETE FROM qr_codes WHERE student_id = ?");
-                        $stmt->execute([$_POST['student_id']]);
-                        
-                        // ลบความสัมพันธ์กับผู้ปกครอง
-                        $stmt = $conn->prepare("DELETE FROM parent_student_relation WHERE student_id = ?");
-                        $stmt->execute([$_POST['student_id']]);
-                        
-                        // ลบประวัติการเลื่อนชั้น
-                        $stmt = $conn->prepare("DELETE FROM class_history WHERE student_id = ?");
-                        $stmt->execute([$_POST['student_id']]);
-                        
-                        // 3. ลบข้อมูลในตาราง students
-                        $stmt = $conn->prepare("DELETE FROM students WHERE student_id = ?");
-                        $stmt->execute([$_POST['student_id']]);
-                        
-                        // 4. ลบข้อมูลในตาราง users
-                        $stmt = $conn->prepare("DELETE FROM users WHERE user_id = ?");
-                        $stmt->execute([$user_id]);
-                        
-                        $conn->commit();
-                        $success_message = "ลบข้อมูลนักเรียนเรียบร้อยแล้ว";
-                        
-                        // รีเฟรชหน้าเพื่อแสดงข้อมูลล่าสุด
-                        header("Location: students.php?success=delete");
-                        exit;
-                    } catch (Exception $e) {
-                        $conn->rollBack();
-                        $error_message = "เกิดข้อผิดพลาด: " . $e->getMessage();
-                        error_log("Error deleting student: " . $e->getMessage());
-                    }
-                }
-                break;
-                
-            case 'import':
-                // ตรวจสอบว่ามีการอัปโหลดไฟล์หรือไม่
-                if (!isset($_FILES['import_file']) || $_FILES['import_file']['error'] != UPLOAD_ERR_OK) {
-                    $error_message = "กรุณาอัปโหลดไฟล์";
-                } else {
-                    // ตรวจสอบชนิดไฟล์
-                    $file_ext = strtolower(pathinfo($_FILES['import_file']['name'], PATHINFO_EXTENSION));
-                    if (!in_array($file_ext, ['csv', 'xlsx', 'xls'])) {
-                        $error_message = "รองรับเฉพาะไฟล์ CSV, XLS, XLSX เท่านั้น";
-                    } else {
-                        try {
-                            // สร้าง FormData
-                            $formData = new \CURLFile(
-                                $_FILES['import_file']['tmp_name'],
-                                $_FILES['import_file']['type'],
-                                $_FILES['import_file']['name']
-                            );
-                            
-                            // ส่งข้อมูลไปยัง API
-                            $ch = curl_init('api/students_api.php');
-                            curl_setopt($ch, CURLOPT_POST, 1);
-                            curl_setopt($ch, CURLOPT_POSTFIELDS, [
-                                'action' => 'import_students',
-                                'import_file' => $formData,
-                                'skip_header' => isset($_POST['skip_header']) ? 'on' : '',
-                                'update_existing' => isset($_POST['update_existing']) ? 'on' : '',
-                                'import_class_id' => $_POST['import_class_id'] ?? ''
-                            ]);
-                            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-                            $response = curl_exec($ch);
-                            curl_close($ch);
-                            
-                            // แปลงข้อมูลจาก JSON
-                            $result = json_decode($response, true);
-                            
-                            if ($result && isset($result['success']) && $result['success']) {
-                                $success_message = $result['message'];
-                                
-                                // รีเฟรชหน้าเพื่อแสดงข้อมูลล่าสุด
-                                header("Location: students.php?success=import");
-                                exit;
-                            } else {
-                                $error_message = $result['message'] ?? "เกิดข้อผิดพลาดในการนำเข้าข้อมูล";
-                            }
-                        } catch (Exception $e) {
-                            $error_message = "เกิดข้อผิดพลาด: " . $e->getMessage();
-                            error_log("Error importing students: " . $e->getMessage());
-                        }
-                    }
-                }
-                break;
+
+// ใน students.php - ปรับปรุงส่วนการเพิ่มนักเรียน
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'add') {
+    // ตรวจสอบข้อมูลที่จำเป็น
+    if (empty($_POST['student_code']) || empty($_POST['firstname']) || empty($_POST['lastname']) || empty($_POST['title'])) {
+        $error_message = "กรุณากรอกข้อมูลให้ครบถ้วน";
+    } else {
+        try {
+            // เรียกใช้ฟังก์ชัน addStudent จาก model
+            $result = addStudent([
+                'student_code' => trim($_POST['student_code']),
+                'title' => $_POST['title'],
+                'firstname' => $_POST['firstname'],
+                'lastname' => $_POST['lastname'],
+                'phone_number' => $_POST['phone_number'] ?? '',
+                'email' => $_POST['email'] ?? '',
+                'class_id' => $_POST['class_id'] ?? null,
+                'status' => $_POST['status'] ?? 'กำลังศึกษา'
+            ]);
+            
+            if ($result['success']) {
+                // สร้าง session message สำหรับแสดงข้อความแจ้งเตือน
+                $_SESSION['success_message'] = $result['message'];
+                header("Location: students.php?success=add");
+                exit;
+            } else {
+                $error_message = $result['message'];
+            }
+        } catch (Exception $e) {
+            $error_message = "เกิดข้อผิดพลาด: " . $e->getMessage();
+            error_log("Error adding student: " . $e->getMessage());
         }
     }
 }
+
+// ส่วนการแก้ไขข้อมูลนักเรียน
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'edit') {
+    // ตรวจสอบข้อมูลที่จำเป็น
+    if (empty($_POST['student_id']) || empty($_POST['student_code']) || empty($_POST['firstname']) || empty($_POST['lastname'])) {
+        $error_message = "กรุณากรอกข้อมูลให้ครบถ้วน";
+    } else {
+        try {
+            // เรียกใช้ฟังก์ชัน updateStudent จาก model
+            $result = updateStudent([
+                'student_id' => $_POST['student_id'],
+                'student_code' => trim($_POST['student_code']),
+                'title' => $_POST['title'],
+                'firstname' => $_POST['firstname'],
+                'lastname' => $_POST['lastname'],
+                'phone_number' => $_POST['phone_number'] ?? '',
+                'email' => $_POST['email'] ?? '',
+                'class_id' => $_POST['class_id'] ?? null,
+                'status' => $_POST['status'] ?? 'กำลังศึกษา'
+            ]);
+            
+            if ($result['success']) {
+                $_SESSION['success_message'] = $result['message'];
+                header("Location: students.php?success=edit");
+                exit;
+            } else {
+                $error_message = $result['message'];
+            }
+        } catch (Exception $e) {
+            $error_message = "เกิดข้อผิดพลาด: " . $e->getMessage();
+            error_log("Error updating student: " . $e->getMessage());
+        }
+    }
+}
+
+// ส่วนการลบข้อมูลนักเรียน
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'delete') {
+    if (empty($_POST['student_id'])) {
+        $error_message = "ไม่ระบุรหัสนักเรียนที่ต้องการลบ";
+    } else {
+        try {
+            // เรียกใช้ฟังก์ชัน deleteStudent จาก model
+            $result = deleteStudent($_POST['student_id']);
+            
+            if ($result['success']) {
+                $_SESSION['success_message'] = $result['message'];
+                header("Location: students.php?success=delete");
+                exit;
+            } else {
+                $error_message = $result['message'];
+            }
+        } catch (Exception $e) {
+            $error_message = "เกิดข้อผิดพลาด: " . $e->getMessage();
+            error_log("Error deleting student: " . $e->getMessage());
+        }
+    }
+}
+
 
 // ตรวจสอบการแสดงข้อความแจ้งเตือนจาก URL
 if (isset($_GET['success'])) {

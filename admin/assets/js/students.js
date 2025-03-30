@@ -1379,4 +1379,46 @@ function importStudents() {
         
         showAlert('เกิดข้อผิดพลาดในการนำเข้าข้อมูลนักเรียน', 'danger');
     });
+
+
+    
 }
+
+// โค้ด JavaScript ที่เรียบง่ายกว่าสำหรับ datalist
+document.addEventListener('DOMContentLoaded', function() {
+    const classSearch = document.getElementById('class_search');
+    const classList = document.getElementById('classList');
+    const classIdInput = document.getElementById('class_id');
+    
+    // โหลดข้อมูลชั้นเรียน
+    fetch('api/classes_api.php?action=get_classes_with_advisors')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // เติมข้อมูลใน datalist
+                data.classes.forEach(cls => {
+                    const option = document.createElement('option');
+                    option.value = `${cls.levelName}/${cls.groupNumber} ${cls.departmentName}`;
+                    option.setAttribute('data-id', cls.classId);
+                    option.setAttribute('data-advisor', cls.advisorName || 'ไม่มีครูที่ปรึกษา');
+                    classList.appendChild(option);
+                });
+                
+                // เก็บข้อมูลทั้งหมดไว้ใช้
+                window.allClassesData = data.classes;
+            }
+        })
+        .catch(error => console.error('Error loading classes:', error));
+    
+    // เมื่อเลือกชั้นเรียน
+    classSearch.addEventListener('change', function() {
+        const selectedText = this.value;
+        const selectedClass = window.allClassesData?.find(cls => 
+            `${cls.levelName}/${cls.groupNumber} ${cls.departmentName}` === selectedText
+        );
+        
+        if (selectedClass) {
+            classIdInput.value = selectedClass.classId;
+        }
+    });
+});

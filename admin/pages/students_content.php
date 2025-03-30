@@ -4,7 +4,7 @@
         <span class="material-icons">filter_list</span>
         ค้นหาและกรองข้อมูลนักเรียน
     </div>
-    
+
     <div class="filter-container">
         <form method="get" action="students.php" class="filter-form">
             <div class="row">
@@ -39,7 +39,7 @@
                         <select class="form-control" name="group_number">
                             <option value="">-- ทุกกลุ่ม --</option>
                             <?php for ($i = 1; $i <= 5; $i++): ?>
-                            <option value="<?php echo $i; ?>" <?php echo (isset($_GET['group_number']) && $_GET['group_number'] == $i) ? 'selected' : ''; ?>><?php echo $i; ?></option>
+                                <option value="<?php echo $i; ?>" <?php echo (isset($_GET['group_number']) && $_GET['group_number'] == $i) ? 'selected' : ''; ?>><?php echo $i; ?></option>
                             <?php endfor; ?>
                         </select>
                     </div>
@@ -50,7 +50,7 @@
                         <select class="form-control" name="department_id">
                             <option value="">-- ทุกแผนก --</option>
                             <?php foreach ($data['departments'] as $department): ?>
-                            <option value="<?php echo $department['department_id']; ?>" <?php echo (isset($_GET['department_id']) && $_GET['department_id'] == $department['department_id']) ? 'selected' : ''; ?>><?php echo $department['department_name']; ?></option>
+                                <option value="<?php echo $department['department_id']; ?>" <?php echo (isset($_GET['department_id']) && $_GET['department_id'] == $department['department_id']) ? 'selected' : ''; ?>><?php echo $department['department_name']; ?></option>
                             <?php endforeach; ?>
                         </select>
                     </div>
@@ -115,7 +115,7 @@
             จำนวนนักเรียนที่กำลังศึกษา
         </div>
     </div>
-    
+
     <div class="stat-card">
         <div class="stat-header">
             <div class="stat-title">นักเรียนชาย</div>
@@ -133,7 +133,7 @@
             ?>
         </div>
     </div>
-    
+
     <div class="stat-card">
         <div class="stat-header">
             <div class="stat-title">นักเรียนหญิง</div>
@@ -151,7 +151,7 @@
             ?>
         </div>
     </div>
-    
+
     <div class="stat-card">
         <div class="stat-header">
             <div class="stat-title">นักเรียนเสี่ยงตกกิจกรรม</div>
@@ -177,10 +177,10 @@
         <span class="material-icons">people</span>
         รายชื่อนักเรียน
         <?php if (!empty($_GET)): ?>
-        <span class="badge"><?php echo count($data['students']); ?> รายการ</span>
+            <span class="badge"><?php echo count($data['students']); ?> รายการ</span>
         <?php endif; ?>
     </div>
-    
+
     <div class="bulk-actions">
         <button class="btn btn-secondary" onclick="printStudentList()">
             <span class="material-icons">print</span>
@@ -199,7 +199,7 @@
             นำเข้าข้อมูล
         </button>
     </div>
-    
+
     <div class="table-responsive">
         <table id="studentDataTable" class="data-table display">
             <thead>
@@ -216,58 +216,58 @@
             </thead>
             <tbody>
                 <?php foreach ($data['students'] as $student): ?>
-                <tr>
-                    <td><?php echo $student['student_code']; ?></td>
-                    <td>
-                        <div class="student-info">
-                            <div class="student-avatar">
-                                <?php echo mb_substr($student['first_name'], 0, 1, 'UTF-8'); ?>
+                    <tr>
+                        <td><?php echo $student['student_code']; ?></td>
+                        <td>
+                            <div class="student-info">
+                                <div class="student-avatar">
+                                    <?php echo mb_substr($student['first_name'], 0, 1, 'UTF-8'); ?>
+                                </div>
+                                <div class="student-details">
+                                    <div class="student-name"><?php echo $student['title'] . $student['first_name'] . ' ' . $student['last_name']; ?></div>
+                                    <div class="student-class"><?php echo $student['status']; ?></div>
+                                </div>
                             </div>
-                            <div class="student-details">
-                                <div class="student-name"><?php echo $student['title'] . $student['first_name'] . ' ' . $student['last_name']; ?></div>
-                                <div class="student-class"><?php echo $student['status']; ?></div>
-                            </div>
-                        </div>
-                    </td>
-                    <td><?php echo $student['class']; ?></td>
-                    <td><?php echo $student['department_name'] ?? '-'; ?></td>
-                    <td>
-                        <?php if (isset($student['line_connected']) && $student['line_connected']): ?>
-                        <span class="status-badge success">เชื่อมต่อแล้ว</span>
-                        <?php else: ?>
-                        <button class="btn btn-sm btn-outline-primary" onclick="generateLineQR(<?php echo $student['student_id']; ?>)">สร้าง QR</button>
-                        <?php endif; ?>
-                    </td>
-                    <td><?php echo number_format($student['attendance_rate'], 1); ?>%</td>
-                    <td>
-                        <?php
-                        $status_class = '';
-                        if (isset($student['attendance_status'])) {
-                            if ($student['attendance_status'] === 'เสี่ยงตกกิจกรรม') {
-                                $status_class = 'danger';
-                            } elseif ($student['attendance_status'] === 'ต้องระวัง') {
-                                $status_class = 'warning';
-                            } else {
-                                $status_class = 'success';
+                        </td>
+                        <td><?php echo $student['class']; ?></td>
+                        <td><?php echo $student['department_name'] ?? '-'; ?></td>
+                        <td>
+                            <?php if (isset($student['line_connected']) && $student['line_connected']): ?>
+                                <span class="status-badge success">เชื่อมต่อแล้ว</span>
+                            <?php else: ?>
+                                <button class="btn btn-sm btn-outline-primary" onclick="generateLineQR(<?php echo $student['student_id']; ?>)">สร้าง QR</button>
+                            <?php endif; ?>
+                        </td>
+                        <td><?php echo number_format($student['attendance_rate'], 1); ?>%</td>
+                        <td>
+                            <?php
+                            $status_class = '';
+                            if (isset($student['attendance_status'])) {
+                                if ($student['attendance_status'] === 'เสี่ยงตกกิจกรรม') {
+                                    $status_class = 'danger';
+                                } elseif ($student['attendance_status'] === 'ต้องระวัง') {
+                                    $status_class = 'warning';
+                                } else {
+                                    $status_class = 'success';
+                                }
                             }
-                        }
-                        ?>
-                        <span class="status-badge <?php echo $status_class; ?>"><?php echo $student['attendance_status'] ?? 'ไม่มีข้อมูล'; ?></span>
-                    </td>
-                    <td>
-                        <div class="action-buttons">
-                            <button class="btn btn-sm btn-info" title="ดูข้อมูล" onclick="viewStudent(<?php echo $student['student_id']; ?>)">
-                                <span class="material-icons">visibility</span>
-                            </button>
-                            <button class="btn btn-sm btn-warning" title="แก้ไข" onclick="editStudent(<?php echo $student['student_id']; ?>)">
-                                <span class="material-icons">edit</span>
-                            </button>
-                            <button class="btn btn-sm btn-danger" title="ลบ" onclick="deleteStudent(<?php echo $student['student_id']; ?>, '<?php echo htmlspecialchars($student['title'] . $student['first_name'] . ' ' . $student['last_name']); ?>')">
-                                <span class="material-icons">delete</span>
-                            </button>
-                        </div>
-                    </td>
-                </tr>
+                            ?>
+                            <span class="status-badge <?php echo $status_class; ?>"><?php echo $student['attendance_status'] ?? 'ไม่มีข้อมูล'; ?></span>
+                        </td>
+                        <td>
+                            <div class="action-buttons">
+                                <button class="btn btn-sm btn-info" title="ดูข้อมูล" onclick="viewStudent(<?php echo $student['student_id']; ?>)">
+                                    <span class="material-icons">visibility</span>
+                                </button>
+                                <button class="btn btn-sm btn-warning" title="แก้ไข" onclick="editStudent(<?php echo $student['student_id']; ?>)">
+                                    <span class="material-icons">edit</span>
+                                </button>
+                                <button class="btn btn-sm btn-danger" title="ลบ" onclick="deleteStudent(<?php echo $student['student_id']; ?>, '<?php echo htmlspecialchars($student['title'] . $student['first_name'] . ' ' . $student['last_name']); ?>')">
+                                    <span class="material-icons">delete</span>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
                 <?php endforeach; ?>
             </tbody>
         </table>
@@ -281,13 +281,13 @@
             <span class="material-icons">close</span>
         </button>
         <h2 class="modal-title">เพิ่มนักเรียนใหม่</h2>
-        
+
         <form id="addStudentForm" method="post" action="students.php">
             <input type="hidden" name="action" value="add">
-            
+
             <div class="form-section">
                 <h3 class="section-title">ข้อมูลส่วนตัว</h3>
-                
+
                 <div class="row">
                     <div class="col-md-3">
                         <div class="form-group">
@@ -314,7 +314,7 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <div class="row">
                     <div class="col-md-4">
                         <div class="form-group">
@@ -336,35 +336,22 @@
                     </div>
                 </div>
             </div>
-            
+
             <div class="form-section">
                 <h3 class="section-title">ข้อมูลการศึกษา</h3>
-                
+
                 <div class="row">
                     <div class="col-md-6">
+                        <!-- แทนที่ select box เดิมด้วยโค้ดนี้ -->
                         <div class="form-group">
                             <label class="form-label">ชั้นเรียน</label>
-                            <select class="form-control" name="class_id">
-                                <option value="">-- เลือกชั้นเรียน --</option>
-                                <?php 
-                                $classGroups = [];
-                                foreach ($data['classes'] as $class) {
-                                    $level = $class['level'];
-                                    if (!isset($classGroups[$level])) {
-                                        $classGroups[$level] = [];
-                                    }
-                                    $classGroups[$level][] = $class;
-                                }
-                                
-                                foreach ($classGroups as $level => $classes):
-                                ?>
-                                <optgroup label="<?php echo $level; ?>">
-                                    <?php foreach ($classes as $class): ?>
-                                    <option value="<?php echo $class['class_id']; ?>"><?php echo $level . '/' . $class['group_number'] . ' ' . $class['department_name']; ?></option>
-                                    <?php endforeach; ?>
-                                </optgroup>
-                                <?php endforeach; ?>
-                            </select>
+                            <input type="text" list="classList" class="form-control" id="class_search"
+                                placeholder="เลือกหรือพิมพ์เพื่อค้นหาชั้นเรียน..." autocomplete="off">
+                            <input type="hidden" name="class_id" id="class_id">
+
+                            <datalist id="classList">
+                                <!-- จะถูกเติมด้วย JavaScript -->
+                            </datalist>
                         </div>
                     </div>
                     <div class="col-md-6">
@@ -380,7 +367,7 @@
                     </div>
                 </div>
             </div>
-            
+
             <div class="modal-actions">
                 <button type="button" class="btn btn-secondary" onclick="closeModal('addStudentModal')">ยกเลิก</button>
                 <button type="submit" class="btn btn-primary">
@@ -399,14 +386,14 @@
             <span class="material-icons">close</span>
         </button>
         <h2 class="modal-title">แก้ไขข้อมูลนักเรียน</h2>
-        
+
         <form id="editStudentForm" method="post" action="students.php">
             <input type="hidden" name="action" value="edit">
             <input type="hidden" name="student_id" id="edit_student_id">
-            
+
             <div class="form-section">
                 <h3 class="section-title">ข้อมูลส่วนตัว</h3>
-                
+
                 <div class="row">
                     <div class="col-md-3">
                         <div class="form-group">
@@ -433,7 +420,7 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <div class="row">
                     <div class="col-md-4">
                         <div class="form-group">
@@ -455,24 +442,24 @@
                     </div>
                 </div>
             </div>
-            
+
             <div class="form-section">
                 <h3 class="section-title">ข้อมูลการศึกษา</h3>
-                
+
                 <div class="row">
                     <div class="col-md-6">
                         <div class="form-group">
                             <label class="form-label">ชั้นเรียน</label>
                             <select class="form-control" name="class_id" id="edit_class_id">
                                 <option value="">-- เลือกชั้นเรียน --</option>
-                                <?php 
+                                <?php
                                 foreach ($classGroups as $level => $classes):
                                 ?>
-                                <optgroup label="<?php echo $level; ?>">
-                                    <?php foreach ($classes as $class): ?>
-                                    <option value="<?php echo $class['class_id']; ?>"><?php echo $level . '/' . $class['group_number'] . ' ' . $class['department_name']; ?></option>
-                                    <?php endforeach; ?>
-                                </optgroup>
+                                    <optgroup label="<?php echo $level; ?>">
+                                        <?php foreach ($classes as $class): ?>
+                                            <option value="<?php echo $class['class_id']; ?>"><?php echo $level . '/' . $class['group_number'] . ' ' . $class['department_name']; ?></option>
+                                        <?php endforeach; ?>
+                                    </optgroup>
                                 <?php endforeach; ?>
                             </select>
                         </div>
@@ -490,7 +477,7 @@
                     </div>
                 </div>
             </div>
-            
+
             <div class="modal-actions">
                 <button type="button" class="btn btn-secondary" onclick="closeModal('editStudentModal')">ยกเลิก</button>
                 <button type="submit" class="btn btn-primary">
@@ -509,7 +496,7 @@
             <span class="material-icons">close</span>
         </button>
         <h2 class="modal-title">ข้อมูลนักเรียน</h2>
-        
+
         <div class="student-profile">
             <div class="student-profile-header">
                 <div class="student-profile-avatar" id="view_avatar"></div>
@@ -519,7 +506,7 @@
                     <p id="view_class"></p>
                 </div>
             </div>
-            
+
             <div class="info-sections">
                 <div class="info-section">
                     <h4>ข้อมูลติดต่อ</h4>
@@ -527,14 +514,14 @@
                     <p id="view_email"><strong>อีเมล:</strong> <span></span></p>
                     <p id="view_line"><strong>LINE:</strong> <span></span></p>
                 </div>
-                
+
                 <div class="info-section">
                     <h4>ข้อมูลการศึกษา</h4>
                     <p id="view_advisor"><strong>ครูที่ปรึกษา:</strong> <span></span></p>
                     <p id="view_department"><strong>แผนกวิชา:</strong> <span></span></p>
                     <p id="view_status"><strong>สถานะการศึกษา:</strong> <span></span></p>
                 </div>
-                
+
                 <div class="info-section">
                     <h4>การเข้าแถว</h4>
                     <p id="view_attendance_status"><strong>สถานะการเข้าแถว:</strong> <span></span></p>
@@ -554,7 +541,7 @@
                     </div>
                 </div>
             </div>
-            
+
             <div class="modal-actions">
                 <button type="button" class="btn btn-secondary" onclick="closeModal('viewStudentModal')">ปิด</button>
                 <button type="button" class="btn btn-warning" id="edit_btn" onclick="">
@@ -577,16 +564,16 @@
             <span class="material-icons">close</span>
         </button>
         <h2 class="modal-title">ยืนยันการลบข้อมูล</h2>
-        
+
         <div class="confirmation-message">
             <p>คุณต้องการลบข้อมูลนักเรียน <strong id="delete_student_name">-</strong> ใช่หรือไม่?</p>
             <p class="warning-text text-danger">คำเตือน: การลบข้อมูลจะไม่สามารถกู้คืนได้</p>
         </div>
-        
+
         <form id="deleteStudentForm" method="post" action="students.php">
             <input type="hidden" name="action" value="delete">
             <input type="hidden" name="student_id" id="delete_student_id">
-            
+
             <div class="modal-actions">
                 <button type="button" class="btn btn-secondary" onclick="closeModal('deleteStudentModal')">ยกเลิก</button>
                 <button type="submit" class="btn btn-danger">
@@ -605,15 +592,15 @@
             <span class="material-icons">close</span>
         </button>
         <h2 class="modal-title">นำเข้าข้อมูลนักเรียน</h2>
-        
+
         <form id="importForm" method="post" action="students.php" enctype="multipart/form-data">
             <input type="hidden" name="action" value="import">
-            
+
             <div class="form-group">
                 <label class="form-label">เลือกไฟล์ Excel (.xlsx, .xls) หรือ CSV<span class="text-danger">*</span></label>
                 <input type="file" class="form-control" name="import_file" accept=".xlsx,.xls,.csv" required>
             </div>
-            
+
             <div class="import-instructions">
                 <h4>คำแนะนำการนำเข้าข้อมูล</h4>
                 <ol>
@@ -624,7 +611,7 @@
                     <li>ระบบจะอัพเดทข้อมูลอัตโนมัติ หากพบรหัสนักเรียนซ้ำ</li>
                 </ol>
             </div>
-            
+
             <div class="import-options">
                 <div class="checkbox-item">
                     <input type="checkbox" id="update_existing" name="update_existing" checked>
@@ -638,19 +625,19 @@
                     <label for="import_class">นำเข้านักเรียนเข้าชั้นเรียน</label>
                     <select class="form-control" name="import_class_id" id="import_class">
                         <option value="">-- ไม่ระบุชั้นเรียน --</option>
-                        <?php 
+                        <?php
                         foreach ($classGroups as $level => $classes):
                         ?>
-                        <optgroup label="<?php echo $level; ?>">
-                            <?php foreach ($classes as $class): ?>
-                            <option value="<?php echo $class['class_id']; ?>"><?php echo $level . '/' . $class['group_number'] . ' ' . $class['department_name']; ?></option>
-                            <?php endforeach; ?>
-                        </optgroup>
+                            <optgroup label="<?php echo $level; ?>">
+                                <?php foreach ($classes as $class): ?>
+                                    <option value="<?php echo $class['class_id']; ?>"><?php echo $level . '/' . $class['group_number'] . ' ' . $class['department_name']; ?></option>
+                                <?php endforeach; ?>
+                            </optgroup>
                         <?php endforeach; ?>
                     </select>
                 </div>
             </div>
-            
+
             <div class="modal-actions">
                 <button type="button" class="btn btn-secondary" onclick="closeModal('importModal')">ยกเลิก</button>
                 <button type="submit" class="btn btn-primary">
@@ -662,26 +649,50 @@
     </div>
 </div>
 
-<!-- โมดัลแสดง QR Code LINE -->
+
+<!-- โมดัลแสดง QR Code LINE (ปรับปรุง) -->
 <div class="modal" id="lineQRModal">
     <div class="modal-content">
         <button class="modal-close" onclick="closeModal('lineQRModal')">
             <span class="material-icons">close</span>
         </button>
-        <h2 class="modal-title">QR Code สำหรับเชื่อมต่อ LINE</h2>
-        
+        <h2 class="modal-title">เชื่อมต่อบัญชี LINE</h2>
+
         <div class="text-center p-4">
-            <p>ให้นักเรียนสแกน QR Code ด้านล่างเพื่อเชื่อมต่อกับ LINE</p>
-            <div id="qrcode-container" class="my-4">
+            <p>ให้นักเรียนสแกน QR Code ด้านล่างด้วยแอพ LINE เพื่อเชื่อมต่อกับระบบ</p>
+
+            <div id="qrcode-container" class="qrcode-container my-4">
                 <img id="qrcode-image" src="" alt="QR Code" class="img-fluid" style="max-width: 250px;">
+                <div class="qr-info">
+                    <p>QR Code นี้จะหมดอายุในวันที่ <span id="qr-expire-time">-</span></p>
+                </div>
             </div>
-            <p class="text-info">หมายเหตุ: QR Code นี้จะหมดอายุภายใน 24 ชั่วโมง</p>
-            <p>หรือคลิกลิงก์: <a href="#" id="line-connect-url" target="_blank">ลิงก์เชื่อมต่อ LINE</a></p>
+
+            <div id="line-status-text">
+                <span class="status-badge warning">รอการเชื่อมต่อ</span>
+            </div>
+
+            <div class="qr-link mt-3">
+                <p>หรือคลิกลิงก์เพื่อเปิดในแอพ LINE:<br>
+                    <a href="#" id="line-connect-url" target="_blank">ลิงก์เชื่อมต่อ LINE</a>
+                </p>
+            </div>
+
+            <div class="qr-instructions mt-4">
+                <h4>วิธีการเชื่อมต่อ:</h4>
+                <ol class="text-start">
+                    <li>เปิดแอพ LINE บนโทรศัพท์มือถือ</li>
+                    <li>สแกน QR Code ด้านบน หรือคลิกที่ลิงก์</li>
+                    <li>ยืนยันการเชื่อมต่อกับระบบ</li>
+                    <li>เมื่อเชื่อมต่อสำเร็จ จะมีข้อความยืนยันในแอพ LINE</li>
+                    <li>กดปุ่ม "ตรวจสอบสถานะ" เพื่อยืนยันการเชื่อมต่อ</li>
+                </ol>
+            </div>
         </div>
-        
+
         <div class="modal-actions">
             <button type="button" class="btn btn-secondary" onclick="closeModal('lineQRModal')">ปิด</button>
-            <button type="button" class="btn btn-primary" onclick="checkLineStatus()">
+            <button type="button" class="btn btn-primary" id="line-status-check" onclick="checkLineStatus()">
                 <span class="material-icons">refresh</span>
                 ตรวจสอบสถานะ
             </button>
@@ -689,19 +700,22 @@
     </div>
 </div>
 
+<!-- ส่วนแสดงการแจ้งเตือน -->
+<div id="alertContainer" class="alert-container"></div>
+
 <!-- แสดงข้อความแจ้งเตือน (ถ้ามี) -->
 <?php if (isset($success_message)): ?>
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        showAlert('<?php echo $success_message; ?>', 'success');
-    });
-</script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            showAlert('<?php echo $success_message; ?>', 'success');
+        });
+    </script>
 <?php endif; ?>
 
 <?php if (isset($error_message)): ?>
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        showAlert('<?php echo $error_message; ?>', 'error');
-    });
-</script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            showAlert('<?php echo $error_message; ?>', 'error');
+        });
+    </script>
 <?php endif; ?>
