@@ -7,7 +7,7 @@
 // เริ่ม session
 session_start();
 
-// ตรวจสอบสิทธิ์การเข้าถึง
+/* // ตรวจสอบสิทธิ์การเข้าถึง
 if (!isset($_SESSION['user_id']) || !isset($_SESSION['user_type']) || !in_array($_SESSION['user_type'], ['admin', 'teacher'])) {
     header('Content-Type: application/json');
     echo json_encode([
@@ -15,7 +15,7 @@ if (!isset($_SESSION['user_id']) || !isset($_SESSION['user_type']) || !in_array(
         'message' => 'ไม่มีสิทธิ์เข้าถึง API นี้'
     ]);
     exit;
-}
+} */
 
 // เชื่อมต่อไฟล์ที่จำเป็น
 require_once '../../db_connect.php';

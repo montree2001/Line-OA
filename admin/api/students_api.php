@@ -721,17 +721,15 @@ function addStudent() {
             return;
         }
         
-        // ใช้ line_id ชั่วคราวที่ส่งมาจาก client หรือสร้างใหม่
-        $tempLineId = isset($_POST['temp_line_id']) 
-            ? $_POST['temp_line_id'] 
-            : 'TEMP_' . $_POST['student_code'] . '_' . time() . '_' . substr(md5(rand()), 0, 6);
+        // สร้าง line_id ที่เป็นเอกลักษณ์ โดยใช้ UUID แทนการใช้ timestamp + random
+        $uniqueLineId = 'TEMP_' . $_POST['student_code'] . '_' . uniqid('', true) . '_' . bin2hex(random_bytes(4));
         
         // 1. เพิ่มข้อมูลในตาราง users ก่อน
         $userQuery = "INSERT INTO users (line_id, role, title, first_name, last_name, phone_number, email, gdpr_consent)
                     VALUES (?, 'student', ?, ?, ?, ?, ?, 1)";
         $userStmt = $conn->prepare($userQuery);
         $userStmt->execute([
-            $tempLineId, // ใช้ line_id ชั่วคราวที่ไม่ซ้ำกัน
+            $uniqueLineId, // ใช้ line_id ที่สร้างขึ้นมาใหม่ทุกครั้ง
             $_POST['title'],
             $_POST['firstname'],
             $_POST['lastname'],
@@ -773,20 +771,10 @@ function addStudent() {
         
         $conn->commit();
         
-        // ดึงข้อมูลนักเรียนที่เพิ่งเพิ่มเพื่อยืนยันว่าข้อมูลถูกต้อง
-        $confirmQuery = "SELECT s.student_code, u.first_name, u.last_name 
-                        FROM students s 
-                        JOIN users u ON s.user_id = u.user_id
-                        WHERE s.student_id = ?";
-        $confirmStmt = $conn->prepare($confirmQuery);
-        $confirmStmt->execute([$student_id]);
-        $student = $confirmStmt->fetch(PDO::FETCH_ASSOC);
-        
         echo json_encode([
             'success' => true,
             'message' => 'เพิ่มข้อมูลนักเรียนเรียบร้อยแล้ว',
-            'student_id' => $student_id,
-            'student_data' => $student // ส่งข้อมูลกลับเพื่อยืนยัน
+            'student_id' => $student_id
         ]);
     } catch (PDOException $e) {
         if ($conn) {
@@ -809,8 +797,6 @@ function addStudent() {
         ]);
     }
 }
-
-
 
 
 

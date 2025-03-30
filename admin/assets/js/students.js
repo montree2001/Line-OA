@@ -78,7 +78,6 @@ function initEventListeners() {
  * โดยเพิ่มการรีโหลดตาราง DataTables หลังจากการเพิ่ม/แก้ไข/ลบข้อมูล
  */
 
-// แก้ไขฟังก์ชันเพิ่มนักเรียน
 function addStudent() {
     // ดึงข้อมูลจากฟอร์ม
     const form = document.getElementById('addStudentForm');
@@ -87,10 +86,7 @@ function addStudent() {
     hideAlert();
     
     // ตรวจสอบความถูกต้องของข้อมูล
-    const validation = validateStudentForm(form);
-    
-    if (!validation.isValid) {
-        showAlert(validation.errorMessages.join('<br>'), 'warning', 'กรุณากรอกข้อมูลให้ครบถ้วน');
+    if (!validateStudentForm(form)) {
         return;
     }
     
@@ -104,11 +100,8 @@ function addStudent() {
     // สร้าง FormData สำหรับส่งข้อมูล
     const formData = new FormData(form);
     
-    // เพิ่ม action และ temp_line_id
+    // เพิ่ม action (ไม่ต้องส่ง temp_line_id จากฝั่งไคลเอนต์)
     formData.append('action', 'add_student');
-    const studentCode = formData.get('student_code');
-    const tempLineId = `TEMP_${studentCode}_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
-    formData.append('temp_line_id', tempLineId);
     
     // แสดงการโหลด
     showAlert('กำลังเพิ่มข้อมูลนักเรียน...', 'info');
