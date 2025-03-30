@@ -1,71 +1,66 @@
 <div class="card">
-    <div class="text-center">
-        <span class="material-icons intro-icon">school</span>
-        <h2 class="card-title text-center">ยินดีต้อนรับสู่ระบบลงทะเบียนนักเรียน</h2>
+    <h2 class="card-title">ลงทะเบียนนักเรียน</h2>
+    
+    <div class="intro-icon text-center">
+        <span class="material-icons">school</span>
     </div>
     
-    <p class="mb-20">
-        สวัสดีนักเรียน! ยินดีต้อนรับสู่ระบบเช็คชื่อเข้าแถวออนไลน์ของวิทยาลัยการอาชีพปราสาท (STP-Prasat) 
-        ระบบนี้จะช่วยให้คุณสามารถเช็คชื่อเข้าแถวผ่านโทรศัพท์มือถือได้อย่างสะดวกและรวดเร็ว
-    </p>
+    <p class="text-center mb-20">ยินดีต้อนรับสู่ระบบลงทะเบียนเช็คชื่อเข้าแถวออนไลน์</p>
+    
+    <div class="profile-info-section">
+        <h3>ข้อมูลที่ต้องเตรียม</h3>
+        <ul style="padding-left: 20px; margin-bottom: 15px;">
+            <li>รหัสนักศึกษา 11 หลัก</li>
+            <li>ข้อมูลส่วนตัว ชื่อ-นามสกุล</li>
+            <li>ชื่อครูที่ปรึกษาหรือข้อมูลห้องเรียน</li>
+            <li>รูปถ่ายสำหรับใช้เป็นโปรไฟล์ (ถ้ามี)</li>
+        </ul>
+    </div>
+    
+    <p class="mb-20">ขั้นตอนการลงทะเบียนมี 5 ขั้นตอน ใช้เวลาประมาณ 2-3 นาที</p>
     
     <div class="features-section">
-        <h3 class="features-title">ฟีเจอร์ที่คุณจะได้ใช้งาน</h3>
+        <h3 class="features-title">ประโยชน์ที่จะได้รับ</h3>
         
         <div class="feature-grid">
             <div class="feature-item">
                 <div class="feature-icon">
-                    <span class="material-icons">gps_fixed</span>
+                    <span class="material-icons">schedule</span>
                 </div>
-                <div class="feature-title">เช็คชื่อด้วย GPS</div>
-                <div class="feature-desc">เช็คชื่อเข้าแถวผ่านระบบ GPS เมื่ออยู่ในพื้นที่โรงเรียน</div>
+                <div class="feature-title">ประหยัดเวลา</div>
+                <div class="feature-desc">เช็คชื่อได้ทุกที่ ทุกเวลา</div>
             </div>
             
             <div class="feature-item">
                 <div class="feature-icon">
-                    <span class="material-icons">qr_code_scanner</span>
+                    <span class="material-icons">bar_chart</span>
                 </div>
-                <div class="feature-title">QR Code</div>
-                <div class="feature-desc">สร้าง QR Code ให้ครูที่ปรึกษาสแกนเพื่อเช็คชื่อ</div>
+                <div class="feature-title">ติดตามสถิติ</div>
+                <div class="feature-desc">ดูสถิติการเข้าแถวได้ทันที</div>
             </div>
             
             <div class="feature-item">
                 <div class="feature-icon">
-                    <span class="material-icons">pin</span>
+                    <span class="material-icons">notifications_active</span>
                 </div>
-                <div class="feature-title">รหัส PIN</div>
-                <div class="feature-desc">ใส่รหัส PIN จากครูเพื่อเช็คชื่อได้อย่างรวดเร็ว</div>
+                <div class="feature-title">รับการแจ้งเตือน</div>
+                <div class="feature-desc">แจ้งเตือนผ่าน LINE ทันที</div>
             </div>
             
             <div class="feature-item">
                 <div class="feature-icon">
-                    <span class="material-icons">assessment</span>
+                    <span class="material-icons">support_agent</span>
                 </div>
-                <div class="feature-title">ดูสถิติการเข้าแถว</div>
-                <div class="feature-desc">ตรวจสอบและติดตามประวัติการเข้าแถวของคุณได้ทันที</div>
+                <div class="feature-title">ติดต่อง่าย</div>
+                <div class="feature-desc">ติดต่อครูที่ปรึกษาได้สะดวก</div>
             </div>
         </div>
     </div>
     
-    <div class="checkbox-container mb-20">
-        <input type="checkbox" id="start_registration" checked>
-        <label for="start_registration" class="checkbox-label">
-            ฉันต้องการลงทะเบียนเพื่อใช้งานระบบเช็คชื่อเข้าแถวออนไลน์
-        </label>
-    </div>
-    
-    <p class="mb-20 text-center">
-        กระบวนการลงทะเบียนจะใช้เวลาเพียงไม่กี่นาที โดยจะมีทั้งหมด 5 ขั้นตอน คุณจะต้องกรอกข้อมูลส่วนตัว เลือกครูที่ปรึกษา และยืนยันข้อมูลเพื่อเริ่มใช้งานระบบ
-    </p>
-    
-    <div class="text-center">
-        <a href="register.php?step=2" class="btn primary">
-            เริ่มการลงทะเบียน
-            <span class="material-icons">arrow_forward</span>
-        </a>
-    </div>
-</div>
-
-<div class="contact-admin">
-    หากมีปัญหาในการลงทะเบียน กรุณาติดต่อผู้ดูแลระบบที่ <a href="#" class="text-link">admin@prasat.ac.th</a> หรือติดต่อครูที่ปรึกษาของคุณ
+    <form method="POST" action="register_process.php">
+        <input type="hidden" name="step" value="1">
+        <button type="submit" class="btn primary">
+            เริ่มลงทะเบียน <span class="material-icons">arrow_forward</span>
+        </button>
+    </form>
 </div>

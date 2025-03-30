@@ -1,75 +1,58 @@
 <div class="card">
-    <h2 class="card-title">ยืนยันข้อมูลของคุณ</h2>
+    <h2 class="card-title">กรอกข้อมูลส่วนตัว</h2>
     
-    <div class="alert alert-success">
-        <span class="material-icons">check_circle</span>
-        <span>พบข้อมูลของคุณในระบบแล้ว กรุณาตรวจสอบความถูกต้อง</span>
-    </div>
+    <p>ไม่พบข้อมูลสำหรับรหัสนักศึกษา <strong><?php echo htmlspecialchars($_SESSION['student_code'] ?? ''); ?></strong></p>
+    <p>กรุณากรอกข้อมูลส่วนตัวของคุณเพื่อลงทะเบียน</p>
     
-    <div class="profile-info-section">
-        <h3>ข้อมูลนักศึกษา</h3>
+    <form method="POST" action="register_process.php">
+        <input type="hidden" name="step" value="33">
         
-        <div class="info-item">
-            <div class="info-label">รหัสนักศึกษา:</div>
-            <div class="info-value"><?php echo htmlspecialchars($_SESSION['student_code']); ?></div>
+        <div class="input-container">
+            <label class="input-label">คำนำหน้า</label>
+            <select name="title" class="input-field" required>
+                <option value="" disabled selected>เลือกคำนำหน้า</option>
+                <option value="นาย">นาย</option>
+                <option value="นางสาว">นางสาว</option>
+                <option value="อื่นๆ">อื่นๆ</option>
+            </select>
         </div>
         
-        <div class="info-item">
-            <div class="info-label">คำนำหน้า:</div>
-            <div class="info-value"><?php echo htmlspecialchars($_SESSION['student_title']); ?></div>
+        <div class="input-container">
+            <label for="first_name" class="input-label">ชื่อจริง</label>
+            <input type="text" id="first_name" name="first_name" class="input-field" placeholder="กรอกชื่อจริง" required>
         </div>
         
-        <div class="info-item">
-            <div class="info-label">ชื่อ:</div>
-            <div class="info-value"><?php echo htmlspecialchars($_SESSION['student_first_name']); ?></div>
+        <div class="input-container">
+            <label for="last_name" class="input-label">นามสกุล</label>
+            <input type="text" id="last_name" name="last_name" class="input-field" placeholder="กรอกนามสกุล" required>
         </div>
         
-        <div class="info-item">
-            <div class="info-label">นามสกุล:</div>
-            <div class="info-value"><?php echo htmlspecialchars($_SESSION['student_last_name']); ?></div>
+        <div class="input-container">
+            <label for="phone" class="input-label">เบอร์โทรศัพท์ (ถ้ามี)</label>
+            <input type="tel" id="phone" name="phone" class="input-field" placeholder="กรอกเบอร์โทรศัพท์">
+            <div class="help-text">ใช้สำหรับการติดต่อและแจ้งเตือน</div>
         </div>
         
-        <?php if (isset($_SESSION['current_class_id']) && $_SESSION['current_class_id']): ?>
-        <div class="info-item">
-            <div class="info-label">ชั้นเรียน:</div>
-            <div class="info-value">
-                <?php
-                // แสดงข้อมูลชั้นเรียน (ถ้ามี)
-                try {
-                    $class_sql = "SELECT c.level, d.department_name, c.group_number 
-                                FROM classes c
-                                JOIN departments d ON c.department_id = d.department_id
-                                WHERE c.class_id = :class_id";
-                    $class_stmt = $conn->prepare($class_sql);
-                    $class_stmt->bindParam(':class_id', $_SESSION['current_class_id'], PDO::PARAM_INT);
-                    $class_stmt->execute();
-                    $class = $class_stmt->fetch(PDO::FETCH_ASSOC);
-                    
-                    if ($class) {
-                        echo htmlspecialchars($class['level'] . ' แผนก' . $class['department_name'] . ' กลุ่ม ' . $class['group_number']);
-                    } else {
-                        echo "ไม่ระบุ";
-                    }
-                } catch (PDOException $e) {
-                    echo "ไม่สามารถดึงข้อมูลชั้นเรียนได้";
-                }
-                ?>
-            </div>
+        <div class="input-container">
+            <label for="email" class="input-label">อีเมล (ถ้ามี)</label>
+            <input type="email" id="email" name="email" class="input-field" placeholder="กรอกอีเมล">
         </div>
-        <?php endif; ?>
-    </div>
+        
+        <div class="checkbox-container">
+            <input type="checkbox" id="confirm_info" name="confirm_info" required>
+            <label for="confirm_info" class="checkbox-label">
+                ข้าพเจ้าขอรับรองว่าข้อมูลดังกล่าวเป็นความจริงทุกประการ
+            </label>
+        </div>
+        
+        <button type="submit" class="btn primary">
+            บันทึกข้อมูล <span class="material-icons">arrow_forward</span>
+        </button>
+    </form>
     
-    <div class="mt-20">
-        <p class="mb-10">หากข้อมูลข้างต้นถูกต้อง คลิกปุ่ม "ถัดไป" เพื่อไปยังขั้นตอนต่อไป</p>
-        <p class="mb-10">หากข้อมูลไม่ถูกต้อง กรุณาติดต่อเจ้าหน้าที่ทะเบียนเพื่อแก้ไขข้อมูล</p>
-    </div>
-    
-    <div class="text-center mt-30">
-        <a href="register.php?step=2" class="btn secondary">
-            <span class="material-icons">arrow_back</span> กลับ
-        </a>
-        <a href="register.php?step=4" class="btn primary">
-            ถัดไป <span class="material-icons">arrow_forward</span>
+    <div class="mt-20 text-center">
+        <a href="register.php?step=2" class="home-button">
+            <span class="material-icons">arrow_back</span> กลับไปค้นหาใหม่
         </a>
     </div>
 </div>

@@ -1,78 +1,88 @@
 <div class="card">
     <h2 class="card-title">ค้นหาครูที่ปรึกษา</h2>
     
-    <p class="mb-20">
-        ค้นหาครูที่ปรึกษาของคุณโดยพิมพ์ชื่อหรือนามสกุล ระบบจะแสดงรายชื่อครูที่ตรงกับคำค้นหา
-    </p>
+    <?php if (isset($_SESSION['student_first_name'])): ?>
+    <div class="profile-info-section">
+        <h3>ข้อมูลนักศึกษา</h3>
+        <div class="info-item">
+            <div class="info-label">รหัสนักศึกษา:</div>
+            <div class="info-value"><?php echo htmlspecialchars($_SESSION['student_code'] ?? ''); ?></div>
+        </div>
+        <div class="info-item">
+            <div class="info-label">ชื่อ-นามสกุล:</div>
+            <div class="info-value">
+                <?php 
+                    echo htmlspecialchars($_SESSION['student_title'] ?? ''); 
+                    echo ' ';
+                    echo htmlspecialchars($_SESSION['student_first_name'] ?? ''); 
+                    echo ' ';
+                    echo htmlspecialchars($_SESSION['student_last_name'] ?? ''); 
+                ?>
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
     
-    <form method="post" action="register.php?step=4" id="search-teacher-form">
-        <input type="hidden" name="action" value="search_teacher">
+    <p>กรุณาค้นหาครูที่ปรึกษาของคุณ โดยกรอกชื่อครูที่ปรึกษา</p>
+    
+    <form method="POST" action="register_process.php" class="mb-20">
+        <input type="hidden" name="step" value="4">
+        <input type="hidden" name="search_teacher" value="1">
         
         <div class="input-container">
-            <label for="search_term" class="input-label">ค้นหาครูที่ปรึกษา</label>
-            <input type="text" id="search_term" name="search_term" class="input-field" 
-                   placeholder="พิมพ์ชื่อหรือนามสกุลของครูที่ปรึกษา" 
-                   value="<?php echo isset($_SESSION['search_teacher_term']) ? htmlspecialchars($_SESSION['search_teacher_term']) : ''; ?>" 
-                   required>
+            <label for="teacher_name" class="input-label">ชื่อครูที่ปรึกษา</label>
+            <input type="text" id="teacher_name" name="teacher_name" class="input-field" placeholder="กรอกชื่อหรือนามสกุลของครูที่ปรึกษา" required>
+            <div class="help-text">เช่น อาจารย์วันดี, สมศักดิ์ เป็นต้น</div>
         </div>
         
-        <div class="text-center mt-20">
-            <button type="submit" class="btn primary">
-                <span class="material-icons">search</span> ค้นหา
-            </button>
-        </div>
+        <button type="submit" class="btn primary">
+            ค้นหาครูที่ปรึกษา <span class="material-icons">search</span>
+        </button>
     </form>
     
     <?php if (isset($_SESSION['search_teacher_results']) && !empty($_SESSION['search_teacher_results'])): ?>
-        <div class="mt-30">
-            <h3 class="mb-10">ผลการค้นหา</h3>
+    <!-- แสดงผลการค้นหาครูที่ปรึกษา -->
+    <div class="teacher-list">
+        <h3>ผลการค้นหา</h3>
+        
+        <form method="POST" action="register_process.php">
+            <input type="hidden" name="step" value="4">
+            <input type="hidden" name="select_teacher" value="1">
             
-            <form method="post" action="register.php?step=4" id="select-teacher-form">
-                <input type="hidden" name="action" value="select_teacher">
-                
-                <div class="teacher-list">
-                    <?php foreach ($_SESSION['search_teacher_results'] as $index => $teacher): ?>
-                        <div class="teacher-card">
-                            <label class="radio-container">
-                                <input type="radio" name="teacher_id" value="<?php echo $teacher['teacher_id']; ?>" required
-                                       <?php echo $index === 0 ? 'checked' : ''; ?>>
-                                <div class="teacher-info">
-                                    <div class="teacher-name">
-                                        <?php echo htmlspecialchars($teacher['title'] . ' ' . $teacher['first_name'] . ' ' . $teacher['last_name']); ?>
-                                    </div>
-                                    <div class="teacher-department">
-                                        <?php echo htmlspecialchars('แผนก' . $teacher['department_name'] . ' (' . $teacher['position'] . ')'); ?>
-                                    </div>
+            <?php foreach ($_SESSION['search_teacher_results'] as $teacher): ?>
+            <div class="teacher-card">
+                <div class="radio-container">
+                    <input type="radio" id="teacher_<?php echo $teacher['teacher_id']; ?>" name="selected_teacher" value="<?php echo $teacher['teacher_id']; ?>" required>
+                    <div>
+                        <label for="teacher_<?php echo $teacher['teacher_id']; ?>" class="teacher-name">
+                            <?php 
+                                echo htmlspecialchars($teacher['title'] . ' ' . $teacher['first_name'] . ' ' . $teacher['last_name']); 
+                            ?>
+                        </label>
+                        <div class="teacher-department">
+                            <?php echo htmlspecialchars($teacher['department_name'] ?? 'ไม่ระบุแผนก'); ?>
+                            <?php if (!empty($teacher['classes'])): ?>
+                                <div class="teacher-classes">
+                                    <small>ดูแลห้อง: <?php echo htmlspecialchars($teacher['classes']); ?></small>
                                 </div>
-                            </label>
+                            <?php endif; ?>
                         </div>
-                    <?php endforeach; ?>
+                    </div>
                 </div>
-                
-                <div class="text-center mt-20">
-                    <button type="submit" class="btn primary">
-                        เลือกครูที่ปรึกษา <span class="material-icons">arrow_forward</span>
-                    </button>
-                </div>
-            </form>
-        </div>
-    <?php elseif (isset($_SESSION['search_teacher_term'])): ?>
-        <div class="no-results mt-20">
-            <p>ไม่พบข้อมูลครูที่ตรงกับคำค้นหา "<?php echo htmlspecialchars($_SESSION['search_teacher_term']); ?>"</p>
-            <p>กรุณาลองค้นหาด้วยชื่อหรือนามสกุลอื่น หรือติดต่อเจ้าหน้าที่</p>
-        </div>
+            </div>
+            <?php endforeach; ?>
+            
+            <button type="submit" class="btn primary mt-20">
+                เลือกครูที่ปรึกษานี้ <span class="material-icons">check</span>
+            </button>
+        </form>
+    </div>
     <?php endif; ?>
-</div>
-
-<div class="skip-section">
-    <p>
-        ไม่พบครูที่ปรึกษาของคุณ? 
-        <a href="register.php?step=55" class="text-link">ข้ามไปยังการกรอกข้อมูลชั้นเรียนเอง</a>
-    </p>
-</div>
-
-<div class="text-center mt-20">
-    <a href="register.php?step=<?php echo isset($_SESSION['student_id']) ? '3' : '33'; ?>" class="btn secondary">
-        <span class="material-icons">arrow_back</span> กลับ
-    </a>
+    
+    <div class="skip-section">
+        <p>ไม่พบครูที่ปรึกษาของคุณ?</p>
+        <a href="register.php?step=55" class="btn secondary">
+            ข้ามไปกรอกข้อมูลห้องเรียนเอง <span class="material-icons">arrow_forward</span>
+        </a>
+    </div>
 </div>

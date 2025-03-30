@@ -1,140 +1,175 @@
-<?php
-// ตรวจสอบข้อมูลที่จำเป็น
-if (!isset($_SESSION['class_id']) || !isset($_SESSION['student_code'])) {
-    header('Location: register.php?step=2');
-    exit;
-}
-
-// ดึงข้อมูลชั้นเรียนที่เลือก
-$class_id = $_SESSION['class_id'] ?? 0;
-$class_name = "";
-
-try {
-    if ($class_id > 0) {
-        $class_sql = "SELECT c.level, d.department_name, c.group_number 
-                     FROM classes c
-                     JOIN departments d ON c.department_id = d.department_id
-                     WHERE c.class_id = :class_id";
-        $class_stmt = $conn->prepare($class_sql);
-        $class_stmt->bindParam(':class_id', $class_id, PDO::PARAM_INT);
-        $class_stmt->execute();
-        $class = $class_stmt->fetch(PDO::FETCH_ASSOC);
-        
-        if ($class) {
-            $class_name = $class['level'] . ' แผนก' . $class['department_name'] . ' กลุ่ม ' . $class['group_number'];
-        }
-    }
-} catch (PDOException $e) {
-    $error_message = "เกิดข้อผิดพลาดในการดึงข้อมูลชั้นเรียน: " . $e->getMessage();
-}
-
-// ดึงข้อมูลผู้ใช้ (ถ้ามี)
-$user_data = [];
-if (isset($_SESSION['student_id'])) {
-    try {
-        $user_sql = "SELECT u.phone_number, u.email 
-                    FROM users u 
-                    JOIN students s ON u.user_id = s.user_id 
-                    WHERE s.student_id = :student_id";
-        $user_stmt = $conn->prepare($user_sql);
-        $user_stmt->bindParam(':student_id', $_SESSION['student_id'], PDO::PARAM_INT);
-        $user_stmt->execute();
-        $user_data = $user_stmt->fetch(PDO::FETCH_ASSOC);
-    } catch (PDOException $e) {
-        // ไม่ต้องทำอะไร ใช้ค่าว่างต่อไป
-    }
-}
-?>
-
 <div class="card">
-    <h2 class="card-title">ข้อมูลเพิ่มเติม</h2>
+    <h2 class="card-title">ข้อมูลเพิ่มเติมและการยินยอม</h2>
     
-    <div class="profile-info-section mb-20">
+    <?php
+    // ดึงข้อมูลที่ได้เลือกไว้จาก Session
+    $class_info = $_SESSION['selected_class_info'] ?? null;
+    $department_name = $_SESSION['selected_department_name'] ?? 'ไม่ระบุ';
+    $advisor_name = $_SESSION['selected_teacher_name'] ?? ($_SESSION['advisor_name'] ?? 'ไม่ระบุ');
+    
+    // ข้อมูลระดับชั้นและกลุ่ม
+    $level = $_SESSION['selected_level'] ?? 'ไม่ระบุ';
+    $group_number = $_SESSION['selected_group'] ?? 'ไม่ระบุ';
+    ?>
+    
+    <div class="profile-info-section">
         <h3>สรุปข้อมูลการลงทะเบียน</h3>
-        
         <div class="info-item">
             <div class="info-label">รหัสนักศึกษา:</div>
-            <div class="info-value"><?php echo htmlspecialchars($_SESSION['student_code']); ?></div>
+            <div class="info-value"><?php echo htmlspecialchars($_SESSION['student_code'] ?? ''); ?></div>
         </div>
-        
         <div class="info-item">
             <div class="info-label">ชื่อ-นามสกุล:</div>
             <div class="info-value">
                 <?php 
-                echo htmlspecialchars($_SESSION['student_title'] . ' ' . 
-                                      $_SESSION['student_first_name'] . ' ' . 
-                                      $_SESSION['student_last_name']); 
+                    echo htmlspecialchars($_SESSION['student_title'] ?? ''); 
+                    echo ' ';
+                    echo htmlspecialchars($_SESSION['student_first_name'] ?? ''); 
+                    echo ' ';
+                    echo htmlspecialchars($_SESSION['student_last_name'] ?? ''); 
                 ?>
             </div>
         </div>
-        
         <div class="info-item">
-            <div class="info-label">ชั้นเรียน:</div>
-            <div class="info-value"><?php echo htmlspecialchars($class_name); ?></div>
+            <div class="info-label">ระดับชั้น:</div>
+            <div class="info-value"><?php echo htmlspecialchars($level); ?></div>
+        </div>
+        <div class="info-item">
+            <div class="info-label">กลุ่มเรียน:</div>
+            <div class="info-value"><?php echo htmlspecialchars($group_number); ?></div>
+        </div>
+        <div class="info-item">
+            <div class="info-label">แผนกวิชา:</div>
+            <div class="info-value"><?php echo htmlspecialchars($department_name); ?></div>
+        </div>
+        <div class="info-item">
+            <div class="info-label">ครูที่ปรึกษา:</div>
+            <div class="info-value"><?php echo htmlspecialchars($advisor_name); ?></div>
         </div>
     </div>
     
-    <p class="mb-10">
-        กรุณากรอกข้อมูลติดต่อของคุณเพื่อให้ระบบสามารถแจ้งเตือนและติดต่อคุณได้
-    </p>
-    
-    <form method="post" action="register.php?step=6" id="additional-info-form">
-        <input type="hidden" name="action" value="additional_info">
+    <form method="POST" action="register_process.php" enctype="multipart/form-data">
+        <input type="hidden" name="step" value="6">
         
         <div class="input-container">
-            <label for="phone" class="input-label">เบอร์โทรศัพท์</label>
-            <input type="tel" id="phone" name="phone" class="input-field" 
-                   placeholder="เบอร์โทรศัพท์" 
-                   value="<?php echo isset($user_data['phone_number']) ? htmlspecialchars($user_data['phone_number']) : ''; ?>">
-            <div class="help-text">เบอร์โทรศัพท์ที่ติดต่อได้ จะใช้ในการแจ้งเตือนกรณีฉุกเฉิน</div>
+            <label for="address" class="input-label">ที่อยู่ปัจจุบัน (ถ้ามี)</label>
+            <textarea id="address" name="address" class="input-field" rows="3" placeholder="กรอกที่อยู่ปัจจุบัน"></textarea>
         </div>
         
         <div class="input-container">
-            <label for="email" class="input-label">อีเมล</label>
-            <input type="email" id="email" name="email" class="input-field" 
-                   placeholder="อีเมล" 
-                   value="<?php echo isset($user_data['email']) ? htmlspecialchars($user_data['email']) : ''; ?>">
-            <div class="help-text">อีเมลที่ใช้ติดต่อและรับข่าวสารจากทางวิทยาลัย</div>
+            <label for="emergency_contact" class="input-label">ผู้ติดต่อฉุกเฉิน (ถ้ามี)</label>
+            <input type="text" id="emergency_contact" name="emergency_contact" class="input-field" placeholder="ชื่อผู้ติดต่อฉุกเฉิน">
         </div>
         
-        <div class="checkbox-container mb-20">
+        <div class="input-container">
+            <label for="emergency_phone" class="input-label">เบอร์โทรผู้ติดต่อฉุกเฉิน (ถ้ามี)</label>
+            <input type="tel" id="emergency_phone" name="emergency_phone" class="input-field" placeholder="เบอร์โทรผู้ติดต่อฉุกเฉิน">
+        </div>
+        
+        <div class="input-container">
+            <label class="input-label">อัพโหลดรูปโปรไฟล์ (ถ้ามี)</label>
+            <div class="upload-area" id="dropArea">
+                <span class="upload-icon material-icons">cloud_upload</span>
+                <p class="upload-text">คลิกหรือลากไฟล์มาวางที่นี่</p>
+                <p class="upload-subtext">รองรับไฟล์ JPG, PNG ขนาดไม่เกิน 2MB</p>
+                <input type="file" id="profile_image" name="profile_image" accept="image/jpeg, image/png" style="display: none;">
+            </div>
+            <div id="image-preview" style="display: none;">
+                <img id="preview-img" src="#" alt="ตัวอย่างรูปภาพ">
+                <button type="button" id="reset-image" class="btn secondary mt-10">เลือกรูปใหม่</button>
+            </div>
+        </div>
+        
+        <div class="checkbox-container">
             <input type="checkbox" id="gdpr_consent" name="gdpr_consent" required>
             <label for="gdpr_consent" class="checkbox-label">
-                ฉันยินยอมให้เก็บข้อมูลส่วนบุคคลเพื่อใช้ในระบบเช็คชื่อและแจ้งเตือนผู้ปกครอง โดยข้อมูลจะถูกเก็บเป็นความลับตาม พ.ร.บ. คุ้มครองข้อมูลส่วนบุคคล
+                ข้าพเจ้ายินยอมให้เก็บข้อมูลส่วนบุคคลตาม พ.ร.บ.คุ้มครองข้อมูลส่วนบุคคล พ.ศ.2562 เพื่อใช้ในระบบการเช็คชื่อเข้าแถวออนไลน์
             </label>
         </div>
         
-        <div class="text-center mt-30">
-            <a href="register.php?step=<?php echo isset($_SESSION['teacher_classes']) ? '5' : '55'; ?>" class="btn secondary">
-                <span class="material-icons">arrow_back</span> กลับ
-            </a>
-            <button type="submit" class="btn primary">
-                บันทึกข้อมูล <span class="material-icons">check</span>
-            </button>
+        <div class="checkbox-container">
+            <input type="checkbox" id="terms_conditions" name="terms_conditions" required>
+            <label for="terms_conditions" class="checkbox-label">
+                ข้าพเจ้ายอมรับเงื่อนไขและข้อตกลงการใช้งานระบบทุกประการ
+            </label>
         </div>
+        
+        <button type="submit" class="btn primary">
+            ลงทะเบียน <span class="material-icons">how_to_reg</span>
+        </button>
     </form>
 </div>
 
 <script>
-    // ตรวจสอบความถูกต้องของฟอร์ม
-    document.getElementById('additional-info-form').addEventListener('submit', function(e) {
-        const phone = document.getElementById('phone').value.trim();
-        const gdprConsent = document.getElementById('gdpr_consent').checked;
-        
-        if (!gdprConsent) {
-            e.preventDefault();
-            alert('กรุณายินยอมให้เก็บข้อมูลส่วนบุคคล');
-            return;
-        }
-        
-        // ตรวจสอบรูปแบบเบอร์โทรศัพท์ถ้ามีการกรอก
-        if (phone !== '') {
-            const phonePattern = /^[0-9]{9,10}$/;
-            if (!phonePattern.test(phone.replace(/[-\s]/g, ''))) {
-                e.preventDefault();
-                alert('เบอร์โทรศัพท์ไม่ถูกต้อง กรุณากรอกเบอร์โทรศัพท์ 9-10 หลัก');
+// JavaScript สำหรับการอัพโหลดรูปภาพ
+document.addEventListener('DOMContentLoaded', function() {
+    const dropArea = document.getElementById('dropArea');
+    const fileInput = document.getElementById('profile_image');
+    const preview = document.getElementById('image-preview');
+    const previewImg = document.getElementById('preview-img');
+    const resetBtn = document.getElementById('reset-image');
+    
+    // คลิกที่พื้นที่อัพโหลดเพื่อเลือกไฟล์
+    dropArea.addEventListener('click', function() {
+        fileInput.click();
+    });
+    
+    // เมื่อเลือกไฟล์
+    fileInput.addEventListener('change', function() {
+        showPreview(this);
+    });
+    
+    // Drag & Drop
+    dropArea.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        dropArea.classList.add('active');
+    });
+    
+    dropArea.addEventListener('dragleave', function() {
+        dropArea.classList.remove('active');
+    });
+    
+    dropArea.addEventListener('drop', function(e) {
+        e.preventDefault();
+        dropArea.classList.remove('active');
+        fileInput.files = e.dataTransfer.files;
+        showPreview(fileInput);
+    });
+    
+    // รีเซ็ตการอัพโหลดรูปภาพ
+    resetBtn.addEventListener('click', function() {
+        fileInput.value = '';
+        preview.style.display = 'none';
+        dropArea.style.display = 'block';
+    });
+    
+    // ฟังก์ชันแสดงตัวอย่างรูปภาพ
+    function showPreview(input) {
+        if (input.files && input.files[0]) {
+            const file = input.files[0];
+            
+            // ตรวจสอบขนาดไฟล์ (ไม่เกิน 2MB)
+            if (file.size > 2 * 1024 * 1024) {
+                alert('กรุณาเลือกไฟล์ขนาดไม่เกิน 2MB');
+                input.value = '';
                 return;
             }
+            
+            // ตรวจสอบประเภทไฟล์
+            if (!file.type.match('image/jpeg') && !file.type.match('image/png')) {
+                alert('กรุณาเลือกไฟล์รูปภาพประเภท JPG หรือ PNG เท่านั้น');
+                input.value = '';
+                return;
+            }
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                previewImg.src = e.target.result;
+                preview.style.display = 'block';
+                dropArea.style.display = 'none';
+            };
+            reader.readAsDataURL(file);
         }
-    });
+    }
+});
 </script>
