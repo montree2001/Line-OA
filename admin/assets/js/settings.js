@@ -2,6 +2,11 @@
  * settings.js - JavaScript สำหรับการจัดการหน้าตั้งค่าระบบน้องชูใจ AI ดูแลผู้เรียน
  */
 
+// ตัวแปรสำหรับเก็บอ็อบเจ็กต์แผนที่
+let map;
+let marker;
+let additionalMarkers = [];
+
 document.addEventListener('DOMContentLoaded', function() {
     // ตั้งค่าแท็บ
     initializeTabs();
@@ -12,12 +17,18 @@ document.addEventListener('DOMContentLoaded', function() {
     // ตั้งค่าสถานะที่ซ่อน/แสดงตามเงื่อนไข
     setupConditionalElements();
     
-    // ตั้งค่า Event Listener สำหรับแผนที่
-    setupMapFunctions();
-    
     // ตั้งค่า Event Listener สำหรับการเพิ่ม/ลบรายการ
     setupDynamicListHandlers();
 });
+
+/**
+ * เริ่มต้น Google Maps API
+ * จะถูกเรียกโดย callback จาก Google Maps
+ */
+function initMapAPI() {
+    // เมื่อมีการกดปุ่มแสดงแผนที่ จึงจะโหลดแผนที่
+    // เนื่องจากการโหลดแผนที่ต้องใช้ทรัพยากรมาก
+}
 
 /**
  * เริ่มต้นการทำงานของแท็บ
@@ -30,6 +41,20 @@ function initializeTabs() {
             showTab(tabId);
         });
     });
+
+    // แสดงแท็บเริ่มต้น (จากพารามิเตอร์ URL หรือแท็บแรก)
+    const urlParams = new URLSearchParams(window.location.search);
+    const tabParam = urlParams.get('tab');
+    
+    if (tabParam && document.querySelector(`.tab[data-tab="${tabParam}"]`)) {
+        showTab(tabParam);
+    } else {
+        const firstTab = document.querySelector('.tab');
+        if (firstTab) {
+            const firstTabId = firstTab.getAttribute('data-tab');
+            showTab(firstTabId);
+        }
+    }
 }
 
 /**
@@ -50,6 +75,16 @@ function showTab(tabId) {
     // แสดงแท็บที่ต้องการและเลือกแท็บนั้น
     document.getElementById(tabId + '-tab').classList.add('active');
     document.querySelector(`.tab[data-tab="${tabId}"]`).classList.add('active');
+
+    // เปลี่ยน URL โดยไม่ต้อง refresh
+    const url = new URL(window.location);
+    url.searchParams.set('tab', tabId);
+    window.history.pushState({}, '', url);
+
+    // ถ้าเป็นแท็บ GPS และมีการเปิดแผนที่ ให้ปรับขนาดแผนที่
+    if (tabId === 'gps' && map) {
+        google.maps.event.trigger(map, 'resize');
+    }
 }
 
 /**
@@ -97,121 +132,7 @@ function setupSettingsControls() {
     if (updateRichMenuButton) {
         updateRichMenuButton.addEventListener('click', updateRichMenuSettings);
     }
-}
 
-/**
- * ตั้งค่าการแสดงผลของ elements ตามเงื่อนไข
- */
-function setupConditionalElements() {
-    // ตัวเลือกธีมสี
-    const themeSelect = document.getElementById('system_theme');
-    if (themeSelect) {
-        themeSelect.addEventListener('change', function() {
-            const customThemeColors = document.getElementById('custom-theme-colors');
-            if (this.value === 'custom') {
-                customThemeColors.style.display = 'flex';
-            } else {
-                customThemeColors.style.display = 'none';
-            }
-        });
-    }
-    
-    // ตัวเลือกจำนวนครั้งที่ขาดแถวก่อนการแจ้งเตือน
-    const absenceThresholdSelect = document.getElementById('absence_threshold');
-    if (absenceThresholdSelect) {
-        absenceThresholdSelect.addEventListener('change', function() {
-            const customAbsenceThreshold = document.getElementById('custom-absence-threshold');
-            if (this.value === 'custom') {
-                customAbsenceThreshold.style.display = 'block';
-            } else {
-                customAbsenceThreshold.style.display = 'none';
-            }
-        });
-    }
-    
-    // ตัวเลือกรัศมี GPS
-    const gpsRadiusSelect = document.getElementById('gps_radius');
-    if (gpsRadiusSelect) {
-        gpsRadiusSelect.addEventListener('change', function() {
-            const customGpsRadius = document.getElementById('custom-gps-radius');
-            if (this.value === 'custom') {
-                customGpsRadius.style.display = 'block';
-            } else {
-                customGpsRadius.style.display = 'none';
-            }
-        });
-    }
-    
-    // ตัวเลือกอัตราการเข้าแถวต่ำสุด
-    const minAttendanceRateSelect = document.getElementById('min_attendance_rate');
-    if (minAttendanceRateSelect) {
-        minAttendanceRateSelect.addEventListener('change', function() {
-            const customAttendanceRate = document.getElementById('custom-attendance-rate');
-            if (this.value === 'custom') {
-                customAttendanceRate.style.display = 'block';
-            } else {
-                customAttendanceRate.style.display = 'none';
-            }
-        });
-    }
-    
-    // ตัวเลือกเวลาส่ง SMS
-    const smsSendTimeSelect = document.getElementById('sms_send_time');
-    if (smsSendTimeSelect) {
-        smsSendTimeSelect.addEventListener('change', function() {
-            const customSmsTime = document.getElementById('custom-sms-time');
-            if (this.value === 'custom') {
-                customSmsTime.style.display = 'flex';
-            } else {
-                customSmsTime.style.display = 'none';
-            }
-        });
-    }
-    
-    // ตัวเลือกผู้ให้บริการ SMS
-    const smsProviderSelect = document.getElementById('sms_provider');
-    if (smsProviderSelect) {
-        smsProviderSelect.addEventListener('change', function() {
-            const customSmsProvider = document.getElementById('custom-sms-provider');
-            if (this.value === 'custom') {
-                customSmsProvider.style.display = 'block';
-            } else {
-                customSmsProvider.style.display = 'none';
-            }
-        });
-    }
-    
-    // ตัวเลือกอนุญาตให้เช็คชื่อล่าช้า
-    const lateCheckCheckbox = document.getElementById('late_check');
-    if (lateCheckCheckbox) {
-        lateCheckCheckbox.addEventListener('change', function() {
-            const lateCheckOptions = document.getElementById('late-check-options');
-            if (this.checked) {
-                lateCheckOptions.style.display = 'flex';
-            } else {
-                lateCheckOptions.style.display = 'none';
-            }
-        });
-    }
-    
-    // ตัวเลือกจุดเช็คชื่อหลายจุด
-    const enableMultipleLocations = document.getElementById('enable_multiple_locations');
-    if (enableMultipleLocations) {
-        enableMultipleLocations.addEventListener('change', function() {
-            const additionalLocations = document.getElementById('additional-locations');
-            if (this.checked) {
-                additionalLocations.style.display = 'block';
-            } else {
-                additionalLocations.style.display = 'none';
-            }
-        });
-    }
-}
-
-/**
- * ตั้งค่าฟังก์ชันที่เกี่ยวข้องกับแผนที่
- */
-function setupMapFunctions() {
     // ปุ่มใช้ตำแหน่งปัจจุบัน
     const getCurrentLocationButton = document.getElementById('get-current-location');
     if (getCurrentLocationButton) {
@@ -222,6 +143,13 @@ function setupMapFunctions() {
                     document.getElementById('school_latitude').value = position.coords.latitude.toFixed(7);
                     document.getElementById('school_longitude').value = position.coords.longitude.toFixed(7);
                     markSettingsModified();
+
+                    // อัปเดตตำแหน่งบนแผนที่ถ้ามีการแสดงแผนที่อยู่
+                    if (map && marker) {
+                        const newLatLng = new google.maps.LatLng(position.coords.latitude, position.coords.longitude);
+                        marker.setPosition(newLatLng);
+                        map.setCenter(newLatLng);
+                    }
                 }, function(error) {
                     showErrorMessage('ไม่สามารถรับตำแหน่งปัจจุบันได้: ' + error.message);
                 });
@@ -239,53 +167,193 @@ function setupMapFunctions() {
             const mapContainer = document.getElementById('map-container');
             if (mapContainer.style.display === 'none') {
                 mapContainer.style.display = 'block';
-                // โค้ดสำหรับโหลดแผนที่จะอยู่ที่นี่
-                loadMap();
+                setTimeout(() => {
+                    initializeMap();
+                }, 100);
+                this.innerHTML = '<span class="material-icons">close</span> ซ่อนแผนที่';
             } else {
                 mapContainer.style.display = 'none';
+                this.innerHTML = '<span class="material-icons">map</span> เลือกจากแผนที่';
             }
+        });
+    }
+    
+    // ปุ่มเพิ่มปีการศึกษาใหม่
+    const addAcademicYearButton = document.getElementById('add-academic-year');
+    if (addAcademicYearButton) {
+        addAcademicYearButton.addEventListener('click', function(e) {
+            e.preventDefault();
+            showAcademicYearDialog();
         });
     }
 }
 
 /**
- * โหลดแผนที่และทำงานกับแผนที่
+ * ตั้งค่าการแสดงผลของ elements ตามเงื่อนไข
  */
-function loadMap() {
-    // ฟังก์ชันนี้จะถูกเรียกเมื่อต้องการแสดงแผนที่
-    // (ใช้ Google Maps หรือ Leaflet ตามที่ต้องการ)
-    // ตัวอย่างการใช้ Leaflet (ต้องเพิ่ม script และ CSS ของ Leaflet ก่อน)
+function setupConditionalElements() {
+    // แสดง/ซ่อน elements ที่ขึ้นอยู่กับการเลือกในฟอร์ม
+
+    // ตัวเลือกธีมสี
+    const themeSelect = document.getElementById('system_theme');
+    if (themeSelect) {
+        themeSelect.addEventListener('change', function() {
+            const customThemeColors = document.getElementById('custom-theme-colors');
+            if (this.value === 'custom') {
+                customThemeColors.style.display = 'flex';
+            } else {
+                customThemeColors.style.display = 'none';
+            }
+        });
+        // ตรวจสอบค่าเริ่มต้น
+        if (themeSelect.value === 'custom') {
+            document.getElementById('custom-theme-colors').style.display = 'flex';
+        }
+    }
     
-    // สมมติว่าเราใช้ Leaflet และได้โหลด script และ CSS แล้ว
-    /*
-    const mapContainer = document.getElementById('map-container');
-    const lat = parseFloat(document.getElementById('school_latitude').value) || 14.0065;
-    const lng = parseFloat(document.getElementById('school_longitude').value) || 100.5018;
+    // ตัวเลือกจำนวนครั้งที่ขาดแถวก่อนการแจ้งเตือน
+    const absenceThresholdSelect = document.getElementById('absence_threshold');
+    if (absenceThresholdSelect) {
+        absenceThresholdSelect.addEventListener('change', function() {
+            const customAbsenceThreshold = document.getElementById('custom-absence-threshold');
+            if (this.value === 'custom') {
+                customAbsenceThreshold.style.display = 'block';
+            } else {
+                customAbsenceThreshold.style.display = 'none';
+            }
+        });
+        // ตรวจสอบค่าเริ่มต้น
+        if (absenceThresholdSelect.value === 'custom') {
+            document.getElementById('custom-absence-threshold').style.display = 'block';
+        }
+    }
     
-    // สร้างแผนที่
-    const map = L.map(mapContainer).setView([lat, lng], 15);
+    // ตัวเลือกรัศมี GPS
+    const gpsRadiusSelect = document.getElementById('gps_radius');
+    if (gpsRadiusSelect) {
+        gpsRadiusSelect.addEventListener('change', function() {
+            const customGpsRadius = document.getElementById('custom-gps-radius');
+            if (this.value === 'custom') {
+                customGpsRadius.style.display = 'block';
+            } else {
+                customGpsRadius.style.display = 'none';
+            }
+        });
+        // ตรวจสอบค่าเริ่มต้น
+        if (gpsRadiusSelect.value === 'custom') {
+            document.getElementById('custom-gps-radius').style.display = 'block';
+        }
+    }
     
-    // เพิ่ม basemap
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-    }).addTo(map);
+    // ตัวเลือกอัตราการเข้าแถวต่ำสุด
+    const minAttendanceRateSelect = document.getElementById('min_attendance_rate');
+    if (minAttendanceRateSelect) {
+        minAttendanceRateSelect.addEventListener('change', function() {
+            const customAttendanceRate = document.getElementById('custom-attendance-rate');
+            if (this.value === 'custom') {
+                customAttendanceRate.style.display = 'block';
+            } else {
+                customAttendanceRate.style.display = 'none';
+            }
+        });
+        // ตรวจสอบค่าเริ่มต้น
+        if (minAttendanceRateSelect.value === 'custom') {
+            document.getElementById('custom-attendance-rate').style.display = 'block';
+        }
+    }
     
-    // เพิ่มหมุดที่ตำแหน่งโรงเรียน
-    const marker = L.marker([lat, lng], { draggable: true }).addTo(map);
+    // ตัวเลือกเวลาส่ง SMS
+    const smsSendTimeSelect = document.getElementById('sms_send_time');
+    if (smsSendTimeSelect) {
+        smsSendTimeSelect.addEventListener('change', function() {
+            const customSmsTime = document.getElementById('custom-sms-time');
+            if (this.value === 'custom') {
+                customSmsTime.style.display = 'flex';
+            } else {
+                customSmsTime.style.display = 'none';
+            }
+        });
+        // ตรวจสอบค่าเริ่มต้น
+        if (smsSendTimeSelect.value === 'custom') {
+            document.getElementById('custom-sms-time').style.display = 'flex';
+        }
+    }
     
-    // เมื่อลากหมุดและปล่อย ให้อัปเดตค่าละติจูด/ลองจิจูด
-    marker.on('dragend', function(e) {
-        const position = marker.getLatLng();
-        document.getElementById('school_latitude').value = position.lat.toFixed(7);
-        document.getElementById('school_longitude').value = position.lng.toFixed(7);
-        markSettingsModified();
-    });
+    // ตัวเลือกผู้ให้บริการ SMS
+    const smsProviderSelect = document.getElementById('sms_provider');
+    if (smsProviderSelect) {
+        smsProviderSelect.addEventListener('change', function() {
+            const customSmsProvider = document.getElementById('custom-sms-provider');
+            if (this.value === 'custom') {
+                customSmsProvider.style.display = 'block';
+            } else {
+                customSmsProvider.style.display = 'none';
+            }
+        });
+        // ตรวจสอบค่าเริ่มต้น
+        if (smsProviderSelect.value === 'custom') {
+            document.getElementById('custom-sms-provider').style.display = 'block';
+        }
+    }
     
-    // ให้ map ปรับตัวเองเมื่อ container ปรากฏหรือมีการเปลี่ยนขนาด
-    setTimeout(function() {
-        map.invalidateSize();
-    }, 100);
-    */
+    // ตัวเลือกอนุญาตให้เช็คชื่อล่าช้า
+    const lateCheckCheckbox = document.getElementById('late_check');
+    if (lateCheckCheckbox) {
+        lateCheckCheckbox.addEventListener('change', function() {
+            const lateCheckOptions = document.getElementById('late-check-options');
+            if (this.checked) {
+                lateCheckOptions.style.display = 'flex';
+            } else {
+                lateCheckOptions.style.display = 'none';
+            }
+        });
+        // ตรวจสอบค่าเริ่มต้น
+        if (lateCheckCheckbox.checked) {
+            document.getElementById('late-check-options').style.display = 'flex';
+        }
+    }
+    
+    // ตัวเลือกจุดเช็คชื่อหลายจุด
+    const enableMultipleLocations = document.getElementById('enable_multiple_locations');
+    if (enableMultipleLocations) {
+        enableMultipleLocations.addEventListener('change', function() {
+            const additionalLocations = document.getElementById('additional-locations');
+            if (this.checked) {
+                additionalLocations.style.display = 'block';
+            } else {
+                additionalLocations.style.display = 'none';
+            }
+        });
+        // ตรวจสอบค่าเริ่มต้น
+        if (enableMultipleLocations.checked) {
+            document.getElementById('additional-locations').style.display = 'block';
+        }
+    }
+
+    // ตัวเลือกการใช้งาน Line OA เดียวหรือหลาย Line OA
+    const singleLineOACheckbox = document.getElementById('single_line_oa');
+    if (singleLineOACheckbox) {
+        singleLineOACheckbox.addEventListener('change', function() {
+            const singleOASection = document.getElementById('single-oa-section');
+            const multipleOASection = document.getElementById('multiple-oa-section');
+            
+            if (this.checked) {
+                singleOASection.style.display = 'block';
+                multipleOASection.style.display = 'none';
+            } else {
+                singleOASection.style.display = 'none';
+                multipleOASection.style.display = 'block';
+            }
+        });
+        // ตรวจสอบค่าเริ่มต้น
+        if (singleLineOACheckbox.checked) {
+            document.getElementById('single-oa-section').style.display = 'block';
+            document.getElementById('multiple-oa-section').style.display = 'none';
+        } else {
+            document.getElementById('single-oa-section').style.display = 'none';
+            document.getElementById('multiple-oa-section').style.display = 'block';
+        }
+    }
 }
 
 /**
@@ -298,7 +366,10 @@ function setupDynamicListHandlers() {
         addLocationButton.addEventListener('click', function(e) {
             e.preventDefault();
             const additionalLocations = document.getElementById('additional-locations');
-            const template = document.querySelector('.additional-location-item').cloneNode(true);
+            const locationItems = document.querySelectorAll('.additional-location-item');
+            
+            // คัดลอกจากรายการแรก
+            const template = locationItems[0].cloneNode(true);
             
             // เคลียร์ค่าใน inputs
             template.querySelectorAll('input').forEach(input => {
@@ -307,11 +378,13 @@ function setupDynamicListHandlers() {
             
             // ตั้งค่า listener สำหรับปุ่มลบ
             const removeButton = template.querySelector('.remove-location');
-            removeButton.addEventListener('click', function(e) {
-                e.preventDefault();
-                this.closest('.additional-location-item').remove();
-                markSettingsModified();
-            });
+            if (removeButton) {
+                removeButton.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    this.closest('.additional-location-item').remove();
+                    markSettingsModified();
+                });
+            }
             
             // แทรกก่อนปุ่มเพิ่ม
             additionalLocations.insertBefore(template, addLocationButton);
@@ -322,8 +395,14 @@ function setupDynamicListHandlers() {
         document.querySelectorAll('.remove-location').forEach(button => {
             button.addEventListener('click', function(e) {
                 e.preventDefault();
-                this.closest('.additional-location-item').remove();
-                markSettingsModified();
+                // ต้องมีอย่างน้อย 1 รายการเสมอ
+                const locationItems = document.querySelectorAll('.additional-location-item');
+                if (locationItems.length > 1) {
+                    this.closest('.additional-location-item').remove();
+                    markSettingsModified();
+                } else {
+                    showErrorMessage('ต้องมีอย่างน้อย 1 ตำแหน่ง');
+                }
             });
         });
     }
@@ -372,14 +451,276 @@ function setupDynamicListHandlers() {
             });
         });
     }
-    
-    // ปุ่มเพิ่มปีการศึกษาใหม่
-    const addAcademicYearButton = document.getElementById('add-academic-year');
-    if (addAcademicYearButton) {
-        addAcademicYearButton.addEventListener('click', function(e) {
-            e.preventDefault();
-            showAcademicYearDialog();
+
+    // ปุ่มเลือกตำแหน่งจากแผนที่สำหรับจุดเพิ่มเติม
+    const pickLocationButtons = document.querySelectorAll('.pick-location');
+    if (pickLocationButtons.length > 0) {
+        pickLocationButtons.forEach(button => {
+            button.addEventListener('click', function(e) {
+                e.preventDefault();
+                const locationItem = this.closest('.additional-location-item');
+                const latInput = locationItem.querySelector('[name="location_latitude[]"]');
+                const lngInput = locationItem.querySelector('[name="location_longitude[]"]');
+                
+                // เปิดหน้าต่างเลือกตำแหน่ง
+                showLocationPickerDialog(latInput, lngInput);
+            });
         });
+    }
+}
+
+/**
+ * แสดงหน้าต่างเลือกตำแหน่งจากแผนที่
+ */
+function showLocationPickerDialog(latInput, lngInput) {
+    // สร้างหน้าต่างโต้ตอบ
+    const dialog = document.createElement('div');
+    dialog.className = 'modal fade';
+    dialog.id = 'locationPickerModal';
+    dialog.setAttribute('tabindex', '-1');
+    dialog.setAttribute('role', 'dialog');
+    dialog.setAttribute('aria-labelledby', 'locationPickerModalLabel');
+    dialog.setAttribute('aria-hidden', 'true');
+    
+    dialog.innerHTML = `
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="locationPickerModalLabel">เลือกตำแหน่งจากแผนที่</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div id="picker-map" style="height: 400px; width: 100%;"></div>
+                    <p class="mt-2 text-muted">คลิกที่แผนที่เพื่อเลือกตำแหน่ง หรือลากหมุดเพื่อปรับตำแหน่ง</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">ยกเลิก</button>
+                    <button type="button" class="btn btn-primary" id="confirm-location">ยืนยันตำแหน่ง</button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // เพิ่มหน้าต่างลงใน DOM
+    document.body.appendChild(dialog);
+    
+    // แสดงหน้าต่าง
+    $('#locationPickerModal').modal('show');
+    
+    // สร้างแผนที่สำหรับเลือกตำแหน่ง
+    let pickerMap;
+    let pickerMarker;
+    
+    // รอให้ modal แสดงเสร็จก่อนสร้างแผนที่
+    $('#locationPickerModal').on('shown.bs.modal', function() {
+        // กำหนดตำแหน่งเริ่มต้น
+        const initialLat = latInput.value ? parseFloat(latInput.value) : parseFloat(document.getElementById('school_latitude').value) || 14.0065;
+        const initialLng = lngInput.value ? parseFloat(lngInput.value) : parseFloat(document.getElementById('school_longitude').value) || 100.5018;
+        
+        // สร้างแผนที่
+        pickerMap = new google.maps.Map(document.getElementById('picker-map'), {
+            center: { lat: initialLat, lng: initialLng },
+            zoom: 17,
+            mapTypeId: google.maps.MapTypeId.ROADMAP
+        });
+        
+        // สร้างหมุด
+        pickerMarker = new google.maps.Marker({
+            position: { lat: initialLat, lng: initialLng },
+            map: pickerMap,
+            draggable: true,
+            animation: google.maps.Animation.DROP
+        });
+        
+        // เมื่อคลิกที่แผนที่ ให้ย้ายหมุด
+        pickerMap.addListener('click', function(e) {
+            pickerMarker.setPosition(e.latLng);
+        });
+    });
+    
+    // ปุ่มยืนยันตำแหน่ง
+    document.getElementById('confirm-location').addEventListener('click', function() {
+        // บันทึกตำแหน่ง
+        const position = pickerMarker.getPosition();
+        latInput.value = position.lat().toFixed(7);
+        lngInput.value = position.lng().toFixed(7);
+        
+        // ปิดหน้าต่าง
+        $('#locationPickerModal').modal('hide');
+        
+        // ทำเครื่องหมายว่ามีการเปลี่ยนแปลง
+        markSettingsModified();
+    });
+    
+    // ทำความสะอาดเมื่อปิดหน้าต่าง
+    $('#locationPickerModal').on('hidden.bs.modal', function() {
+        document.body.removeChild(dialog);
+    });
+}
+
+/**
+ * เริ่มต้นแผนที่
+ */
+function initializeMap() {
+    // กำหนดตำแหน่งจากค่าใน input
+    const lat = parseFloat(document.getElementById('school_latitude').value) || 14.0065;
+    const lng = parseFloat(document.getElementById('school_longitude').value) || 100.5018;
+    const radius = parseInt(document.getElementById('gps_radius').value === 'custom' ? 
+        document.getElementById('custom_gps_radius').value : 
+        document.getElementById('gps_radius').value) || 100;
+    
+    // สร้างแผนที่
+    map = new google.maps.Map(document.getElementById('map-container'), {
+        center: { lat: lat, lng: lng },
+        zoom: 16,
+        mapTypeId: google.maps.MapTypeId.ROADMAP
+    });
+    
+    // สร้างหมุดหลัก
+    marker = new google.maps.Marker({
+        position: { lat: lat, lng: lng },
+        map: map,
+        draggable: true,
+        animation: google.maps.Animation.DROP,
+        title: 'ตำแหน่งโรงเรียน'
+    });
+    
+    // สร้างวงกลมแสดงรัศมี
+    const circle = new google.maps.Circle({
+        map: map,
+        radius: radius,
+        fillColor: '#3388ff',
+        fillOpacity: 0.2,
+        strokeColor: '#3388ff',
+        strokeOpacity: 0.6,
+        strokeWeight: 2
+    });
+    
+    // ผูกวงกลมกับหมุด
+    circle.bindTo('center', marker, 'position');
+    
+    // เมื่อลากหมุดและปล่อย ให้อัปเดตค่าละติจูด/ลองจิจูด
+    marker.addListener('dragend', function() {
+        const position = marker.getPosition();
+        document.getElementById('school_latitude').value = position.lat().toFixed(7);
+        document.getElementById('school_longitude').value = position.lng().toFixed(7);
+        markSettingsModified();
+    });
+    
+    // เมื่อคลิกที่แผนที่ ให้ย้ายหมุด
+    map.addListener('click', function(e) {
+        marker.setPosition(e.latLng);
+        document.getElementById('school_latitude').value = e.latLng.lat().toFixed(7);
+        document.getElementById('school_longitude').value = e.latLng.lng().toFixed(7);
+        markSettingsModified();
+    });
+    
+    // อัปเดตรัศมีเมื่อมีการเปลี่ยนค่า
+    document.getElementById('gps_radius').addEventListener('change', updateCircleRadius);
+    if (document.getElementById('custom_gps_radius')) {
+        document.getElementById('custom_gps_radius').addEventListener('input', updateCircleRadius);
+    }
+    
+    // แสดงหมุดสำหรับตำแหน่งเพิ่มเติม
+    if (document.getElementById('enable_multiple_locations').checked) {
+        showAdditionalMarkers();
+    }
+    
+    // เมื่อเปิด/ปิดการใช้งานจุดเช็คชื่อหลายจุด
+    document.getElementById('enable_multiple_locations').addEventListener('change', function() {
+        if (this.checked) {
+            showAdditionalMarkers();
+        } else {
+            hideAdditionalMarkers();
+        }
+    });
+    
+    // ฟังก์ชันอัปเดตรัศมี
+    function updateCircleRadius() {
+        const radiusValue = document.getElementById('gps_radius').value;
+        let newRadius;
+        
+        if (radiusValue === 'custom') {
+            newRadius = parseInt(document.getElementById('custom_gps_radius').value) || 100;
+        } else {
+            newRadius = parseInt(radiusValue) || 100;
+        }
+        
+        circle.setRadius(newRadius);
+    }
+    
+    // ฟังก์ชันแสดงหมุดเพิ่มเติม
+    function showAdditionalMarkers() {
+        // ลบหมุดเดิมก่อน
+        hideAdditionalMarkers();
+        
+        // รับรายการตำแหน่งเพิ่มเติม
+        const locationItems = document.querySelectorAll('.additional-location-item');
+        
+        locationItems.forEach((item, index) => {
+            const nameInput = item.querySelector('[name="location_name[]"]');
+            const radiusInput = item.querySelector('[name="location_radius[]"]');
+            const latInput = item.querySelector('[name="location_latitude[]"]');
+            const lngInput = item.querySelector('[name="location_longitude[]"]');
+            
+            if (latInput.value && lngInput.value) {
+                const lat = parseFloat(latInput.value);
+                const lng = parseFloat(lngInput.value);
+                const radius = parseInt(radiusInput.value) || 100;
+                const name = nameInput.value || `ตำแหน่งที่ ${index + 1}`;
+                
+                // สร้างหมุดสำหรับตำแหน่งเพิ่มเติม
+                const additionalMarker = new google.maps.Marker({
+                    position: { lat: lat, lng: lng },
+                    map: map,
+                    draggable: true,
+                    animation: google.maps.Animation.DROP,
+                    title: name,
+                    icon: {
+                        url: 'http://maps.google.com/mapfiles/ms/icons/green-dot.png'
+                    }
+                });
+                
+                // สร้างวงกลมแสดงรัศมี
+                const additionalCircle = new google.maps.Circle({
+                    map: map,
+                    radius: radius,
+                    fillColor: '#33cc33',
+                    fillOpacity: 0.2,
+                    strokeColor: '#33cc33',
+                    strokeOpacity: 0.6,
+                    strokeWeight: 2
+                });
+                
+                // ผูกวงกลมกับหมุด
+                additionalCircle.bindTo('center', additionalMarker, 'position');
+                
+                // เมื่อลากหมุดและปล่อย ให้อัปเดตค่าละติจูด/ลองจิจูด
+                additionalMarker.addListener('dragend', function() {
+                    const position = additionalMarker.getPosition();
+                    latInput.value = position.lat().toFixed(7);
+                    lngInput.value = position.lng().toFixed(7);
+                    markSettingsModified();
+                });
+                
+                // เก็บ object ไว้เพื่อลบในภายหลัง
+                additionalMarkers.push({
+                    marker: additionalMarker,
+                    circle: additionalCircle
+                });
+            }
+        });
+    }
+    
+    // ฟังก์ชันซ่อนหมุดเพิ่มเติม
+    function hideAdditionalMarkers() {
+        additionalMarkers.forEach(item => {
+            item.marker.setMap(null);
+            item.circle.setMap(null);
+        });
+        additionalMarkers = [];
     }
 }
 
@@ -431,6 +772,10 @@ function showAcademicYearDialog() {
                             <label for="new_is_active">ตั้งเป็นปีการศึกษาปัจจุบัน</label>
                         </div>
                     </div>
+                    <div class="form-group">
+                        <label for="new_required_days">จำนวนวันที่ต้องเข้าแถวเพื่อผ่านกิจกรรม</label>
+                        <input type="number" class="form-control" id="new_required_days" value="80">
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-dismiss="modal">ยกเลิก</button>
@@ -460,9 +805,10 @@ function showAcademicYearDialog() {
         const startDate = document.getElementById('new_start_date').value;
         const endDate = document.getElementById('new_end_date').value;
         const isActive = document.getElementById('new_is_active').checked;
+        const requiredDays = document.getElementById('new_required_days').value;
         
         // ส่งข้อมูลไปบันทึกที่เซิร์ฟเวอร์
-        saveAcademicYear(year, semester, startDate, endDate, isActive);
+        saveAcademicYear(year, semester, startDate, endDate, isActive, requiredDays);
         
         // ปิดหน้าต่างโต้ตอบ
         $('#academicYearModal').modal('hide');
@@ -476,12 +822,12 @@ function showAcademicYearDialog() {
 /**
  * บันทึกปีการศึกษาใหม่
  */
-function saveAcademicYear(year, semester, startDate, endDate, isActive) {
+function saveAcademicYear(year, semester, startDate, endDate, isActive, requiredDays) {
     // แสดง loading
     showLoadingIndicator();
     
     // ส่งข้อมูลไปบันทึกที่เซิร์ฟเวอร์
-    fetch('/api/academic-years', {
+    fetch('api/academic_year.php', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -491,7 +837,8 @@ function saveAcademicYear(year, semester, startDate, endDate, isActive) {
             semester: semester,
             start_date: startDate,
             end_date: endDate,
-            is_active: isActive
+            is_active: isActive ? 1 : 0,
+            required_attendance_days: requiredDays
         })
     })
     .then(response => response.json())
@@ -517,24 +864,38 @@ function saveAcademicYear(year, semester, startDate, endDate, isActive) {
  * อัปเดตตัวเลือกในรายการเลือกปีการศึกษา
  */
 function updateAcademicYearOptions(year, semester, isActive) {
-    const selectElement = document.getElementById('current_academic_year');
-    const currentValue = selectElement.value;
+    // เพิ่มตัวเลือกปีการศึกษาใหม่ในรายการเลือก
+    const yearSelect = document.getElementById('current_academic_year');
+    const yearOption = document.createElement('option');
+    yearOption.value = year;
+    yearOption.textContent = `${year} (${parseInt(year) - 543})`;
     
-    // ถ้าปีการศึกษาใหม่ถูกตั้งเป็นปีการศึกษาปัจจุบัน
+    // หากเป็นปีการศึกษาปัจจุบัน ให้เลือกตัวเลือกนี้
     if (isActive) {
-        // อัปเดตค่าในรายการเลือก
-        selectElement.value = year;
-        
-        // อัปเดตภาคเรียน
+        yearOption.selected = true;
+    }
+    
+    // เพิ่มตัวเลือกลงในรายการเลือก
+    yearSelect.appendChild(yearOption);
+    
+    // ถ้าเป็นปีการศึกษาปัจจุบัน ให้อัปเดตภาคเรียนด้วย
+    if (isActive) {
         const semesterSelect = document.getElementById('current_semester');
-        semesterSelect.innerHTML = '';
+        semesterSelect.innerHTML = ''; // ล้างตัวเลือกเดิม
         
-        // เพิ่มตัวเลือกใหม่
-        const option = document.createElement('option');
-        option.value = semester;
-        option.textContent = `ภาคเรียนที่ ${semester}/${year}`;
-        option.selected = true;
-        semesterSelect.appendChild(option);
+        const semesterOption = document.createElement('option');
+        semesterOption.value = semester;
+        semesterOption.textContent = `ภาคเรียนที่ ${semester}/${year}`;
+        semesterOption.selected = true;
+        
+        semesterSelect.appendChild(semesterOption);
+        
+        // อัปเดตวันที่เริ่มต้นและสิ้นสุดภาคเรียน
+        document.getElementById('semester_start_date').value = document.getElementById('new_start_date').value;
+        document.getElementById('semester_end_date').value = document.getElementById('new_end_date').value;
+        
+        // ทำเครื่องหมายว่ามีการเปลี่ยนแปลง
+        markSettingsModified();
     }
 }
 
@@ -542,9 +903,6 @@ function updateAcademicYearOptions(year, semester, isActive) {
  * แสดงหน้าต่างโต้ตอบสำหรับการกู้คืนข้อมูล
  */
 function showRestoreDialog() {
-    // ฟังก์ชันนี้จะแสดงหน้าต่างโต้ตอบสำหรับเลือกไฟล์สำรองข้อมูล
-    // และกู้คืนข้อมูล
-    
     // สร้างหน้าต่างโต้ตอบแบบง่าย
     const dialog = document.createElement('div');
     dialog.className = 'modal fade';
@@ -637,7 +995,7 @@ function saveSettings() {
     showLoadingIndicator();
     
     // ส่งข้อมูลไปบันทึกที่เซิร์ฟเวอร์
-    fetch('/api/settings', {
+    fetch('api/settings.php', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -670,7 +1028,7 @@ function backupDatabase() {
     showLoadingIndicator();
     
     // ส่งคำขอสำรองข้อมูลไปยังเซิร์ฟเวอร์
-    fetch('/api/backup', {
+    fetch('api/backup.php', {
         method: 'POST',
     })
     .then(response => response.json())
@@ -702,7 +1060,7 @@ function restoreDatabase(formData) {
     showLoadingIndicator();
     
     // ส่งไฟล์สำรองข้อมูลไปยังเซิร์ฟเวอร์เพื่อกู้คืน
-    fetch('/api/restore', {
+    fetch('api/restore.php', {
         method: 'POST',
         body: formData
     })
@@ -748,7 +1106,7 @@ function sendTestSms() {
     showLoadingIndicator();
     
     // ส่งข้อมูลไปทดสอบที่เซิร์ฟเวอร์
-    fetch('/api/test-sms', {
+    fetch('api/test_sms.php', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -803,7 +1161,7 @@ function updateLiffSettings() {
     showLoadingIndicator();
     
     // ส่งข้อมูลไปอัปเดตที่เซิร์ฟเวอร์
-    fetch('/api/update-liff', {
+    fetch('api/update_liff.php', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -856,7 +1214,7 @@ function updateRichMenuSettings() {
     showLoadingIndicator();
     
     // ส่งข้อมูลไปอัปเดตที่เซิร์ฟเวอร์
-    fetch('/api/update-rich-menu', {
+    fetch('api/update_rich_menu.php', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -910,11 +1268,11 @@ function collectSettingsData() {
         current_semester: document.getElementById('current_semester').value,
         semester_start_date: document.getElementById('semester_start_date').value,
         semester_end_date: document.getElementById('semester_end_date').value,
-        auto_promote_students: document.getElementById('auto_promote_students').checked,
-        reset_attendance_new_semester: document.getElementById('reset_attendance_new_semester').checked,
+        auto_promote_students: document.getElementById('auto_promote_students').checked ? 1 : 0,
+        reset_attendance_new_semester: document.getElementById('reset_attendance_new_semester').checked ? 1 : 0,
         system_language: document.getElementById('system_language').value,
         system_theme: document.getElementById('system_theme').value,
-        dark_mode: document.getElementById('dark_mode').checked,
+        dark_mode: document.getElementById('dark_mode').checked ? 1 : 0,
         backup_frequency: document.getElementById('backup_frequency').value,
         backup_keep_count: document.getElementById('backup_keep_count').value,
         backup_path: document.getElementById('backup_path').value
@@ -929,22 +1287,22 @@ function collectSettingsData() {
 
     // รวบรวมการตั้งค่าการแจ้งเตือน
     settings.notification = {
-        enable_notifications: document.getElementById('enable_notifications').checked,
-        critical_notifications: document.getElementById('critical_notifications').checked,
-        send_daily_summary: document.getElementById('send_daily_summary').checked,
-        send_weekly_summary: document.getElementById('send_weekly_summary').checked,
+        enable_notifications: document.getElementById('enable_notifications').checked ? 1 : 0,
+        critical_notifications: document.getElementById('critical_notifications').checked ? 1 : 0,
+        send_daily_summary: document.getElementById('send_daily_summary').checked ? 1 : 0,
+        send_weekly_summary: document.getElementById('send_weekly_summary').checked ? 1 : 0,
         absence_threshold: document.getElementById('absence_threshold').value,
         risk_notification_frequency: document.getElementById('risk_notification_frequency').value,
         notification_time: document.getElementById('notification_time').value,
-        auto_notifications: document.getElementById('auto_notifications').checked,
+        auto_notifications: document.getElementById('auto_notifications').checked ? 1 : 0,
         risk_notification_message: document.getElementById('risk_notification_message').value,
-        line_notification: document.getElementById('line_notification').checked,
-        sms_notification: document.getElementById('sms_notification').checked,
-        email_notification: document.getElementById('email_notification').checked,
-        app_notification: document.getElementById('app_notification').checked,
-        enable_bulk_notifications: document.getElementById('enable_bulk_notifications').checked,
+        line_notification: document.getElementById('line_notification').checked ? 1 : 0,
+        sms_notification: document.getElementById('sms_notification').checked ? 1 : 0,
+        email_notification: document.getElementById('email_notification').checked ? 1 : 0,
+        app_notification: document.getElementById('app_notification').checked ? 1 : 0,
+        enable_bulk_notifications: document.getElementById('enable_bulk_notifications').checked ? 1 : 0,
         max_bulk_recipients: document.getElementById('max_bulk_recipients').value,
-        enable_scheduled_notifications: document.getElementById('enable_scheduled_notifications').checked
+        enable_scheduled_notifications: document.getElementById('enable_scheduled_notifications').checked ? 1 : 0
     };
     
     // ถ้าเลือกจำนวนครั้งขาดแถวกำหนดเอง
@@ -957,14 +1315,14 @@ function collectSettingsData() {
         min_attendance_rate: document.getElementById('min_attendance_rate').value,
         required_attendance_days: document.getElementById('required_attendance_days').value,
         attendance_counting_period: document.getElementById('attendance_counting_period').value,
-        count_weekend: document.getElementById('count_weekend').checked,
-        count_holidays: document.getElementById('count_holidays').checked,
+        count_weekend: document.getElementById('count_weekend').checked ? 1 : 0,
+        count_holidays: document.getElementById('count_holidays').checked ? 1 : 0,
         exemption_dates: document.getElementById('exemption_dates').value,
-        enable_qr: document.getElementById('enable_qr').checked,
-        enable_pin: document.getElementById('enable_pin').checked,
-        enable_gps: document.getElementById('enable_gps').checked,
-        enable_photo: document.getElementById('enable_photo').checked,
-        enable_manual: document.getElementById('enable_manual').checked,
+        enable_qr: document.getElementById('enable_qr').checked ? 1 : 0,
+        enable_pin: document.getElementById('enable_pin').checked ? 1 : 0,
+        enable_gps: document.getElementById('enable_gps').checked ? 1 : 0,
+        enable_photo: document.getElementById('enable_photo').checked ? 1 : 0,
+        enable_manual: document.getElementById('enable_manual').checked ? 1 : 0,
         pin_expiration: document.getElementById('pin_expiration').value,
         pin_usage_limit: document.getElementById('pin_usage_limit').value,
         pin_length: document.getElementById('pin_length').value,
@@ -973,8 +1331,8 @@ function collectSettingsData() {
         qr_usage_limit: document.getElementById('qr_usage_limit').value,
         attendance_start_time: document.getElementById('attendance_start_time').value,
         attendance_end_time: document.getElementById('attendance_end_time').value,
-        late_check: document.getElementById('late_check').checked,
-        require_attendance_photo: document.getElementById('require_attendance_photo').checked,
+        late_check: document.getElementById('late_check').checked ? 1 : 0,
+        require_attendance_photo: document.getElementById('require_attendance_photo').checked ? 1 : 0,
         max_photo_size: document.getElementById('max_photo_size').value,
         allowed_photo_types: document.getElementById('allowed_photo_types').value
     };
@@ -999,13 +1357,13 @@ function collectSettingsData() {
         gps_radius: document.getElementById('gps_radius').value,
         gps_accuracy: document.getElementById('gps_accuracy').value,
         gps_check_interval: document.getElementById('gps_check_interval').value,
-        gps_required: document.getElementById('gps_required').checked,
-        gps_photo_required: document.getElementById('gps_photo_required').checked,
-        gps_mock_detection: document.getElementById('gps_mock_detection').checked,
-        allow_home_check: document.getElementById('allow_home_check').checked,
-        allow_parent_verification: document.getElementById('allow_parent_verification').checked,
+        gps_required: document.getElementById('gps_required').checked ? 1 : 0,
+        gps_photo_required: document.getElementById('gps_photo_required').checked ? 1 : 0,
+        gps_mock_detection: document.getElementById('gps_mock_detection').checked ? 1 : 0,
+        allow_home_check: document.getElementById('allow_home_check').checked ? 1 : 0,
+        allow_parent_verification: document.getElementById('allow_parent_verification').checked ? 1 : 0,
         home_check_reasons: document.getElementById('home_check_reasons').value,
-        enable_multiple_locations: document.getElementById('enable_multiple_locations').checked
+        enable_multiple_locations: document.getElementById('enable_multiple_locations').checked ? 1 : 0
     };
     
     // ถ้าเลือกรัศมีกำหนดเอง
@@ -1018,7 +1376,8 @@ function collectSettingsData() {
         settings.gps.additional_locations = [];
         document.querySelectorAll('.additional-location-item').forEach(location => {
             // ตรวจสอบว่าไม่ใช่เทมเพลต
-            if (location.style.display !== 'none') {
+            const nameInput = location.querySelector('[name="location_name[]"]');
+            if (nameInput && nameInput.value.trim() !== '') {
                 settings.gps.additional_locations.push({
                     name: location.querySelector('[name="location_name[]"]').value,
                     radius: location.querySelector('[name="location_radius[]"]').value,
@@ -1030,40 +1389,60 @@ function collectSettingsData() {
     }
 
     // รวบรวมการตั้งค่า LINE
-    settings.line = {
-        // LINE OA สำหรับผู้ปกครอง
-        parent_line_oa_name: document.getElementById('parent_line_oa_name').value,
-        parent_line_oa_id: document.getElementById('parent_line_oa_id').value,
-        parent_line_channel_id: document.getElementById('parent_line_channel_id').value,
-        parent_line_channel_secret: document.getElementById('parent_line_channel_secret').value,
-        parent_line_access_token: document.getElementById('parent_line_access_token').value,
-        parent_line_welcome_message: document.getElementById('parent_line_welcome_message').value,
-        
-        // LINE OA สำหรับนักเรียน
-        student_line_oa_name: document.getElementById('student_line_oa_name').value,
-        student_line_oa_id: document.getElementById('student_line_oa_id').value,
-        student_line_channel_id: document.getElementById('student_line_channel_id').value,
-        student_line_channel_secret: document.getElementById('student_line_channel_secret').value,
-        student_line_access_token: document.getElementById('student_line_access_token').value,
-        student_line_welcome_message: document.getElementById('student_line_welcome_message').value,
-        
-        // LINE OA สำหรับครู
-        teacher_line_oa_name: document.getElementById('teacher_line_oa_name').value,
-        teacher_line_oa_id: document.getElementById('teacher_line_oa_id').value,
-        teacher_line_channel_id: document.getElementById('teacher_line_channel_id').value,
-        teacher_line_channel_secret: document.getElementById('teacher_line_channel_secret').value,
-        teacher_line_access_token: document.getElementById('teacher_line_access_token').value,
-        teacher_line_welcome_message: document.getElementById('teacher_line_welcome_message').value,
-        
-        // LIFF
-        liff_id: document.getElementById('liff_id').value,
-        liff_type: document.getElementById('liff_type').value,
-        liff_url: document.getElementById('liff_url').value
-    };
+    const singleLineOA = document.getElementById('single_line_oa') && document.getElementById('single_line_oa').checked;
+    
+    if (singleLineOA) {
+        // กรณีใช้ Line OA เดียว
+        settings.line = {
+            single_line_oa: 1,
+            line_oa_name: document.getElementById('line_oa_name').value,
+            line_oa_id: document.getElementById('line_oa_id').value,
+            line_channel_id: document.getElementById('line_channel_id').value,
+            line_channel_secret: document.getElementById('line_channel_secret').value,
+            line_access_token: document.getElementById('line_access_token').value,
+            line_welcome_message: document.getElementById('line_welcome_message').value,
+            liff_id: document.getElementById('liff_id').value,
+            liff_type: document.getElementById('liff_type').value,
+            liff_url: document.getElementById('liff_url').value
+        };
+    } else {
+        // กรณีใช้หลาย Line OA
+        settings.line = {
+            single_line_oa: 0,
+            // LINE OA สำหรับผู้ปกครอง
+            parent_line_oa_name: document.getElementById('parent_line_oa_name').value,
+            parent_line_oa_id: document.getElementById('parent_line_oa_id').value,
+            parent_line_channel_id: document.getElementById('parent_line_channel_id').value,
+            parent_line_channel_secret: document.getElementById('parent_line_channel_secret').value,
+            parent_line_access_token: document.getElementById('parent_line_access_token').value,
+            parent_line_welcome_message: document.getElementById('parent_line_welcome_message').value,
+            
+            // LINE OA สำหรับนักเรียน
+            student_line_oa_name: document.getElementById('student_line_oa_name').value,
+            student_line_oa_id: document.getElementById('student_line_oa_id').value,
+            student_line_channel_id: document.getElementById('student_line_channel_id').value,
+            student_line_channel_secret: document.getElementById('student_line_channel_secret').value,
+            student_line_access_token: document.getElementById('student_line_access_token').value,
+            student_line_welcome_message: document.getElementById('student_line_welcome_message').value,
+            
+            // LINE OA สำหรับครู
+            teacher_line_oa_name: document.getElementById('teacher_line_oa_name').value,
+            teacher_line_oa_id: document.getElementById('teacher_line_oa_id').value,
+            teacher_line_channel_id: document.getElementById('teacher_line_channel_id').value,
+            teacher_line_channel_secret: document.getElementById('teacher_line_channel_secret').value,
+            teacher_line_access_token: document.getElementById('teacher_line_access_token').value,
+            teacher_line_welcome_message: document.getElementById('teacher_line_welcome_message').value,
+            
+            // LIFF
+            liff_id: document.getElementById('liff_id').value,
+            liff_type: document.getElementById('liff_type').value,
+            liff_url: document.getElementById('liff_url').value
+        };
+    }
 
     // รวบรวมการตั้งค่า SMS
     settings.sms = {
-        enable_sms: document.getElementById('enable_sms').checked,
+        enable_sms: document.getElementById('enable_sms').checked ? 1 : 0,
         sms_provider: document.getElementById('sms_provider').value,
         sms_api_key: document.getElementById('sms_api_key').value,
         sms_api_secret: document.getElementById('sms_api_secret').value,
@@ -1071,8 +1450,8 @@ function collectSettingsData() {
         sms_max_length: document.getElementById('sms_max_length').value,
         sms_sender_id: document.getElementById('sms_sender_id').value,
         sms_absence_template: document.getElementById('sms_absence_template').value,
-        sms_use_unicode: document.getElementById('sms_use_unicode').checked,
-        sms_delivery_report: document.getElementById('sms_delivery_report').checked,
+        sms_use_unicode: document.getElementById('sms_use_unicode').checked ? 1 : 0,
+        sms_delivery_report: document.getElementById('sms_delivery_report').checked ? 1 : 0,
         sms_daily_limit: document.getElementById('sms_daily_limit').value,
         sms_send_time: document.getElementById('sms_send_time').value
     };
@@ -1090,17 +1469,17 @@ function collectSettingsData() {
 
     // รวบรวมการตั้งค่า Webhook
     settings.webhook = {
-        enable_webhook: document.getElementById('enable_webhook').checked,
+        enable_webhook: document.getElementById('enable_webhook').checked ? 1 : 0,
         parent_webhook_url: document.getElementById('parent_webhook_url').value,
         parent_webhook_secret: document.getElementById('parent_webhook_secret').value,
         student_webhook_url: document.getElementById('student_webhook_url').value,
         student_webhook_secret: document.getElementById('student_webhook_secret').value,
         teacher_webhook_url: document.getElementById('teacher_webhook_url').value,
         teacher_webhook_secret: document.getElementById('teacher_webhook_secret').value,
-        enable_auto_reply: document.getElementById('enable_auto_reply').checked,
+        enable_auto_reply: document.getElementById('enable_auto_reply').checked ? 1 : 0,
         initial_greeting: document.getElementById('initial_greeting').value,
         fallback_message: document.getElementById('fallback_message').value,
-        enable_rich_menu: document.getElementById('enable_rich_menu').checked,
+        enable_rich_menu: document.getElementById('enable_rich_menu').checked ? 1 : 0,
         parent_rich_menu_name: document.getElementById('parent_rich_menu_name').value,
         parent_rich_menu_id: document.getElementById('parent_rich_menu_id').value,
         student_rich_menu_name: document.getElementById('student_rich_menu_name').value,
