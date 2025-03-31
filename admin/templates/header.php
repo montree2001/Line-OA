@@ -12,7 +12,9 @@
     <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.11.5/css/jquery.dataTables.min.css">
 <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/responsive/2.2.9/css/responsive.dataTables.min.css">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
-    <?php if(isset($extra_css)): ?>
+<link href="assets/css/import.css" rel="stylesheet">
+
+<?php if(isset($extra_css)): ?>
         <?php foreach($extra_css as $css): ?>
             <link href="<?php echo $css; ?>" rel="stylesheet">
         <?php endforeach; ?>

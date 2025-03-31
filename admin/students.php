@@ -186,11 +186,13 @@ if (isset($_GET['success'])) {
 
 // ไฟล์ CSS และ JS เพิ่มเติม
 $extra_css = [
-    'assets/css/students.css'
+    'assets/css/students.css',
+    'assets/css/import_modal.css'
 ];
 
 $extra_js = [
-    'assets/js/students.js'
+    'assets/js/students.js',
+    'assets/js/import_modal.js'
 ];
 
 // กำหนดเส้นทางไปยังไฟล์เนื้อหาเฉพาะหน้า
