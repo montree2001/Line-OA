@@ -1,98 +1,68 @@
 <?php
-// ดึงข้อมูลแผนกวิชาและระดับชั้นเรียนจากฐานข้อมูล
-$departments = [];
-$levels = ['ปวช.1', 'ปวช.2', 'ปวช.3', 'ปวส.1', 'ปวส.2'];
-
+// ดึงข้อมูลแผนกวิชาทั้งหมด
 try {
     $stmt = $conn->prepare("SELECT department_id, department_name FROM departments WHERE is_active = 1 ORDER BY department_name");
     $stmt->execute();
     $departments = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
-    // หากมีข้อผิดพลาดในการดึงข้อมูล ให้บันทึกข้อผิดพลาด
-    error_log("Error fetching departments: " . $e->getMessage());
+    $departments = [];
 }
 ?>
 
 <div class="card">
-    <h2 class="card-title">กรอกข้อมูลห้องเรียน</h2>
+    <div class="card-title">ระบุชั้นเรียน</div>
     
-    <div class="profile-info-section">
-        <h3>ข้อมูลนักศึกษา</h3>
-        <div class="info-item">
-            <div class="info-label">รหัสนักศึกษา:</div>
-            <div class="info-value"><?php echo htmlspecialchars($_SESSION['student_code'] ?? ''); ?></div>
-        </div>
-        <div class="info-item">
-            <div class="info-label">ชื่อ-นามสกุล:</div>
-            <div class="info-value">
-                <?php 
-                    echo htmlspecialchars($_SESSION['student_title'] ?? ''); 
-                    echo ' ';
-                    echo htmlspecialchars($_SESSION['student_first_name'] ?? ''); 
-                    echo ' ';
-                    echo htmlspecialchars($_SESSION['student_last_name'] ?? ''); 
-                ?>
-            </div>
-        </div>
-    </div>
+    <p class="mb-20">
+        กรุณาเลือกข้อมูลชั้นเรียนที่คุณกำลังศึกษาอยู่
+    </p>
     
-    <p>กรุณากรอกข้อมูลห้องเรียนของคุณ</p>
-    
-    <form method="POST" action="register_process.php">
-        <input type="hidden" name="step" value="55">
-        
+    <form method="post" action="">
         <div class="input-container">
-            <label class="input-label">ระดับชั้น</label>
-            <select name="level" class="input-field" required>
-                <option value="" disabled selected>เลือกระดับชั้น</option>
-                <?php foreach ($levels as $level): ?>
-                <option value="<?php echo $level; ?>"><?php echo $level; ?></option>
-                <?php endforeach; ?>
+            <label class="input-label" for="level">ระดับชั้น</label>
+            <select id="level" name="level" class="input-field" required>
+                <option value="">กรุณาเลือกระดับชั้น</option>
+                <option value="ปวช.1">ปวช.1</option>
+                <option value="ปวช.2">ปวช.2</option>
+                <option value="ปวช.3">ปวช.3</option>
+                <option value="ปวส.1">ปวส.1</option>
+                <option value="ปวส.2">ปวส.2</option>
             </select>
         </div>
         
         <div class="input-container">
-            <label class="input-label">แผนกวิชา</label>
-            <select name="department_id" class="input-field" required>
-                <option value="" disabled selected>เลือกแผนกวิชา</option>
+            <label class="input-label" for="department_id">แผนกวิชา</label>
+            <select id="department_id" name="department_id" class="input-field" required>
+                <option value="">กรุณาเลือกแผนกวิชา</option>
                 <?php foreach ($departments as $department): ?>
-                <option value="<?php echo $department['department_id']; ?>">
-                    <?php echo htmlspecialchars($department['department_name']); ?>
-                </option>
+                <option value="<?php echo $department['department_id']; ?>"><?php echo htmlspecialchars($department['department_name']); ?></option>
                 <?php endforeach; ?>
             </select>
         </div>
         
         <div class="input-container">
-            <label for="group_number" class="input-label">กลุ่มเรียน</label>
-            <select name="group_number" class="input-field" required>
-                <option value="" disabled selected>เลือกกลุ่มเรียน</option>
-                <?php for ($i = 1; $i <= 10; $i++): ?>
-                <option value="<?php echo $i; ?>"><?php echo $i; ?></option>
-                <?php endfor; ?>
+            <label class="input-label" for="group_number">กลุ่มเรียน</label>
+            <select id="group_number" name="group_number" class="input-field" required>
+                <option value="">กรุณาเลือกกลุ่มเรียน</option>
+                <option value="1">กลุ่ม 1</option>
+                <option value="2">กลุ่ม 2</option>
+                <option value="3">กลุ่ม 3</option>
+                <option value="4">กลุ่ม 4</option>
+                <option value="5">กลุ่ม 5</option>
             </select>
         </div>
         
-        <div class="input-container">
-            <label for="advisor_name" class="input-label">ชื่อครูที่ปรึกษา (ถ้าทราบ)</label>
-            <input type="text" id="advisor_name" name="advisor_name" class="input-field" placeholder="กรอกชื่อครูที่ปรึกษา (ถ้าทราบ)">
+        <div class="alert alert-error">
+            <span class="material-icons">info</span>
+            <span>ข้อมูลชั้นเรียนจะต้องตรงกับชั้นเรียนจริงที่คุณศึกษาอยู่ หากระบุผิด อาจทำให้ไม่ได้รับการเช็คชื่อที่ถูกต้อง</span>
         </div>
         
-        <div class="checkbox-container">
-            <input type="checkbox" id="confirm_class" name="confirm_class" required>
-            <label for="confirm_class" class="checkbox-label">
-                ข้าพเจ้ายืนยันว่าข้อมูลห้องเรียนที่กรอกเป็นความจริง
-            </label>
-        </div>
-        
-        <button type="submit" class="btn primary">
-            บันทึกข้อมูลห้องเรียน <span class="material-icons">arrow_forward</span>
+        <button type="submit" name="submit_manual_class" class="btn primary mt-20">
+            บันทึกข้อมูลชั้นเรียน
+            <span class="material-icons">save</span>
         </button>
     </form>
-    
-    <div class="mt-20 text-center">
-        <a href="register.php?step=4" class="home-button">
-            <span class="material-icons">arrow_back</span> กลับไปค้นหาครูที่ปรึกษา
-        </a>
-    </div>
+</div>
+
+<div class="contact-admin">
+    หากไม่ทราบข้อมูลชั้นเรียนที่ถูกต้อง กรุณาสอบถามครูที่ปรึกษาหรือเจ้าหน้าที่ทะเบียน
 </div>

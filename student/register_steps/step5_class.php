@@ -1,76 +1,73 @@
 <div class="card">
-    <h2 class="card-title">เลือกห้องเรียน</h2>
+    <div class="card-title">เลือกชั้นเรียน</div>
     
-    <?php 
-    // ตรวจสอบว่ามีครูที่เลือกหรือไม่
-    $selected_teacher = $_SESSION['selected_teacher'] ?? null;
-    $teacher_name = $_SESSION['selected_teacher_name'] ?? 'ไม่ระบุ';
-    
-    // ตรวจสอบว่ามีรายการห้องเรียนที่ครูดูแลหรือไม่
-    $teacher_classes = $_SESSION['teacher_classes'] ?? [];
-    ?>
-    
+    <?php if (isset($_SESSION['selected_teacher']) && !empty($_SESSION['selected_teacher'])): ?>
     <div class="profile-info-section">
-        <h3>ข้อมูลที่เลือก</h3>
+        <h3>ครูที่ปรึกษา</h3>
         <div class="info-item">
-            <div class="info-label">รหัสนักศึกษา:</div>
-            <div class="info-value"><?php echo htmlspecialchars($_SESSION['student_code'] ?? ''); ?></div>
-        </div>
-        <div class="info-item">
-            <div class="info-label">ชื่อ-นามสกุล:</div>
-            <div class="info-value">
-                <?php 
-                    echo htmlspecialchars($_SESSION['student_title'] ?? ''); 
-                    echo ' ';
-                    echo htmlspecialchars($_SESSION['student_first_name'] ?? ''); 
-                    echo ' ';
-                    echo htmlspecialchars($_SESSION['student_last_name'] ?? ''); 
-                ?>
-            </div>
+            <div class="info-label">ชื่อ-สกุล:</div>
+            <div class="info-value"><?php echo htmlspecialchars($_SESSION['selected_teacher']['title'] . $_SESSION['selected_teacher']['first_name'] . ' ' . $_SESSION['selected_teacher']['last_name']); ?></div>
         </div>
         <div class="info-item">
-            <div class="info-label">ครูที่ปรึกษา:</div>
-            <div class="info-value"><?php echo htmlspecialchars($teacher_name); ?></div>
+            <div class="info-label">แผนกวิชา:</div>
+            <div class="info-value"><?php echo htmlspecialchars($_SESSION['selected_teacher']['department_name'] ?? 'ไม่ระบุแผนกวิชา'); ?></div>
         </div>
-    </div>
-    
-    <?php if (!empty($teacher_classes)): ?>
-    <form method="POST" action="register_process.php">
-        <input type="hidden" name="step" value="5">
-        
-        <div class="input-container">
-            <label class="input-label">เลือกห้องเรียนของคุณ</label>
-            <select name="class_id" class="input-field" required>
-                <option value="" disabled selected>เลือกห้องเรียน</option>
-                <?php foreach ($teacher_classes as $class): ?>
-                <option value="<?php echo $class['class_id']; ?>">
-                    <?php echo htmlspecialchars($class['level'] . ' กลุ่ม ' . $class['group_number'] . ' - ' . $class['department_name']); ?>
-                </option>
-                <?php endforeach; ?>
-            </select>
+        <div class="info-item">
+            <div class="info-label">ตำแหน่ง:</div>
+            <div class="info-value"><?php echo htmlspecialchars($_SESSION['selected_teacher']['position'] ?? 'ไม่ระบุตำแหน่ง'); ?></div>
         </div>
-        
-        <button type="submit" class="btn primary">
-            ยืนยันห้องเรียน <span class="material-icons">check</span>
-        </button>
-    </form>
-    <?php else: ?>
-    <div class="no-results">
-        <p>ไม่พบข้อมูลห้องเรียนที่ครูท่านนี้เป็นที่ปรึกษา</p>
-        <p>กรุณาเลือกครูท่านอื่น หรือกรอกข้อมูลห้องเรียนด้วยตนเอง</p>
-    </div>
-    
-    <div class="mt-20 text-center">
-        <a href="register.php?step=4" class="btn secondary">
-            <span class="material-icons">arrow_back</span> กลับไปเลือกครูที่ปรึกษา
-        </a>
     </div>
     <?php endif; ?>
     
-    <div class="skip-section">
-        <p>ต้องการกรอกข้อมูลห้องเรียนด้วยตนเอง?</p>
-        <a href="register.php?step=55" class="btn secondary">
-            กรอกข้อมูลห้องเรียนเอง <span class="material-icons">create</span>
-        </a>
+    <?php if (isset($_SESSION['teacher_classes']) && !empty($_SESSION['teacher_classes'])): ?>
+    <p class="mb-20">
+        คุณได้เลือกครูที่ปรึกษาเรียบร้อยแล้ว กรุณาเลือกชั้นเรียนที่คุณกำลังศึกษาอยู่จากรายการด้านล่าง
+    </p>
+    
+    <form method="post" action="">
+        <div class="teacher-list">
+            <h3 class="mb-10">ชั้นเรียนที่ครูเป็นที่ปรึกษา</h3>
+            
+            <?php foreach ($_SESSION['teacher_classes'] as $class): ?>
+            <div class="teacher-card">
+                <div class="radio-container">
+                    <input type="radio" id="class_<?php echo $class['class_id']; ?>" name="class_id" value="<?php echo $class['class_id']; ?>" required>
+                    <label for="class_<?php echo $class['class_id']; ?>">
+                        <div class="teacher-name">
+                            <?php echo htmlspecialchars($class['level'] . ' ' . $class['department_name'] . ' กลุ่ม ' . $class['group_number']); ?>
+                            <?php if ($class['is_primary']): ?>
+                                <span style="color: #06c755; margin-left: 5px;">(ที่ปรึกษาหลัก)</span>
+                            <?php endif; ?>
+                        </div>
+                        <div class="teacher-department">
+                            นักเรียนในชั้นเรียน: <?php echo htmlspecialchars($class['student_count']); ?> คน
+                        </div>
+                    </label>
+                </div>
+            </div>
+            <?php endforeach; ?>
+            
+            <button type="submit" name="select_class" class="btn primary mt-20">
+                เลือกชั้นเรียนนี้
+                <span class="material-icons">check</span>
+            </button>
+        </div>
+    </form>
+    
+    <?php else: ?>
+    <div class="alert alert-error">
+        <span class="material-icons">error</span>
+        <span>ไม่พบข้อมูลชั้นเรียนที่ครูเป็นที่ปรึกษา</span>
     </div>
+    
+    <div class="text-center mt-20">
+        <p>ไม่พบชั้นเรียนที่ครูเป็นที่ปรึกษาในปีการศึกษาปัจจุบัน กรุณาเลือกชั้นเรียนโดยตรงหรือเลือกครูที่ปรึกษาคนอื่น</p>
+        <a href="register.php?step=55" class="btn secondary mt-10">ระบุชั้นเรียนโดยตรง</a>
+        <a href="register.php?step=4" class="btn secondary mt-10">ค้นหาครูที่ปรึกษาอีกครั้ง</a>
+    </div>
+    <?php endif; ?>
+</div>
+
+<div class="contact-admin">
+    หากพบปัญหาในการเลือกชั้นเรียน กรุณาติดต่อเจ้าหน้าที่ทะเบียน
 </div>

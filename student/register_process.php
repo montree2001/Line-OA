@@ -1,748 +1,775 @@
 <?php
 /**
- * register_process.php - ไฟล์ประมวลผลฟอร์มการลงทะเบียนนักเรียน
- * ระบบเช็คชื่อเข้าแถวออนไลน์ STP-Prasat
+ * register_process.php - ไฟล์สำหรับประมวลผลฟอร์มลงทะเบียนนักเรียน
+ * รองรับการประมวลผลทุกขั้นตอนของการลงทะเบียน
  */
-session_start();
-require_once '../config/db_config.php';
-require_once '../db_connect.php';
 
-// ตรวจสอบว่ามีการล็อกอินหรือไม่
-if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
-    header('Location: ../index.php');
-    exit;
-}
-
-// ตรวจสอบว่าเป็นบทบาทนักเรียนหรือไม่
-if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'student') {
-    header('Location: ../index.php');
-    exit;
-}
-
-// ตรวจสอบว่าเป็นการส่งฟอร์มจริงหรือไม่
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+// ตรวจสอบว่าเรียกใช้งานโดยตรงหรือไม่
+if (basename($_SERVER['PHP_SELF']) == basename(__FILE__)) {
     header('Location: register.php');
     exit;
 }
 
-// ดึงการเชื่อมต่อฐานข้อมูล
-$conn = getDB();
-
-// ตรวจสอบปีการศึกษาที่ใช้งานอยู่
-try {
-    $academic_year_sql = "SELECT academic_year_id FROM academic_years WHERE is_active = 1 LIMIT 1";
-    $stmt = $conn->prepare($academic_year_sql);
-    $stmt->execute();
-    $academic_year_row = $stmt->fetch(PDO::FETCH_ASSOC);
-    
-    if ($academic_year_row) {
-        $_SESSION['current_academic_year_id'] = $academic_year_row['academic_year_id'];
-    } else {
-        $_SESSION['error_message'] = "ไม่พบข้อมูลปีการศึกษาที่ใช้งานอยู่ กรุณาติดต่อผู้ดูแลระบบ";
-        header('Location: register.php?step=error');
-        exit;
-    }
-} catch (PDOException $e) {
-    $_SESSION['error_message'] = "เกิดข้อผิดพลาดในการเชื่อมต่อฐานข้อมูล: " . $e->getMessage();
-    header('Location: register.php?step=error');
-    exit;
+// ฟังก์ชันสำหรับทำความสะอาดข้อมูล input
+function cleanInput($data) {
+    $data = trim($data);
+    $data = stripslashes($data);
+    $data = htmlspecialchars($data);
+    return $data;
 }
 
-// ประมวลผลตามขั้นตอนที่กำลังดำเนินการ
-$current_step = isset($_POST['step']) ? intval($_POST['step']) : 1;
-
-switch ($current_step) {
-    case 1:
-        // ขั้นตอนแรก: เริ่มต้นการลงทะเบียน
-        $_SESSION['registration_started'] = true;
-        header('Location: register.php?step=2');
-        exit;
-        break;
-
-    case 2:
-        // ขั้นตอนที่ 2: ค้นหารหัสนักเรียน
-        processStudentCodeSearch($conn);
-        break;
-
-    case 3:
-        // ขั้นตอนที่ 3: ยืนยันข้อมูล
-        processConfirmInfo($conn);
-        break;
-
-    case 33:
-        // ขั้นตอนที่ 3.3: กรอกข้อมูลด้วยตนเอง
-        processManualInfo($conn);
-        break;
-
-    case 4:
-        // ขั้นตอนที่ 4: เลือกครูที่ปรึกษา
-        if (isset($_POST['search_teacher'])) {
-            // ค้นหาครูที่ปรึกษา
-            searchTeacher($conn);
-        } elseif (isset($_POST['select_teacher'])) {
-            // เลือกครูที่ปรึกษา
-            selectTeacher($conn);
-        } else {
-            header('Location: register.php?step=4');
-            exit;
-        }
-        break;
-
-    case 5:
-        // ขั้นตอนที่ 5: เลือกห้องเรียน
-        processClassSelection($conn);
-        break;
-
-    case 55:
-        // ขั้นตอนที่ 5.5: กรอกข้อมูลห้องเรียนด้วยตนเอง
-        processManualClassInfo($conn);
-        break;
-
-    case 6:
-        // ขั้นตอนที่ 6: ข้อมูลเพิ่มเติมและยินยอมเก็บข้อมูล
-        processAdditionalInfo($conn);
-        break;
-
-    default:
-        // ขั้นตอนไม่ถูกต้อง
-        header('Location: register.php');
-        exit;
+// ฟังก์ชันสำหรับตรวจสอบรหัสนักศึกษา
+function validateStudentCode($code) {
+    // ตรวจสอบรูปแบบรหัสนักศึกษา 11 หลัก
+    if (empty($code) || !preg_match('/^\d{11}$/', $code)) {
+        return false;
+    }
+    return true;
 }
 
-/**
- * ประมวลผลการค้นหารหัสนักเรียน
- * @param PDO $conn การเชื่อมต่อฐานข้อมูล
- */
-function processStudentCodeSearch($conn) {
-    // รับรหัสนักเรียนจากฟอร์ม
-    $student_code = isset($_POST['student_code']) ? trim($_POST['student_code']) : '';
-
-    // ตรวจสอบว่ามีรหัสนักเรียนหรือไม่
-    if (empty($student_code)) {
-        $_SESSION['error_message'] = 'กรุณากรอกรหัสนักเรียน';
-        header('Location: register.php?step=2');
-        exit;
+// ฟังก์ชันสำหรับตรวจสอบเบอร์โทรศัพท์
+function validatePhone($phone) {
+    // ถ้าไม่ได้กรอกเบอร์ ถือว่าผ่าน
+    if (empty($phone)) {
+        return true;
     }
+    // ตรวจสอบรูปแบบเบอร์โทรศัพท์
+    if (!preg_match('/^0\d{9}$/', $phone)) {
+        return false;
+    }
+    return true;
+}
 
+// ฟังก์ชันสำหรับตรวจสอบอีเมล
+function validateEmail($email) {
+    // ถ้าไม่ได้กรอกอีเมล ถือว่าผ่าน
+    if (empty($email)) {
+        return true;
+    }
+    // ตรวจสอบรูปแบบอีเมล
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        return false;
+    }
+    return true;
+}
+
+// ฟังก์ชันบันทึกประวัติการลงทะเบียน
+function logRegistrationActivity($conn, $user_id, $action, $details = null) {
     try {
-        // ตรวจสอบว่ามีนักเรียนคนนี้ในระบบแล้วหรือไม่
-        $stmt = $conn->prepare("SELECT s.*, u.first_name, u.last_name, u.title 
-                              FROM students s 
-                              JOIN users u ON s.user_id = u.user_id 
-                              WHERE s.student_code = ?");
+        $stmt = $conn->prepare("
+            INSERT INTO user_activity_logs (user_id, action_type, action_details, ip_address, created_at)
+            VALUES (?, 'registration', ?, ?, NOW())
+        ");
+        $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+        $stmt->execute([$user_id, $action, $details, $ip]);
+    } catch (PDOException $e) {
+        // เพียงบันทึกข้อผิดพลาด แต่ไม่หยุดการทำงาน
+        error_log("Error logging registration activity: " . $e->getMessage());
+    }
+}
+
+// ฟังก์ชันสร้าง QR Code สำหรับนักเรียน
+function createStudentQRCode($conn, $student_id, $student_code) {
+    try {
+        // สร้างข้อมูล QR Code
+        $qr_data = [
+            'type' => 'student_link',
+            'student_id' => $student_id,
+            'student_code' => $student_code,
+            'token' => md5($student_code . time()),
+            'expire_time' => date('Y-m-d H:i:s', strtotime('+7 day'))
+        ];
+        
+        // บันทึกข้อมูล QR Code ลงฐานข้อมูล
+        $stmt = $conn->prepare("
+            INSERT INTO qr_codes (student_id, qr_code_data, valid_from, valid_until, is_active, created_at)
+            VALUES (?, ?, NOW(), ?, 1, NOW())
+        ");
+        $stmt->execute([
+            $student_id,
+            json_encode($qr_data),
+            date('Y-m-d H:i:s', strtotime('+7 day'))
+        ]);
+        
+        return true;
+    } catch (PDOException $e) {
+        error_log("Error creating QR code: " . $e->getMessage());
+        return false;
+    }
+}
+
+// ฟังก์ชันสำหรับเช็คว่า student code มีอยู่แล้วหรือไม่
+function isStudentCodeExists($conn, $student_code) {
+    try {
+        $stmt = $conn->prepare("SELECT student_id FROM students WHERE student_code = ?");
         $stmt->execute([$student_code]);
-        $existing_student = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        if ($existing_student) {
-            // พบข้อมูลในระบบ
-            $_SESSION['student_code'] = $existing_student['student_code'];
-            $_SESSION['student_title'] = $existing_student['title'];
-            $_SESSION['student_first_name'] = $existing_student['first_name'];
-            $_SESSION['student_last_name'] = $existing_student['last_name'];
-            $_SESSION['existing_student_id'] = $existing_student['student_id'];
-            $_SESSION['existing_user_id'] = $existing_student['user_id'];
-            
-            // ตรวจสอบว่า user_id นั้นมี line_id เดียวกับที่กำลังลงทะเบียนหรือไม่
-            $stmt = $conn->prepare("SELECT * FROM users WHERE user_id = ? AND line_id = ?");
-            $stmt->execute([$existing_student['user_id'], $_SESSION['line_id']]);
-            $same_line_user = $stmt->fetch(PDO::FETCH_ASSOC);
-
-            if ($same_line_user) {
-                // เป็นคนเดียวกัน ให้เข้าสู่ระบบได้เลย
-                $_SESSION['success_message'] = 'พบข้อมูลของคุณในระบบแล้ว กำลังเข้าสู่ระบบ...';
-                header('Location: dashboard.php');
-                exit;
-            } else {
-                // มีรหัสนักเรียนนี้แล้ว แต่ผูกกับ LINE ID อื่น
-                $_SESSION['error_message'] = 'รหัสนักเรียนนี้ถูกใช้งานในระบบแล้ว กรุณาติดต่อผู้ดูแลระบบ';
-                header('Location: register.php?step=2');
-                exit;
-            }
-        } else {
-            // ไม่พบข้อมูลในระบบ ต้องกรอกข้อมูลเอง
-            $_SESSION['student_code'] = $student_code;
-            header('Location: register.php?step=33');
-            exit;
-        }
+        return $stmt->fetch() ? true : false;
     } catch (PDOException $e) {
-        // แก้ไขปัญหา SQL Duplicate entry สำหรับ line_id
-        if (strpos($e->getMessage(), 'Duplicate entry') !== false && strpos($e->getMessage(), 'line_id') !== false) {
-            // กรณีมี line_id ซ้ำ ให้ตรวจสอบว่ามีข้อมูลผู้ใช้นี้ในระบบแล้วหรือไม่
-            $duplicate_user = checkAndFixDuplicateLineId($_SESSION['line_id'], $conn);
-            if ($duplicate_user) {
-                // มีผู้ใช้งานนี้ในระบบแล้ว ให้ตรวจสอบว่าเป็นนักเรียนหรือไม่
-                $stmt = $conn->prepare("SELECT * FROM students WHERE user_id = ?");
-                $stmt->execute([$duplicate_user['user_id']]);
-                $student = $stmt->fetch(PDO::FETCH_ASSOC);
-                
-                if ($student) {
-                    // เป็นนักเรียนที่ลงทะเบียนแล้ว ให้เข้าสู่หน้า dashboard
-                    $_SESSION['user_id'] = $duplicate_user['user_id'];
-                    $_SESSION['role'] = $duplicate_user['role'];
-                    $_SESSION['logged_in'] = true;
-                    $_SESSION['success_message'] = 'พบข้อมูลของคุณในระบบแล้ว กำลังเข้าสู่ระบบ...';
-                    header('Location: dashboard.php');
-                    exit;
-                } else {
-                    // เป็นผู้ใช้งานอื่นที่ไม่ใช่นักเรียน
-                    $_SESSION['error_message'] = 'บัญชี LINE นี้ถูกใช้งานในระบบแล้วในฐานะ ' . $duplicate_user['role'] . ' กรุณาใช้บัญชี LINE อื่น';
-                    header('Location: register.php?step=2');
-                    exit;
-                }
-            } else {
-                // ข้อผิดพลาดอื่นๆ เกี่ยวกับ line_id ซ้ำ
-                $_SESSION['error_message'] = 'เกิดข้อผิดพลาดเกี่ยวกับบัญชี LINE กรุณาลองใหม่หรือติดต่อผู้ดูแลระบบ';
-                header('Location: register.php?step=2');
-                exit;
-            }
-        } else {
-            // ข้อผิดพลาดอื่นๆ
-            $_SESSION['error_message'] = 'เกิดข้อผิดพลาดในการค้นหาข้อมูล: ' . $e->getMessage();
-            header('Location: register.php?step=2');
-            exit;
-        }
+        error_log("Error checking student code: " . $e->getMessage());
+        return false;
     }
 }
 
-/**
- * ประมวลผลการยืนยันข้อมูล
- * @param PDO $conn การเชื่อมต่อฐานข้อมูล
- */
-function processConfirmInfo($conn) {
-    if (isset($_POST['confirm']) && $_POST['confirm'] === 'yes') {
-        // ผู้ใช้ยืนยันข้อมูล ไปขั้นตอนการเลือกครูที่ปรึกษา
-        header('Location: register.php?step=4');
-        exit;
+// ฟังก์ชันสำหรับดึงข้อมูลแผนกวิชา
+function getDepartments($conn) {
+    try {
+        $stmt = $conn->prepare("SELECT department_id, department_name FROM departments WHERE is_active = 1 ORDER BY department_name");
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) {
+        error_log("Error fetching departments: " . $e->getMessage());
+        return [];
+    }
+}
+
+//////////////////////////////////////////
+// เริ่มประมวลผลฟอร์มตามการส่งข้อมูล
+//////////////////////////////////////////
+
+// 1. ประมวลผลการค้นหารหัสนักศึกษา
+if (isset($_POST['search_student'])) {
+    $student_code = isset($_POST['student_code']) ? cleanInput($_POST['student_code']) : '';
+    
+    // ตรวจสอบรหัสนักศึกษา
+    if (!validateStudentCode($student_code)) {
+        $error_message = "กรุณากรอกรหัสนักศึกษาให้ถูกต้อง (ตัวเลข 11 หลัก)";
     } else {
-        // ผู้ใช้ไม่ยืนยันข้อมูล ให้กรอกข้อมูลเอง
-        header('Location: register.php?step=33');
-        exit;
-    }
-}
-
-/**
- * ประมวลผลการกรอกข้อมูลด้วยตนเอง
- * @param PDO $conn การเชื่อมต่อฐานข้อมูล
- */
-function processManualInfo($conn) {
-    $title = isset($_POST['title']) ? $_POST['title'] : '';
-    $first_name = isset($_POST['first_name']) ? trim($_POST['first_name']) : '';
-    $last_name = isset($_POST['last_name']) ? trim($_POST['last_name']) : '';
-    $phone = isset($_POST['phone']) ? trim($_POST['phone']) : '';
-    $email = isset($_POST['email']) ? trim($_POST['email']) : '';
-    
-    // ตรวจสอบว่ามีข้อมูลครบถ้วนหรือไม่
-    if (empty($title) || empty($first_name) || empty($last_name)) {
-        $_SESSION['error_message'] = 'กรุณากรอกข้อมูลให้ครบถ้วน';
-        header('Location: register.php?step=33');
-        exit;
-    }
-    
-    // บันทึกข้อมูลลงใน session สำหรับใช้ในขั้นตอนถัดไป
-    $_SESSION['student_title'] = $title;
-    $_SESSION['student_first_name'] = $first_name;
-    $_SESSION['student_last_name'] = $last_name;
-    $_SESSION['student_phone'] = $phone;
-    $_SESSION['student_email'] = $email;
-    
-    // ไปขั้นตอนการเลือกครูที่ปรึกษา
-    header('Location: register.php?step=4');
-    exit;
-}
-
-/**
- * ค้นหาครูที่ปรึกษาจากชื่อ
- * @param PDO $conn การเชื่อมต่อฐานข้อมูล
- */
-function searchTeacher($conn) {
-    $teacher_name = isset($_POST['teacher_name']) ? trim($_POST['teacher_name']) : '';
-    
-    if (empty($teacher_name)) {
-        $_SESSION['error_message'] = 'กรุณากรอกชื่อครูที่ต้องการค้นหา';
-        header('Location: register.php?step=4');
-        exit;
-    }
-    
-    try {
-        // ค้นหาข้อมูลครูที่ปรึกษา
-        $search_term = "%$teacher_name%";
-        
-        // SQL สำหรับค้นหาครูและข้อมูลห้องเรียนที่เป็นครูที่ปรึกษา
-        $sql = "SELECT 
-                    t.teacher_id, 
-                    t.title, 
-                    t.first_name, 
-                    t.last_name, 
-                    d.department_name,
-                    GROUP_CONCAT(DISTINCT CONCAT(c.level, ' กลุ่ม ', c.group_number) SEPARATOR ', ') as classes
-                FROM 
-                    teachers t
-                LEFT JOIN 
-                    departments d ON t.department_id = d.department_id
-                LEFT JOIN 
-                    class_advisors ca ON t.teacher_id = ca.teacher_id
-                LEFT JOIN 
-                    classes c ON ca.class_id = c.class_id
-                WHERE 
-                    (t.first_name LIKE ? OR t.last_name LIKE ?)
-                    AND c.academic_year_id = ?
-                GROUP BY 
-                    t.teacher_id, t.title, t.first_name, t.last_name, d.department_name
-                ORDER BY 
-                    t.first_name, t.last_name";
-        
-        $stmt = $conn->prepare($sql);
-        $stmt->execute([$search_term, $search_term, $_SESSION['current_academic_year_id']]);
-        $teachers = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
-        if (count($teachers) > 0) {
-            // เก็บผลลัพธ์การค้นหาใน session
-            $_SESSION['search_teacher_results'] = $teachers;
-            header('Location: register.php?step=4');
-            exit;
-        } else {
-            // ไม่พบข้อมูลครูที่ปรึกษา
-            $_SESSION['error_message'] = 'ไม่พบข้อมูลครูที่ปรึกษาตามคำค้นหา กรุณาลองค้นหาใหม่หรือเลือกกรอกข้อมูลห้องเรียนเอง';
-            header('Location: register.php?step=4');
-            exit;
-        }
-    } catch (PDOException $e) {
-        $_SESSION['error_message'] = 'เกิดข้อผิดพลาดในการค้นหาครูที่ปรึกษา: ' . $e->getMessage();
-        header('Location: register.php?step=4');
-        exit;
-    }
-}
-
-/**
- * เลือกครูที่ปรึกษา
- * @param PDO $conn การเชื่อมต่อฐานข้อมูล
- */
-function selectTeacher($conn) {
-    $selected_teacher_id = isset($_POST['selected_teacher']) ? intval($_POST['selected_teacher']) : 0;
-    
-    if ($selected_teacher_id <= 0) {
-        $_SESSION['error_message'] = 'กรุณาเลือกครูที่ปรึกษา';
-        header('Location: register.php?step=4');
-        exit;
-    }
-    
-    try {
-        // ดึงข้อมูลครูที่เลือก
-        $stmt = $conn->prepare("SELECT t.teacher_id, t.title, t.first_name, t.last_name, d.department_name 
-                              FROM teachers t 
-                              LEFT JOIN departments d ON t.department_id = d.department_id 
-                              WHERE t.teacher_id = ?");
-        $stmt->execute([$selected_teacher_id]);
-        $teacher = $stmt->fetch(PDO::FETCH_ASSOC);
-        
-        if (!$teacher) {
-            $_SESSION['error_message'] = 'ไม่พบข้อมูลครูที่ปรึกษาที่เลือก';
-            header('Location: register.php?step=4');
-            exit;
-        }
-        
-        // ดึงข้อมูลห้องเรียนที่ครูดูแล
-        $stmt = $conn->prepare("SELECT c.class_id, c.level, c.group_number, d.department_name 
-                              FROM classes c 
-                              JOIN class_advisors ca ON c.class_id = ca.class_id 
-                              JOIN departments d ON c.department_id = d.department_id 
-                              WHERE ca.teacher_id = ? AND c.academic_year_id = ? AND c.is_active = 1
-                              ORDER BY c.level, c.group_number");
-        $stmt->execute([$selected_teacher_id, $_SESSION['current_academic_year_id']]);
-        $classes = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
-        // บันทึกข้อมูลลงใน session
-        $_SESSION['selected_teacher_id'] = $selected_teacher_id;
-        $_SESSION['selected_teacher_name'] = $teacher['title'] . ' ' . $teacher['first_name'] . ' ' . $teacher['last_name'];
-        $_SESSION['teacher_classes'] = $classes;
-        
-        // ไปขั้นตอนการเลือกห้องเรียน
-        header('Location: register.php?step=5');
-        exit;
-    } catch (PDOException $e) {
-        $_SESSION['error_message'] = 'เกิดข้อผิดพลาดในการเลือกครูที่ปรึกษา: ' . $e->getMessage();
-        header('Location: register.php?step=4');
-        exit;
-    }
-}
-
-/**
- * ประมวลผลการเลือกห้องเรียน
- * @param PDO $conn การเชื่อมต่อฐานข้อมูล
- */
-function processClassSelection($conn) {
-    $class_id = isset($_POST['class_id']) ? intval($_POST['class_id']) : 0;
-    
-    if ($class_id <= 0) {
-        $_SESSION['error_message'] = 'กรุณาเลือกห้องเรียน';
-        header('Location: register.php?step=5');
-        exit;
-    }
-    
-    try {
-        // ดึงข้อมูลห้องเรียนที่เลือก
-        $stmt = $conn->prepare("SELECT c.class_id, c.level, c.group_number, d.department_name, d.department_id 
-                              FROM classes c 
-                              JOIN departments d ON c.department_id = d.department_id 
-                              WHERE c.class_id = ?");
-        $stmt->execute([$class_id]);
-        $class = $stmt->fetch(PDO::FETCH_ASSOC);
-        
-        if (!$class) {
-            $_SESSION['error_message'] = 'ไม่พบข้อมูลห้องเรียนที่เลือก';
-            header('Location: register.php?step=5');
-            exit;
-        }
-        
-        // บันทึกข้อมูลลงใน session
-        $_SESSION['selected_class_id'] = $class_id;
-        $_SESSION['selected_level'] = $class['level'];
-        $_SESSION['selected_group'] = $class['group_number'];
-        $_SESSION['selected_department_id'] = $class['department_id'];
-        $_SESSION['selected_department_name'] = $class['department_name'];
-        
-        // ไปขั้นตอนการกรอกข้อมูลเพิ่มเติม
-        header('Location: register.php?step=6');
-        exit;
-    } catch (PDOException $e) {
-        $_SESSION['error_message'] = 'เกิดข้อผิดพลาดในการเลือกห้องเรียน: ' . $e->getMessage();
-        header('Location: register.php?step=5');
-        exit;
-    }
-}
-
-/**
- * ประมวลผลการกรอกข้อมูลห้องเรียนด้วยตนเอง
- * @param PDO $conn การเชื่อมต่อฐานข้อมูล
- */
-function processManualClassInfo($conn) {
-    $level = isset($_POST['level']) ? $_POST['level'] : '';
-    $department_id = isset($_POST['department_id']) ? intval($_POST['department_id']) : 0;
-    $group_number = isset($_POST['group_number']) ? intval($_POST['group_number']) : 0;
-    $advisor_name = isset($_POST['advisor_name']) ? trim($_POST['advisor_name']) : '';
-    
-    // ตรวจสอบว่ามีข้อมูลครบถ้วนหรือไม่
-    if (empty($level) || $department_id <= 0 || $group_number <= 0) {
-        $_SESSION['error_message'] = 'กรุณากรอกข้อมูลห้องเรียนให้ครบถ้วน';
-        header('Location: register.php?step=55');
-        exit;
-    }
-    
-    try {
-        // ดึงข้อมูลแผนกวิชา
-        $stmt = $conn->prepare("SELECT department_name FROM departments WHERE department_id = ?");
-        $stmt->execute([$department_id]);
-        $department = $stmt->fetch(PDO::FETCH_ASSOC);
-        
-        if (!$department) {
-            $_SESSION['error_message'] = 'ไม่พบข้อมูลแผนกวิชาที่เลือก';
-            header('Location: register.php?step=55');
-            exit;
-        }
-        
-        // ค้นหาห้องเรียนที่ตรงกับข้อมูลที่กรอก
-        $stmt = $conn->prepare("SELECT class_id FROM classes 
-                              WHERE level = ? AND department_id = ? AND group_number = ? AND academic_year_id = ?");
-        $stmt->execute([$level, $department_id, $group_number, $_SESSION['current_academic_year_id']]);
-        $existing_class = $stmt->fetch(PDO::FETCH_ASSOC);
-        
-        $class_id = 0;
-        
-        if ($existing_class) {
-            // กรณีพบห้องเรียนที่ตรงกับข้อมูลที่กรอก
-            $class_id = $existing_class['class_id'];
-        } else {
-            // กรณีไม่พบห้องเรียน ให้สร้างห้องเรียนใหม่
-            $stmt = $conn->prepare("INSERT INTO classes 
-                                  (academic_year_id, level, department_id, group_number, is_active, created_at) 
-                                  VALUES (?, ?, ?, ?, 1, NOW())");
-            $stmt->execute([$_SESSION['current_academic_year_id'], $level, $department_id, $group_number]);
-            $class_id = $conn->lastInsertId();
-        }
-        
-        // บันทึกข้อมูลลงใน session
-        $_SESSION['selected_class_id'] = $class_id;
-        $_SESSION['selected_level'] = $level;
-        $_SESSION['selected_group'] = $group_number;
-        $_SESSION['selected_department_id'] = $department_id;
-        $_SESSION['selected_department_name'] = $department['department_name'];
-        
-        if (!empty($advisor_name)) {
-            $_SESSION['advisor_name'] = $advisor_name;
-        }
-        
-        // ไปขั้นตอนการกรอกข้อมูลเพิ่มเติม
-        header('Location: register.php?step=6');
-        exit;
-    } catch (PDOException $e) {
-        $_SESSION['error_message'] = 'เกิดข้อผิดพลาดในการบันทึกข้อมูลห้องเรียน: ' . $e->getMessage();
-        header('Location: register.php?step=55');
-        exit;
-    }
-}
-
-/**
- * ประมวลผลการบันทึกข้อมูลเพิ่มเติมและการยินยอมเก็บข้อมูล
- * @param PDO $conn การเชื่อมต่อฐานข้อมูล
- */
-function processAdditionalInfo($conn) {
-    // ตรวจสอบว่ามีข้อมูลพื้นฐานที่จำเป็นหรือไม่
-    if (!isset($_SESSION['student_code']) || !isset($_SESSION['student_first_name']) ||
-        !isset($_SESSION['student_title'])) {
-        $_SESSION['error_message'] = 'ข้อมูลไม่ครบถ้วน กรุณากรอกข้อมูลให้ครบถ้วน';
-        header('Location: register.php?step=2');
-        exit;
-    }
-    
-    // ตรวจสอบการยินยอมเก็บข้อมูลส่วนบุคคล
-    if (!isset($_POST['gdpr_consent']) || !isset($_POST['terms_conditions'])) {
-        $_SESSION['error_message'] = 'กรุณายอมรับเงื่อนไขการใช้งานและการเก็บข้อมูลส่วนบุคคล';
-        header('Location: register.php?step=6');
-        exit;
-    }
-    
-    try {
-        // เริ่ม Transaction
-        $conn->beginTransaction();
-        
-        // ตรวจสอบว่ามี LINE ID ซ้ำหรือไม่
-        $duplicate_user = checkAndFixDuplicateLineId($_SESSION['line_id'], $conn);
-        
-        if ($duplicate_user) {
-            // กรณีมี LINE ID ซ้ำ และเป็นนักเรียนอยู่แล้ว
-            $stmt = $conn->prepare("SELECT * FROM students WHERE user_id = ?");
-            $stmt->execute([$duplicate_user['user_id']]);
+        try {
+            // ค้นหานักศึกษาในฐานข้อมูล
+            $stmt = $conn->prepare("
+                SELECT s.student_id, s.student_code, s.title, s.current_class_id, s.status,
+                       u.user_id as existing_user_id, u.first_name, u.last_name, u.phone_number, u.email, u.profile_picture, u.line_id,
+                       c.class_id, c.level, c.group_number, c.department_id,
+                       d.department_name
+                FROM students s
+                LEFT JOIN users u ON s.user_id = u.user_id
+                LEFT JOIN classes c ON s.current_class_id = c.class_id
+                LEFT JOIN departments d ON c.department_id = d.department_id
+                WHERE s.student_code = ?
+            ");
+            $stmt->execute([$student_code]);
             $student = $stmt->fetch(PDO::FETCH_ASSOC);
             
             if ($student) {
-                // เป็นนักเรียนที่ลงทะเบียนแล้ว
-                $_SESSION['user_id'] = $duplicate_user['user_id'];
-                $_SESSION['success_message'] = 'พบข้อมูลของคุณในระบบแล้ว กำลังเข้าสู่ระบบ...';
+                // ตรวจสอบว่า LINE ID เป็นแบบชั่วคราวหรือไม่ (ขึ้นต้นด้วย TEMP_)
+                $is_temp_line_id = isset($student['line_id']) && strpos($student['line_id'], 'TEMP_') === 0;
                 
-                // นำไปที่หน้า dashboard
-                $conn->commit();
-                header('Location: dashboard.php');
-                exit;
-            }
-        }
-        
-        // รับข้อมูลเพิ่มเติม
-        $address = isset($_POST['address']) ? trim($_POST['address']) : null;
-        $emergency_contact = isset($_POST['emergency_contact']) ? trim($_POST['emergency_contact']) : null;
-        $emergency_phone = isset($_POST['emergency_phone']) ? trim($_POST['emergency_phone']) : null;
-        
-        // รับชั้นเรียนและแผนกวิชาจาก session
-        $class_id = $_SESSION['selected_class_id'] ?? null;
-        $level = $_SESSION['selected_level'] ?? null;
-        $department_id = $_SESSION['selected_department_id'] ?? null;
-        
-        // ตรวจสอบว่าพบชั้นเรียนหรือไม่
-        if (!$class_id) {
-            // ถ้าไม่มี class_id ให้ตรวจสอบว่ามีข้อมูลระดับและแผนกหรือไม่
-            if ($level && $department_id) {
-                // ค้นหาหรือสร้างชั้นเรียนใหม่
-                $group_number = $_SESSION['selected_group'] ?? 1;
-                
-                // ค้นหาว่ามีชั้นเรียนนี้อยู่แล้วหรือไม่
-                $stmt = $conn->prepare("SELECT class_id FROM classes WHERE level = ? AND department_id = ? AND group_number = ? AND academic_year_id = ?");
-                $stmt->execute([$level, $department_id, $group_number, $_SESSION['current_academic_year_id']]);
-                $existing_class = $stmt->fetch(PDO::FETCH_ASSOC);
-                
-                if ($existing_class) {
-                    $class_id = $existing_class['class_id'];
+                // ตรวจสอบว่านักเรียนมีข้อมูลผู้ใช้เชื่อมโยงอยู่แล้วหรือไม่
+                if ($student['existing_user_id'] && !$is_temp_line_id && $student['existing_user_id'] != $user_id) {
+                    // กรณีมีผู้ใช้อื่นเชื่อมโยงกับรหัสนักศึกษานี้แล้ว (และไม่ใช่ TEMP)
+                    $error_message = "รหัสนักศึกษานี้ได้ลงทะเบียนกับผู้ใช้อื่นแล้ว กรุณาติดต่อครูที่ปรึกษาหรือเจ้าหน้าที่ทะเบียน";
                 } else {
-                    // สร้างชั้นเรียนใหม่
-                    $stmt = $conn->prepare("INSERT INTO classes (academic_year_id, level, department_id, group_number, is_active, created_at) 
-                                          VALUES (?, ?, ?, ?, 1, NOW())");
-                    $stmt->execute([$_SESSION['current_academic_year_id'], $level, $department_id, $group_number]);
-                    $class_id = $conn->lastInsertId();
+                    // กรณีไม่มีผู้ใช้เชื่อมโยง หรือมี line_id ขึ้นต้นด้วย TEMP_ (ยังไม่มีใครเชื่อมโยงจริง) สามารถใช้ได้
+                    // พบข้อมูลนักศึกษา - เก็บข้อมูลใน session
+                    $_SESSION['student_id'] = $student['student_id'];
+                    $_SESSION['student_code'] = $student['student_code'];
+                    $_SESSION['student_title'] = $student['title'];
+                    $_SESSION['student_first_name'] = $student['first_name'];
+                    $_SESSION['student_last_name'] = $student['last_name'];
+                    $_SESSION['student_phone'] = $student['phone_number'];
+                    $_SESSION['student_email'] = $student['email'];
+                    $_SESSION['student_profile_picture'] = $student['profile_picture'];
+                    $_SESSION['student_class_id'] = $student['current_class_id'];
+                    $_SESSION['student_level'] = $student['level'];
+                    $_SESSION['student_group'] = $student['group_number'];
+                    $_SESSION['student_department_id'] = $student['department_id'];
+                    $_SESSION['student_department_name'] = $student['department_name'];
+                    $_SESSION['student_status'] = $student['status'];
+                    
+                    // ถ้าเป็นบัญชีชั่วคราว ให้อัปเดตข้อมูลผู้ใช้ทันที
+                    if ($is_temp_line_id) {
+                        // บันทึกลงบันทึกว่าพบการเชื่อมโยงบัญชีชั่วคราว
+                        logRegistrationActivity($conn, $user_id, "found_temp_line_account", "Student ID: " . $student_code . ", Temp LINE: " . $student['line_id']);
+                    }
+                    
+                    // ตรวจสอบว่านักศึกษาอยู่ในสถานะที่ลงทะเบียนได้หรือไม่
+                    if ($student['status'] == 'พ้นสภาพ' || $student['status'] == 'สำเร็จการศึกษา') {
+                        $error_message = "ไม่สามารถลงทะเบียนได้ เนื่องจากสถานะนักศึกษา: " . $student['status'];
+                    } else {
+                        // ดึงข้อมูลครูที่ปรึกษา
+                        $stmt = $conn->prepare("
+                            SELECT t.teacher_id, u.title, u.first_name, u.last_name, d.department_name,
+                                   t.position, ca.is_primary
+                            FROM class_advisors ca
+                            JOIN teachers t ON ca.teacher_id = t.teacher_id
+                            JOIN users u ON t.user_id = u.user_id
+                            LEFT JOIN departments d ON t.department_id = d.department_id
+                            WHERE ca.class_id = ?
+                            ORDER BY ca.is_primary DESC
+                        ");
+                        $stmt->execute([$student['current_class_id']]);
+                        $advisors = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                        
+                        $_SESSION['student_advisors'] = $advisors;
+                        
+                        // บันทึกกิจกรรมการค้นหาสำเร็จ
+                        logRegistrationActivity($conn, $user_id, "search_student_success", "Student ID: " . $student_code);
+                        
+                        // ไปยังขั้นตอนยืนยันข้อมูล
+                        header('Location: register.php?step=3');
+                        exit;
+                    }
+                }
+            } else {
+                // ไม่พบข้อมูลนักศึกษา
+                $error_message = "ไม่พบข้อมูลนักศึกษารหัส: " . $student_code . " ในระบบ";
+                
+                // ตรวจสอบว่ามีข้อมูลในตาราง student_pending หรือไม่
+                $stmt = $conn->prepare("SELECT * FROM student_pending WHERE student_code = ?");
+                $stmt->execute([$student_code]);
+                $pending_student = $stmt->fetch(PDO::FETCH_ASSOC);
+                
+                if ($pending_student) {
+                    // พบข้อมูลในตาราง pending - เก็บข้อมูลใน session
+                    $_SESSION['student_code'] = $pending_student['student_code'];
+                    $_SESSION['student_title'] = $pending_student['title'];
+                    $_SESSION['student_first_name'] = $pending_student['first_name'];
+                    $_SESSION['student_last_name'] = $pending_student['last_name'];
+                    
+                    // บันทึกกิจกรรมการค้นหา
+                    logRegistrationActivity($conn, $user_id, "search_student_pending", "Student ID: " . $student_code);
+                    
+                    // ไปยังขั้นตอนกรอกข้อมูลเพิ่มเติม
+                    header('Location: register.php?step=33');
+                    exit;
+                } else {
+                    // แนะนำให้ลงทะเบียนใหม่
+                    $success_message = "หากคุณเป็นนักเรียนใหม่ สามารถลงทะเบียนโดยกรอกข้อมูลเอง";
+                    
+                    // บันทึกกิจกรรมการค้นหาไม่พบข้อมูล
+                    logRegistrationActivity($conn, $user_id, "search_student_not_found", "Student ID: " . $student_code);
                 }
             }
-        }
-        
-        // อัพเดทข้อมูลผู้ใช้
-        $user_data = [
-            'title' => $_SESSION['student_title'],
-            'first_name' => $_SESSION['student_first_name'],
-            'last_name' => $_SESSION['student_last_name'],
-            'phone_number' => isset($_SESSION['student_phone']) ? $_SESSION['student_phone'] : (isset($_POST['phone']) ? trim($_POST['phone']) : null),
-            'email' => isset($_SESSION['student_email']) ? $_SESSION['student_email'] : (isset($_POST['email']) ? trim($_POST['email']) : null),
-            'gdpr_consent' => 1,
-            'gdpr_consent_date' => date('Y-m-d H:i:s'),
-            'updated_at' => date('Y-m-d H:i:s'),
-        ];
-        
-        // ถ้ามีข้อมูลผู้ใช้อยู่แล้วให้อัพเดท
-        if (isset($_SESSION['existing_user_id'])) {
-            $user_id = $_SESSION['existing_user_id'];
-            $stmt = $conn->prepare("UPDATE users SET 
-                                  title = ?, first_name = ?, last_name = ?, 
-                                  phone_number = ?, email = ?, 
-                                  gdpr_consent = ?, gdpr_consent_date = ?,
-                                  updated_at = ?, line_id = ?
-                                  WHERE user_id = ?");
-            $stmt->execute([
-                $user_data['title'], 
-                $user_data['first_name'], 
-                $user_data['last_name'],
-                $user_data['phone_number'],
-                $user_data['email'],
-                $user_data['gdpr_consent'],
-                $user_data['gdpr_consent_date'],
-                $user_data['updated_at'],
-                $_SESSION['line_id'],
-                $user_id
-            ]);
-        } else {
-            // สร้างข้อมูลผู้ใช้ใหม่
-            $stmt = $conn->prepare("INSERT INTO users 
-                                  (line_id, role, title, first_name, last_name, 
-                                   phone_number, email, gdpr_consent, gdpr_consent_date, created_at) 
-                                  VALUES (?, 'student', ?, ?, ?, ?, ?, ?, ?, NOW())");
-            $stmt->execute([
-                $_SESSION['line_id'],
-                $user_data['title'],
-                $user_data['first_name'],
-                $user_data['last_name'],
-                $user_data['phone_number'],
-                $user_data['email'],
-                $user_data['gdpr_consent'],
-                $user_data['gdpr_consent_date']
-            ]);
-            $user_id = $conn->lastInsertId();
-        }
-        
-        // อัพโหลดรูปโปรไฟล์ (ถ้ามี)
-        $profile_picture = null;
-        if (isset($_FILES['profile_image']) && $_FILES['profile_image']['error'] === UPLOAD_ERR_OK) {
-            $upload_dir = '../uploads/profiles/';
+        } catch (PDOException $e) {
+            $error_message = "เกิดข้อผิดพลาดในการค้นหาข้อมูล: " . $e->getMessage();
+            error_log("Database error in searching student: " . $e->getMessage());
             
-            // สร้างโฟลเดอร์ถ้ายังไม่มี
-            if (!file_exists($upload_dir)) {
-                mkdir($upload_dir, 0777, true);
-            }
-            
-            $file_extension = strtolower(pathinfo($_FILES['profile_image']['name'], PATHINFO_EXTENSION));
-            $new_filename = 'profile_' . $user_id . '_' . time() . '.' . $file_extension;
-            $upload_file = $upload_dir . $new_filename;
-            
-            if (move_uploaded_file($_FILES['profile_image']['tmp_name'], $upload_file)) {
-                $profile_picture = $new_filename;
-                
-                // อัพเดทรูปโปรไฟล์ในตาราง users
-                $stmt = $conn->prepare("UPDATE users SET profile_picture = ? WHERE user_id = ?");
-                $stmt->execute([$profile_picture, $user_id]);
-            }
+            // บันทึกข้อผิดพลาด
+            logRegistrationActivity($conn, $user_id, "search_student_error", "Error: " . $e->getMessage());
         }
-        
-        // ตรวจสอบว่ามีข้อมูลนักเรียนอยู่แล้วหรือไม่
-        if (isset($_SESSION['existing_student_id'])) {
-            // อัพเดทข้อมูลนักเรียน
-            $stmt = $conn->prepare("UPDATE students SET 
-                                  current_class_id = ?,
-                                  updated_at = NOW() 
-                                  WHERE student_id = ?");
-            $stmt->execute([$class_id, $_SESSION['existing_student_id']]);
-            $student_id = $_SESSION['existing_student_id'];
-        } else {
-            // สร้างข้อมูลนักเรียนใหม่
-            $stmt = $conn->prepare("INSERT INTO students 
-                                  (user_id, student_code, title, current_class_id, status, created_at) 
-                                  VALUES (?, ?, ?, ?, 'กำลังศึกษา', NOW())");
-            $stmt->execute([$user_id, $_SESSION['student_code'], $_SESSION['student_title'], $class_id]);
-            $student_id = $conn->lastInsertId();
-        }
-        
-        // บันทึกข้อมูลการศึกษา
-        if ($class_id) {
-            // ตรวจสอบว่ามีข้อมูลอยู่แล้วหรือไม่
-            $stmt = $conn->prepare("SELECT record_id FROM student_academic_records 
-                                  WHERE student_id = ? AND academic_year_id = ?");
-            $stmt->execute([$student_id, $_SESSION['current_academic_year_id']]);
-            $existing_record = $stmt->fetch(PDO::FETCH_ASSOC);
-            
-            if ($existing_record) {
-                // อัพเดทข้อมูลที่มีอยู่
-                $stmt = $conn->prepare("UPDATE student_academic_records SET 
-                                      class_id = ?, updated_at = NOW() 
-                                      WHERE record_id = ?");
-                $stmt->execute([$class_id, $existing_record['record_id']]);
-            } else {
-                // สร้างข้อมูลใหม่
-                $stmt = $conn->prepare("INSERT INTO student_academic_records 
-                                      (student_id, academic_year_id, class_id, total_attendance_days, 
-                                       total_absence_days, created_at) 
-                                      VALUES (?, ?, ?, 0, 0, NOW())");
-                $stmt->execute([$student_id, $_SESSION['current_academic_year_id'], $class_id]);
-            }
-        }
-        
-        // เชื่อมโยงกับครูที่ปรึกษา (ถ้ามี)
-        if (isset($_SESSION['selected_teacher_id']) && !empty($_SESSION['selected_teacher_id'])) {
-            $teacher_id = $_SESSION['selected_teacher_id'];
-            
-            // ตรวจสอบว่าครูเป็นครูที่ปรึกษาของห้องเรียนนี้หรือไม่
-            $stmt = $conn->prepare("SELECT * FROM class_advisors WHERE teacher_id = ? AND class_id = ?");
-            $stmt->execute([$teacher_id, $class_id]);
-            $advisor_exists = $stmt->fetch(PDO::FETCH_ASSOC);
-            
-            if (!$advisor_exists) {
-                // ถ้ายังไม่ได้เป็นครูที่ปรึกษาของห้องนี้ ให้เพิ่มเข้าไป
-                $stmt = $conn->prepare("INSERT INTO class_advisors (class_id, teacher_id, is_primary) 
-                                      VALUES (?, ?, 1)");
-                $stmt->execute([$class_id, $teacher_id]);
-            }
-        }
-        
-        // ยืนยัน Transaction
-        $conn->commit();
-        
-        // บันทึกข้อมูลลงใน session เพื่อใช้ในหน้าถัดไป
-        $_SESSION['user_id'] = $user_id;
-        $_SESSION['student_id'] = $student_id;
-        $_SESSION['registration_complete'] = true;
-        
-        // เคลียร์ข้อมูลการลงทะเบียนเพื่อป้องกันการลงทะเบียนซ้ำ
-        unset($_SESSION['student_code']);
-        unset($_SESSION['student_title']);
-        unset($_SESSION['student_first_name']);
-        unset($_SESSION['student_last_name']);
-        unset($_SESSION['selected_class_id']);
-        
-        // ไปที่หน้าลงทะเบียนสำเร็จ
-        header('Location: register.php?step=7');
-        exit;
-        
-    } catch (PDOException $e) {
-        // กรณีเกิดข้อผิดพลาด
-        $conn->rollBack();
-        $_SESSION['error_message'] = 'เกิดข้อผิดพลาดในการลงทะเบียน: ' . $e->getMessage();
-        header('Location: register.php?step=6');
-        exit;
     }
 }
 
-/**
- * ตรวจสอบและแก้ไขปัญหา LINE ID ซ้ำ
- * @param string $line_id LINE ID ที่ต้องการตรวจสอบ
- * @param PDO $conn การเชื่อมต่อฐานข้อมูล
- * @return bool|array ถ้าไม่มีปัญหาจะคืนค่า false ถ้ามีปัญหาจะคืนค่าข้อมูลผู้ใช้ที่มี LINE ID นี้
- */
-function checkAndFixDuplicateLineId($line_id, $conn) {
-    try {
-        // ตรวจสอบว่ามี LINE ID นี้ในระบบแล้วหรือไม่
-        $stmt = $conn->prepare("SELECT * FROM users WHERE line_id = ?");
-        $stmt->execute([$line_id]);
-        $existing_user = $stmt->fetch(PDO::FETCH_ASSOC);
-        
-        if ($existing_user) {
-            return $existing_user;
+// 2. ประมวลผลการยืนยันข้อมูลนักศึกษา
+if (isset($_POST['confirm_student_info'])) {
+    // ตรวจสอบว่ายอมรับนโยบายความเป็นส่วนตัวหรือไม่
+    if (!isset($_POST['privacy_policy'])) {
+        $error_message = "กรุณายอมรับนโยบายความเป็นส่วนตัวเพื่อดำเนินการต่อ";
+    }
+    // ตรวจสอบว่ามีข้อมูลใน session ครบถ้วนหรือไม่
+    elseif (!isset($_SESSION['student_id']) || !isset($_SESSION['student_code'])) {
+        $error_message = "ข้อมูลนักศึกษาไม่ครบถ้วน กรุณาเริ่มต้นใหม่";
+    } else {
+        try {
+            // อัปเดตข้อมูลผู้ใช้จาก LINE ให้ตรงกับข้อมูลนักศึกษา
+            $stmt = $conn->prepare("
+                UPDATE users 
+                SET first_name = ?, last_name = ?, title = ?, phone_number = ?, email = ?, 
+                    gdpr_consent = 1, gdpr_consent_date = NOW(), updated_at = NOW()
+                WHERE user_id = ?
+            ");
+            $stmt->execute([
+                $_SESSION['student_first_name'],
+                $_SESSION['student_last_name'],
+                $_SESSION['student_title'],
+                $_SESSION['student_phone'] ?? null,
+                $_SESSION['student_email'] ?? null,
+                $user_id
+            ]);
+            
+            // เชื่อมโยงข้อมูล user กับ student ที่มีอยู่แล้ว
+            $stmt = $conn->prepare("
+                UPDATE students 
+                SET user_id = ?, updated_at = NOW()
+                WHERE student_id = ?
+            ");
+            $stmt->execute([$user_id, $_SESSION['student_id']]);
+            
+            // สร้าง QR Code สำหรับนักเรียน
+            createStudentQRCode($conn, $_SESSION['student_id'], $_SESSION['student_code']);
+            
+            // บันทึกกิจกรรมการยืนยันข้อมูล
+            logRegistrationActivity($conn, $user_id, "confirm_existing_student", "Student ID: " . $_SESSION['student_code']);
+            
+            // บันทึกข้อความสำเร็จสำหรับขั้นตอนถัดไป
+            $_SESSION['registration_complete'] = true;
+            $_SESSION['student_registered_name'] = $_SESSION['student_first_name'] . ' ' . $_SESSION['student_last_name'];
+            
+            // ไปยังขั้นตอนเสร็จสิ้น
+            header('Location: register.php?step=7');
+            exit;
+        } catch (PDOException $e) {
+            $error_message = "เกิดข้อผิดพลาดในการบันทึกข้อมูล: " . $e->getMessage();
+            error_log("Database error in confirming student info: " . $e->getMessage());
+            
+            // บันทึกข้อผิดพลาด
+            logRegistrationActivity($conn, $user_id, "confirm_student_error", "Error: " . $e->getMessage());
         }
-        
-        return false;
-    } catch (PDOException $e) {
-        error_log("Error checking duplicate LINE ID: " . $e->getMessage());
-        return false;
     }
 }
+
+// 3. ประมวลผลการกรอกข้อมูลนักศึกษาเอง
+if (isset($_POST['submit_manual_info'])) {
+    $student_code = isset($_POST['student_code']) ? cleanInput($_POST['student_code']) : '';
+    $title = isset($_POST['title']) ? cleanInput($_POST['title']) : '';
+    $first_name = isset($_POST['first_name']) ? cleanInput($_POST['first_name']) : '';
+    $last_name = isset($_POST['last_name']) ? cleanInput($_POST['last_name']) : '';
+    $phone = isset($_POST['phone']) ? cleanInput($_POST['phone']) : '';
+    $email = isset($_POST['email']) ? cleanInput($_POST['email']) : '';
+    
+    // ตรวจสอบข้อมูล
+    $validation_errors = [];
+    
+    if (!validateStudentCode($student_code)) {
+        $validation_errors[] = "รหัสนักศึกษาไม่ถูกต้อง (ต้องเป็นตัวเลข 11 หลัก)";
+    }
+    
+    if (empty($title)) {
+        $validation_errors[] = "กรุณาเลือกคำนำหน้า";
+    }
+    
+    if (empty($first_name)) {
+        $validation_errors[] = "กรุณากรอกชื่อ";
+    }
+    
+    if (empty($last_name)) {
+        $validation_errors[] = "กรุณากรอกนามสกุล";
+    }
+    
+    if (!validatePhone($phone)) {
+        $validation_errors[] = "รูปแบบเบอร์โทรศัพท์ไม่ถูกต้อง";
+    }
+    
+    if (!validateEmail($email)) {
+        $validation_errors[] = "รูปแบบอีเมลไม่ถูกต้อง";
+    }
+    
+    if (!isset($_POST['privacy_policy'])) {
+        $validation_errors[] = "กรุณายอมรับนโยบายความเป็นส่วนตัว";
+    }
+    
+    // ถ้ามีข้อผิดพลาด
+    if (!empty($validation_errors)) {
+        $error_message = implode("<br>", $validation_errors);
+    } else {
+        try {
+            // บันทึกข้อมูลใน session
+            $_SESSION['student_code'] = $student_code;
+            $_SESSION['student_title'] = $title;
+            $_SESSION['student_first_name'] = $first_name;
+            $_SESSION['student_last_name'] = $last_name;
+            $_SESSION['student_phone'] = $phone;
+            $_SESSION['student_email'] = $email;
+            
+            // ตรวจสอบว่ารหัสนักศึกษาซ้ำหรือไม่
+            if (isStudentCodeExists($conn, $student_code)) {
+                $error_message = "รหัสนักศึกษานี้มีในระบบแล้ว กรุณาใช้ฟังก์ชันค้นหา";
+                
+                // บันทึกกิจกรรมการลงทะเบียนซ้ำ
+                logRegistrationActivity($conn, $user_id, "manual_registration_duplicate", "Student ID: " . $student_code);
+            } else {
+                // บันทึกข้อมูลลงในตาราง student_pending
+                $stmt = $conn->prepare("
+                    INSERT INTO student_pending (student_code, title, first_name, last_name, created_at)
+                    VALUES (?, ?, ?, ?, NOW())
+                    ON DUPLICATE KEY UPDATE
+                    title = VALUES(title), first_name = VALUES(first_name), last_name = VALUES(last_name), updated_at = NOW()
+                ");
+                $stmt->execute([$student_code, $title, $first_name, $last_name]);
+                
+                // อัปเดตข้อมูลผู้ใช้
+                $stmt = $conn->prepare("
+                    UPDATE users 
+                    SET title = ?, first_name = ?, last_name = ?, phone_number = ?, email = ?, 
+                        gdpr_consent = 1, gdpr_consent_date = NOW(), updated_at = NOW()
+                    WHERE user_id = ?
+                ");
+                $stmt->execute([$title, $first_name, $last_name, $phone, $email, $user_id]);
+                
+                // บันทึกกิจกรรมการกรอกข้อมูลเอง
+                logRegistrationActivity($conn, $user_id, "manual_info_submitted", "Student ID: " . $student_code);
+                
+                // ไปยังขั้นตอนถัดไป
+                header('Location: register.php?step=4');
+                exit;
+            }
+        } catch (PDOException $e) {
+            $error_message = "เกิดข้อผิดพลาดในการบันทึกข้อมูล: " . $e->getMessage();
+            error_log("Database error in submitting manual info: " . $e->getMessage());
+            
+            // บันทึกข้อผิดพลาด
+            logRegistrationActivity($conn, $user_id, "manual_info_error", "Error: " . $e->getMessage());
+        }
+    }
+}
+
+// 4. ประมวลผลการค้นหาครูที่ปรึกษา
+if (isset($_POST['search_teacher'])) {
+    $search_term = isset($_POST['teacher_name']) ? cleanInput($_POST['teacher_name']) : '';
+    
+    if (empty($search_term)) {
+        $error_message = "กรุณากรอกชื่อหรือนามสกุลครูที่ปรึกษา";
+    } elseif (strlen($search_term) < 2) {
+        $error_message = "กรุณากรอกชื่อหรือนามสกุลอย่างน้อย 2 ตัวอักษร";
+    } else {
+        try {
+            // ค้นหาครูที่ปรึกษา
+            $stmt = $conn->prepare("
+                SELECT t.teacher_id, u.title, u.first_name, u.last_name, d.department_name, t.position
+                FROM teachers t
+                JOIN users u ON t.user_id = u.user_id
+                LEFT JOIN departments d ON t.department_id = d.department_id
+                WHERE u.first_name LIKE ? OR u.last_name LIKE ?
+                ORDER BY u.first_name, u.last_name
+                LIMIT 20
+            ");
+            $search_param = "%" . $search_term . "%";
+            $stmt->execute([$search_param, $search_param]);
+            $teachers = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            if (count($teachers) > 0) {
+                $_SESSION['search_teacher_results'] = $teachers;
+                $success_message = "พบครูที่ปรึกษา " . count($teachers) . " คน";
+                
+                // บันทึกกิจกรรมการค้นหาครู
+                logRegistrationActivity($conn, $user_id, "search_teacher_success", "Found " . count($teachers) . " teachers");
+            } else {
+                $error_message = "ไม่พบครูที่ปรึกษาตามคำค้นหา";
+                
+                // บันทึกกิจกรรมการค้นหาครูไม่พบ
+                logRegistrationActivity($conn, $user_id, "search_teacher_not_found", "Search term: " . $search_term);
+            }
+        } catch (PDOException $e) {
+            $error_message = "เกิดข้อผิดพลาดในการค้นหาข้อมูล: " . $e->getMessage();
+            error_log("Database error in searching teacher: " . $e->getMessage());
+            
+            // บันทึกข้อผิดพลาด
+            logRegistrationActivity($conn, $user_id, "search_teacher_error", "Error: " . $e->getMessage());
+        }
+    }
+}
+
+// 5. ประมวลผลการเลือกครูที่ปรึกษา
+if (isset($_POST['select_teacher'])) {
+    if (!isset($_POST['teacher_id']) || empty($_POST['teacher_id'])) {
+        $error_message = "กรุณาเลือกครูที่ปรึกษา";
+    } else {
+        $teacher_id = $_POST['teacher_id'];
+        
+        try {
+            // ดึงข้อมูลครู
+            $stmt = $conn->prepare("
+                SELECT t.teacher_id, u.title, u.first_name, u.last_name, d.department_name, t.position
+                FROM teachers t
+                JOIN users u ON t.user_id = u.user_id
+                LEFT JOIN departments d ON t.department_id = d.department_id
+                WHERE t.teacher_id = ?
+            ");
+            $stmt->execute([$teacher_id]);
+            $teacher = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if ($teacher) {
+                $_SESSION['selected_teacher'] = $teacher;
+                
+                // ดึงข้อมูลชั้นเรียนที่ครูเป็นที่ปรึกษา
+                $stmt = $conn->prepare("
+                    SELECT c.class_id, c.level, c.group_number, d.department_name, ca.is_primary,
+                           (SELECT COUNT(*) FROM students s WHERE s.current_class_id = c.class_id AND s.status = 'กำลังศึกษา') AS student_count
+                    FROM class_advisors ca
+                    JOIN classes c ON ca.class_id = c.class_id
+                    JOIN departments d ON c.department_id = d.department_id
+                    WHERE ca.teacher_id = ? AND c.academic_year_id = ? AND c.is_active = 1
+                    ORDER BY c.level, d.department_name, c.group_number
+                ");
+                $stmt->execute([$teacher_id, $current_academic_year_id]);
+                $classes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                
+                if (count($classes) > 0) {
+                    $_SESSION['teacher_classes'] = $classes;
+                    $success_message = "พบชั้นเรียน " . count($classes) . " ห้องที่ครูเป็นที่ปรึกษา";
+                    
+                    // บันทึกกิจกรรมการเลือกครู
+                    logRegistrationActivity($conn, $user_id, "select_teacher_success", "Teacher ID: " . $teacher_id);
+                } else {
+                    // ถึงแม้จะไม่พบชั้นเรียน ยังคงไปยังขั้นตอนถัดไป
+                    $warning_message = "ครูที่เลือกไม่มีชั้นเรียนที่เป็นที่ปรึกษาในปีการศึกษาปัจจุบัน";
+                    
+                    // บันทึกกิจกรรมการเลือกครูที่ไม่มีชั้นเรียน
+                    logRegistrationActivity($conn, $user_id, "select_teacher_no_classes", "Teacher ID: " . $teacher_id);
+                }
+                
+                // ไปยังขั้นตอนถัดไป
+                header('Location: register.php?step=5');
+                exit;
+            } else {
+                $error_message = "ไม่พบข้อมูลครูที่ปรึกษา";
+                
+                // บันทึกข้อผิดพลาด
+                logRegistrationActivity($conn, $user_id, "select_teacher_not_found", "Teacher ID: " . $teacher_id);
+            }
+        } catch (PDOException $e) {
+            $error_message = "เกิดข้อผิดพลาดในการดึงข้อมูล: " . $e->getMessage();
+            error_log("Database error in selecting teacher: " . $e->getMessage());
+            
+            // บันทึกข้อผิดพลาด
+            logRegistrationActivity($conn, $user_id, "select_teacher_error", "Error: " . $e->getMessage());
+        }
+    }
+}
+
+// 6. ประมวลผลการเลือกชั้นเรียน
+if (isset($_POST['select_class'])) {
+    if (!isset($_POST['class_id']) || empty($_POST['class_id'])) {
+        $error_message = "กรุณาเลือกชั้นเรียน";
+    } else {
+        $class_id = $_POST['class_id'];
+        
+        try {
+            // ดึงข้อมูลชั้นเรียน
+            $stmt = $conn->prepare("
+                SELECT c.class_id, c.level, c.group_number, d.department_id, d.department_name
+                FROM classes c
+                JOIN departments d ON c.department_id = d.department_id
+                WHERE c.class_id = ?
+            ");
+            $stmt->execute([$class_id]);
+            $class = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if ($class) {
+                $_SESSION['selected_class'] = $class;
+                $_SESSION['class_id'] = $class['class_id'];
+                
+                // ดึงข้อมูลครูที่ปรึกษาของชั้นเรียนนี้
+                $stmt = $conn->prepare("
+                    SELECT t.teacher_id, u.title, u.first_name, u.last_name, d.department_name, t.position, ca.is_primary
+                    FROM class_advisors ca
+                    JOIN teachers t ON ca.teacher_id = t.teacher_id
+                    JOIN users u ON t.user_id = u.user_id
+                    LEFT JOIN departments d ON t.department_id = d.department_id
+                    WHERE ca.class_id = ?
+                    ORDER BY ca.is_primary DESC
+                ");
+                $stmt->execute([$class_id]);
+                $advisors = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                
+                if (count($advisors) > 0) {
+                    $_SESSION['class_advisors'] = $advisors;
+                }
+                
+                // บันทึกกิจกรรมการเลือกชั้นเรียน
+                logRegistrationActivity($conn, $user_id, "select_class_success", "Class ID: " . $class_id);
+                
+                // ไปยังขั้นตอนถัดไป
+                header('Location: register.php?step=6');
+                exit;
+            } else {
+                $error_message = "ไม่พบข้อมูลชั้นเรียน";
+                
+                // บันทึกข้อผิดพลาด
+                logRegistrationActivity($conn, $user_id, "select_class_not_found", "Class ID: " . $class_id);
+            }
+        } catch (PDOException $e) {
+            $error_message = "เกิดข้อผิดพลาดในการดึงข้อมูล: " . $e->getMessage();
+            error_log("Database error in selecting class: " . $e->getMessage());
+            
+            // บันทึกข้อผิดพลาด
+            logRegistrationActivity($conn, $user_id, "select_class_error", "Error: " . $e->getMessage());
+        }
+    }
+}
+
+// 7. ประมวลผลการกรอกข้อมูลชั้นเรียนเอง
+if (isset($_POST['submit_manual_class'])) {
+    $level = isset($_POST['level']) ? cleanInput($_POST['level']) : '';
+    $department_id = isset($_POST['department_id']) ? (int)$_POST['department_id'] : 0;
+    $group_number = isset($_POST['group_number']) ? (int)$_POST['group_number'] : 0;
+    
+    // ตรวจสอบข้อมูล
+    $validation_errors = [];
+    
+    if (empty($level)) {
+        $validation_errors[] = "กรุณาเลือกระดับชั้น";
+    }
+    
+    if ($department_id <= 0) {
+        $validation_errors[] = "กรุณาเลือกแผนกวิชา";
+    }
+    
+    if ($group_number <= 0) {
+        $validation_errors[] = "กรุณาเลือกกลุ่มเรียน";
+    }
+    
+    // ถ้ามีข้อผิดพลาด
+    if (!empty($validation_errors)) {
+        $error_message = implode("<br>", $validation_errors);
+    } else {
+        try {
+            // ตรวจสอบว่ามีชั้นเรียนนี้อยู่แล้วหรือไม่
+            $stmt = $conn->prepare("
+                SELECT c.class_id, c.level, c.group_number, d.department_name
+                FROM classes c
+                JOIN departments d ON c.department_id = d.department_id
+                WHERE c.academic_year_id = ? AND c.level = ? AND c.department_id = ? AND c.group_number = ?
+            ");
+            $stmt->execute([$current_academic_year_id, $level, $department_id, $group_number]);
+            $class = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if ($class) {
+                // พบชั้นเรียนที่ตรงกัน
+                $_SESSION['selected_class'] = $class;
+                $_SESSION['class_id'] = $class['class_id'];
+                
+                // ดึงข้อมูลครูที่ปรึกษาของชั้นเรียนนี้
+                $stmt = $conn->prepare("
+                    SELECT t.teacher_id, u.title, u.first_name, u.last_name, d.department_name, t.position, ca.is_primary
+                    FROM class_advisors ca
+                    JOIN teachers t ON ca.teacher_id = t.teacher_id
+                    JOIN users u ON t.user_id = u.user_id
+                    LEFT JOIN departments d ON t.department_id = d.department_id
+                    WHERE ca.class_id = ?
+                    ORDER BY ca.is_primary DESC
+                ");
+                $stmt->execute([$class['class_id']]);
+                $advisors = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                
+                if (count($advisors) > 0) {
+                    $_SESSION['class_advisors'] = $advisors;
+                }
+                
+                // บันทึกกิจกรรมการระบุชั้นเรียนที่มีอยู่แล้ว
+                logRegistrationActivity($conn, $user_id, "manual_class_existing", "Class ID: " . $class['class_id']);
+            } else {
+                // ไม่พบชั้นเรียน - สร้างใหม่
+                $stmt = $conn->prepare("
+                    INSERT INTO classes (academic_year_id, level, department_id, group_number, is_active, created_at)
+                    VALUES (?, ?, ?, ?, 1, NOW())
+                ");
+                $stmt->execute([$current_academic_year_id, $level, $department_id, $group_number]);
+                $class_id = $conn->lastInsertId();
+                
+                // ดึงข้อมูลแผนกวิชา
+                $stmt = $conn->prepare("SELECT department_name FROM departments WHERE department_id = ?");
+                $stmt->execute([$department_id]);
+                $department = $stmt->fetch(PDO::FETCH_ASSOC);
+                
+                $_SESSION['selected_class'] = [
+                    'class_id' => $class_id,
+                    'level' => $level,
+                    'group_number' => $group_number,
+                    'department_name' => $department['department_name']
+                ];
+                $_SESSION['class_id'] = $class_id;
+                
+                // บันทึกกิจกรรมการสร้างชั้นเรียนใหม่
+                logRegistrationActivity($conn, $user_id, "manual_class_created", "New Class ID: " . $class_id);
+            }
+            
+            // ไปยังขั้นตอนถัดไป
+            header('Location: register.php?step=6');
+            exit;
+        } catch (PDOException $e) {
+            $error_message = "เกิดข้อผิดพลาดในการบันทึกข้อมูล: " . $e->getMessage();
+            error_log("Database error in submitting manual class: " . $e->getMessage());
+            
+            // บันทึกข้อผิดพลาด
+            logRegistrationActivity($conn, $user_id, "manual_class_error", "Error: " . $e->getMessage());
+        }
+    }
+}
+
+// 8. ประมวลผลการบันทึกข้อมูลเพิ่มเติมและสร้างนักเรียนใหม่
+if (isset($_POST['submit_additional_info'])) {
+    // ตรวจสอบการยอมรับนโยบายและข้อตกลง
+    if (!isset($_POST['gdpr_consent']) || !isset($_POST['terms_agreement'])) {
+        $error_message = "กรุณายอมรับนโยบายความเป็นส่วนตัวและข้อตกลงการใช้งาน";
+    } 
+    // ตรวจสอบว่ามีข้อมูลพื้นฐานครบถ้วนหรือไม่
+    elseif (!isset($_SESSION['student_code']) || !isset($_SESSION['student_first_name']) || !isset($_SESSION['class_id'])) {
+        $error_message = "ข้อมูลไม่ครบถ้วน กรุณาเริ่มต้นใหม่";
+    } else {
+        $emergency_contact = isset($_POST['emergency_contact']) ? cleanInput($_POST['emergency_contact']) : '';
+        
+        // ตรวจสอบรูปแบบเบอร์โทรฉุกเฉิน
+        if (!empty($emergency_contact) && !validatePhone($emergency_contact)) {
+            $error_message = "รูปแบบเบอร์โทรฉุกเฉินไม่ถูกต้อง";
+        } else {
+            try {
+                // อัปเดตข้อมูลผู้ใช้
+                $stmt = $conn->prepare("
+                    UPDATE users 
+                    SET gdpr_consent = 1, gdpr_consent_date = NOW(), updated_at = NOW()
+                    WHERE user_id = ?
+                ");
+                $stmt->execute([$user_id]);
+                
+                // สร้างนักเรียนใหม่
+                $stmt = $conn->prepare("
+                    INSERT INTO students (user_id, student_code, title, current_class_id, status, created_at)
+                    VALUES (?, ?, ?, ?, 'กำลังศึกษา', NOW())
+                ");
+                $stmt->execute([
+                    $user_id,
+                    $_SESSION['student_code'],
+                    $_SESSION['student_title'],
+                    $_SESSION['class_id']
+                ]);
+                $student_id = $conn->lastInsertId();
+                
+                // บันทึกข้อมูลใน student_academic_records
+                $stmt = $conn->prepare("
+                    INSERT INTO student_academic_records (student_id, academic_year_id, class_id, total_attendance_days, total_absence_days, created_at)
+                    VALUES (?, ?, ?, 0, 0, NOW())
+                ");
+                $stmt->execute([
+                    $student_id,
+                    $current_academic_year_id,
+                    $_SESSION['class_id']
+                ]);
+                
+                // บันทึกข้อมูลฉุกเฉิน (ถ้ามี)
+                if (!empty($emergency_contact)) {
+                    $stmt = $conn->prepare("
+                        INSERT INTO student_emergency_contacts (student_id, contact_number, created_at)
+                        VALUES (?, ?, NOW())
+                    ");
+                    $stmt->execute([$student_id, $emergency_contact]);
+                }
+                
+                // สร้าง QR Code สำหรับนักเรียน
+                createStudentQRCode($conn, $student_id, $_SESSION['student_code']);
+                
+                // บันทึกกิจกรรมการลงทะเบียนสำเร็จ
+                logRegistrationActivity($conn, $user_id, "registration_complete", "New Student ID: " . $student_id);
+                
+                // บันทึกข้อความสำเร็จสำหรับขั้นตอนถัดไป
+                $_SESSION['registration_complete'] = true;
+                $_SESSION['student_registered_name'] = $_SESSION['student_first_name'] . ' ' . $_SESSION['student_last_name'];
+                
+                // ลบข้อมูลชั่วคราวออกจาก session
+                unset($_SESSION['student_code']);
+                unset($_SESSION['student_title']);
+                unset($_SESSION['student_first_name']);
+                unset($_SESSION['student_last_name']);
+                unset($_SESSION['student_phone']);
+                unset($_SESSION['student_email']);
+                unset($_SESSION['selected_teacher']);
+                unset($_SESSION['selected_class']);
+                unset($_SESSION['class_id']);
+                unset($_SESSION['search_teacher_results']);
+                unset($_SESSION['teacher_classes']);
+                
+                // ไปยังขั้นตอนเสร็จสิ้น
+                header('Location: register.php?step=7');
+                exit;
+            } catch (PDOException $e) {
+                $error_message = "เกิดข้อผิดพลาดในการบันทึกข้อมูล: " . $e->getMessage();
+                error_log("Database error in completing registration: " . $e->getMessage());
+                
+                // บันทึกข้อผิดพลาด
+                logRegistrationActivity($conn, $user_id, "registration_error", "Error: " . $e->getMessage());
+            }
+        }
+    }
+}
+
 ?>

@@ -1,180 +1,174 @@
 <?php
 /**
- * home.php - หน้าหลักระบบนักเรียน
- * แสดงข้อมูลสรุปและฟังก์ชันหลักของระบบ
+ * home.php - หน้าหลักสำหรับนักเรียนหลังจากล็อกอิน
  */
 session_start();
 require_once '../config/db_config.php';
 require_once '../db_connect.php';
 
-// ตรวจสอบการล็อกอิน
+// ตรวจสอบว่ามีการล็อกอินหรือไม่
 if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
     header('Location: ../index.php');
     exit;
 }
 
-// ตรวจสอบว่าเป็นนักเรียน
+// ตรวจสอบว่าเป็นบทบาทนักเรียนหรือไม่
 if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'student') {
     header('Location: ../index.php');
     exit;
 }
 
-// กำหนดเมนูปัจจุบัน
-$current_page = 'dashboard';
+// รับข้อมูลจาก session
+$user_id = $_SESSION['user_id'] ?? null;
 
-// ดึงข้อมูลนักเรียน
-$user_id = $_SESSION['user_id'] ?? 0;
+// เชื่อมต่อฐานข้อมูล
 $conn = getDB();
 
+// ดึงข้อมูลนักเรียน
 try {
-    $sql = "SELECT s.student_id, s.student_code, s.title, s.current_class_id, s.status,
-                u.first_name, u.last_name, u.profile_picture
-            FROM students s
-            JOIN users u ON s.user_id = u.user_id
-            WHERE u.user_id = :user_id";
-    $stmt = $conn->prepare($sql);
-    $stmt->bindParam(':user_id', $user_id, PDO::PARAM_INT);
-    $stmt->execute();
+    $stmt = $conn->prepare("
+        SELECT s.student_id, s.student_code, s.title, s.current_class_id, 
+               u.first_name, u.last_name, u.profile_picture, u.phone_number, u.email,
+               c.level, c.group_number, d.department_name
+        FROM students s
+        JOIN users u ON s.user_id = u.user_id
+        LEFT JOIN classes c ON s.current_class_id = c.class_id
+        LEFT JOIN departments d ON c.department_id = d.department_id
+        WHERE s.user_id = ?
+    ");
+    $stmt->execute([$user_id]);
     $student = $stmt->fetch(PDO::FETCH_ASSOC);
     
     if (!$student) {
-        // ไม่พบข้อมูลนักเรียน
-        session_destroy();
-        header('Location: ../index.php?error=no_student_data');
+        // ไม่พบข้อมูลนักเรียน - อาจยังไม่ได้ลงทะเบียน
+        header('Location: register.php');
         exit;
     }
     
-    // ดึงข้อมูลชั้นเรียน
-    if ($student['current_class_id']) {
-        $class_sql = "SELECT c.level, d.department_name, c.group_number
-                      FROM classes c
-                      JOIN departments d ON c.department_id = d.department_id
-                      WHERE c.class_id = :class_id";
-        $class_stmt = $conn->prepare($class_sql);
-        $class_stmt->bindParam(':class_id', $student['current_class_id'], PDO::PARAM_INT);
-        $class_stmt->execute();
-        $class_info = $class_stmt->fetch(PDO::FETCH_ASSOC);
-        
-        $student['class'] = $class_info ? 
-            $class_info['level'] . ' แผนก' . $class_info['department_name'] . ' กลุ่ม ' . $class_info['group_number'] : 
-            'ไม่ระบุ';
-    } else {
-        $student['class'] = 'ไม่ระบุ';
-    }
+    // ดึงข้อมูลการเข้าแถวของวันนี้
+    $today = date('Y-m-d');
+    $stmt = $conn->prepare("
+        SELECT * FROM attendance 
+        WHERE student_id = ? AND date = ?
+    ");
+    $stmt->execute([$student['student_id'], $today]);
+    $today_attendance = $stmt->fetch(PDO::FETCH_ASSOC);
     
-    // อัปเดตข้อมูลในเซสชัน
-    $_SESSION['student_id'] = $student['student_id'];
-    $_SESSION['student_code'] = $student['student_code'];
-    $_SESSION['first_name'] = $student['first_name'];
-    $_SESSION['last_name'] = $student['last_name'];
+    // ตรวจสอบปีการศึกษาปัจจุบัน
+    $stmt = $conn->prepare("SELECT academic_year_id FROM academic_years WHERE is_active = 1 LIMIT 1");
+    $stmt->execute();
+    $academic_year = $stmt->fetch(PDO::FETCH_ASSOC);
+    $current_academic_year_id = $academic_year['academic_year_id'] ?? null;
     
-    // Avatar จากชื่อ (ใช้อักษรตัวแรกของชื่อ)
-    $student['avatar'] = mb_substr($student['first_name'], 0, 1, 'UTF-8');
+    // ดึงสถิติการเข้าแถว
+    $stmt = $conn->prepare("
+        SELECT total_attendance_days, total_absence_days, passed_activity
+        FROM student_academic_records
+        WHERE student_id = ? AND academic_year_id = ?
+    ");
+    $stmt->execute([$student['student_id'], $current_academic_year_id]);
+    $attendance_record = $stmt->fetch(PDO::FETCH_ASSOC);
     
-    // ดึงข้อมูลสถิติการเข้าแถว
-    // ดึงปีการศึกษาปัจจุบัน
-    $academic_sql = "SELECT academic_year_id FROM academic_years WHERE is_active = 1 LIMIT 1";
-    $academic_stmt = $conn->prepare($academic_sql);
-    $academic_stmt->execute();
-    $academic_year = $academic_stmt->fetch(PDO::FETCH_ASSOC);
-    
-    $attendance_stats = [
-        'total_days' => 0,
-        'attendance_days' => 0,
-        'attendance_percentage' => 0
-    ];
-    
-    if ($academic_year) {
-        $stats_sql = "SELECT total_attendance_days, total_absence_days 
-                      FROM student_academic_records 
-                      WHERE student_id = :student_id AND academic_year_id = :academic_year_id";
-        $stats_stmt = $conn->prepare($stats_sql);
-        $stats_stmt->bindParam(':student_id', $student['student_id'], PDO::PARAM_INT);
-        $stats_stmt->bindParam(':academic_year_id', $academic_year['academic_year_id'], PDO::PARAM_INT);
-        $stats_stmt->execute();
-        $stats = $stats_stmt->fetch(PDO::FETCH_ASSOC);
-        
-        if ($stats) {
-            $attendance_stats['total_days'] = $stats['total_attendance_days'] + $stats['total_absence_days'];
-            $attendance_stats['attendance_days'] = $stats['total_attendance_days'];
-            $attendance_stats['attendance_percentage'] = $attendance_stats['total_days'] > 0 ? 
-                round(($stats['total_attendance_days'] / $attendance_stats['total_days']) * 100) : 0;
-        }
-    }
+    // คำนวณเปอร์เซ็นต์การเข้าแถว
+    $total_days = $attendance_record['total_attendance_days'] + $attendance_record['total_absence_days'];
+    $attendance_percentage = $total_days > 0 ? round(($attendance_record['total_attendance_days'] / $total_days) * 100, 1) : 0;
     
     // ดึงประวัติการเช็คชื่อล่าสุด 5 รายการ
-    $history_sql = "SELECT a.date, a.is_present, a.check_method, a.check_time
-                   FROM attendance a
-                   WHERE a.student_id = :student_id
-                   ORDER BY a.date DESC, a.check_time DESC
-                   LIMIT 5";
-    $history_stmt = $conn->prepare($history_sql);
-    $history_stmt->bindParam(':student_id', $student['student_id'], PDO::PARAM_INT);
-    $history_stmt->execute();
-    $history_rows = $history_stmt->fetchAll(PDO::FETCH_ASSOC);
+    $stmt = $conn->prepare("
+        SELECT a.date, a.check_time, a.is_present, a.check_method
+        FROM attendance a
+        WHERE a.student_id = ?
+        ORDER BY a.date DESC, a.check_time DESC
+        LIMIT 5
+    ");
+    $stmt->execute([$student['student_id']]);
+    $recent_attendance = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
+    // จัดรูปแบบประวัติการเช็คชื่อ
     $check_in_history = [];
-    foreach ($history_rows as $row) {
-        $date = new DateTime($row['date']);
+    foreach ($recent_attendance as $record) {
+        $date_obj = new DateTime($record['date']);
         $check_in_history[] = [
-            'day' => $date->format('d'),
-            'month' => $date->format('M'),
-            'status' => $row['is_present'] ? 'present' : 'absent',
-            'method' => $row['check_method'],
-            'time' => substr($row['check_time'], 0, 5)
+            'day' => $date_obj->format('d'),
+            'month' => $date_obj->format('M'),
+            'time' => (new DateTime($record['check_time']))->format('H:i'),
+            'status' => $record['is_present'] ? 'present' : 'absent',
+            'method' => mapCheckMethod($record['check_method'])
         ];
     }
     
     // ดึงประกาศล่าสุด
     $announcements = [
         [
-            'title' => 'แจ้งข่าวหยุดเรียน',
-            'content' => 'วันที่ 13-15 เมษายน 2568 หยุดเรียนเนื่องในเทศกาลสงกรานต์',
-            'date' => '10 เม.ย. 2568',
+            'title' => 'ประกาศงดกิจกรรมหน้าเสาธง',
+            'content' => 'เนื่องจากสภาพอากาศไม่เอื้ออำนวย จึงงดกิจกรรมหน้าเสาธงในวันที่ 1-3 เมษายน 2568 นักเรียนสามารถเช็คชื่อผ่านระบบได้ตามปกติ',
+            'date' => '30 มีนาคม 2568',
             'badge' => 'info',
             'badge_text' => 'ประกาศ'
         ],
         [
-            'title' => 'กำหนดสอบปลายภาค',
-            'content' => 'สอบปลายภาคเรียนที่ 2/2567 ในวันที่ 1-5 พฤษภาคม 2568',
-            'date' => '5 เม.ย. 2568',
-            'badge' => 'urgent',
-            'badge_text' => 'ด่วน'
-        ],
-        [
-            'title' => 'กิจกรรมกีฬาสี',
-            'content' => 'กิจกรรมกีฬาสีประจำปี 2568 จัดขึ้นในวันที่ 20-21 พฤษภาคม 2568',
-            'date' => '1 เม.ย. 2568',
+            'title' => 'การแข่งขันกีฬาสีประจำปี 2568',
+            'content' => 'ขอเชิญนักเรียนทุกคนเข้าร่วมการแข่งขันกีฬาสีประจำปี 2568 ในวันที่ 10-12 เมษายน 2568 เวลา 08.00-16.00 น.',
+            'date' => '28 มีนาคม 2568',
             'badge' => 'event',
             'badge_text' => 'กิจกรรม'
+        ],
+        [
+            'title' => 'เตือนนักเรียนที่ยังไม่ผ่านกิจกรรม',
+            'content' => 'ขอให้นักเรียนที่มีอัตราการเข้าแถวต่ำกว่า 75% ติดต่อครูที่ปรึกษาโดยด่วน เพื่อรับทราบแนวทางการแก้ไข',
+            'date' => '25 มีนาคม 2568',
+            'badge' => 'urgent',
+            'badge_text' => 'สำคัญ'
         ]
     ];
     
-    // ข้อความแจ้งเตือน
-    $alert = [
-        'title' => 'ยินดีต้อนรับสู่ระบบเช็คชื่อเข้าแถวออนไลน์',
-        'message' => 'อย่าลืมเช็คชื่อทุกวันระหว่างเวลา 07:30 - 08:20 น.'
+    // แสดงหน้าเว็บ
+    $page_title = "STD-Prasat - หน้าหลักนักเรียน";
+    
+    // สร้างข้อมูลสำหรับแสดงผล
+    $student_info = [
+        'avatar' => substr($student['first_name'], 0, 1),
+        'name' => $student['title'] . $student['first_name'] . ' ' . $student['last_name'],
+        'class' => $student['level'] . ' ' . $student['department_name'],
+        'number' => $student['group_number']
     ];
     
+    $attendance_stats = [
+        'total_days' => $total_days,
+        'attendance_days' => $attendance_record['total_attendance_days'],
+        'attendance_percentage' => $attendance_percentage
+    ];
+    
+    $alert = [
+        'title' => 'แจ้งเตือนสำคัญ',
+        'message' => 'มีประกาศใหม่ 3 รายการ กรุณาตรวจสอบในหน้าประกาศ'
+    ];
+    
+    // กำหนดไฟล์เนื้อหา
+    $content_path = 'pages/student_home_content.php';
+    
+    // รวม template หลัก
+    include 'templates/main_template.php';
+    
 } catch (PDOException $e) {
-    $error_message = "เกิดข้อผิดพลาดในการดึงข้อมูล: " . $e->getMessage();
+    // กรณีเกิดข้อผิดพลาดในการดึงข้อมูล
+    echo "เกิดข้อผิดพลาด: " . $e->getMessage();
+    exit;
 }
 
-// กำหนด CSS เพิ่มเติม
-$extra_css = ["assets/css/student-home.css"];
-
-// กำหนด JS เพิ่มเติม
-$extra_js = ["assets/js/student-home.js"];
-
-// กำหนดหัวข้อเพจ
-$page_title = "STD-Prasat - หน้าหลัก";
-
-// เริ่มแสดงหน้าเว็บ
-include 'templates/header.php';
+// ฟังก์ชันแปลงรูปแบบการเช็คชื่อ
+function mapCheckMethod($method) {
+    switch ($method) {
+        case 'GPS':
+            return 'GPS';
+        case 'QR_Code':
+            return 'QR Code';
+        case 'PIN':
+            return 'PIN';
+        case 'Manual':
+            return 'ครูเช็คให้';
+        default:
+            return 'ไม่ระบุ';
+    }
+}
 ?>
-
-<!-- เนื้อหาหลัก -->
-<?php include 'pages/student_home_content.php'; ?>
-
-<!-- ส่วนท้าย -->
-<?php include 'templates/footer.php'; ?>
