@@ -215,10 +215,10 @@
                 </tr>
             </thead>
             <tbody>
-                <?php 
+                <?php
                 // สร้าง array เก็บรหัสนักเรียนที่แสดงผลไปแล้ว
                 $displayed_students = [];
-                
+
                 foreach ($data['students'] as $student):
                     // ข้ามถ้าเคยแสดงรหัสนักเรียนนี้ไปแล้ว
                     if (in_array($student['student_code'], $displayed_students)) {
@@ -235,10 +235,10 @@
                                     <?php echo strtoupper(substr($student['first_name'], 0, 1)); ?>
                                 </div>
                                 <div class="student-name">
-                                    <?php 
-                                    echo htmlspecialchars($student['title'] . ' ' . 
-                                         $student['first_name'] . ' ' . 
-                                         $student['last_name']); 
+                                    <?php
+                                    echo htmlspecialchars($student['title'] . ' ' .
+                                        $student['first_name'] . ' ' .
+                                        $student['last_name']);
                                     ?>
                                     <div class="student-status">กำลังศึกษา</div>
                                 </div>
@@ -355,13 +355,14 @@
                         <!-- แทนที่ select box เดิมด้วยโค้ดนี้ -->
                         <div class="form-group">
                             <label class="form-label">ชั้นเรียน</label>
-                            <input type="text" list="classList" class="form-control" id="class_search"
-                                placeholder="เลือกหรือพิมพ์เพื่อค้นหาชั้นเรียน..." autocomplete="off">
-                            <input type="hidden" name="class_id" id="class_id">
-
-                            <datalist id="classList">
-                                <!-- จะถูกเติมด้วย JavaScript -->
-                            </datalist>
+                            <div class="class-search-container">
+                                <input type="text" list="classList" class="form-control" id="class_search"
+                                    placeholder="เลือกหรือพิมพ์เพื่อค้นหาชั้นเรียน..." autocomplete="off">
+                                <input type="hidden" name="class_id" id="class_id">
+                                <datalist id="classList">
+                                    <!-- จะถูกเติมด้วย JavaScript -->
+                                </datalist>
+                            </div>
                         </div>
                     </div>
                     <div class="col-md-6">
