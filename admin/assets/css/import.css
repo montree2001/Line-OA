@@ -1,0 +1,449 @@
+/**
+ * import.css - ไฟล์ CSS สำหรับระบบนำเข้าข้อมูลนักเรียน
+ * นำไฟล์นี้ไปไว้ใน assets/css/import.css
+ */
+
+/* โมดัลขนาดใหญ่ */
+.modal-lg {
+    width: 90%;
+    max-width: 1000px;
+}
+
+/* ตัวบ่งชี้ขั้นตอน */
+.step-indicator {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 30px;
+    position: relative;
+    padding: 0 20px;
+}
+
+.step-indicator::before {
+    content: '';
+    position: absolute;
+    top: 20px;
+    left: 40px;
+    right: 40px;
+    height: 2px;
+    background-color: #e0e0e0;
+    z-index: 1;
+}
+
+.step {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 1;
+}
+
+.step-number {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: #e0e0e0;
+    color: #888;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    margin-bottom: 8px;
+    border: 2px solid #e0e0e0;
+}
+
+.step-text {
+    color: #888;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.step.active .step-number {
+    background-color: #4285f4;
+    color: white;
+    border-color: #4285f4;
+}
+
+.step.active .step-text {
+    color: #4285f4;
+    font-weight: 600;
+}
+
+.step.completed .step-number {
+    background-color: #34a853;
+    color: white;
+    border-color: #34a853;
+}
+
+.step.completed .step-text {
+    color: #34a853;
+}
+
+/* ขั้นตอนการนำเข้า */
+.import-step {
+    margin-bottom: 30px;
+}
+
+/* ส่วนของฟอร์ม */
+.form-section {
+    background-color: #f9f9f9;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.section-title {
+    font-size: 18px;
+    margin-bottom: 15px;
+    color: #333;
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 10px;
+}
+
+.section-desc {
+    color: #666;
+    margin-bottom: 15px;
+    font-size: 14px;
+}
+
+/* พื้นที่อัปโหลดไฟล์ */
+.file-upload-container {
+    margin-bottom: 20px;
+}
+
+.file-upload-area {
+    position: relative;
+    border: 2px dashed #aaa;
+    border-radius: 8px;
+    padding: 30px;
+    text-align: center;
+    transition: all 0.3s;
+    background-color: #fff;
+    cursor: pointer;
+}
+
+.file-upload-area:hover {
+    border-color: #4285f4;
+    background-color: #f0f7ff;
+}
+
+.file-input {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.file-upload-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    color: #666;
+}
+
+.file-upload-content .material-icons {
+    font-size: 48px;
+    margin-bottom: 10px;
+    color: #4285f4;
+}
+
+.file-types {
+    font-size: 12px;
+    color: #888;
+    margin-top: 5px;
+}
+
+.file-info {
+    margin-top: 10px;
+    color: #333;
+    font-weight: 500;
+}
+
+/* ตัวเลือกการนำเข้า */
+.import-options {
+    margin-top: 20px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+.checkbox-wrapper {
+    display: flex;
+    align-items: center;
+    margin-right: 20px;
+}
+
+.checkbox-wrapper input[type="checkbox"] {
+    margin-right: 8px;
+}
+
+/* คำแนะนำการนำเข้า */
+.import-instructions {
+    background-color: #fff;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 15px;
+}
+
+.import-instructions ol {
+    padding-left: 20px;
+    margin-bottom: 0;
+}
+
+.import-instructions li {
+    margin-bottom: 8px;
+    color: #555;
+}
+
+.import-instructions li:last-child {
+    margin-bottom: 0;
+}
+
+.import-instructions a {
+    color: #4285f4;
+    text-decoration: none;
+}
+
+.import-instructions a:hover {
+    text-decoration: underline;
+}
+
+/* ตัวอย่างข้อมูล */
+.data-preview {
+    overflow-x: auto;
+    margin-bottom: 20px;
+    max-height: 300px;
+    overflow-y: auto;
+    background-color: #fff;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+}
+
+.data-preview-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.data-preview-table th,
+.data-preview-table td {
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    text-align: left;
+    font-size: 14px;
+}
+
+.data-preview-table th {
+    background-color: #f5f5f5;
+    font-weight: 600;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+.data-preview-table tr:nth-child(even) {
+    background-color: #f9f9f9;
+}
+
+/* การแม็ปฟิลด์ */
+.field-mapping-container {
+    margin-bottom: 20px;
+}
+
+.field-mapping-group {
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #eee;
+}
+
+.field-mapping-group:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.field-mapping-group h4 {
+    font-size: 16px;
+    margin-bottom: 15px;
+    color: #444;
+}
+
+.field-mapping {
+    margin-bottom: 15px;
+}
+
+.field-mapping label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 500;
+    color: #333;
+}
+
+.field-mapping-note {
+    font-size: 13px;
+    color: #666;
+    font-style: italic;
+    margin-top: 10px;
+}
+
+/* สรุปข้อมูลนำเข้า */
+.import-summary {
+    margin-bottom: 20px;
+}
+
+.import-summary-stats {
+    display: flex;
+    justify-content: center;
+    gap: 30px;
+    margin-bottom: 20px;
+}
+
+.summary-stat {
+    text-align: center;
+    padding: 15px;
+    background-color: #fff;
+    border-radius: 8px;
+    border: 1px solid #ddd;
+    flex: 1;
+    max-width: 200px;
+}
+
+.summary-value {
+    font-size: 24px;
+    font-weight: 700;
+    color: #4285f4;
+    margin-bottom: 5px;
+}
+
+.summary-label {
+    font-size: 14px;
+    color: #666;
+}
+
+.destination-class {
+    background-color: #fff;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 15px;
+    margin-bottom: 20px;
+}
+
+.destination-class h4 {
+    font-size: 16px;
+    margin-bottom: 10px;
+    color: #444;
+}
+
+.info-text {
+    display: flex;
+    align-items: center;
+    color: #4285f4;
+    font-size: 14px;
+    margin-bottom: 0;
+}
+
+.info-text .material-icons {
+    font-size: 18px;
+    margin-right: 5px;
+}
+
+.import-confirmation {
+    margin-top: 20px;
+}
+
+.warning-text {
+    display: flex;
+    align-items: center;
+    color: #ea4335;
+    background-color: #fdeeee;
+    padding: 10px 15px;
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+.warning-text .material-icons {
+    font-size: 18px;
+    margin-right: 5px;
+}
+
+/* Loading Overlay */
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    z-index: 9999;
+}
+
+.loading-spinner {
+    width: 50px;
+    height: 50px;
+    border: 5px solid #f3f3f3;
+    border-top: 5px solid #4285f4;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 15px;
+}
+
+.loading-text {
+    color: white;
+    font-size: 16px;
+    font-weight: 500;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* ปรับการแสดงผลบนอุปกรณ์เคลื่อนที่ */
+@media (max-width: 768px) {
+    .step-indicator {
+        padding: 0 10px;
+    }
+    
+    .step-indicator::before {
+        left: 20px;
+        right: 20px;
+    }
+    
+    .step-number {
+        width: 30px;
+        height: 30px;
+        font-size: 14px;
+    }
+    
+    .step-text {
+        font-size: 12px;
+    }
+    
+    .summary-stat {
+        padding: 10px;
+    }
+    
+    .summary-value {
+        font-size: 20px;
+    }
+    
+    .summary-label {
+        font-size: 12px;
+    }
+}
+
+/* Invalid fields */
+.is-invalid {
+    border-color: #ea4335;
+    background-color: #fdeeee;
+}
+
+.is-invalid:focus {
+    border-color: #ea4335;
+    box-shadow: 0 0 0 0.2rem rgba(234, 67, 53, 0.25);
+}

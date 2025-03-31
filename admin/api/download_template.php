@@ -15,7 +15,7 @@ session_start();
 // }
 
 // ใช้ไลบรารี PhpSpreadsheet สำหรับสร้างไฟล์ Excel
-require 'vendor/autoload.php';
+require '../vendor/autoload.php';
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 

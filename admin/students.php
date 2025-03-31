@@ -18,7 +18,7 @@ require_once '../db_connect.php';
 
 // เพิ่ม include ไฟล์ model
 require_once '../models/students_model.php';
-
+//require_once '../modals/import_modal.php';
 // สร้างตัวแปรสำหรับเก็บเงื่อนไขการกรอง
 $filters = [
     'name' => $_GET['name'] ?? '',
