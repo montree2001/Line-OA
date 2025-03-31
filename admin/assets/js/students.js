@@ -419,18 +419,42 @@ function editStudent(studentId) {
 }
 
 /**
- * ลบข้อมูลนักเรียน
- * 
+ * ฟังก์ชันลบข้อมูลนักเรียน - แสดงหน้าต่างยืนยันการลบ
  * @param {string} studentId รหัสนักเรียน
  * @param {string} studentName ชื่อนักเรียน
  */
 function deleteStudent(studentId, studentName) {
-    // แสดงชื่อนักเรียนที่จะลบใน Modal
-    document.getElementById('delete_student_name').innerText = studentName;
-    document.getElementById('delete_student_id').value = studentId;
+    // ตรวจสอบว่ามี element หรือไม่
+    const deleteIdInput = document.getElementById('delete_student_id');
+    const deleteNameSpan = document.getElementById('delete_student_name');
+    const deleteModal = document.getElementById('deleteStudentModal');
     
-    // แสดง Modal
-    showModal('deleteStudentModal');
+    if (!deleteIdInput || !deleteNameSpan || !deleteModal) {
+        console.error('ไม่พบ element สำหรับลบข้อมูลนักเรียน');
+        alert('เกิดข้อผิดพลาดในการลบข้อมูลนักเรียน');
+        return;
+    }
+    
+    // กำหนดค่าในโมดัลยืนยันการลบ
+    deleteIdInput.value = studentId;
+    deleteNameSpan.textContent = studentName;
+    
+    // แสดงโมดัลยืนยันการลบ
+    deleteModal.style.display = 'flex';
+    
+    // เพิ่ม event listener เพื่อยืนยันการลบ (กรณีที่ไม่ได้ทำงานผ่าน form)
+    const confirmBtn = deleteModal.querySelector('.btn-danger');
+    if (confirmBtn) {
+        // ลบ event listener เดิมก่อน (ถ้ามี)
+        const newConfirmBtn = confirmBtn.cloneNode(true);
+        confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+        
+        // เพิ่ม event listener ใหม่
+        newConfirmBtn.addEventListener('click', function() {
+            // ส่ง form
+            document.getElementById('deleteStudentForm').submit();
+        });
+    }
 }
 
 /**
@@ -793,4 +817,10 @@ function showAlert(message, type = 'info') {
             alert.remove();
         }
     }, 5000);
+
+
+    
+
+
+
 }
