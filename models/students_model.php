@@ -442,20 +442,30 @@ function updateStudent($data) {
 function deleteStudent($student_id) {
     try {
         $conn = getDB();
+        
+        // เริ่ม transaction
         $conn->beginTransaction();
         
-        // ตรวจสอบว่ามีนักเรียนคนนี้ในระบบหรือไม่
-        $checkQuery = "SELECT user_id FROM students WHERE student_id = ?";
+        // ตรวจสอบว่ามีนักเรียนคนนี้ในระบบหรือไม่ และดึงข้อมูลที่จำเป็น
+        $checkQuery = "SELECT s.user_id, s.student_code, u.first_name, u.last_name 
+                      FROM students s 
+                      JOIN users u ON s.user_id = u.user_id 
+                      WHERE s.student_id = ?";
         $checkStmt = $conn->prepare($checkQuery);
         $checkStmt->execute([$student_id]);
-        $user_id = $checkStmt->fetchColumn();
+        $student = $checkStmt->fetch(PDO::FETCH_ASSOC);
         
-        if (!$user_id) {
+        if (!$student) {
             return [
                 'success' => false,
                 'message' => 'ไม่พบข้อมูลนักเรียนในระบบ'
             ];
         }
+        
+        $user_id = $student['user_id'];
+        
+        // บันทึก log เพื่อช่วยในการตรวจสอบ
+        error_log("กำลังลบข้อมูลนักเรียน ID: {$student_id}, User ID: {$user_id}, ชื่อ: {$student['first_name']} {$student['last_name']}");
         
         // ลบข้อมูลในตารางที่เกี่ยวข้อง
         $tables = [
@@ -465,37 +475,83 @@ function deleteStudent($student_id) {
             'qr_codes',
             'parent_student_relation',
             'class_history',
-            'notifications'
+            'line_notifications' // เพิ่มตารางแจ้งเตือน LINE ถ้ามี
         ];
         
         foreach ($tables as $table) {
-            $deleteQuery = "DELETE FROM $table WHERE student_id = ?";
-            $deleteStmt = $conn->prepare($deleteQuery);
-            $deleteStmt->execute([$student_id]);
+            try {
+                // ตรวจสอบว่าตารางมีอยู่หรือไม่ก่อนลบข้อมูล
+                $tableCheckQuery = "SHOW TABLES LIKE '{$table}'";
+                $tableCheckStmt = $conn->query($tableCheckQuery);
+                $tableExists = $tableCheckStmt->rowCount() > 0;
+                
+                if ($tableExists) {
+                    // ตรวจสอบว่าตารางมีคอลัมน์ student_id หรือไม่
+                    $columnCheckQuery = "SHOW COLUMNS FROM {$table} LIKE 'student_id'";
+                    $columnCheckStmt = $conn->query($columnCheckQuery);
+                    $columnExists = $columnCheckStmt->rowCount() > 0;
+                    
+                    if ($columnExists) {
+                        $deleteQuery = "DELETE FROM {$table} WHERE student_id = ?";
+                        $deleteStmt = $conn->prepare($deleteQuery);
+                        $deleteStmt->execute([$student_id]);
+                        error_log("ลบข้อมูลจากตาราง {$table} สำหรับนักเรียน ID: {$student_id} เรียบร้อยแล้ว");
+                    }
+                }
+            } catch (Exception $e) {
+                // บันทึกข้อผิดพลาดแต่ดำเนินการต่อกับตารางอื่น
+                error_log("เกิดข้อผิดพลาดในการลบข้อมูลจากตาราง {$table}: " . $e->getMessage());
+            }
+        }
+        
+        // ตรวจสอบและลบการแจ้งเตือนที่เกี่ยวข้องกับนักเรียน (ถ้ามี)
+        try {
+            $notificationCheckQuery = "SHOW TABLES LIKE 'notifications'";
+            $notificationCheckStmt = $conn->query($notificationCheckQuery);
+            $notificationTableExists = $notificationCheckStmt->rowCount() > 0;
+            
+            if ($notificationTableExists) {
+                $checkColumnQuery = "SHOW COLUMNS FROM notifications LIKE 'related_student_id'";
+                $checkColumnStmt = $conn->query($checkColumnQuery);
+                $columnExists = $checkColumnStmt->rowCount() > 0;
+                
+                if ($columnExists) {
+                    $deleteNotificationsQuery = "DELETE FROM notifications WHERE related_student_id = ?";
+                    $deleteNotificationsStmt = $conn->prepare($deleteNotificationsQuery);
+                    $deleteNotificationsStmt->execute([$student_id]);
+                    error_log("ลบการแจ้งเตือนที่เกี่ยวข้องกับนักเรียน ID: {$student_id} เรียบร้อยแล้ว");
+                }
+            }
+        } catch (Exception $e) {
+            error_log("เกิดข้อผิดพลาดในการลบการแจ้งเตือน: " . $e->getMessage());
         }
         
         // ลบข้อมูลในตาราง students
         $studentQuery = "DELETE FROM students WHERE student_id = ?";
         $studentStmt = $conn->prepare($studentQuery);
         $studentStmt->execute([$student_id]);
+        error_log("ลบข้อมูลนักเรียน ID: {$student_id} เรียบร้อยแล้ว");
         
         // ลบข้อมูลในตาราง users
         $userQuery = "DELETE FROM users WHERE user_id = ?";
         $userStmt = $conn->prepare($userQuery);
         $userStmt->execute([$user_id]);
+        error_log("ลบข้อมูลผู้ใช้ ID: {$user_id} เรียบร้อยแล้ว");
         
+        // Commit transaction
         $conn->commit();
         
         return [
             'success' => true,
-            'message' => 'ลบข้อมูลนักเรียนเรียบร้อยแล้ว'
+            'message' => 'ลบข้อมูลนักเรียน ' . $student['first_name'] . ' ' . $student['last_name'] . ' เรียบร้อยแล้ว'
         ];
     } catch (PDOException $e) {
-        if ($conn) {
+        // Rollback transaction เมื่อเกิดข้อผิดพลาด
+        if (isset($conn) && $conn->inTransaction()) {
             $conn->rollBack();
         }
         
-        error_log("Error deleting student: " . $e->getMessage());
+        error_log("เกิดข้อผิดพลาดในการลบข้อมูลนักเรียน: " . $e->getMessage());
         
         return [
             'success' => false,
@@ -503,7 +559,6 @@ function deleteStudent($student_id) {
         ];
     }
 }
-
 
 /**
  * ฟังก์ชันสำหรับนำเข้าข้อมูลนักเรียนจากไฟล์ Excel/CSV
