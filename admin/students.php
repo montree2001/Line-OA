@@ -1,5 +1,4 @@
 <?php
-
 /**
  * students.php - หน้าจัดการข้อมูลนักเรียน
  * ระบบ STUDENT-Prasat
@@ -17,12 +16,6 @@ session_start();
 // เชื่อมต่อฐานข้อมูล
 require_once '../db_connect.php';
 
-
-
-
-// ใน students.php - ปรับปรุงส่วนการดึงข้อมูลนักเรียน
-// โดยใช้ฟังก์ชันจาก Model มาแทนการเขียนคำสั่ง SQL โดยตรง
-
 // เพิ่ม include ไฟล์ model
 require_once '../models/students_model.php';
 
@@ -39,93 +32,7 @@ $filters = [
 ];
 
 // ดึงข้อมูลนักเรียนผ่าน model function
-$students = [];
-try {
-    $conn = getDB();
-    
-    // แก้ไขคำสั่ง SQL ให้กระชับและป้องกันการซ้ำ
-    $query = "SELECT DISTINCT
-        s.student_id,
-        s.student_code,
-        s.status,
-        s.current_class_id,
-        u.title,
-        u.first_name,
-        u.last_name,
-        c.level,
-        c.group_number,
-        d.department_name
-    FROM students s
-    INNER JOIN users u ON s.user_id = u.user_id 
-    LEFT JOIN classes c ON s.current_class_id = c.class_id
-    LEFT JOIN departments d ON c.department_id = d.department_id
-    WHERE s.student_code IS NOT NULL";
-
-    // เพิ่มเงื่อนไขการค้นหา
-    if (!empty($filters['name'])) {
-        $query .= " AND (u.first_name LIKE :name OR u.last_name LIKE :name)";
-    }
-    if (!empty($filters['student_code'])) {
-        $query .= " AND s.student_code LIKE :student_code";
-    }
-    if (!empty($filters['level'])) {
-        $query .= " AND c.level = :level";
-    }
-    if (!empty($filters['group_number'])) {
-        $query .= " AND c.group_number = :group_number";
-    }
-    if (!empty($filters['department_id'])) {
-        $query .= " AND d.department_id = :department_id";
-    }
-    if (!empty($filters['status'])) {
-        $query .= " AND s.status = :status";
-    }
-
-    $query .= " ORDER BY s.student_code";
-
-    $stmt = $conn->prepare($query);
-
-    // Bind parameters
-    if (!empty($filters['name'])) {
-        $stmt->bindValue(':name', '%' . $filters['name'] . '%');
-    }
-    if (!empty($filters['student_code'])) {
-        $stmt->bindValue(':student_code', '%' . $filters['student_code'] . '%');
-    }
-    if (!empty($filters['level'])) {
-        $stmt->bindValue(':level', $filters['level']);
-    }
-    if (!empty($filters['group_number'])) {
-        $stmt->bindValue(':group_number', $filters['group_number']);
-    }
-    if (!empty($filters['department_id'])) {
-        $stmt->bindValue(':department_id', $filters['department_id']);
-    }
-    if (!empty($filters['status'])) {
-        $stmt->bindValue(':status', $filters['status']);
-    }
-
-    $stmt->execute();
-    $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-    // เพิ่มข้อมูลพื้นฐานที่จำเป็น
-    foreach ($students as &$student) {
-        $student['class'] = ($student['level'] ? $student['level'] : '-') . '/' . 
-                           ($student['group_number'] ? $student['group_number'] : '-');
-        $student['attendance_rate'] = 100;
-        $student['attendance_status'] = 'ปกติ';
-        $student['line_connected'] = false;
-    }
-
-    // Debug ข้อมูล
-    // echo "<pre>";
-    // print_r($students);
-    // echo "</pre>";
-
-} catch (PDOException $e) {
-    error_log("Error fetching students: " . $e->getMessage());
-    $students = [];
-}
+$students = getAllStudents($filters);
 
 // ดึงข้อมูลแผนกวิชาทั้งหมด
 $departments = [];
@@ -150,8 +57,19 @@ try {
         ORDER BY c.level, c.group_number
     ");
     $classes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    // จัดกลุ่มชั้นเรียนตามระดับชั้น
+    $classGroups = [];
+    foreach ($classes as $class) {
+        $level = $class['level'];
+        if (!isset($classGroups[$level])) {
+            $classGroups[$level] = [];
+        }
+        $classGroups[$level][] = $class;
+    }
 } catch (PDOException $e) {
     error_log("Error fetching classes: " . $e->getMessage());
+    $classGroups = [];
 }
 
 // ดึงข้อมูลครูทั้งหมด
@@ -170,133 +88,40 @@ try {
 }
 
 // ดึงสถิติจำนวนนักเรียน
-$student_stats = [
-    'total' => 0,
-    'male' => 0,
-    'female' => 0,
-    'risk' => 0
-];
+$student_stats = getStudentStatistics();
 
-try {
-    $conn = getDB();
-
-    // ดึงจำนวนนักเรียนทั้งหมดที่กำลังศึกษา
-    $queryTotal = "SELECT COUNT(*) as total FROM students WHERE status = 'กำลังศึกษา'";
-    $stmtTotal = $conn->prepare($queryTotal);
-    $stmtTotal->execute();
-    $student_stats['total'] = $stmtTotal->fetch(PDO::FETCH_ASSOC)['total'] ?? 0;
-
-    // ดึงจำนวนนักเรียนชาย
-    $queryMale = "SELECT COUNT(*) as male 
-                FROM students s 
-                JOIN users u ON s.user_id = u.user_id
-                WHERE s.status = 'กำลังศึกษา' AND u.title IN ('นาย', 'เด็กชาย')";
-    $stmtMale = $conn->prepare($queryMale);
-    $stmtMale->execute();
-    $student_stats['male'] = $stmtMale->fetch(PDO::FETCH_ASSOC)['male'] ?? 0;
-
-    // ดึงจำนวนนักเรียนหญิง
-    $queryFemale = "SELECT COUNT(*) as female 
-                  FROM students s 
-                  JOIN users u ON s.user_id = u.user_id
-                  WHERE s.status = 'กำลังศึกษา' AND u.title IN ('นางสาว', 'เด็กหญิง', 'นาง')";
-    $stmtFemale = $conn->prepare($queryFemale);
-    $stmtFemale->execute();
-    $student_stats['female'] = $stmtFemale->fetch(PDO::FETCH_ASSOC)['female'] ?? 0;
-
-    // ดึงจำนวนนักเรียนที่เสี่ยงตกกิจกรรม
-    $queryRisk = "SELECT COUNT(*) as risk FROM risk_students WHERE risk_level IN ('high', 'critical')";
-    $stmtRisk = $conn->prepare($queryRisk);
-    $stmtRisk->execute();
-    $student_stats['risk'] = $stmtRisk->fetch(PDO::FETCH_ASSOC)['risk'] ?? 0;
-} catch (PDOException $e) {
-    error_log("Error fetching student statistics: " . $e->getMessage());
-}
-
-
-// ใน students.php - ปรับปรุงส่วนการเพิ่มนักเรียน
+// ส่วนการเพิ่มนักเรียนใหม่
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'add') {
     if (empty($_POST['student_code']) || empty($_POST['firstname']) || empty($_POST['lastname']) || empty($_POST['title'])) {
         $error_message = "กรุณากรอกข้อมูลให้ครบถ้วน";
     } else {
-        try {
-            $conn = getDB();
-            
-            // ตรวจสอบรหัสนักเรียนซ้ำ
-            $checkStmt = $conn->prepare("SELECT COUNT(*) FROM students WHERE student_code = ?");
-            $checkStmt->execute([trim($_POST['student_code'])]);
-            if ($checkStmt->fetchColumn() > 0) {
-                throw new Exception("รหัสนักเรียนนี้มีในระบบแล้ว");
-            }
-
-            $conn->beginTransaction();
-
-            // 1. สร้าง user ก่อน
-            $userSql = "INSERT INTO users (title, first_name, last_name, role, created_at) 
-                       VALUES (?, ?, ?, 'student', NOW())";
-            $userStmt = $conn->prepare($userSql);
-            $userStmt->execute([
-                $_POST['title'],
-                $_POST['firstname'],
-                $_POST['lastname']
-            ]);
-            $userId = $conn->lastInsertId();
-
-            // 2. สร้าง student
-            $studentSql = "INSERT INTO students (user_id, student_code, current_class_id, status, created_at) 
-                          VALUES (?, ?, ?, 'กำลังศึกษา', NOW())";
-            $studentStmt = $conn->prepare($studentSql);
-            $studentStmt->execute([
-                $userId,
-                trim($_POST['student_code']),
-                $_POST['class_id'] ?? null
-            ]);
-
-            $conn->commit();
-            $_SESSION['success_message'] = "เพิ่มข้อมูลนักเรียนเรียบร้อยแล้ว";
+        // เรียกใช้ฟังก์ชัน addStudent จาก model
+        $result = addStudent($_POST);
+        
+        if ($result['success']) {
+            $_SESSION['success_message'] = $result['message'];
             header("Location: students.php?success=add");
             exit;
-
-        } catch (Exception $e) {
-            if ($conn->inTransaction()) {
-                $conn->rollBack();
-            }
-            $error_message = "เกิดข้อผิดพลาด: " . $e->getMessage();
-            error_log("Error adding student: " . $e->getMessage());
+        } else {
+            $error_message = $result['message'];
         }
     }
 }
 
 // ส่วนการแก้ไขข้อมูลนักเรียน
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'edit') {
-    // ตรวจสอบข้อมูลที่จำเป็น
     if (empty($_POST['student_id']) || empty($_POST['student_code']) || empty($_POST['firstname']) || empty($_POST['lastname'])) {
         $error_message = "กรุณากรอกข้อมูลให้ครบถ้วน";
     } else {
-        try {
-            // เรียกใช้ฟังก์ชัน updateStudent จาก model
-            $result = updateStudent([
-                'student_id' => $_POST['student_id'],
-                'student_code' => trim($_POST['student_code']),
-                'title' => $_POST['title'],
-                'firstname' => $_POST['firstname'],
-                'lastname' => $_POST['lastname'],
-                'phone_number' => $_POST['phone_number'] ?? '',
-                'email' => $_POST['email'] ?? '',
-                'class_id' => $_POST['class_id'] ?? null,
-                'status' => $_POST['status'] ?? 'กำลังศึกษา'
-            ]);
+        // เรียกใช้ฟังก์ชัน updateStudent จาก model
+        $result = updateStudent($_POST);
 
-            if ($result['success']) {
-                $_SESSION['success_message'] = $result['message'];
-                header("Location: students.php?success=edit");
-                exit;
-            } else {
-                $error_message = $result['message'];
-            }
-        } catch (Exception $e) {
-            $error_message = "เกิดข้อผิดพลาด: " . $e->getMessage();
-            error_log("Error updating student: " . $e->getMessage());
+        if ($result['success']) {
+            $_SESSION['success_message'] = $result['message'];
+            header("Location: students.php?success=edit");
+            exit;
+        } else {
+            $error_message = $result['message'];
         }
     }
 }
@@ -306,24 +131,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     if (empty($_POST['student_id'])) {
         $error_message = "ไม่ระบุรหัสนักเรียนที่ต้องการลบ";
     } else {
-        try {
-            // เรียกใช้ฟังก์ชัน deleteStudent จาก model
-            $result = deleteStudent($_POST['student_id']);
+        // เรียกใช้ฟังก์ชัน deleteStudent จาก model
+        $result = deleteStudent($_POST['student_id']);
 
-            if ($result['success']) {
-                $_SESSION['success_message'] = $result['message'];
-                header("Location: students.php?success=delete");
-                exit;
-            } else {
-                $error_message = $result['message'];
-            }
-        } catch (Exception $e) {
-            $error_message = "เกิดข้อผิดพลาด: " . $e->getMessage();
-            error_log("Error deleting student: " . $e->getMessage());
+        if ($result['success']) {
+            $_SESSION['success_message'] = $result['message'];
+            header("Location: students.php?success=delete");
+            exit;
+        } else {
+            $error_message = $result['message'];
         }
     }
 }
 
+// ส่วนการนำเข้าข้อมูลนักเรียน
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'import') {
+    if (!isset($_FILES['import_file']) || $_FILES['import_file']['error'] !== UPLOAD_ERR_OK) {
+        $error_message = "ไม่มีไฟล์หรือเกิดข้อผิดพลาดในการอัปโหลดไฟล์";
+    } else {
+        // เรียกใช้ฟังก์ชัน importStudentsFromExcel จาก model
+        $result = importStudentsFromExcel($_FILES['import_file'], [
+            'skip_header' => isset($_POST['skip_header']),
+            'update_existing' => isset($_POST['update_existing']),
+            'import_class_id' => $_POST['import_class_id'] ?? null
+        ]);
+
+        if ($result['success']) {
+            $_SESSION['success_message'] = $result['message'];
+            header("Location: students.php?success=import");
+            exit;
+        } else {
+            $error_message = $result['message'];
+        }
+    }
+}
 
 // ตรวจสอบการแสดงข้อความแจ้งเตือนจาก URL
 if (isset($_GET['success'])) {
@@ -355,12 +196,33 @@ $extra_js = [
 // กำหนดเส้นทางไปยังไฟล์เนื้อหาเฉพาะหน้า
 $content_path = 'pages/students_content.php';
 
+// กำหนดหัวข้อและข้อความแสดงบนหน้าเว็บ
+$page_title = "จัดการข้อมูลนักเรียน";
+$page_header = "จัดการข้อมูลนักเรียน";
+
+// กำหนดปุ่มสำหรับ header
+$header_buttons = [
+    [
+        'text' => 'เพิ่มนักเรียนใหม่',
+        'icon' => 'person_add',
+        'id' => 'addStudentBtn',
+        'onclick' => 'showAddStudentModal()'
+    ],
+    [
+        'text' => 'นำเข้าข้อมูล',
+        'icon' => 'upload_file',
+        'id' => 'importBtn', 
+        'onclick' => 'showImportModal()'
+    ]
+];
+
 // ส่งข้อมูลไปยังเทมเพลต
 $data = [
     'students' => $students,
     'statistics' => $student_stats,
     'departments' => $departments,
     'classes' => $classes,
+    'classGroups' => $classGroups ?? [],
     'teachers' => $teachers
 ];
 

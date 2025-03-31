@@ -171,14 +171,12 @@
     </div>
 </div>
 
-<!-- แก้ไขส่วนของตารางแสดงข้อมูลนักเรียนในหน้า students_content.php -->
+<!-- แก้ไขส่วนของตารางแสดงข้อมูลนักเรียน -->
 <div class="card">
     <div class="card-title">
         <span class="material-icons">people</span>
         รายชื่อนักเรียน
-        <?php if (!empty($_GET)): ?>
-            <span class="badge"><?php echo count($data['students']); ?> รายการ</span>
-        <?php endif; ?>
+        <span class="badge"><?php echo count($data['students']); ?> รายการ</span>
     </div>
 
     <div class="bulk-actions">
@@ -200,6 +198,7 @@
         </button>
     </div>
 
+    <!-- ตารางข้อมูลนักเรียน -->
     <div class="table-responsive">
         <table id="studentDataTable" class="data-table display">
             <thead>
@@ -215,53 +214,70 @@
                 </tr>
             </thead>
             <tbody>
-                <?php
-                // สร้าง array เก็บรหัสนักเรียนที่แสดงผลไปแล้ว
-                $displayed_students = [];
-
+                <?php 
+                // ใช้ student_id เป็นรหัสที่ไม่ซ้ำกัน
+                $displayed_student_ids = [];
+                
                 foreach ($data['students'] as $student):
-                    // ข้ามถ้าเคยแสดงรหัสนักเรียนนี้ไปแล้ว
-                    if (in_array($student['student_code'], $displayed_students)) {
+                    // ข้ามถ้ามี student_id นี้แล้ว
+                    if (in_array($student['student_id'], $displayed_student_ids)) {
                         continue;
                     }
-                    // เพิ่มรหัสนักเรียนที่กำลังจะแสดงลงใน array
-                    $displayed_students[] = $student['student_code'];
+                    
+                    // เพิ่ม student_id ที่กำลังแสดงเข้าไปในอาร์เรย์
+                    $displayed_student_ids[] = $student['student_id'];
                 ?>
                     <tr>
                         <td><?php echo htmlspecialchars($student['student_code']); ?></td>
                         <td>
                             <div class="student-info">
                                 <div class="student-avatar">
-                                    <?php echo strtoupper(substr($student['first_name'], 0, 1)); ?>
+                                    <?php echo strtoupper(substr($student['first_name'] ?? '', 0, 1)); ?>
                                 </div>
                                 <div class="student-name">
                                     <?php
-                                    echo htmlspecialchars($student['title'] . ' ' .
-                                        $student['first_name'] . ' ' .
-                                        $student['last_name']);
+                                    echo htmlspecialchars(($student['title'] ?? '') . ' ' .
+                                        ($student['first_name'] ?? '') . ' ' .
+                                        ($student['last_name'] ?? ''));
                                     ?>
-                                    <div class="student-status">กำลังศึกษา</div>
+                                    <div class="student-status"><?php echo htmlspecialchars($student['status'] ?? 'กำลังศึกษา'); ?></div>
                                 </div>
                             </div>
                         </td>
-                        <td><?php echo htmlspecialchars($student['class']); ?></td>
+                        <td><?php echo htmlspecialchars($student['class'] ?? '-'); ?></td>
                         <td><?php echo htmlspecialchars($student['department_name'] ?? '-'); ?></td>
                         <td>
-                            <button class="btn btn-line" onclick="generateLineQR('<?php echo $student['student_id']; ?>')">
-                                สร้าง QR
-                            </button>
+                            <?php if (isset($student['line_connected']) && $student['line_connected']): ?>
+                                <span class="status-badge success">เชื่อมต่อแล้ว</span>
+                            <?php else: ?>
+                                <button class="btn btn-line" onclick="generateLineQR('<?php echo $student['student_id']; ?>')">
+                                    สร้าง QR
+                                </button>
+                            <?php endif; ?>
                         </td>
                         <td>
                             <div class="attendance-rate">
+                                <?php 
+                                $attendanceRate = isset($student['attendance_rate']) ? $student['attendance_rate'] : 0;
+                                $rateClass = '';
+                                
+                                if ($attendanceRate >= 90) {
+                                    $rateClass = 'success';
+                                } elseif ($attendanceRate >= 75) {
+                                    $rateClass = 'warning';
+                                } else {
+                                    $rateClass = 'danger';
+                                }
+                                ?>
                                 <div class="progress">
-                                    <div class="progress-bar" style="width: <?php echo $student['attendance_rate']; ?>%"></div>
+                                    <div class="progress-bar <?php echo $rateClass; ?>" style="width: <?php echo $attendanceRate; ?>%"></div>
                                 </div>
-                                <span><?php echo number_format($student['attendance_rate'], 1); ?>%</span>
+                                <span><?php echo number_format($attendanceRate, 1); ?>%</span>
                             </div>
                         </td>
                         <td>
-                            <span class="status-badge <?php echo strtolower($student['status']); ?>">
-                                <?php echo htmlspecialchars($student['status']); ?>
+                            <span class="status-badge <?php echo strtolower($student['status'] ?? 'กำลังศึกษา'); ?>">
+                                <?php echo htmlspecialchars($student['status'] ?? 'กำลังศึกษา'); ?>
                             </span>
                         </td>
                         <td>
@@ -272,13 +288,19 @@
                                 <button class="btn btn-icon btn-warning" onclick="editStudent('<?php echo $student['student_id']; ?>')" title="แก้ไข">
                                     <span class="material-icons">edit</span>
                                 </button>
-                                <button class="btn btn-icon btn-danger" onclick="deleteStudent('<?php echo $student['student_id']; ?>', '<?php echo htmlspecialchars($student['first_name'] . ' ' . $student['last_name']); ?>')" title="ลบ">
+                                <button class="btn btn-icon btn-danger" onclick="deleteStudent('<?php echo $student['student_id']; ?>', '<?php echo htmlspecialchars(($student['first_name'] ?? '') . ' ' . ($student['last_name'] ?? '')); ?>')" title="ลบ">
                                     <span class="material-icons">delete</span>
                                 </button>
                             </div>
                         </td>
                     </tr>
                 <?php endforeach; ?>
+                
+                <?php if (empty($data['students'])): ?>
+                <tr>
+                    <td colspan="8" class="text-center">ไม่พบข้อมูลนักเรียน</td>
+                </tr>
+                <?php endif; ?>
             </tbody>
         </table>
     </div>
@@ -352,7 +374,6 @@
 
                 <div class="row">
                     <div class="col-md-6">
-                        <!-- แทนที่ select box เดิมด้วยโค้ดนี้ -->
                         <div class="form-group">
                             <label class="form-label">ชั้นเรียน</label>
                             <div class="class-search-container">
@@ -464,7 +485,7 @@
                             <select class="form-control" name="class_id" id="edit_class_id">
                                 <option value="">-- เลือกชั้นเรียน --</option>
                                 <?php
-                                foreach ($classGroups as $level => $classes):
+                                foreach ($data['classGroups'] as $level => $classes):
                                 ?>
                                     <optgroup label="<?php echo $level; ?>">
                                         <?php foreach ($classes as $class): ?>
@@ -637,7 +658,7 @@
                     <select class="form-control" name="import_class_id" id="import_class">
                         <option value="">-- ไม่ระบุชั้นเรียน --</option>
                         <?php
-                        foreach ($classGroups as $level => $classes):
+                        foreach ($data['classGroups'] as $level => $classes):
                         ?>
                             <optgroup label="<?php echo $level; ?>">
                                 <?php foreach ($classes as $class): ?>
@@ -660,8 +681,7 @@
     </div>
 </div>
 
-
-<!-- โมดัลแสดง QR Code LINE (ปรับปรุง) -->
+<!-- โมดัลแสดง QR Code LINE -->
 <div class="modal" id="lineQRModal">
     <div class="modal-content">
         <button class="modal-close" onclick="closeModal('lineQRModal')">
