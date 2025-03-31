@@ -44,21 +44,30 @@ $required_files = [
 // ตรวจสอบและนำเข้าไฟล์
 foreach ($required_files as $file) {
     if (!file_exists($file)) {
-        die("ไม่พบไฟล์: $file");
+        error_log("ไม่พบไฟล์: $file");
+        die("ไม่พบไฟล์ที่จำเป็น: $file");
     }
     require_once $file;
 }
-// ถ้าดึงข้อมูลไม่สำเร็จ ใช้ข้อมูลตัวอย่าง
-$departments = getDepartmentsFromDB();
-if (empty($departments)) {
-    $departments = getSampleDepartments();
-}
+
 // ดึงข้อมูลที่จำเป็น
 try {
+    // ตรวจสอบการเชื่อมต่อฐานข้อมูล
+    $conn = getDB();
+    if (!$conn) {
+        throw new Exception("ไม่สามารถเชื่อมต่อฐานข้อมูลได้");
+    }
+
+    // ดึงข้อมูลทั้งหมด
     $classes = getClassesFromDB();
     $departments = getDepartmentsFromDB();
     $academicYearData = getAcademicYearsFromDB();
     $teachers = getTeachersFromDB();
+
+    // ตรวจสอบว่าดึงข้อมูลสำเร็จหรือไม่
+    if ($classes === false || $departments === false || $academicYearData === false || $teachers === false) {
+        throw new Exception("ไม่สามารถดึงข้อมูลจากฐานข้อมูลได้");
+    }
 
     // ใช้ข้อมูลตัวอย่างหากดึงข้อมูลไม่สำเร็จ
     $classes = $classes ?: getSampleClasses();
@@ -87,10 +96,27 @@ try {
         'teachers' => $teachers,
         'at_risk_count' => getAtRiskStudentCount() ?: 0
     ];
+
 } catch (Exception $e) {
     // จัดการข้อผิดพลาดที่เกิดขึ้น
     error_log('เกิดข้อผิดพลาดในการดึงข้อมูล: ' . $e->getMessage());
-    die('เกิดข้อผิดพลาดในการโหลดข้อมูล กรุณาติดต่อผู้ดูแลระบบ');
+    
+    // ใช้ข้อมูลตัวอย่างเมื่อเกิดข้อผิดพลาด
+    $data = [
+        'classes' => getSampleClasses(),
+        'departments' => getSampleDepartments(),
+        'academic_years' => getSampleAcademicYears()['academic_years'],
+        'has_new_academic_year' => false,
+        'promotion_counts' => getSamplePromotionCounts(),
+        'teachers' => getSampleTeachers(),
+        'at_risk_count' => 0
+    ];
+    
+    // แสดงข้อความแจ้งเตือน
+    echo '<div class="alert alert-warning" role="alert">
+            <i class="material-icons">warning</i>
+            เกิดข้อผิดพลาดในการดึงข้อมูล กรุณาติดต่อผู้ดูแลระบบ
+          </div>';
 }
 
 // ตรวจสอบการ submit form หรือเรียก API
@@ -128,19 +154,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $result = getClassAdvisors($_POST['class_id']);
                 break;
             default:
-                $result = ['success' => false, 'message' => 'ไม่พบการกระทำที่ระบุ'];
+                $result = ['success' => false, 'message' => 'ไม่พบ action ที่ระบุ'];
+                break;
         }
         
-        echo json_encode([
-            'status' => $result['success'] ? 'success' : 'error',
-            'message' => $result['message'] ?? '',
-            'data' => $result['data'] ?? null
-        ]);
+        echo json_encode($result);
         exit;
     } catch (Exception $e) {
+        error_log('เกิดข้อผิดพลาดในการประมวลผล: ' . $e->getMessage());
         echo json_encode([
-            'status' => 'error',
-            'message' => 'เกิดข้อผิดพลาด: ' . $e->getMessage()
+            'success' => false,
+            'message' => 'เกิดข้อผิดพลาดในการประมวลผล: ' . $e->getMessage()
         ]);
         exit;
     }

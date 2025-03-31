@@ -1,4 +1,5 @@
 <?php
+
 /**
  * students.php - หน้าจัดการข้อมูลนักเรียน
  * ระบบ STUDENT-Prasat
@@ -38,188 +39,92 @@ $filters = [
 ];
 
 // ดึงข้อมูลนักเรียนผ่าน model function
-$students = getAllStudents($filters);
-
-// ดึงข้อมูลสถิติจำนวนนักเรียน
-$student_stats = getStudentStatistics();
-
-// ดึงข้อมูลชั้นเรียนทั้งหมด
-$classes = getAllClasses();
-
-// ดึงข้อมูลแผนกวิชา
-$departments = []; // ดึงข้อมูลแผนกวิชาจากฐานข้อมูล
-try {
-    $conn = getDB();
-    $stmt = $conn->query("SELECT department_id, department_name FROM departments ORDER BY department_name");
-    $departments = $stmt->fetchAll(PDO::FETCH_ASSOC);
-} catch (PDOException $e) {
-    error_log("Error fetching departments: " . $e->getMessage());
-}
-
-// ส่งข้อมูลไปยังเทมเพลต
-$data = [
-    'students' => $students,
-    'statistics' => $student_stats,
-    'departments' => $departments,
-    'classes' => $classes
-];
-
-
-
-
-// กำหนดข้อมูลสำหรับหน้าปัจจุบัน
-$current_page = 'students';
-$page_title = 'จัดการข้อมูลนักเรียน';
-$page_header = 'จัดการข้อมูลนักเรียน';
-
-// ข้อมูลเกี่ยวกับเจ้าหน้าที่
-$admin_info = [
-    'name' => $_SESSION['user_name'] ?? 'ผู้ดูแลระบบ',
-    'role' => $_SESSION['user_role'] ?? 'เจ้าหน้าที่',
-    'initials' => mb_substr($_SESSION['user_name'] ?? 'ป', 0, 1, 'UTF-8')
-];
-
-// ปุ่มบนส่วนหัว
-$header_buttons = [
-    [
-        'text' => 'เพิ่มนักเรียนใหม่',
-        'icon' => 'person_add',
-        'onclick' => 'showAddStudentModal()'
-    ],
-    [
-        'text' => 'นำเข้าข้อมูล',
-        'icon' => 'file_upload',
-        'onclick' => 'showImportModal()'
-    ]
-];
-
-// สร้างเงื่อนไขการค้นหา
-$where_conditions = [];
-$params = [];
-
-if (isset($_GET['name']) && !empty($_GET['name'])) {
-    $where_conditions[] = "(u.first_name LIKE ? OR u.last_name LIKE ?)";
-    $search_name = '%' . $_GET['name'] . '%';
-    $params[] = $search_name;
-    $params[] = $search_name;
-}
-
-if (isset($_GET['student_code']) && !empty($_GET['student_code'])) {
-    $where_conditions[] = "s.student_code LIKE ?";
-    $params[] = '%' . $_GET['student_code'] . '%';
-}
-
-if (isset($_GET['level']) && !empty($_GET['level'])) {
-    $where_conditions[] = "c.level = ?";
-    $params[] = $_GET['level'];
-}
-
-if (isset($_GET['group_number']) && !empty($_GET['group_number'])) {
-    $where_conditions[] = "c.group_number = ?";
-    $params[] = $_GET['group_number'];
-}
-
-if (isset($_GET['department_id']) && !empty($_GET['department_id'])) {
-    $where_conditions[] = "c.department_id = ?";
-    $params[] = $_GET['department_id'];
-}
-
-if (isset($_GET['status']) && !empty($_GET['status'])) {
-    $where_conditions[] = "s.status = ?";
-    $params[] = $_GET['status'];
-}
-
-if (isset($_GET['attendance_status']) && !empty($_GET['attendance_status'])) {
-    // สร้างเงื่อนไขสำหรับสถานะการเข้าแถว (จะต้องคำนวณในภายหลัง)
-    $attendance_condition = true;
-} else {
-    $attendance_condition = false;
-}
-
-if (isset($_GET['line_status']) && !empty($_GET['line_status'])) {
-    if ($_GET['line_status'] === 'connected') {
-        $where_conditions[] = "u.line_id IS NOT NULL AND u.line_id != ''";
-    } else if ($_GET['line_status'] === 'not_connected') {
-        $where_conditions[] = "(u.line_id IS NULL OR u.line_id = '')";
-    }
-}
-
-// สร้าง SQL condition
-$sql_condition = "";
-if (!empty($where_conditions)) {
-    $sql_condition = " WHERE " . implode(" AND ", $where_conditions);
-}
-
-// ดึงข้อมูลนักเรียนจากฐานข้อมูล
-$students = [];
-
-/**
- * ส่วนของการดึงข้อมูลนักเรียนและเตรียมข้อมูลสำหรับแสดงผล
- * ให้แก้ไขในส่วนนี้ของไฟล์ students.php
- */
-
-// ให้ไปแทนที่โค้ดเดิมในส่วนการดึงข้อมูล
 $students = [];
 try {
     $conn = getDB();
     
-    // ดึงข้อมูลนักเรียน - ใช้ GROUP BY เพื่อป้องกันข้อมูลซ้ำซ้อน
-    $query = "SELECT s.student_id, s.student_code, s.status, 
-          u.title, u.first_name, u.last_name, u.line_id, u.phone_number, u.email,
-          c.level, c.group_number, c.class_id,
-          d.department_name, d.department_id,
-          (SELECT CONCAT(t.title, ' ', t.first_name, ' ', t.last_name) 
-           FROM class_advisors ca 
-           JOIN teachers t ON ca.teacher_id = t.teacher_id 
-           WHERE ca.class_id = c.class_id AND ca.is_primary = 1
-           LIMIT 1) as advisor_name,
-          IFNULL((SELECT COUNT(*) FROM attendance a WHERE a.student_id = s.student_id AND a.is_present = 1), 0) as attendance_days,
-          IFNULL((SELECT COUNT(*) FROM attendance a WHERE a.student_id = s.student_id AND a.is_present = 0), 0) as absence_days
-          FROM students s
-          JOIN users u ON s.user_id = u.user_id
-          LEFT JOIN classes c ON s.current_class_id = c.class_id
-          LEFT JOIN departments d ON c.department_id = d.department_id
-          $sql_condition
-          GROUP BY s.student_id
-          ORDER BY s.student_code";
-    
-    if (!empty($params)) {
-        $stmt = $conn->prepare($query);
-        $stmt->execute($params);
-    } else {
-        $stmt = $conn->query($query);
+    // แก้ไขคำสั่ง SQL ให้กระชับและป้องกันการซ้ำ
+    $query = "SELECT DISTINCT
+        s.student_id,
+        s.student_code,
+        s.status,
+        s.current_class_id,
+        u.title,
+        u.first_name,
+        u.last_name,
+        c.level,
+        c.group_number,
+        d.department_name
+    FROM students s
+    INNER JOIN users u ON s.user_id = u.user_id 
+    LEFT JOIN classes c ON s.current_class_id = c.class_id
+    LEFT JOIN departments d ON c.department_id = d.department_id
+    WHERE s.student_code IS NOT NULL";
+
+    // เพิ่มเงื่อนไขการค้นหา
+    if (!empty($filters['name'])) {
+        $query .= " AND (u.first_name LIKE :name OR u.last_name LIKE :name)";
     }
-    
+    if (!empty($filters['student_code'])) {
+        $query .= " AND s.student_code LIKE :student_code";
+    }
+    if (!empty($filters['level'])) {
+        $query .= " AND c.level = :level";
+    }
+    if (!empty($filters['group_number'])) {
+        $query .= " AND c.group_number = :group_number";
+    }
+    if (!empty($filters['department_id'])) {
+        $query .= " AND d.department_id = :department_id";
+    }
+    if (!empty($filters['status'])) {
+        $query .= " AND s.status = :status";
+    }
+
+    $query .= " ORDER BY s.student_code";
+
+    $stmt = $conn->prepare($query);
+
+    // Bind parameters
+    if (!empty($filters['name'])) {
+        $stmt->bindValue(':name', '%' . $filters['name'] . '%');
+    }
+    if (!empty($filters['student_code'])) {
+        $stmt->bindValue(':student_code', '%' . $filters['student_code'] . '%');
+    }
+    if (!empty($filters['level'])) {
+        $stmt->bindValue(':level', $filters['level']);
+    }
+    if (!empty($filters['group_number'])) {
+        $stmt->bindValue(':group_number', $filters['group_number']);
+    }
+    if (!empty($filters['department_id'])) {
+        $stmt->bindValue(':department_id', $filters['department_id']);
+    }
+    if (!empty($filters['status'])) {
+        $stmt->bindValue(':status', $filters['status']);
+    }
+
+    $stmt->execute();
     $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    
-    // เติมข้อมูลเพิ่มเติม
+
+    // เพิ่มข้อมูลพื้นฐานที่จำเป็น
     foreach ($students as &$student) {
-        // สร้างชื่อชั้นเรียน
-        $student['class'] = ($student['level'] ?? '') . '/' . ($student['group_number'] ?? '');
-        
-        // คำนวณอัตราการเข้าแถว
-        $total_days = $student['attendance_days'] + $student['absence_days'];
-        if ($total_days > 0) {
-            $student['attendance_rate'] = ($student['attendance_days'] / $total_days) * 100;
-        } else {
-            $student['attendance_rate'] = 100; // ถ้ายังไม่มีข้อมูลให้เป็น 100%
-        }
-        
-        // กำหนดสถานะการเข้าแถว
-        if ($student['attendance_rate'] < 60) {
-            $student['attendance_status'] = 'เสี่ยงตกกิจกรรม';
-        } elseif ($student['attendance_rate'] < 75) {
-            $student['attendance_status'] = 'ต้องระวัง';
-        } else {
-            $student['attendance_status'] = 'ปกติ';
-        }
-        
-        // ตรวจสอบการเชื่อมต่อกับ LINE
-        $student['line_connected'] = !empty($student['line_id']);
+        $student['class'] = ($student['level'] ? $student['level'] : '-') . '/' . 
+                           ($student['group_number'] ? $student['group_number'] : '-');
+        $student['attendance_rate'] = 100;
+        $student['attendance_status'] = 'ปกติ';
+        $student['line_connected'] = false;
     }
+
+    // Debug ข้อมูล
+    // echo "<pre>";
+    // print_r($students);
+    // echo "</pre>";
+
 } catch (PDOException $e) {
-    // บันทึกข้อผิดพลาด
     error_log("Error fetching students: " . $e->getMessage());
+    $students = [];
 }
 
 // ดึงข้อมูลแผนกวิชาทั้งหมด
@@ -274,13 +179,13 @@ $student_stats = [
 
 try {
     $conn = getDB();
-    
+
     // ดึงจำนวนนักเรียนทั้งหมดที่กำลังศึกษา
     $queryTotal = "SELECT COUNT(*) as total FROM students WHERE status = 'กำลังศึกษา'";
     $stmtTotal = $conn->prepare($queryTotal);
     $stmtTotal->execute();
     $student_stats['total'] = $stmtTotal->fetch(PDO::FETCH_ASSOC)['total'] ?? 0;
-    
+
     // ดึงจำนวนนักเรียนชาย
     $queryMale = "SELECT COUNT(*) as male 
                 FROM students s 
@@ -289,7 +194,7 @@ try {
     $stmtMale = $conn->prepare($queryMale);
     $stmtMale->execute();
     $student_stats['male'] = $stmtMale->fetch(PDO::FETCH_ASSOC)['male'] ?? 0;
-    
+
     // ดึงจำนวนนักเรียนหญิง
     $queryFemale = "SELECT COUNT(*) as female 
                   FROM students s 
@@ -298,13 +203,12 @@ try {
     $stmtFemale = $conn->prepare($queryFemale);
     $stmtFemale->execute();
     $student_stats['female'] = $stmtFemale->fetch(PDO::FETCH_ASSOC)['female'] ?? 0;
-    
+
     // ดึงจำนวนนักเรียนที่เสี่ยงตกกิจกรรม
     $queryRisk = "SELECT COUNT(*) as risk FROM risk_students WHERE risk_level IN ('high', 'critical')";
     $stmtRisk = $conn->prepare($queryRisk);
     $stmtRisk->execute();
     $student_stats['risk'] = $stmtRisk->fetch(PDO::FETCH_ASSOC)['risk'] ?? 0;
-    
 } catch (PDOException $e) {
     error_log("Error fetching student statistics: " . $e->getMessage());
 }
@@ -312,32 +216,51 @@ try {
 
 // ใน students.php - ปรับปรุงส่วนการเพิ่มนักเรียน
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'add') {
-    // ตรวจสอบข้อมูลที่จำเป็น
     if (empty($_POST['student_code']) || empty($_POST['firstname']) || empty($_POST['lastname']) || empty($_POST['title'])) {
         $error_message = "กรุณากรอกข้อมูลให้ครบถ้วน";
     } else {
         try {
-            // เรียกใช้ฟังก์ชัน addStudent จาก model
-            $result = addStudent([
-                'student_code' => trim($_POST['student_code']),
-                'title' => $_POST['title'],
-                'firstname' => $_POST['firstname'],
-                'lastname' => $_POST['lastname'],
-                'phone_number' => $_POST['phone_number'] ?? '',
-                'email' => $_POST['email'] ?? '',
-                'class_id' => $_POST['class_id'] ?? null,
-                'status' => $_POST['status'] ?? 'กำลังศึกษา'
-            ]);
+            $conn = getDB();
             
-            if ($result['success']) {
-                // สร้าง session message สำหรับแสดงข้อความแจ้งเตือน
-                $_SESSION['success_message'] = $result['message'];
-                header("Location: students.php?success=add");
-                exit;
-            } else {
-                $error_message = $result['message'];
+            // ตรวจสอบรหัสนักเรียนซ้ำ
+            $checkStmt = $conn->prepare("SELECT COUNT(*) FROM students WHERE student_code = ?");
+            $checkStmt->execute([trim($_POST['student_code'])]);
+            if ($checkStmt->fetchColumn() > 0) {
+                throw new Exception("รหัสนักเรียนนี้มีในระบบแล้ว");
             }
+
+            $conn->beginTransaction();
+
+            // 1. สร้าง user ก่อน
+            $userSql = "INSERT INTO users (title, first_name, last_name, role, created_at) 
+                       VALUES (?, ?, ?, 'student', NOW())";
+            $userStmt = $conn->prepare($userSql);
+            $userStmt->execute([
+                $_POST['title'],
+                $_POST['firstname'],
+                $_POST['lastname']
+            ]);
+            $userId = $conn->lastInsertId();
+
+            // 2. สร้าง student
+            $studentSql = "INSERT INTO students (user_id, student_code, current_class_id, status, created_at) 
+                          VALUES (?, ?, ?, 'กำลังศึกษา', NOW())";
+            $studentStmt = $conn->prepare($studentSql);
+            $studentStmt->execute([
+                $userId,
+                trim($_POST['student_code']),
+                $_POST['class_id'] ?? null
+            ]);
+
+            $conn->commit();
+            $_SESSION['success_message'] = "เพิ่มข้อมูลนักเรียนเรียบร้อยแล้ว";
+            header("Location: students.php?success=add");
+            exit;
+
         } catch (Exception $e) {
+            if ($conn->inTransaction()) {
+                $conn->rollBack();
+            }
             $error_message = "เกิดข้อผิดพลาด: " . $e->getMessage();
             error_log("Error adding student: " . $e->getMessage());
         }
@@ -363,7 +286,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 'class_id' => $_POST['class_id'] ?? null,
                 'status' => $_POST['status'] ?? 'กำลังศึกษา'
             ]);
-            
+
             if ($result['success']) {
                 $_SESSION['success_message'] = $result['message'];
                 header("Location: students.php?success=edit");
@@ -386,7 +309,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         try {
             // เรียกใช้ฟังก์ชัน deleteStudent จาก model
             $result = deleteStudent($_POST['student_id']);
-            
+
             if ($result['success']) {
                 $_SESSION['success_message'] = $result['message'];
                 header("Location: students.php?success=delete");
@@ -446,4 +369,3 @@ require_once 'templates/header.php';
 require_once 'templates/sidebar.php';
 require_once 'templates/main_content.php';
 require_once 'templates/footer.php';
-?>

@@ -215,54 +215,64 @@
                 </tr>
             </thead>
             <tbody>
-                <?php foreach ($data['students'] as $student): ?>
+                <?php 
+                // สร้าง array เก็บรหัสนักเรียนที่แสดงผลไปแล้ว
+                $displayed_students = [];
+                
+                foreach ($data['students'] as $student):
+                    // ข้ามถ้าเคยแสดงรหัสนักเรียนนี้ไปแล้ว
+                    if (in_array($student['student_code'], $displayed_students)) {
+                        continue;
+                    }
+                    // เพิ่มรหัสนักเรียนที่กำลังจะแสดงลงใน array
+                    $displayed_students[] = $student['student_code'];
+                ?>
                     <tr>
-                        <td><?php echo $student['student_code']; ?></td>
+                        <td><?php echo htmlspecialchars($student['student_code']); ?></td>
                         <td>
                             <div class="student-info">
                                 <div class="student-avatar">
-                                    <?php echo mb_substr($student['first_name'], 0, 1, 'UTF-8'); ?>
+                                    <?php echo strtoupper(substr($student['first_name'], 0, 1)); ?>
                                 </div>
-                                <div class="student-details">
-                                    <div class="student-name"><?php echo $student['title'] . $student['first_name'] . ' ' . $student['last_name']; ?></div>
-                                    <div class="student-class"><?php echo $student['status']; ?></div>
+                                <div class="student-name">
+                                    <?php 
+                                    echo htmlspecialchars($student['title'] . ' ' . 
+                                         $student['first_name'] . ' ' . 
+                                         $student['last_name']); 
+                                    ?>
+                                    <div class="student-status">กำลังศึกษา</div>
                                 </div>
                             </div>
                         </td>
-                        <td><?php echo $student['class']; ?></td>
-                        <td><?php echo $student['department_name'] ?? '-'; ?></td>
+                        <td><?php echo htmlspecialchars($student['class']); ?></td>
+                        <td><?php echo htmlspecialchars($student['department_name'] ?? '-'); ?></td>
                         <td>
-                            <?php if (isset($student['line_connected']) && $student['line_connected']): ?>
-                                <span class="status-badge success">เชื่อมต่อแล้ว</span>
-                            <?php else: ?>
-                                <button class="btn btn-sm btn-outline-primary" onclick="generateLineQR(<?php echo $student['student_id']; ?>)">สร้าง QR</button>
-                            <?php endif; ?>
+                            <button class="btn btn-line" onclick="generateLineQR('<?php echo $student['student_id']; ?>')">
+                                สร้าง QR
+                            </button>
                         </td>
-                        <td><?php echo number_format($student['attendance_rate'], 1); ?>%</td>
                         <td>
-                            <?php
-                            $status_class = '';
-                            if (isset($student['attendance_status'])) {
-                                if ($student['attendance_status'] === 'เสี่ยงตกกิจกรรม') {
-                                    $status_class = 'danger';
-                                } elseif ($student['attendance_status'] === 'ต้องระวัง') {
-                                    $status_class = 'warning';
-                                } else {
-                                    $status_class = 'success';
-                                }
-                            }
-                            ?>
-                            <span class="status-badge <?php echo $status_class; ?>"><?php echo $student['attendance_status'] ?? 'ไม่มีข้อมูล'; ?></span>
+                            <div class="attendance-rate">
+                                <div class="progress">
+                                    <div class="progress-bar" style="width: <?php echo $student['attendance_rate']; ?>%"></div>
+                                </div>
+                                <span><?php echo number_format($student['attendance_rate'], 1); ?>%</span>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="status-badge <?php echo strtolower($student['status']); ?>">
+                                <?php echo htmlspecialchars($student['status']); ?>
+                            </span>
                         </td>
                         <td>
                             <div class="action-buttons">
-                                <button class="btn btn-sm btn-info" title="ดูข้อมูล" onclick="viewStudent(<?php echo $student['student_id']; ?>)">
+                                <button class="btn btn-icon btn-info" onclick="viewStudent('<?php echo $student['student_id']; ?>')" title="ดูข้อมูล">
                                     <span class="material-icons">visibility</span>
                                 </button>
-                                <button class="btn btn-sm btn-warning" title="แก้ไข" onclick="editStudent(<?php echo $student['student_id']; ?>)">
+                                <button class="btn btn-icon btn-warning" onclick="editStudent('<?php echo $student['student_id']; ?>')" title="แก้ไข">
                                     <span class="material-icons">edit</span>
                                 </button>
-                                <button class="btn btn-sm btn-danger" title="ลบ" onclick="deleteStudent(<?php echo $student['student_id']; ?>, '<?php echo htmlspecialchars($student['title'] . $student['first_name'] . ' ' . $student['last_name']); ?>')">
+                                <button class="btn btn-icon btn-danger" onclick="deleteStudent('<?php echo $student['student_id']; ?>', '<?php echo htmlspecialchars($student['first_name'] . ' ' . $student['last_name']); ?>')" title="ลบ">
                                     <span class="material-icons">delete</span>
                                 </button>
                             </div>

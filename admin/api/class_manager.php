@@ -1056,97 +1056,70 @@ function manageAdvisors($data) {
     global $db;
     
     try {
-        if (empty($data['class_id']) || !isset($data['changes']) || !is_array($data['changes'])) {
-            return ['success' => false, 'message' => 'ข้อมูลไม่ถูกต้อง'];
-        }
-        
         $class_id = $data['class_id'];
         $changes = $data['changes'];
         
+        if (empty($class_id) || !is_array($changes)) {
+            return ['success' => false, 'message' => 'ข้อมูลไม่ถูกต้อง'];
+        }
+        
         $db->beginTransaction();
         
+        // ดำเนินการเปลี่ยนแปลงทีละรายการ
         foreach ($changes as $change) {
-            if (!isset($change['action']) || !isset($change['teacher_id'])) {
-                continue;
-            }
-            
             $teacher_id = $change['teacher_id'];
             
             switch ($change['action']) {
                 case 'add':
-                    // ตรวจสอบว่าครูนี้เป็นที่ปรึกษาของห้องนี้แล้วหรือไม่
-                    $checkQuery = "SELECT COUNT(*) FROM class_advisors 
-                                  WHERE class_id = :class_id AND teacher_id = :teacher_id";
-                    $checkStmt = $db->prepare($checkQuery);
-                    $checkStmt->bindParam(':class_id', $class_id, PDO::PARAM_INT);
-                    $checkStmt->bindParam(':teacher_id', $teacher_id, PDO::PARAM_INT);
-                    $checkStmt->execute();
-                    $count = $checkStmt->fetchColumn();
-                    
-                    if ($count == 0) {
-                        // ถ้าเพิ่มครูที่ปรึกษาหลัก ต้องยกเลิกครูที่ปรึกษาหลักคนเดิมก่อน
-                        if (isset($change['is_primary']) && $change['is_primary']) {
-                            $resetQuery = "UPDATE class_advisors SET is_primary = 0 
-                                          WHERE class_id = :class_id AND is_primary = 1";
-                            $resetStmt = $db->prepare($resetQuery);
-                            $resetStmt->bindParam(':class_id', $class_id, PDO::PARAM_INT);
-                            $resetStmt->execute();
-                        }
-                        
-                        // เพิ่มครูที่ปรึกษา
-                        $addQuery = "INSERT INTO class_advisors (class_id, teacher_id, is_primary) 
-                                    VALUES (:class_id, :teacher_id, :is_primary)";
-                        $addStmt = $db->prepare($addQuery);
-                        $addStmt->bindParam(':class_id', $class_id, PDO::PARAM_INT);
-                        $addStmt->bindParam(':teacher_id', $teacher_id, PDO::PARAM_INT);
-                        $is_primary = isset($change['is_primary']) && $change['is_primary'] ? 1 : 0;
-                        $addStmt->bindParam(':is_primary', $is_primary, PDO::PARAM_INT);
-                        $addStmt->execute();
-                    }
+                    // เพิ่มครูที่ปรึกษา
+                    $stmt = $db->prepare("INSERT INTO class_advisors (class_id, teacher_id, is_primary) VALUES (:class_id, :teacher_id, :is_primary)");
+                    $stmt->execute([
+                        ':class_id' => $class_id,
+                        ':teacher_id' => $teacher_id,
+                        ':is_primary' => isset($change['is_primary']) && $change['is_primary'] ? 1 : 0
+                    ]);
                     break;
                     
                 case 'remove':
                     // ลบครูที่ปรึกษา
-                    $removeQuery = "DELETE FROM class_advisors 
-                                   WHERE class_id = :class_id AND teacher_id = :teacher_id";
-                    $removeStmt = $db->prepare($removeQuery);
-                    $removeStmt->bindParam(':class_id', $class_id, PDO::PARAM_INT);
-                    $removeStmt->bindParam(':teacher_id', $teacher_id, PDO::PARAM_INT);
-                    $removeStmt->execute();
+                    $stmt = $db->prepare("DELETE FROM class_advisors WHERE class_id = :class_id AND teacher_id = :teacher_id");
+                    $stmt->execute([
+                        ':class_id' => $class_id,
+                        ':teacher_id' => $teacher_id
+                    ]);
                     break;
                     
                 case 'set_primary':
-                    // ยกเลิกครูที่ปรึกษาหลักคนเดิม
-                    $resetQuery = "UPDATE class_advisors SET is_primary = 0 
-                                  WHERE class_id = :class_id";
-                    $resetStmt = $db->prepare($resetQuery);
-                    $resetStmt->bindParam(':class_id', $class_id, PDO::PARAM_INT);
-                    $resetStmt->execute();
+                    // ยกเลิกที่ปรึกษาหลักคนเดิม
+                    $stmt = $db->prepare("UPDATE class_advisors SET is_primary = 0 WHERE class_id = :class_id");
+                    $stmt->execute([':class_id' => $class_id]);
                     
-                    // ตั้งครูคนนี้เป็นที่ปรึกษาหลัก
-                    $setPrimaryQuery = "UPDATE class_advisors SET is_primary = 1 
-                                       WHERE class_id = :class_id AND teacher_id = :teacher_id";
-                    $setPrimaryStmt = $db->prepare($setPrimaryQuery);
-                    $setPrimaryStmt->bindParam(':class_id', $class_id, PDO::PARAM_INT);
-                    $setPrimaryStmt->bindParam(':teacher_id', $teacher_id, PDO::PARAM_INT);
-                    $setPrimaryStmt->execute();
+                    // ตั้งเป็นที่ปรึกษาหลัก
+                    $stmt = $db->prepare("UPDATE class_advisors SET is_primary = 1 WHERE class_id = :class_id AND teacher_id = :teacher_id");
+                    $stmt->execute([
+                        ':class_id' => $class_id,
+                        ':teacher_id' => $teacher_id
+                    ]);
                     break;
             }
         }
         
-        // บันทึกการดำเนินการในตาราง admin_actions
-        $admin_id = $_SESSION['user_id'] ?? 1;
-        $details = json_encode([
-            'class_id' => $class_id,
-            'changes' => $changes
-        ], JSON_UNESCAPED_UNICODE);
-        
-        $actionQuery = "INSERT INTO admin_actions (admin_id, action_type, action_details) 
-                       VALUES (:admin_id, 'manage_advisors', :details)";
-        $actionStmt = $db->prepare($actionQuery);
-        $actionStmt->bindParam(':admin_id', $admin_id, PDO::PARAM_INT);
-        $actionStmt->bindParam(':details', $details, PDO::PARAM_STR);
-        $actionStmt->execute();
+        // บันทึกประวัติการกระทำ
+        session_start();
+        if (isset($_SESSION['user_id'])) {
+            $details = json_encode([
+                'class_id' => $class_id,
+                'changes' => $changes
+            ], JSON_UNESCAPED_UNICODE);
+            
+            $actionQuery = "INSERT INTO admin_actions (admin_id, action_type, action_details) 
+                           VALUES (:admin_id, 'manage_advisors', :details)";
+            $actionStmt = $db->prepare($actionQuery);
+            $actionStmt->execute([
+                ':admin_id' => $_SESSION['user_id'],
+                ':details' => $details
+            ]);
+        }
         
         $db->commit();
         

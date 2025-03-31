@@ -18,34 +18,34 @@ function getAllStudents($filters = []) {
         $where_conditions = [];
         $params = [];
         
-        if (isset($filters['name']) && !empty($filters['name'])) {
+        if (!empty($filters['name'])) {
             $where_conditions[] = "(u.first_name LIKE ? OR u.last_name LIKE ?)";
             $search_name = '%' . $filters['name'] . '%';
             $params[] = $search_name;
             $params[] = $search_name;
         }
         
-        if (isset($filters['student_code']) && !empty($filters['student_code'])) {
+        if (!empty($filters['student_code'])) {
             $where_conditions[] = "s.student_code LIKE ?";
             $params[] = '%' . $filters['student_code'] . '%';
         }
         
-        if (isset($filters['level']) && !empty($filters['level'])) {
+        if (!empty($filters['level'])) {
             $where_conditions[] = "c.level = ?";
             $params[] = $filters['level'];
         }
         
-        if (isset($filters['group_number']) && !empty($filters['group_number'])) {
+        if (!empty($filters['group_number'])) {
             $where_conditions[] = "c.group_number = ?";
             $params[] = $filters['group_number'];
         }
         
-        if (isset($filters['department_id']) && !empty($filters['department_id'])) {
+        if (!empty($filters['department_id'])) {
             $where_conditions[] = "c.department_id = ?";
             $params[] = $filters['department_id'];
         }
         
-        if (isset($filters['status']) && !empty($filters['status'])) {
+        if (!empty($filters['status'])) {
             $where_conditions[] = "s.status = ?";
             $params[] = $filters['status'];
         }
@@ -64,24 +64,37 @@ function getAllStudents($filters = []) {
             $sql_condition = " WHERE " . implode(" AND ", $where_conditions);
         }
         
-        // ดึงข้อมูลนักเรียน
-        $query = "SELECT DISTINCT s.student_id, s.student_code, s.status, 
-                 u.title, u.first_name, u.last_name, u.line_id, u.phone_number, u.email, u.user_id,
-                 c.level, c.group_number, c.class_id, c.academic_year_id,
-                 d.department_name, d.department_id,
-                 (SELECT CONCAT(t.title, ' ', t.first_name, ' ', t.last_name) 
-                  FROM class_advisors ca 
-                  JOIN teachers t ON ca.teacher_id = t.teacher_id 
-                  WHERE ca.class_id = c.class_id AND ca.is_primary = 1
-                  LIMIT 1) as advisor_name,
-                 IFNULL((SELECT COUNT(*) FROM attendance a WHERE a.student_id = s.student_id AND a.is_present = 1), 0) as attendance_days,
-                 IFNULL((SELECT COUNT(*) FROM attendance a WHERE a.student_id = s.student_id AND a.is_present = 0), 0) as absence_days
-                 FROM students s
-                 JOIN users u ON s.user_id = u.user_id
-                 LEFT JOIN classes c ON s.current_class_id = c.class_id
-                 LEFT JOIN departments d ON c.department_id = d.department_id
-                 $sql_condition
-                 ORDER BY s.student_code";
+        // คำสั่ง SQL หลัก
+        $query = "SELECT DISTINCT 
+            s.student_id,
+            s.student_code,
+            s.status,
+            u.title,
+            u.first_name,
+            u.last_name,
+            u.line_id,
+            u.phone_number,
+            u.email,
+            c.level,
+            c.group_number,
+            c.class_id,
+            d.department_name,
+            d.department_id,
+            (SELECT CONCAT(t.title, ' ', t.first_name, ' ', t.last_name)
+             FROM class_advisors ca
+             JOIN teachers t ON ca.teacher_id = t.teacher_id
+             WHERE ca.class_id = c.class_id AND ca.is_primary = 1
+             LIMIT 1) as advisor_name,
+            (SELECT COUNT(*) FROM attendance a 
+             WHERE a.student_id = s.student_id AND a.is_present = 1) as attendance_days,
+            (SELECT COUNT(*) FROM attendance a 
+             WHERE a.student_id = s.student_id AND a.is_present = 0) as absence_days
+        FROM students s
+        LEFT JOIN users u ON s.user_id = u.user_id
+        LEFT JOIN classes c ON s.current_class_id = c.class_id
+        LEFT JOIN departments d ON c.department_id = d.department_id
+        $sql_condition
+        ORDER BY s.student_code";
         
         if (!empty($params)) {
             $stmt = $conn->prepare($query);
@@ -92,18 +105,15 @@ function getAllStudents($filters = []) {
         
         $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
-        // เติมข้อมูลเพิ่มเติม
+        // เพิ่มข้อมูลเพิ่มเติม
         foreach ($students as &$student) {
             // สร้างชื่อชั้นเรียน
             $student['class'] = ($student['level'] ?? '') . '/' . ($student['group_number'] ?? '');
             
             // คำนวณอัตราการเข้าแถว
             $total_days = $student['attendance_days'] + $student['absence_days'];
-            if ($total_days > 0) {
-                $student['attendance_rate'] = ($student['attendance_days'] / $total_days) * 100;
-            } else {
-                $student['attendance_rate'] = 100; // ถ้ายังไม่มีข้อมูลให้เป็น 100%
-            }
+            $student['attendance_rate'] = ($total_days > 0) ? 
+                ($student['attendance_days'] / $total_days) * 100 : 100;
             
             // กำหนดสถานะการเข้าแถว
             if ($student['attendance_rate'] < 60) {
@@ -130,7 +140,7 @@ function getAllStudents($filters = []) {
         
         return $students;
     } catch (PDOException $e) {
-        error_log("Error fetching students: " . $e->getMessage());
+        error_log("Error in getAllStudents: " . $e->getMessage());
         return [];
     }
 }
