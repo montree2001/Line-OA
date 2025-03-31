@@ -1,502 +1,449 @@
 
-        /* ตั้งค่าพื้นฐาน */
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Prompt', sans-serif;
-        }
-        
-        body {
-            background-color: #f5f5f5;
-            color: #333;
-            font-size: 16px;
-            line-height: 1.5;
-        }
-        
-        /* ส่วนหัว */
-        .header {
-            background-color: #06c755;
-            color: white;
-            padding: 15px 20px;
-            text-align: center;
-            position: fixed;
-            top: 0;
-            width: 100%;
-            z-index: 1000;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .app-name {
-            font-size: 20px;
-            font-weight: 600;
-        }
-        
-        .header-icons {
-            display: flex;
-            gap: 15px;
-        }
-        
-        .container {
-            max-width: 600px;
-            margin: 70px auto 80px;
-            padding: 15px;
-        }
-        
-        /* การ์ดแจ้งเตือน */
-        .alert-card {
-            background-color: #fff8e1;
-            border-left: 4px solid #ffc107;
-            border-radius: 10px;
-            padding: 15px;
-            margin-bottom: 20px;
-            display: flex;
-            align-items: center;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        }
-        
-        .alert-icon {
-            color: #ffc107;
-            margin-right: 15px;
-        }
-        
-        .alert-content {
-            flex: 1;
-        }
-        
-        .alert-title {
-            font-weight: 600;
-            margin-bottom: 5px;
-        }
-        
-        .alert-message {
-            font-size: 14px;
-            color: #666;
-        }
-        
-        /* โปรไฟล์และสถิติ */
-        .profile-card {
-            background-color: white;
-            border-radius: 15px;
-            padding: 20px;
-            margin-bottom: 20px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        }
-        
-        .profile-header {
-            display: flex;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-        
-        .profile-image {
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
-            background-color: #06c755;
-            margin-right: 15px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-size: 24px;
-            font-weight: bold;
-        }
-        
-        .profile-info {
-            flex: 1;
-        }
-        
-        .profile-name {
-            font-size: 18px;
-            font-weight: bold;
-            margin-bottom: 5px;
-        }
-        
-        .profile-details {
-            font-size: 14px;
-            color: #666;
-        }
-        
-        .profile-status {
-            display: inline-block;
-            padding: 5px 10px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 600;
-            margin-top: 5px;
-        }
-        
-        .status-present {
-            background-color: #e8f5e9;
-            color: #4caf50;
-            display: flex;
-            align-items: center;
-        }
-        
-        .status-absent {
-            background-color: #ffebee;
-            color: #f44336;
-            display: flex;
-            align-items: center;
-        }
-        
-        .status-present .material-icons, .status-absent .material-icons {
-            font-size: 16px;
-            margin-right: 5px;
-        }
-        
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 10px;
-            border-top: 1px solid #f0f0f0;
-            padding-top: 20px;
-        }
-        
-        .stat-box {
-            text-align: center;
-        }
-        
-        .stat-value {
-            font-size: 24px;
-            font-weight: bold;
-            margin-bottom: 5px;
-        }
-        
-        .stat-value.good {
-            color: #4caf50;
-        }
-        
-        .stat-value.warning {
-            color: #ff9800;
-        }
-        
-        .stat-value.danger {
-            color: #f44336;
-        }
-        
-        .stat-label {
-            font-size: 12px;
-            color: #666;
-        }
-        
-        /* ปุ่มเช็คชื่อ */
-        .check-in-button {
-            background-color: #06c755;
-            color: white;
-            border: none;
-            border-radius: 15px;
-            padding: 15px;
-            font-size: 16px;
-            font-weight: bold;
-            width: 100%;
-            margin-bottom: 20px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-            transition: transform 0.2s;
-        }
-        
-        .check-in-button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-        }
-        
-        .check-in-button .material-icons {
-            margin-right: 10px;
-        }
-        
-        /* การ์ดกิจกรรมและประกาศ */
-        .card {
-            background-color: white;
-            border-radius: 15px;
-            padding: 20px;
-            margin-bottom: 20px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        }
-        
-        .card-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-        }
-        
-        .card-title {
-            font-size: 18px;
-            font-weight: bold;
-            display: flex;
-            align-items: center;
-        }
-        
-        .card-title .material-icons {
-            margin-right: 8px;
-            color: #06c755;
-        }
-        
-        .view-all {
-            font-size: 14px;
-            color: #06c755;
-            text-decoration: none;
-            font-weight: 500;
-        }
-        
-        /* ประวัติการเช็คชื่อ */
-        .history-list {
-            list-style: none;
-        }
-        
-        .history-item {
-            padding: 12px 0;
-            border-bottom: 1px solid #f0f0f0;
-            display: flex;
-        }
-        
-        .history-item:last-child {
-            border-bottom: none;
-        }
-        
-        .history-date {
-            width: 40px;
-            height: 40px;
-            background-color: #f5f5f5;
-            border-radius: 10px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            margin-right: 15px;
-        }
-        
-        .history-day {
-            font-weight: bold;
-            font-size: 16px;
-        }
-        
-        .history-month {
-            font-size: 10px;
-            color: #666;
-        }
-        
-        .history-content {
-            flex: 1;
-        }
-        
-        .history-status {
-            display: flex;
-            align-items: center;
-            margin-bottom: 3px;
-        }
-        
-        .status-dot {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            margin-right: 8px;
-        }
-        
-        .status-dot.present {
-            background-color: #4caf50;
-        }
-        
-        .status-dot.absent {
-            background-color: #f44336;
-        }
-        
-        .history-status-text {
-            font-weight: 500;
-        }
-        
-        .history-time {
-            font-size: 12px;
-            color: #666;
-        }
-        
-        .history-method {
-            display: flex;
-            align-items: center;
-            font-size: 12px;
-            color: #666;
-            margin-top: 3px;
-        }
-        
-        .history-method .material-icons {
-            font-size: 14px;
-            margin-right: 5px;
-        }
-        
-        /* ประกาศจากโรงเรียน */
-        .announcement-list {
-            list-style: none;
-        }
-        
-        .announcement-item {
-            padding: 12px 0;
-            border-bottom: 1px solid #f0f0f0;
-        }
-        
-        .announcement-item:last-child {
-            border-bottom: none;
-        }
-        
-        .announcement-title {
-            font-weight: 500;
-            margin-bottom: 5px;
-            display: flex;
-            align-items: center;
-        }
-        
-        .announcement-badge {
-            display: inline-block;
-            padding: 2px 8px;
-            border-radius: 10px;
-            font-size: 10px;
-            font-weight: 600;
-            margin-right: 8px;
-        }
-        
-        .badge-urgent {
-            background-color: #ffebee;
-            color: #f44336;
-        }
-        
-        .badge-info {
-            background-color: #e3f2fd;
-            color: #2196f3;
-        }
-        
-        .badge-event {
-            background-color: #e8f5e9;
-            color: #4caf50;
-        }
-        
-        .announcement-content {
-            font-size: 13px;
-            color: #666;
-            margin-bottom: 5px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
-        }
-        
-        .announcement-date {
-            font-size: 12px;
-            color: #999;
-            display: flex;
-            align-items: center;
-        }
-        
-        .announcement-date .material-icons {
-            font-size: 14px;
-            margin-right: 5px;
-        }
-        
-        /* แถบนำทางด้านล่าง */
-        .bottom-nav {
-            position: fixed;
-            bottom: 0;
-            width: 100%;
-            background-color: white;
-            display: flex;
-            justify-content: space-around;
-            padding: 10px 0;
-            box-shadow: 0 -2px 5px rgba(0,0,0,0.1);
-            z-index: 1000;
-        }
-        
-        .nav-item {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            font-size: 12px;
-            color: #666;
-            text-decoration: none;
-        }
-        
-        .nav-item.active {
-            color: #06c755;
-        }
-        
-        .nav-icon {
-            font-size: 24px;
-            margin-bottom: 5px;
-        }
-        
-        /* ไอคอนจาก Material Icons */
-        .material-icons {
-            font-family: 'Material Icons';
-            font-weight: normal;
-            font-style: normal;
-            font-size: 24px;
-            line-height: 1;
-            letter-spacing: normal;
-            text-transform: none;
-            display: inline-block;
-            white-space: nowrap;
-            word-wrap: normal;
-            direction: ltr;
-            -webkit-font-feature-settings: 'liga';
-            -webkit-font-smoothing: antialiased;
-        }
-  /**
- * student-home.css - CSS เฉพาะสำหรับหน้าหลักของนักเรียน
- */
+/* ตั้งค่าพื้นฐาน */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Prompt', sans-serif;
+}
 
-/* ปรับปรุงการแสดงผลเฉพาะหน้าหลัก */
+body {
+    background-color: #f5f5f5;
+    color: #333;
+    font-size: 16px;
+    line-height: 1.5;
+}
+
+/* ส่วนหัว */
+.header {
+    background-color: #06c755;
+    color: white;
+    padding: 15px 20px;
+    text-align: center;
+    position: fixed;
+    top: 0;
+    width: 100%;
+    z-index: 1000;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.app-name {
+    font-size: 20px;
+    font-weight: 600;
+}
+
+.header-icons {
+    display: flex;
+    gap: 15px;
+}
+
+.container {
+    max-width: 600px;
+    margin: 70px auto 80px;
+    padding: 15px;
+}
+
+/* การ์ดแจ้งเตือน */
+.alert-card {
+    background-color: #fff8e1;
+    border-left: 4px solid #ffc107;
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.alert-icon {
+    color: #ffc107;
+    margin-right: 15px;
+}
+
+.alert-content {
+    flex: 1;
+}
+
+.alert-title {
+    font-weight: 600;
+    margin-bottom: 5px;
+}
+
+.alert-message {
+    font-size: 14px;
+    color: #666;
+}
+
+/* โปรไฟล์และสถิติ */
+.profile-card {
+    background-color: white;
+    border-radius: 15px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.profile-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.profile-image {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background-color: #06c755;
+    margin-right: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 24px;
+    font-weight: bold;
+}
+
+.profile-info {
+    flex: 1;
+}
+
+.profile-name {
+    font-size: 18px;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.profile-details {
+    font-size: 14px;
+    color: #666;
+}
+
 .profile-status {
-    margin-top: 8px;
-}
-
-.check-in-button {
+    display: inline-block;
+    padding: 5px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
     margin-top: 5px;
-    transition: all 0.3s ease;
 }
 
-.check-in-button:active {
-    transform: scale(0.98);
+.status-present {
+    background-color: #e8f5e9;
+    color: #4caf50;
+    display: flex;
+    align-items: center;
 }
 
-/* การ์ดประกาศ */
+.status-absent {
+    background-color: #ffebee;
+    color: #f44336;
+    display: flex;
+    align-items: center;
+}
+
+.status-present .material-icons, .status-absent .material-icons {
+    font-size: 16px;
+    margin-right: 5px;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    border-top: 1px solid #f0f0f0;
+    padding-top: 20px;
+}
+
+.stat-box {
+    text-align: center;
+}
+
+.stat-value {
+    font-size: 24px;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.stat-value.good {
+    color: #4caf50;
+}
+
+.stat-value.warning {
+    color: #ff9800;
+}
+
+.stat-value.danger {
+    color: #f44336;
+}
+
+.stat-label {
+    font-size: 12px;
+    color: #666;
+}
+
+/* ปุ่มเช็คชื่อ */
+.check-in-button {
+    background-color: #06c755;
+    color: white;
+    border: none;
+    border-radius: 15px;
+    padding: 15px;
+    font-size: 16px;
+    font-weight: bold;
+    width: 100%;
+    margin-bottom: 20px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    transition: transform 0.2s;
+}
+
+.check-in-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+}
+
+.check-in-button .material-icons {
+    margin-right: 10px;
+}
+
+/* การ์ดกิจกรรมและประกาศ */
+.card {
+    background-color: white;
+    border-radius: 15px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.card-title {
+    font-size: 18px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+}
+
+.card-title .material-icons {
+    margin-right: 8px;
+    color: #06c755;
+}
+
+.view-all {
+    font-size: 14px;
+    color: #06c755;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+/* ประวัติการเช็คชื่อ */
+.history-list {
+    list-style: none;
+}
+
+.history-item {
+    padding: 12px 0;
+    border-bottom: 1px solid #f0f0f0;
+    display: flex;
+}
+
+.history-item:last-child {
+    border-bottom: none;
+}
+
+.history-date {
+    width: 40px;
+    height: 40px;
+    background-color: #f5f5f5;
+    border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    margin-right: 15px;
+}
+
+.history-day {
+    font-weight: bold;
+    font-size: 16px;
+}
+
+.history-month {
+    font-size: 10px;
+    color: #666;
+}
+
+.history-content {
+    flex: 1;
+}
+
+.history-status {
+    display: flex;
+    align-items: center;
+    margin-bottom: 3px;
+}
+
+.status-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-right: 8px;
+}
+
+.status-dot.present {
+    background-color: #4caf50;
+}
+
+.status-dot.absent {
+    background-color: #f44336;
+}
+
+.history-status-text {
+    font-weight: 500;
+}
+
+.history-time {
+    font-size: 12px;
+    color: #666;
+}
+
+.history-method {
+    display: flex;
+    align-items: center;
+    font-size: 12px;
+    color: #666;
+    margin-top: 3px;
+}
+
+.history-method .material-icons {
+    font-size: 14px;
+    margin-right: 5px;
+}
+
+/* ประกาศจากโรงเรียน */
 .announcement-list {
-    max-height: 300px;
-    overflow-y: auto;
+    list-style: none;
 }
 
 .announcement-item {
-    transition: background-color 0.2s;
-    border-radius: 5px;
-    padding: 12px 8px;
+    padding: 12px 0;
+    border-bottom: 1px solid #f0f0f0;
 }
 
-.announcement-item:hover {
-    background-color: var(--bg-light);
-    cursor: pointer;
+.announcement-item:last-child {
+    border-bottom: none;
 }
 
-/* ปรับเวลาบนมือถือ */
-@media (max-width: 480px) {
-    .profile-header {
-        align-items: flex-start;
-    }
-    
-    .profile-image {
-        margin-top: 5px;
-    }
-    
-    .stats-grid {
-        margin-top: 10px;
-    }
-    
-    .history-date {
-        width: 35px;
-        height: 35px;
-    }
+.announcement-title {
+    font-weight: 500;
+    margin-bottom: 5px;
+    display: flex;
+    align-items: center;
+}
+
+.announcement-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 600;
+    margin-right: 8px;
+}
+
+.badge-urgent {
+    background-color: #ffebee;
+    color: #f44336;
+}
+
+.badge-info {
+    background-color: #e3f2fd;
+    color: #2196f3;
+}
+
+.badge-event {
+    background-color: #e8f5e9;
+    color: #4caf50;
+}
+
+.announcement-content {
+    font-size: 13px;
+    color: #666;
+    margin-bottom: 5px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+.announcement-date {
+    font-size: 12px;
+    color: #999;
+    display: flex;
+    align-items: center;
+}
+
+.announcement-date .material-icons {
+    font-size: 14px;
+    margin-right: 5px;
+}
+
+/* แถบนำทางด้านล่าง */
+.bottom-nav {
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+    background-color: white;
+    display: flex;
+    justify-content: space-around;
+    padding: 10px 0;
+    box-shadow: 0 -2px 5px rgba(0,0,0,0.1);
+    z-index: 1000;
+}
+
+.nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    font-size: 12px;
+    color: #666;
+    text-decoration: none;
+}
+
+.nav-item.active {
+    color: #06c755;
+}
+
+.nav-icon {
+    font-size: 24px;
+    margin-bottom: 5px;
+}
+
+/* ไอคอนจาก Material Icons */
+.material-icons {
+    font-family: 'Material Icons';
+    font-weight: normal;
+    font-style: normal;
+    font-size: 24px;
+    line-height: 1;
+    letter-spacing: normal;
+    text-transform: none;
+    display: inline-block;
+    white-space: nowrap;
+    word-wrap: normal;
+    direction: ltr;
+    -webkit-font-feature-settings: 'liga';
+    -webkit-font-smoothing: antialiased;
 }

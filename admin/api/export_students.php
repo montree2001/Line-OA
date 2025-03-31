@@ -1,280 +1,236 @@
 <?php
 /**
- * export_students.php - API สำหรับส่งออกข้อมูลนักเรียน
- * ระบบ STUDENT-Prasat
+ * api/export_students.php - API สำหรับส่งออกข้อมูลนักเรียนเป็นไฟล์ Excel
  */
+
+// ตั้งค่า header เพื่อดาวน์โหลดไฟล์
+header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+header('Content-Disposition: attachment; filename="student_data_' . date('Y-m-d') . '.xlsx"');
+header('Cache-Control: max-age=0');
 
 // เริ่ม session
 session_start();
 
-// ตรวจสอบการล็อกอิน (ให้เปิดใช้งานเมื่อพร้อมใช้งานจริง)
-// if (!isset($_SESSION['user_id']) || !isset($_SESSION['user_type']) || !in_array($_SESSION['user_type'], ['admin', 'teacher'])) {
-//     header('Content-Type: text/plain');
-//     echo 'ไม่มีสิทธิ์เข้าถึง API นี้';
-//     exit;
-// }
-
-// ใช้ไลบรารี PhpSpreadsheet สำหรับสร้างไฟล์ Excel
-require 'vendor/autoload.php';
-use PhpOffice\PhpSpreadsheet\Spreadsheet;
-use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
-
 // เชื่อมต่อฐานข้อมูล
 require_once '../../db_connect.php';
 
-// สร้างเงื่อนไขการค้นหา
-$where_conditions = [];
-$params = [];
+// เรียกใช้ PhpSpreadsheet
+// ปรับเส้นทางให้ถูกต้องตามโครงสร้างโฟลเดอร์ของคุณ
+require_once __DIR__ . '/../../vendor/autoload.php';
 
-if (isset($_GET['name']) && !empty($_GET['name'])) {
-    $where_conditions[] = "(u.first_name LIKE ? OR u.last_name LIKE ?)";
-    $search_name = '%' . $_GET['name'] . '%';
-    $params[] = $search_name;
-    $params[] = $search_name;
-}
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Style\Border;
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
 
-if (isset($_GET['student_code']) && !empty($_GET['student_code'])) {
-    $where_conditions[] = "s.student_code LIKE ?";
-    $params[] = '%' . $_GET['student_code'] . '%';
-}
+// ตรวจสอบการล็อกอิน (ให้เปิดใช้งานเมื่อพร้อมใช้งานจริง)
+// if (!isset($_SESSION['user_id']) || !isset($_SESSION['user_type']) || !in_array($_SESSION['user_type'], ['admin', 'teacher'])) {
+//     http_response_code(403);
+//     exit("ไม่มีสิทธิ์เข้าถึง API นี้");
+// }
 
-if (isset($_GET['level']) && !empty($_GET['level'])) {
-    $where_conditions[] = "c.level = ?";
-    $params[] = $_GET['level'];
-}
-
-if (isset($_GET['group_number']) && !empty($_GET['group_number'])) {
-    $where_conditions[] = "c.group_number = ?";
-    $params[] = $_GET['group_number'];
-}
-
-if (isset($_GET['department_id']) && !empty($_GET['department_id'])) {
-    $where_conditions[] = "c.department_id = ?";
-    $params[] = $_GET['department_id'];
-}
-
-if (isset($_GET['status']) && !empty($_GET['status'])) {
-    $where_conditions[] = "s.status = ?";
-    $params[] = $_GET['status'];
-}
-
-if (isset($_GET['attendance_status']) && !empty($_GET['attendance_status'])) {
-    // สร้างเงื่อนไขสำหรับสถานะการเข้าแถว (จะต้องคำนวณในภายหลัง)
-    $attendance_status = $_GET['attendance_status'];
-    $attendance_condition = true;
-} else {
-    $attendance_condition = false;
-}
-
-if (isset($_GET['line_status']) && !empty($_GET['line_status'])) {
-    if ($_GET['line_status'] === 'connected') {
-        $where_conditions[] = "u.line_id IS NOT NULL AND u.line_id != ''";
-    } else if ($_GET['line_status'] === 'not_connected') {
-        $where_conditions[] = "(u.line_id IS NULL OR u.line_id = '')";
-    }
-}
-
-// สร้าง SQL สำหรับดึงข้อมูลนักเรียน
-$sql_condition = "";
-if (!empty($where_conditions)) {
-    $sql_condition = " WHERE " . implode(" AND ", $where_conditions);
-}
+// เชื่อมต่อฐานข้อมูล
+$conn = getDB();
 
 try {
-    $conn = getDB();
+    // สร้าง query พื้นฐาน
+    $query = "
+        SELECT 
+            s.student_id,
+            s.student_code,
+            u.title,
+            u.first_name,
+            u.last_name,
+            u.phone_number,
+            u.email,
+            c.level,
+            c.group_number,
+            d.department_name,
+            s.status,
+            COALESCE(sar.total_attendance_days, 0) as attendance_days,
+            COALESCE(sar.total_absence_days, 0) as absence_days
+        FROM 
+            students s
+        JOIN 
+            users u ON s.user_id = u.user_id
+        LEFT JOIN 
+            classes c ON s.current_class_id = c.class_id
+        LEFT JOIN 
+            departments d ON c.department_id = d.department_id
+        LEFT JOIN 
+            student_academic_records sar ON s.student_id = sar.student_id AND sar.academic_year_id = (
+                SELECT academic_year_id FROM academic_years WHERE is_active = 1 LIMIT 1
+            )
+        WHERE 1=1
+    ";
     
-    // ดึงข้อมูลนักเรียน
-    $query = "SELECT s.student_id, s.student_code, s.status, 
-              u.title, u.first_name, u.last_name, u.line_id, u.phone_number, u.email,
-              c.level, c.group_number, c.class_id,
-              d.department_name, d.department_id,
-              (SELECT CONCAT(t.title, ' ', t.first_name, ' ', t.last_name) 
-               FROM class_advisors ca 
-               JOIN teachers t ON ca.teacher_id = t.teacher_id 
-               WHERE ca.class_id = c.class_id AND ca.is_primary = 1
-               LIMIT 1) as advisor_name,
-              IFNULL((SELECT COUNT(*) FROM attendance a WHERE a.student_id = s.student_id AND a.is_present = 1), 0) as attendance_days,
-              IFNULL((SELECT COUNT(*) FROM attendance a WHERE a.student_id = s.student_id AND a.is_present = 0), 0) as absence_days
-              FROM students s
-              JOIN users u ON s.user_id = u.user_id
-              LEFT JOIN classes c ON s.current_class_id = c.class_id
-              LEFT JOIN departments d ON c.department_id = d.department_id
-              $sql_condition
-              ORDER BY s.student_code";
+    // เพิ่มเงื่อนไขการค้นหา
+    $params = [];
     
-    if (!empty($params)) {
-        $stmt = $conn->prepare($query);
-        $stmt->execute($params);
-    } else {
-        $stmt = $conn->query($query);
+    // ตรวจสอบพารามิเตอร์ต่างๆ
+    if (isset($_GET['name']) && !empty($_GET['name'])) {
+        $query .= " AND (u.first_name LIKE ? OR u.last_name LIKE ?)";
+        $searchName = "%" . $_GET['name'] . "%";
+        $params[] = $searchName;
+        $params[] = $searchName;
     }
     
+    if (isset($_GET['student_code']) && !empty($_GET['student_code'])) {
+        $query .= " AND s.student_code LIKE ?";
+        $params[] = "%" . $_GET['student_code'] . "%";
+    }
+    
+    if (isset($_GET['level']) && !empty($_GET['level'])) {
+        $query .= " AND c.level = ?";
+        $params[] = $_GET['level'];
+    }
+    
+    if (isset($_GET['group_number']) && !empty($_GET['group_number'])) {
+        $query .= " AND c.group_number = ?";
+        $params[] = $_GET['group_number'];
+    }
+    
+    if (isset($_GET['department_id']) && !empty($_GET['department_id'])) {
+        $query .= " AND c.department_id = ?";
+        $params[] = $_GET['department_id'];
+    }
+    
+    if (isset($_GET['status']) && !empty($_GET['status'])) {
+        $query .= " AND s.status = ?";
+        $params[] = $_GET['status'];
+    }
+    
+    // เพิ่มการจัดเรียง
+    $query .= " ORDER BY s.student_code ASC";
+    
+    // ดึงข้อมูล
+    $stmt = $conn->prepare($query);
+    $stmt->execute($params);
     $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
-    // เติมข้อมูลเพิ่มเติม
-    foreach ($students as &$student) {
-        // สร้างชื่อชั้นเรียน
-        $student['class'] = ($student['level'] ?? '') . '/' . ($student['group_number'] ?? '');
-        
-        // คำนวณอัตราการเข้าแถว
-        $total_days = $student['attendance_days'] + $student['absence_days'];
-        if ($total_days > 0) {
-            $student['attendance_rate'] = ($student['attendance_days'] / $total_days) * 100;
-        } else {
-            $student['attendance_rate'] = 100; // ถ้ายังไม่มีข้อมูลให้เป็น 100%
-        }
-        
-        // กำหนดสถานะการเข้าแถว
-        if ($student['attendance_rate'] < 60) {
-            $student['attendance_status'] = 'เสี่ยงตกกิจกรรม';
-        } elseif ($student['attendance_rate'] < 75) {
-            $student['attendance_status'] = 'ต้องระวัง';
-        } else {
-            $student['attendance_status'] = 'ปกติ';
-        }
-        
-        // ตรวจสอบการเชื่อมต่อกับ LINE
-        $student['line_connected'] = !empty($student['line_id']);
-    }
-    
-    // กรองตามสถานะการเข้าแถว (ถ้ามี)
-    if ($attendance_condition) {
-        $students = array_filter($students, function($student) use ($attendance_status) {
-            return $student['attendance_status'] === $attendance_status;
-        });
-    }
-    
-    // สร้าง spreadsheet ใหม่
+    // สร้าง Spreadsheet
     $spreadsheet = new Spreadsheet();
     $sheet = $spreadsheet->getActiveSheet();
     $sheet->setTitle('รายชื่อนักเรียน');
     
+    // เพิ่มชื่อโรงเรียนและวันที่
+    $sheet->setCellValue('A1', 'รายชื่อนักเรียน');
+    $sheet->setCellValue('A2', 'วิทยาลัยการอาชีพปราสาท');
+    $sheet->setCellValue('A3', 'วันที่พิมพ์: ' . date('d/m/Y'));
+    
+    // จัดรูปแบบหัวข้อ
+    $sheet->getStyle('A1:A3')->getFont()->setBold(true);
+    $sheet->getStyle('A1')->getFont()->setSize(16);
+    
     // ตั้งค่าหัวตาราง
     $headers = [
-        'A1' => 'รหัสนักศึกษา',
-        'B1' => 'คำนำหน้า',
-        'C1' => 'ชื่อ',
-        'D1' => 'นามสกุล',
-        'E1' => 'ชั้น/ห้อง',
-        'F1' => 'แผนกวิชา',
-        'G1' => 'เบอร์โทรศัพท์',
-        'H1' => 'อีเมล',
-        'I1' => 'ครูที่ปรึกษา',
-        'J1' => 'วันที่เข้าแถว',
-        'K1' => 'วันที่ขาด',
-        'L1' => 'อัตราการเข้าแถว',
-        'M1' => 'สถานะการเข้าแถว',
-        'N1' => 'เชื่อมต่อ LINE',
-        'O1' => 'สถานะการศึกษา'
+        'ลำดับ', 'รหัสนักศึกษา', 'คำนำหน้า', 'ชื่อ', 'นามสกุล', 
+        'ระดับชั้น', 'กลุ่ม', 'แผนกวิชา', 'เบอร์โทรศัพท์', 'อีเมล',
+        'สถานะ', 'จำนวนวันที่มา', 'จำนวนวันที่ขาด', 'อัตราการเข้าแถว (%)'
     ];
     
-    foreach ($headers as $cell => $value) {
-        $sheet->setCellValue($cell, $value);
+    // ใส่หัวตาราง
+    $col = 'A';
+    $row = 5;
+    foreach ($headers as $header) {
+        $sheet->setCellValue($col . $row, $header);
+        $col++;
     }
     
-    // ตั้งค่าสไตล์ของหัวตาราง
+    // จัดรูปแบบหัวตาราง
     $headerStyle = [
         'font' => [
             'bold' => true,
             'color' => ['rgb' => 'FFFFFF'],
         ],
         'fill' => [
-            'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
-            'startColor' => ['rgb' => '4472C4'],
+            'fillType' => Fill::FILL_SOLID,
+            'startColor' => ['rgb' => '4285F4'],
         ],
         'alignment' => [
-            'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
-            'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
+            'horizontal' => Alignment::HORIZONTAL_CENTER,
+            'vertical' => Alignment::VERTICAL_CENTER,
         ],
         'borders' => [
             'allBorders' => [
-                'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
+                'borderStyle' => Border::BORDER_THIN,
+                'color' => ['rgb' => '000000'],
             ],
         ],
     ];
     
-    $sheet->getStyle('A1:O1')->applyFromArray($headerStyle);
+    $sheet->getStyle('A5:N5')->applyFromArray($headerStyle);
     
-    // เพิ่มข้อมูลนักเรียน
-    $row = 2;
+    // ใส่ข้อมูล
+    $row = 6;
+    $index = 1;
     foreach ($students as $student) {
-        $sheet->setCellValue('A' . $row, $student['student_code']);
-        $sheet->setCellValue('B' . $row, $student['title']);
-        $sheet->setCellValue('C' . $row, $student['first_name']);
-        $sheet->setCellValue('D' . $row, $student['last_name']);
-        $sheet->setCellValue('E' . $row, $student['class']);
-        $sheet->setCellValue('F' . $row, $student['department_name'] ?? '');
-        $sheet->setCellValue('G' . $row, $student['phone_number']);
-        $sheet->setCellValue('H' . $row, $student['email']);
-        $sheet->setCellValue('I' . $row, $student['advisor_name'] ?? '');
-        $sheet->setCellValue('J' . $row, $student['attendance_days']);
-        $sheet->setCellValue('K' . $row, $student['absence_days']);
-        $sheet->setCellValue('L' . $row, number_format($student['attendance_rate'], 2) . '%');
-        $sheet->setCellValue('M' . $row, $student['attendance_status']);
-        $sheet->setCellValue('N' . $row, $student['line_connected'] ? 'เชื่อมต่อแล้ว' : 'ยังไม่เชื่อมต่อ');
-        $sheet->setCellValue('O' . $row, $student['status']);
+        $col = 'A';
         
-        // ตั้งค่าสีพื้นหลังตามสถานะการเข้าแถว
-        $statusCell = 'M' . $row;
-        if ($student['attendance_status'] === 'เสี่ยงตกกิจกรรม') {
-            $sheet->getStyle($statusCell)->getFill()
-                ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
-                ->getStartColor()->setRGB('FFC7CE');
-        } elseif ($student['attendance_status'] === 'ต้องระวัง') {
-            $sheet->getStyle($statusCell)->getFill()
-                ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
-                ->getStartColor()->setRGB('FFEB9C');
-        } else {
-            $sheet->getStyle($statusCell)->getFill()
-                ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
-                ->getStartColor()->setRGB('C6EFCE');
-        }
+        // คำนวณอัตราการเข้าแถว
+        $total_days = $student['attendance_days'] + $student['absence_days'];
+        $attendance_rate = $total_days > 0 ? ($student['attendance_days'] / $total_days) * 100 : 0;
+        
+        // ใส่ข้อมูลแต่ละคอลัมน์
+        $sheet->setCellValue($col++ . $row, $index);
+        $sheet->setCellValue($col++ . $row, $student['student_code']);
+        $sheet->setCellValue($col++ . $row, $student['title']);
+        $sheet->setCellValue($col++ . $row, $student['first_name']);
+        $sheet->setCellValue($col++ . $row, $student['last_name']);
+        $sheet->setCellValue($col++ . $row, $student['level'] ?? '-');
+        $sheet->setCellValue($col++ . $row, $student['group_number'] ?? '-');
+        $sheet->setCellValue($col++ . $row, $student['department_name'] ?? '-');
+        $sheet->setCellValue($col++ . $row, $student['phone_number'] ?? '-');
+        $sheet->setCellValue($col++ . $row, $student['email'] ?? '-');
+        $sheet->setCellValue($col++ . $row, $student['status']);
+        $sheet->setCellValue($col++ . $row, $student['attendance_days']);
+        $sheet->setCellValue($col++ . $row, $student['absence_days']);
+        $sheet->setCellValue($col++ . $row, number_format($attendance_rate, 1));
         
         $row++;
+        $index++;
     }
     
-    // ปรับขนาดคอลัมน์ให้พอดีกับข้อมูล
-    foreach (range('A', 'O') as $col) {
-        $sheet->getColumnDimension($col)->setAutoSize(true);
-    }
-    
-    // ตั้งค่าสไตล์ของตาราง
-    $tableStyle = [
+    // จัดรูปแบบข้อมูล
+    $dataStyle = [
         'borders' => [
             'allBorders' => [
-                'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
+                'borderStyle' => Border::BORDER_THIN,
+                'color' => ['rgb' => '000000'],
             ],
         ],
     ];
-    $sheet->getStyle('A1:O' . ($row - 1))->applyFromArray($tableStyle);
     
-    // ตั้งค่าการจัดตำแหน่งข้อมูล
-    $sheet->getStyle('A2:A' . ($row - 1))->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
-    $sheet->getStyle('E2:E' . ($row - 1))->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
-    $sheet->getStyle('J2:L' . ($row - 1))->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
-    $sheet->getStyle('M2:O' . ($row - 1))->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+    $sheet->getStyle('A6:N' . ($row - 1))->applyFromArray($dataStyle);
     
-    // กำหนดรูปแบบเปอร์เซ็นต์สำหรับอัตราการเข้าแถว
-    for ($i = 2; $i < $row; $i++) {
-        $sheet->getStyle('L' . $i)->getNumberFormat()->setFormatCode('0.00%');
-    }
+    // จัดความกว้างคอลัมน์
+    $sheet->getColumnDimension('A')->setWidth(8);
+    $sheet->getColumnDimension('B')->setWidth(15);
+    $sheet->getColumnDimension('C')->setWidth(12);
+    $sheet->getColumnDimension('D')->setWidth(15);
+    $sheet->getColumnDimension('E')->setWidth(15);
+    $sheet->getColumnDimension('F')->setWidth(12);
+    $sheet->getColumnDimension('G')->setWidth(8);
+    $sheet->getColumnDimension('H')->setWidth(20);
+    $sheet->getColumnDimension('I')->setWidth(15);
+    $sheet->getColumnDimension('J')->setWidth(25);
+    $sheet->getColumnDimension('K')->setWidth(15);
+    $sheet->getColumnDimension('L')->setWidth(15);
+    $sheet->getColumnDimension('M')->setWidth(15);
+    $sheet->getColumnDimension('N')->setWidth(18);
     
-    // สร้างชื่อไฟล์ Excel
-    $filename = 'รายชื่อนักเรียน_' . date('Y-m-d_H-i-s') . '.xlsx';
-    
-    // กำหนด headers สำหรับการดาวน์โหลด
-    header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    header('Content-Disposition: attachment;filename="' . $filename . '"');
-    header('Cache-Control: max-age=0');
-    
-    // ส่งออกไฟล์ Excel
+    // สร้างไฟล์
     $writer = new Xlsx($spreadsheet);
     $writer->save('php://output');
-    exit;
-} catch (PDOException $e) {
-    // แสดงข้อผิดพลาด
-    header('Content-Type: text/plain');
-    echo 'เกิดข้อผิดพลาด: ' . $e->getMessage();
-    exit;
+    
+} catch (Exception $e) {
+    // บันทึกข้อผิดพลาด
+    error_log('Error exporting students: ' . $e->getMessage());
+    
+    // ส่งข้อความแสดงข้อผิดพลาด
+    http_response_code(500);
+    header('Content-Type: text/plain; charset=UTF-8');
+    echo 'เกิดข้อผิดพลาดในการส่งออกข้อมูล: ' . $e->getMessage();
 }
-?>
+ ?>

@@ -6,7 +6,7 @@
             STP-Prasat
         </a>
     </div>
-    
+
     <div class="sidebar-menu">
         <div class="menu-category">หน้าหลัก</div>
         <a href="index.php" class="menu-item <?php echo ($current_page == 'dashboard') ? 'active' : ''; ?>">
@@ -32,7 +32,7 @@
                 <span class="badge"><?php echo $at_risk_count; ?></span>
             <?php endif; ?>
         </a>
-        
+
         <div class="menu-category">จัดการข้อมูล</div>
         <a href="students.php" class="menu-item <?php echo ($current_page == 'students') ? 'active' : ''; ?>">
             <span class="material-icons">people</span>
@@ -51,8 +51,8 @@
             <span class="menu-text">ชั้นเรียน</span>
         </a>
 
-       
-        
+
+
         <div class="menu-category">ตั้งค่า</div>
         <a href="settings.php" class="menu-item <?php echo ($current_page == 'settings') ? 'active' : ''; ?>">
             <span class="material-icons">settings</span>
@@ -62,8 +62,13 @@
             <span class="material-icons">help</span>
             <span class="menu-text">ช่วยเหลือ</span>
         </a>
+        <a href="announcements.php" class="menu-item <?php echo ($current_page == 'announcements') ? 'active' : ''; ?>">
+            <span class="material-icons">campaign</span>
+            <span class="menu-text">จัดการประกาศ</span>
+        </a>
+        
     </div>
-    
+
     <div class="admin-info">
         <div class="admin-avatar"><?php echo isset($admin_info['initials']) ? $admin_info['initials'] : 'A'; ?></div>
         <div class="admin-details">

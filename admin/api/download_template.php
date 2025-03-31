@@ -1,228 +1,235 @@
 <?php
 /**
- * download_template.php - API สำหรับดาวน์โหลดเทมเพลตการนำเข้าข้อมูล
- * ระบบ STUDENT-Prasat
+ * api/download_template.php - ดาวน์โหลดเทมเพลตสำหรับการนำเข้าข้อมูล
  */
 
-// เริ่ม session
-session_start();
+// ลบทุก output buffer ก่อนหน้า
+@ob_clean();
 
-// ตรวจสอบการล็อกอิน (ให้เปิดใช้งานเมื่อพร้อมใช้งานจริง)
-// if (!isset($_SESSION['user_id']) || !isset($_SESSION['user_type']) || !in_array($_SESSION['user_type'], ['admin', 'teacher'])) {
-//     header('Content-Type: text/plain');
-//     echo 'ไม่มีสิทธิ์เข้าถึง API นี้';
-//     exit;
-// }
-
-// ใช้ไลบรารี PhpSpreadsheet สำหรับสร้างไฟล์ Excel
-require '../vendor/autoload.php';
+// ใช้ namespace ก่อนเข้าบล็อกโค้ด
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Style\Border;
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
 
-// เชื่อมต่อฐานข้อมูล
-require_once '../../db_connect.php';
+// เริ่ม session ก่อนส่ง headers
+session_start();
 
-// ตรวจสอบประเภทของเทมเพลต
-$template_type = $_GET['type'] ?? '';
+// เพิ่มการตรวจสอบข้อผิดพลาดแต่ไม่แสดงในเบราว์เซอร์
+error_reporting(E_ALL);
+ini_set('display_errors', 0);
 
-switch ($template_type) {
-    case 'students':
-        generateStudentTemplate();
-        break;
-        
-    default:
-        header('Content-Type: text/plain');
-        echo 'ไม่รู้จักประเภทเทมเพลต';
-        exit;
+// กำหนดประเภทของเทมเพลต (students หรือ teachers)
+$template_type = isset($_GET['type']) ? $_GET['type'] : 'students';
+
+// พยายามโหลด Composer autoloader จากหลายตำแหน่งที่เป็นไปได้
+$autoloader_paths = [
+    __DIR__ . '/../../vendor/autoload.php',   // ถ้า vendor อยู่ที่ root ของโปรเจค
+    __DIR__ . '/../vendor/autoload.php',      // ถ้า vendor อยู่ในโฟลเดอร์ admin
+    __DIR__ . '/vendor/autoload.php',         // ถ้า vendor อยู่ในโฟลเดอร์ api
+    '../vendor/autoload.php',                 // relative path ดั้งเดิม
+    '../../vendor/autoload.php',              // relative path ไปที่ root
+    $_SERVER['DOCUMENT_ROOT'] . '/vendor/autoload.php' // จาก document root
+];
+
+$autoloader_loaded = false;
+foreach ($autoloader_paths as $path) {
+    if (file_exists($path)) {
+        try {
+            require_once $path;
+            $autoloader_loaded = true;
+            error_log('Loaded autoloader from: ' . $path);
+            break;
+        } catch (Exception $e) {
+            error_log('Error loading autoloader from ' . $path . ': ' . $e->getMessage());
+            continue;
+        }
+    }
 }
 
-/**
- * สร้างเทมเพลตสำหรับนำเข้าข้อมูลนักเรียน
- */
-function generateStudentTemplate() {
-    // สร้าง spreadsheet ใหม่
-    $spreadsheet = new Spreadsheet();
-    $sheet = $spreadsheet->getActiveSheet();
-    $sheet->setTitle('ข้อมูลนักเรียน');
+// ถ้าไม่พบ autoloader ให้ใช้วิธีสร้าง CSV แทน
+if (!$autoloader_loaded) {
+    error_log('Autoloader not found, falling back to CSV');
     
-    // ตั้งค่าหัวตาราง
-    $headers = [
-        'A1' => 'รหัสนักศึกษา*',
-        'B1' => 'คำนำหน้า*',
-        'C1' => 'ชื่อ*',
-        'D1' => 'นามสกุล*',
-        'E1' => 'เบอร์โทรศัพท์',
-        'F1' => 'อีเมล',
-        'G1' => 'ระดับชั้น',
-        'H1' => 'กลุ่ม',
-        'I1' => 'แผนกวิชา',
-        'J1' => 'สถานะการศึกษา'
-    ];
+    // กำหนดประเภทของไฟล์และชื่อไฟล์ที่จะดาวน์โหลด (CSV)
+    header('Content-Type: text/csv; charset=utf-8');
+    header('Content-Disposition: attachment; filename="import_template_' . date('Y-m-d') . '.csv"');
+    header('Cache-Control: max-age=0');
     
-    foreach ($headers as $cell => $value) {
-        $sheet->setCellValue($cell, $value);
+    // เปิด output stream
+    $output = fopen('php://output', 'w');
+    
+    // Add BOM for UTF-8 support in Excel
+    fprintf($output, chr(0xEF).chr(0xBB).chr(0xBF));
+    
+    // กำหนดหัวข้อตามประเภทของเทมเพลต
+    if ($template_type == 'students') {
+        // หัวข้อสำหรับนักเรียน
+        fputcsv($output, [
+            'รหัสนักศึกษา', 'คำนำหน้า', 'ชื่อ', 'นามสกุล', 'เบอร์โทรศัพท์', 
+            'อีเมล', 'ระดับชั้น', 'กลุ่ม', 'แผนก', 'สถานะ'
+        ]);
+        
+        // ตัวอย่างข้อมูล
+        fputcsv($output, ['65101020001', 'นาย', 'สมชาย', 'ใจดี', '0891234567', 'somchai@example.com', 'ปวช.1', '1', 'เทคโนโลยีสารสนเทศ', 'กำลังศึกษา']);
+        fputcsv($output, ['65101020002', 'นางสาว', 'สมหญิง', 'รักเรียน', '0891234568', 'somying@example.com', 'ปวช.1', '1', 'เทคโนโลยีสารสนเทศ', 'กำลังศึกษา']);
+    } else {
+        // หัวข้อสำหรับครู
+        fputcsv($output, [
+            'รหัสประจำตัวประชาชน', 'คำนำหน้า', 'ชื่อ', 'นามสกุล', 'แผนก', 
+            'ตำแหน่ง', 'เบอร์โทรศัพท์', 'อีเมล'
+        ]);
+        
+        // ตัวอย่างข้อมูล
+        fputcsv($output, ['1234567890123', 'นาย', 'สมศักดิ์', 'สอนดี', 'เทคโนโลยีสารสนเทศ', 'ครูผู้สอน', '0891234569', 'somsak@example.com']);
+        fputcsv($output, ['9876543210987', 'นาง', 'สมศรี', 'มีความรู้', 'เทคโนโลยีสารสนเทศ', 'หัวหน้าแผนก', '0891234570', 'somsri@example.com']);
     }
     
-    // ตั้งค่าสไตล์ของหัวตาราง
+    // ปิด output stream
+    fclose($output);
+    exit;
+}
+
+try {
+    // ตรวจสอบว่า class PhpSpreadsheet มีอยู่จริงหรือไม่
+    if (!class_exists('PhpOffice\PhpSpreadsheet\Spreadsheet')) {
+        throw new Exception('PhpSpreadsheet class not found. Please run "composer require phpoffice/phpspreadsheet"');
+    }
+    
+    // กำหนดประเภทของไฟล์และชื่อไฟล์ที่จะดาวน์โหลด (Excel)
+    header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    header('Content-Disposition: attachment; filename="import_template_' . date('Y-m-d') . '.xlsx"');
+    header('Cache-Control: max-age=0');
+    
+    // สร้าง Spreadsheet
+    $spreadsheet = new Spreadsheet();
+    $sheet = $spreadsheet->getActiveSheet();
+    
+    // ตั้งชื่อ Sheet
+    if ($template_type == 'students') {
+        $sheet->setTitle('นำเข้าข้อมูลนักเรียน');
+    } else {
+        $sheet->setTitle('นำเข้าข้อมูลครู');
+    }
+    
+    // เพิ่มหัวข้อและคำแนะนำ
+    if ($template_type == 'students') {
+        $sheet->setCellValue('A1', 'เทมเพลตนำเข้าข้อมูลนักเรียน');
+        $sheet->setCellValue('A2', 'คำแนะนำ: กรุณาใส่ข้อมูลให้ตรงคอลัมน์ และห้ามเปลี่ยนชื่อคอลัมน์');
+    } else {
+        $sheet->setCellValue('A1', 'เทมเพลตนำเข้าข้อมูลครูที่ปรึกษา');
+        $sheet->setCellValue('A2', 'คำแนะนำ: กรุณาใส่ข้อมูลให้ตรงคอลัมน์ และห้ามเปลี่ยนชื่อคอลัมน์');
+    }
+    
+    // จัดรูปแบบหัวข้อ
+    $sheet->getStyle('A1:A2')->getFont()->setBold(true);
+    $sheet->getStyle('A1')->getFont()->setSize(14);
+    
+    // กำหนดหัวตาราง
+    if ($template_type == 'students') {
+        // หัวตารางสำหรับนักเรียน
+        $headers = [
+            'รหัสนักศึกษา', 'คำนำหน้า', 'ชื่อ', 'นามสกุล', 'เบอร์โทรศัพท์', 
+            'อีเมล', 'ระดับชั้น', 'กลุ่ม', 'แผนก', 'สถานะ'
+        ];
+    } else {
+        // หัวตารางสำหรับครู
+        $headers = [
+            'รหัสประจำตัวประชาชน', 'คำนำหน้า', 'ชื่อ', 'นามสกุล', 'แผนก', 
+            'ตำแหน่ง', 'เบอร์โทรศัพท์', 'อีเมล'
+        ];
+    }
+    
+    // ใส่หัวตาราง
+    $col = 'A';
+    $row = 4;
+    foreach ($headers as $header) {
+        $sheet->setCellValue($col . $row, $header);
+        $col++;
+    }
+    
+    // จัดรูปแบบหัวตาราง
+    $lastCol = chr(ord('A') + count($headers) - 1);
     $headerStyle = [
         'font' => [
             'bold' => true,
             'color' => ['rgb' => 'FFFFFF'],
         ],
         'fill' => [
-            'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
-            'startColor' => ['rgb' => '4472C4'],
+            'fillType' => Fill::FILL_SOLID,
+            'startColor' => ['rgb' => '4285F4'],
         ],
         'alignment' => [
-            'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
-            'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
+            'horizontal' => Alignment::HORIZONTAL_CENTER,
+            'vertical' => Alignment::VERTICAL_CENTER,
         ],
         'borders' => [
             'allBorders' => [
-                'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
+                'borderStyle' => Border::BORDER_THIN,
+                'color' => ['rgb' => '000000'],
             ],
         ],
     ];
     
-    $sheet->getStyle('A1:J1')->applyFromArray($headerStyle);
+    $sheet->getStyle('A4:' . $lastCol . '4')->applyFromArray($headerStyle);
     
-    // ตั้งค่า validation สำหรับคำนำหน้า
-    $validation = $sheet->getCell('B2')->getDataValidation();
-    $validation->setType(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::TYPE_LIST);
-    $validation->setErrorStyle(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::STYLE_INFORMATION);
-    $validation->setAllowBlank(false);
-    $validation->setShowInputMessage(true);
-    $validation->setShowErrorMessage(true);
-    $validation->setShowDropDown(true);
-    $validation->setFormula1('"นาย,นางสาว,เด็กชาย,เด็กหญิง"');
-    $sheet->setDataValidation('B2:B1000', $validation);
-    
-    // ตั้งค่า validation สำหรับระดับชั้น
-    $validation = $sheet->getCell('G2')->getDataValidation();
-    $validation->setType(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::TYPE_LIST);
-    $validation->setErrorStyle(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::STYLE_INFORMATION);
-    $validation->setAllowBlank(true);
-    $validation->setShowInputMessage(true);
-    $validation->setShowErrorMessage(true);
-    $validation->setShowDropDown(true);
-    $validation->setFormula1('"ปวช.1,ปวช.2,ปวช.3,ปวส.1,ปวส.2"');
-    $sheet->setDataValidation('G2:G1000', $validation);
-    
-    // ตั้งค่า validation สำหรับกลุ่ม
-    $validation = $sheet->getCell('H2')->getDataValidation();
-    $validation->setType(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::TYPE_LIST);
-    $validation->setErrorStyle(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::STYLE_INFORMATION);
-    $validation->setAllowBlank(true);
-    $validation->setShowInputMessage(true);
-    $validation->setShowErrorMessage(true);
-    $validation->setShowDropDown(true);
-    $validation->setFormula1('"1,2,3,4,5"');
-    $sheet->setDataValidation('H2:H1000', $validation);
-    
-    // ดึงข้อมูลแผนกวิชาจากฐานข้อมูล
-    try {
-        $conn = getDB();
-        $stmt = $conn->query("SELECT department_name FROM departments ORDER BY department_name");
-        $departments = $stmt->fetchAll(PDO::FETCH_COLUMN);
-        
-        if ($departments) {
-            $departmentList = '"' . implode(',', $departments) . '"';
-            
-            // ตั้งค่า validation สำหรับแผนกวิชา
-            $validation = $sheet->getCell('I2')->getDataValidation();
-            $validation->setType(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::TYPE_LIST);
-            $validation->setErrorStyle(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::STYLE_INFORMATION);
-            $validation->setAllowBlank(true);
-            $validation->setShowInputMessage(true);
-            $validation->setShowErrorMessage(true);
-            $validation->setShowDropDown(true);
-            $validation->setFormula1($departmentList);
-            $sheet->setDataValidation('I2:I1000', $validation);
-        }
-    } catch (PDOException $e) {
-        // ถ้าเกิดข้อผิดพลาดในการดึงข้อมูลแผนกวิชา ให้ใช้ค่าตั้งต้น
-        $defaultDepartments = '"เทคโนโลยีสารสนเทศ,ช่างยนต์,ช่างไฟฟ้ากำลัง,ช่างกลโรงงาน,การบัญชี"';
-        $validation = $sheet->getCell('I2')->getDataValidation();
-        $validation->setType(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::TYPE_LIST);
-        $validation->setErrorStyle(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::STYLE_INFORMATION);
-        $validation->setAllowBlank(true);
-        $validation->setShowInputMessage(true);
-        $validation->setShowErrorMessage(true);
-        $validation->setShowDropDown(true);
-        $validation->setFormula1($defaultDepartments);
-        $sheet->setDataValidation('I2:I1000', $validation);
+    // เพิ่มตัวอย่างข้อมูล
+    if ($template_type == 'students') {
+        // ตัวอย่างสำหรับนักเรียน
+        $examples = [
+            ['65101020001', 'นาย', 'สมชาย', 'ใจดี', '0891234567', 'somchai@example.com', 'ปวช.1', '1', 'เทคโนโลยีสารสนเทศ', 'กำลังศึกษา'],
+            ['65101020002', 'นางสาว', 'สมหญิง', 'รักเรียน', '0891234568', 'somying@example.com', 'ปวช.1', '1', 'เทคโนโลยีสารสนเทศ', 'กำลังศึกษา']
+        ];
+    } else {
+        // ตัวอย่างสำหรับครู
+        $examples = [
+            ['1234567890123', 'นาย', 'สมศักดิ์', 'สอนดี', 'เทคโนโลยีสารสนเทศ', 'ครูผู้สอน', '0891234569', 'somsak@example.com'],
+            ['9876543210987', 'นาง', 'สมศรี', 'มีความรู้', 'เทคโนโลยีสารสนเทศ', 'หัวหน้าแผนก', '0891234570', 'somsri@example.com']
+        ];
     }
     
-    // ตั้งค่า validation สำหรับสถานะการศึกษา
-    $validation = $sheet->getCell('J2')->getDataValidation();
-    $validation->setType(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::TYPE_LIST);
-    $validation->setErrorStyle(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::STYLE_INFORMATION);
-    $validation->setAllowBlank(true);
-    $validation->setShowInputMessage(true);
-    $validation->setShowErrorMessage(true);
-    $validation->setShowDropDown(true);
-    $validation->setFormula1('"กำลังศึกษา,พักการเรียน,พ้นสภาพ,สำเร็จการศึกษา"');
-    $sheet->setDataValidation('J2:J1000', $validation);
-    
-    // ปรับขนาดคอลัมน์ให้พอดีกับข้อมูล
-    foreach (range('A', 'J') as $col) {
-        $sheet->getColumnDimension($col)->setAutoSize(true);
-    }
-    
-    // ใส่ข้อมูลตัวอย่าง
-    $exampleData = [
-        ['6439010001', 'นาย', 'สมชาย', 'ใจดี', '0812345678', 'somchai@example.com', 'ปวช.1', '1', 'เทคโนโลยีสารสนเทศ', 'กำลังศึกษา'],
-        ['6439010002', 'นางสาว', 'สมหญิง', 'รักเรียน', '0823456789', 'somying@example.com', 'ปวช.1', '1', 'เทคโนโลยีสารสนเทศ', 'กำลังศึกษา']
-    ];
-    
-    $row = 2;
-    foreach ($exampleData as $data) {
+    // ใส่ตัวอย่างข้อมูล
+    $row = 5;
+    foreach ($examples as $example) {
         $col = 'A';
-        foreach ($data as $value) {
+        foreach ($example as $value) {
             $sheet->setCellValue($col . $row, $value);
             $col++;
         }
         $row++;
     }
     
-    // เพิ่มแผ่นงานคำอธิบาย
-    $spreadsheet->createSheet();
-    $spreadsheet->setActiveSheetIndex(1);
-    $instructionSheet = $spreadsheet->getActiveSheet();
-    $instructionSheet->setTitle('คำอธิบาย');
-    
-    $instructions = [
-        ['A1', 'คำอธิบายการนำเข้าข้อมูลนักเรียน'],
-        ['A3', '1. ช่องที่มีเครื่องหมาย * ต้องกรอกข้อมูล'],
-        ['A4', '2. รหัสนักเรียน: ต้องไม่ซ้ำกับที่มีอยู่ในระบบ'],
-        ['A5', '3. คำนำหน้า: เลือกจากรายการที่กำหนด (นาย, นางสาว, เด็กชาย, เด็กหญิง)'],
-        ['A6', '4. ระดับชั้น: เลือกจากรายการที่กำหนด (ปวช.1, ปวช.2, ปวช.3, ปวส.1, ปวส.2)'],
-        ['A7', '5. กลุ่ม: เลือกจากรายการที่กำหนด (1, 2, 3, 4, 5)'],
-        ['A8', '6. แผนกวิชา: เลือกจากรายการที่กำหนด'],
-        ['A9', '7. สถานะการศึกษา: เลือกจากรายการที่กำหนด (กำลังศึกษา, พักการเรียน, พ้นสภาพ, สำเร็จการศึกษา)'],
-        ['A11', 'หมายเหตุ:'],
-        ['A12', '- การนำเข้าข้อมูลจะข้ามรายการที่มีข้อมูลไม่ครบถ้วน'],
-        ['A13', '- ระบบจะอัพเดทข้อมูลอัตโนมัติหากพบรหัสนักเรียนซ้ำ'],
-        ['A14', '- กรุณาอย่าเปลี่ยนแปลงโครงสร้างของเทมเพลต']
+    // จัดรูปแบบตาราง
+    $dataStyle = [
+        'borders' => [
+            'allBorders' => [
+                'borderStyle' => Border::BORDER_THIN,
+                'color' => ['rgb' => '000000'],
+            ],
+        ],
     ];
     
-    foreach ($instructions as $instruction) {
-        $instructionSheet->setCellValue($instruction[0], $instruction[1]);
+    $sheet->getStyle('A4:' . $lastCol . '6')->applyFromArray($dataStyle);
+    
+    // ปรับขนาดคอลัมน์ให้พอดีกับข้อมูล
+    foreach (range('A', $lastCol) as $col) {
+        $sheet->getColumnDimension($col)->setAutoSize(true);
     }
     
-    $instructionSheet->getStyle('A1')->getFont()->setBold(true)->setSize(14);
-    $instructionSheet->getColumnDimension('A')->setWidth(100);
-    
-    // กลับไปที่แผ่นงานแรก
-    $spreadsheet->setActiveSheetIndex(0);
-    
-    // กำหนด headers สำหรับการดาวน์โหลด
-    header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    header('Content-Disposition: attachment;filename="template_students.xlsx"');
-    header('Cache-Control: max-age=0');
-    
-    // ส่งออกไฟล์ Excel
+    // สร้างไฟล์
     $writer = new Xlsx($spreadsheet);
     $writer->save('php://output');
     exit;
+    
+} catch (Exception $e) {
+    // บันทึกข้อผิดพลาดอย่างละเอียด
+    error_log('Error generating template: ' . $e->getMessage() . ' in ' . $e->getFile() . ' on line ' . $e->getLine());
+    
+    // ส่งข้อความแสดงข้อผิดพลาด
+    http_response_code(500);
+    header('Content-Type: text/plain; charset=UTF-8');
+    echo 'เกิดข้อผิดพลาดในการสร้างเทมเพลต: ' . $e->getMessage();
+    exit;
 }
+?>

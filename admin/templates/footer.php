@@ -62,5 +62,38 @@
             });
         }
     </script>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // ตรวจสอบว่าใช้ Bootstrap เวอร์ชันใด
+        var bootstrapVersion = '';
+        
+        if (typeof bootstrap !== 'undefined') {
+            bootstrapVersion = '5.x';
+        } else if (typeof jQuery !== 'undefined' && typeof jQuery.fn.modal !== 'undefined') {
+            bootstrapVersion = '4.x';
+        } else {
+            bootstrapVersion = 'ไม่พบ Bootstrap';
+        }
+        
+        console.log('Bootstrap Version:', bootstrapVersion);
+        
+        // แก้ไขการเรียก Modal ตามเวอร์ชัน Bootstrap
+        if (typeof $ !== 'undefined') {
+            $(document).on('click', '#direct-create-btn', function() {
+                console.log('Create button clicked - jQuery handler');
+                if (bootstrapVersion === '5.x' && typeof bootstrap !== 'undefined') {
+                    var modalElement = document.getElementById('announcementModal');
+                    var modalObj = new bootstrap.Modal(modalElement);
+                    modalObj.show();
+                } else if (bootstrapVersion === '4.x') {
+                    $('#announcementModal').modal('show');
+                } else {
+                    alert('ไม่พบ Bootstrap ที่สามารถใช้งาน Modal ได้');
+                }
+            });
+        }
+    });
+    </script>
 </body>
 </html>

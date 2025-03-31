@@ -1,0 +1,99 @@
+/* ===== Custom Summernote Editor Styles ===== */
+
+.note-editor.note-frame {
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #e0e0e0;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.note-editor.note-frame .note-toolbar {
+  background-color: #f8f9fa;
+  border-bottom: 1px solid #e0e0e0;
+  padding: 10px;
+}
+
+.note-editor.note-frame .note-statusbar {
+  background-color: #f8f9fa;
+  border-top: 1px solid #e0e0e0;
+}
+
+.note-editor .note-btn {
+  border-radius: 4px;
+  padding: 5px 10px;
+  background-color: white;
+  border-color: #ddd;
+  transition: all 0.2s ease;
+}
+
+.note-editor .note-btn:hover {
+  background-color: #f1f1f1;
+}
+
+.note-editor .note-btn.active {
+  background-color: #e9ecef;
+  border-color: #ced4da;
+}
+
+.note-dropdown-menu {
+  border-radius: 8px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e0e0e0;
+}
+
+.note-editor .note-editing-area .note-editable {
+  padding: 20px;
+  color: #333;
+  font-family: 'Prompt', sans-serif;
+  min-height: 200px;
+  background-color: white;
+}
+
+.note-editor .note-editing-area .note-codable {
+  padding: 20px;
+  color: #333;
+  font-family: monospace;
+  min-height: 200px;
+  background-color: #272822;
+  color: #f8f8f2;
+}
+
+/* สำหรับ Dark mode */
+body.dark-mode .note-editor.note-frame {
+  border-color: #444;
+  background-color: #222;
+}
+
+body.dark-mode .note-editor.note-frame .note-toolbar,
+body.dark-mode .note-editor.note-frame .note-statusbar {
+  background-color: #333;
+  border-color: #444;
+}
+
+body.dark-mode .note-editor .note-btn {
+  background-color: #2a2a2a;
+  border-color: #444;
+  color: #e0e0e0;
+}
+
+body.dark-mode .note-editor .note-btn:hover {
+  background-color: #3a3a3a;
+}
+
+body.dark-mode .note-editor .note-editing-area .note-editable {
+  background-color: #222;
+  color: #e0e0e0;
+}
+
+body.dark-mode .note-dropdown-menu {
+  background-color: #2a2a2a;
+  border-color: #444;
+}
+
+body.dark-mode .note-dropdown-item {
+  color: #e0e0e0;
+}
+
+body.dark-mode .note-dropdown-item:hover {
+  background-color: #3a3a3a;
+} 

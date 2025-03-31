@@ -8,6 +8,10 @@
 // เริ่ม session (ใช้สำหรับการเก็บข้อมูลผู้ใช้ที่ล็อกอินและข้อมูลอื่นๆ)
 session_start();
 
+// เพิ่มการตรวจสอบข้อผิดพลาด
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
 /* // ตรวจสอบการล็อกอิน (หากไม่ได้ล็อกอินให้ redirect ไปหน้า login.php)
 if (!isset($_SESSION['user_id']) || !isset($_SESSION['user_type']) || $_SESSION['user_type'] != 'admin') {
     header('Location: login.php');
@@ -36,9 +40,17 @@ $header_buttons = [
     ]
 ];
 
-// เชื่อมต่อฐานข้อมูล
+// เชื่อมต่อฐานข้อมูล - ตรวจสอบว่าไฟล์และฟังก์ชัน getDB() มีอยู่จริง
 require_once '../db_connect.php';
-$conn = getDB(); // แก้ไขปัญหาตัวแปร $conn ที่ไม่ได้ถูกกำหนดค่า
+
+// ตรวจสอบการเชื่อมต่อฐานข้อมูล
+try {
+    $conn = getDB();
+    // ทดสอบการเชื่อมต่อ
+    $conn->query("SELECT 1");
+} catch (PDOException $e) {
+    die('เกิดข้อผิดพลาดในการเชื่อมต่อฐานข้อมูล: ' . $e->getMessage());
+}
 
 // ดึงข้อมูลการตั้งค่าจากฐานข้อมูล
 try {
@@ -61,6 +73,9 @@ try {
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'save_settings') {
     // รับข้อมูลที่ส่งมา
     $settingsData = isset($_POST['settings_data']) ? json_decode($_POST['settings_data'], true) : null;
+    
+    // ตรวจสอบ AJAX request
+    $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
     
     // หากมีข้อมูลการตั้งค่า
     if ($settingsData) {
@@ -119,34 +134,56 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             // Commit transaction
             $db->commit();
             
-            // ตั้งค่าข้อความแจ้งเตือน
-            $_SESSION['settings_message'] = [
-                'type' => 'success',
-                'text' => "บันทึกการตั้งค่าเรียบร้อยแล้ว ($successCount หมวดหมู่)"
-            ];
+            if ($isAjax) {
+                // สำหรับ AJAX request
+                echo json_encode(['success' => true, 'message' => "บันทึกการตั้งค่าเรียบร้อยแล้ว ($successCount หมวดหมู่)"]);
+                exit;
+            } else {
+                // สำหรับ form submit ปกติ
+                $_SESSION['settings_message'] = [
+                    'type' => 'success',
+                    'text' => "บันทึกการตั้งค่าเรียบร้อยแล้ว ($successCount หมวดหมู่)"
+                ];
+            }
         } catch (Exception $e) {
             // Rollback transaction เมื่อเกิดข้อผิดพลาด
             if (isset($db)) {
                 $db->rollBack();
             }
             
-            // ตั้งค่าข้อความแจ้งเตือน
-            $_SESSION['settings_message'] = [
-                'type' => 'error',
-                'text' => 'เกิดข้อผิดพลาดในการบันทึกการตั้งค่า: ' . $e->getMessage()
-            ];
+            if ($isAjax) {
+                // สำหรับ AJAX request
+                http_response_code(500);
+                echo json_encode(['error' => true, 'message' => 'เกิดข้อผิดพลาดในการบันทึกการตั้งค่า: ' . $e->getMessage()]);
+                exit;
+            } else {
+                // สำหรับ form submit ปกติ
+                $_SESSION['settings_message'] = [
+                    'type' => 'error',
+                    'text' => 'เกิดข้อผิดพลาดในการบันทึกการตั้งค่า: ' . $e->getMessage()
+                ];
+            }
         }
     } else {
-        // ตั้งค่าข้อความแจ้งเตือน
-        $_SESSION['settings_message'] = [
-            'type' => 'error',
-            'text' => 'ไม่พบข้อมูลการตั้งค่า'
-        ];
+        if ($isAjax) {
+            // สำหรับ AJAX request
+            http_response_code(400);
+            echo json_encode(['error' => true, 'message' => 'ไม่พบข้อมูลการตั้งค่า']);
+            exit;
+        } else {
+            // สำหรับ form submit ปกติ
+            $_SESSION['settings_message'] = [
+                'type' => 'error',
+                'text' => 'ไม่พบข้อมูลการตั้งค่า'
+            ];
+        }
     }
     
-    // Redirect เพื่อป้องกันการ resubmit form
-    header('Location: ' . $_SERVER['PHP_SELF']);
-    exit;
+    // Redirect เพื่อป้องกันการ resubmit form (เฉพาะกรณี form submit ปกติ)
+    if (!$isAjax) {
+        header('Location: ' . $_SERVER['PHP_SELF']);
+        exit;
+    }
 }
 
 // ฟังก์ชันสำหรับบันทึกการตั้งค่าระบบ
@@ -380,32 +417,54 @@ if (typeof saveSettings !== 'function') {
         const settingsData = collectSettingsData();
         formData.append('settings_data', JSON.stringify(settingsData));
         
+        // เพิ่มการบันทึกล็อก
+        console.log('Settings data:', settingsData);
+        console.log('Form data:', Object.fromEntries(formData));
+
+        // เพิ่มการตรวจสอบขนาดข้อมูล
+        const jsonData = JSON.stringify(settingsData);
+        console.log('Data size:', jsonData.length, 'bytes');
+
+        // ถ้าข้อมูลมีขนาดใหญ่เกินไป ให้แสดงข้อความเตือน
+        if (jsonData.length > 1000000) {
+            console.warn('Warning: Data size might be too large');
+        }
+        
         // แสดง loading
         showLoadingIndicator();
         
-        // ส่งข้อมูลไปยังหน้าเดิม
+        // แก้ไขส่วนการส่งข้อมูล
         fetch(window.location.href, {
             method: 'POST',
-            body: formData
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
         })
         .then(response => {
             if (!response.ok) {
-                throw new Error('การเชื่อมต่อล้มเหลว');
+                console.error('Server response:', response.status, response.statusText);
+                throw new Error('การเชื่อมต่อล้มเหลว (HTTP ' + response.status + ')');
             }
-            
-            // รีเฟรชหน้าเพื่อแสดงการเปลี่ยนแปลง
-            window.location.reload();
+            return response.text();  // เปลี่ยนจาก response.json() เป็น response.text()
+        })
+        .then(data => {
+            console.log('Server response:', data);
+            // ตรวจสอบว่ามีข้อความ error หรือไม่
+            if (data.includes('error') || data.includes('Error')) {
+                throw new Error('เซิร์ฟเวอร์ส่งข้อผิดพลาด: ' + data);
+            }
+            // แสดงข้อความสำเร็จ
+            showSuccessMessage('บันทึกการตั้งค่าเรียบร้อยแล้ว');
+            // รีเฟรชหน้าหลังจาก 2 วินาที
+            setTimeout(() => {
+                window.location.reload();
+            }, 2000);
         })
         .catch(error => {
             console.error('Error:', error);
-            if (typeof hideLoadingIndicator === 'function') {
-                hideLoadingIndicator();
-            }
-            if (typeof showErrorMessage === 'function') {
-                showErrorMessage('เกิดข้อผิดพลาดในการบันทึกการตั้งค่า: ' + error.message);
-            } else {
-                alert('เกิดข้อผิดพลาดในการบันทึกการตั้งค่า: ' + error.message);
-            }
+            hideLoadingIndicator();
+            showErrorMessage('เกิดข้อผิดพลาดในการบันทึกการตั้งค่า: ' + error.message);
         });
     }
 }
