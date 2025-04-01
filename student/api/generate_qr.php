@@ -20,13 +20,14 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'student') {
     exit;
 }
 
-// รับข้อมูล POST เป็น JSON
-$data = json_decode(file_get_contents('php://input'), true);
-
-if (!isset($data['student_id'])) {
-    header('Content-Type: application/json');
-    echo json_encode(['success' => false, 'message' => 'ข้อมูลไม่ครบถ้วน']);
-    exit;
+// ตรวจสอบว่ามีการส่งข้อมูลแบบ application/json หรือไม่
+$content_type = isset($_SERVER['CONTENT_TYPE']) ? $_SERVER['CONTENT_TYPE'] : '';
+if (strpos($content_type, 'application/json') !== false) {
+    // รับข้อมูล JSON
+    $data = json_decode(file_get_contents('php://input'), true);
+} else {
+    // รับข้อมูลแบบ form data
+    $data = $_POST;
 }
 
 $student_id = $data['student_id'];

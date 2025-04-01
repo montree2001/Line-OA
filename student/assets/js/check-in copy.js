@@ -3,14 +3,14 @@
  * รองรับการเช็คชื่อด้วย GPS, QR Code, PIN และการสแกน QR
  */
 
-document.addEventListener('DOMContentLoaded', function () {
+document.addEventListener('DOMContentLoaded', function() {
     // Tab Navigation
     const tabItems = document.querySelectorAll('.tab-item');
     const tabPanes = document.querySelectorAll('.tab-pane');
 
     if (tabItems.length > 0) {
         tabItems.forEach(item => {
-            item.addEventListener('click', function () {
+            item.addEventListener('click', function() {
                 const tabId = this.getAttribute('data-tab');
 
                 // ยกเลิกการ active ของ tabs อื่นๆ
@@ -76,7 +76,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // ปุ่มเช็คชื่อด้วย GPS
     const checkInGpsBtn = document.getElementById('check-in-gps');
     if (checkInGpsBtn) {
-        checkInGpsBtn.addEventListener('click', function () {
+        checkInGpsBtn.addEventListener('click', function() {
             if (userLocation) {
                 checkInWithGPS(userLocation.lat, userLocation.lng);
             } else {
@@ -96,7 +96,7 @@ document.addEventListener('DOMContentLoaded', function () {
             locationStatus.className = 'status-text';
 
             navigator.geolocation.watchPosition(
-                function (position) {
+                function(position) {
                     userLocation = {
                         lat: position.coords.latitude,
                         lng: position.coords.longitude,
@@ -109,7 +109,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     updateUserMarker(userLocation);
                     checkLocationValidity(userLocation);
                 },
-                function (error) {
+                function(error) {
                     console.error('Error getting location:', error);
 
                     locationIcon.textContent = 'error';
@@ -119,10 +119,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
                     checkInGpsBtn.disabled = true;
                 }, {
-                enableHighAccuracy: true,
-                timeout: 10000,
-                maximumAge: 0
-            }
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 0
+                }
             );
         } else {
             showStatusMessage('error', 'เบราว์เซอร์ของคุณไม่รองรับการใช้งาน GPS');
@@ -223,17 +223,17 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // ส่งข้อมูลไปยัง server
         fetch('api/check_in.php', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                student_id: studentId,
-                method: 'GPS',
-                lat: lat,
-                lng: lng
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    student_id: studentId,
+                    method: 'GPS',
+                    lat: lat,
+                    lng: lng
+                })
             })
-        })
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
@@ -270,7 +270,7 @@ document.addEventListener('DOMContentLoaded', function () {
         locationStatus.textContent = message;
         locationStatus.className = type === 'error' ? 'status-text error' :
             type === 'success' ? 'status-text success' :
-                'status-text';
+            'status-text';
     }
 
     // --------------------------
@@ -290,170 +290,75 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
+    if (generateQrBtn) {
+        generateQrBtn.addEventListener('click', function() {
+            this.disabled = true;
+            this.innerHTML = '<span class="material-icons">hourglass_top</span> กำลังสร้าง QR Code...';
 
-// แก้ไขส่วนนี้ในไฟล์ check-in.js
+            const studentId = document.getElementById('student-id').value;
 
-// แก้ไขส่วนนี้ในไฟล์ check-in.js
-
-// ปุ่มสร้าง QR Code
-if (document.getElementById('generate-qr')) {
-    document.getElementById('generate-qr').addEventListener('click', function() {
-        this.disabled = true;
-        this.innerHTML = '<span class="material-icons">hourglass_empty</span> กำลังสร้าง QR Code...';
-        
-        var student_id = document.getElementById('student-id').value;
-        
-        // ใช้ XMLHttpRequest แทน fetch เพื่อความเข้ากันได้ที่ดีกว่า
-        var xhr = new XMLHttpRequest();
-        
-        // แก้ path ให้ถูกต้อง
-        xhr.open('POST', 'api/generate_qr.php', true);
-        xhr.setRequestHeader('Content-Type', 'application/json');
-        
-        xhr.onload = function() {
-            // ตรวจสอบว่าปุ่มยังมีอยู่หรือไม่
-            var button = document.getElementById('generate-qr');
-            if (!button) {
-                console.error('Button element not found');
-                return;
-            }
-            
-            if (xhr.status >= 200 && xhr.status < 300) {
-                try {
-                    var data = JSON.parse(xhr.responseText);
-                    
+            fetch('api/generate_qr.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        student_id: studentId
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
                     if (data.success) {
-                        // สร้าง QR Code ด้วย qrcode-generator library
-                        var qr = qrcode(0, 'M');
-                        qr.addData(JSON.stringify(data.qr_data));
-                        qr.make();
-                        
-                        // ตรวจสอบว่า qrDisplay มีอยู่จริง
-                        var qrDisplay = document.getElementById('qr-display');
-                        if (!qrDisplay) {
-                            console.error('QR display element not found');
-                            alert('เกิดข้อผิดพลาด: ไม่พบพื้นที่แสดง QR Code');
-                            button.disabled = false;
-                            button.innerHTML = '<span class="material-icons">qr_code</span> สร้าง QR Code';
-                            return;
-                        }
-                        
                         // แสดง QR Code
-                        qrDisplay.innerHTML = qr.createImgTag(5);
-                        
-                        // ปรับขนาดรูปภาพให้เต็มพื้นที่
-                        var img = qrDisplay.querySelector('img');
-                        if (img) {
-                            img.style.maxWidth = '100%';
-                            img.style.height = 'auto';
-                        }
-                        
-                        // ตรวจสอบว่า qrWrapper มีอยู่จริง
-                        var qrWrapper = document.querySelector('.qr-wrapper');
-                        if (!qrWrapper) {
-                            console.error('QR wrapper element not found');
-                            alert('เกิดข้อผิดพลาด: ไม่พบ QR wrapper');
-                            button.disabled = false;
-                            button.innerHTML = '<span class="material-icons">qr_code</span> สร้าง QR Code';
-                            return;
-                        }
-                        
+                        generateQRCode(data.qr_data);
+
+                        // แสดงเวลาหมดอายุ
+                        const expireTime = new Date(data.expire_time);
+                        const hours = expireTime.getHours().toString().padStart(2, '0');
+                        const minutes = expireTime.getMinutes().toString().padStart(2, '0');
+
+                        const qrWrapper = document.querySelector('.qr-wrapper');
                         qrWrapper.classList.add('active');
-                        
-                        // ลบข้อความ placeholder ถ้ามี
-                        var placeholder = qrWrapper.querySelector('.qr-placeholder');
-                        if (placeholder) {
-                            placeholder.remove();
+
+                        const qrExpire = document.createElement('div');
+                        qrExpire.className = 'qr-expire';
+                        qrExpire.innerHTML = `
+                        <span class="material-icons">access_time</span>
+                        <span>หมดอายุเวลา ${hours}:${minutes} น.</span>
+                    `;
+
+                        // ลบข้อความหมดอายุเดิม (ถ้ามี)
+                        const oldExpire = qrWrapper.querySelector('.qr-expire');
+                        if (oldExpire) {
+                            oldExpire.remove();
                         }
-                        
-                        // กำหนดเวลาหมดอายุ
-                        var expireDate = new Date(data.expire_time);
-                        var hours = expireDate.getHours();
-                        var minutes = expireDate.getMinutes();
-                        if (minutes < 10) minutes = '0' + minutes;
-                        var expireTime = hours + ':' + minutes;
-                        
-                        // สร้างหรืออัปเดตข้อความเวลาหมดอายุ
-                        var qrExpire = qrWrapper.querySelector('.qr-expire');
-                        if (!qrExpire) {
-                            qrExpire = document.createElement('div');
-                            qrExpire.className = 'qr-expire';
-                            qrWrapper.appendChild(qrExpire);
-                        }
-                        qrExpire.innerHTML = '<span class="material-icons">access_time</span><span>หมดอายุเวลา ' + expireTime + ' น.</span>';
-                        
+
+                        qrWrapper.appendChild(qrExpire);
+
                         // เปลี่ยนปุ่มเป็นปุ่มตรวจสอบสถานะ
-                        button.style.display = 'none';
-                        
-                        // ตรวจสอบและสร้างปุ่มตรวจสอบสถานะ
-                        if (document.getElementById('check-qr-status')) {
-                            document.getElementById('check-qr-status').style.display = 'block';
-                        } else {
-                            // สร้างปุ่มตรวจสอบสถานะถ้ายังไม่มี
-                            var newButton = document.createElement('button');
-                            newButton.id = 'check-qr-status';
-                            newButton.className = 'btn secondary';
-                            newButton.innerHTML = '<span class="material-icons">refresh</span> ตรวจสอบสถานะ';
-                            // ตรวจสอบว่า button.parentNode มีอยู่จริง
-                            if (button.parentNode) {
-                                button.parentNode.appendChild(newButton);
-                            } else {
-                                console.error('Button parent node not found');
-                            }
-                        }
+                        this.outerHTML = `
+                        <button id="check-qr-status" class="btn secondary">
+                            <span class="material-icons">refresh</span> ตรวจสอบสถานะ
+                        </button>
+                    `;
+
+                        // เพิ่ม event listener ให้กับปุ่มใหม่
+                        document.getElementById('check-qr-status').addEventListener('click', checkQRStatus);
+
                     } else {
-                        // แสดงข้อความแจ้งเตือนกรณีเกิดข้อผิดพลาด
-                        alert(data.message || 'ไม่สามารถสร้าง QR Code ได้');
-                        button.disabled = false;
-                        button.innerHTML = '<span class="material-icons">qr_code</span> สร้าง QR Code';
+                        showResultModal('error', 'สร้าง QR Code ไม่สำเร็จ', data.message || 'เกิดข้อผิดพลาดในการสร้าง QR Code กรุณาลองใหม่อีกครั้ง');
+                        this.disabled = false;
+                        this.innerHTML = '<span class="material-icons">qr_code</span> สร้าง QR Code';
                     }
-                } catch (e) {
-                    console.error('Error parsing JSON:', e, xhr.responseText);
-                    alert('เกิดข้อผิดพลาดในการประมวลผลข้อมูล: ' + e.message);
-                    button.disabled = false;
-                    button.innerHTML = '<span class="material-icons">qr_code</span> สร้าง QR Code';
-                }
-            } else {
-                console.error('HTTP Error:', xhr.status, xhr.statusText, xhr.responseText);
-                alert('ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้: HTTP ' + xhr.status);
-                button.disabled = false;
-                button.innerHTML = '<span class="material-icons">qr_code</span> สร้าง QR Code';
-            }
-        };
-        
-        xhr.onerror = function() {
-            console.error('Network Error');
-            alert('ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้');
-            var button = document.getElementById('generate-qr');
-            if (button) {
-                button.disabled = false;
-                button.innerHTML = '<span class="material-icons">qr_code</span> สร้าง QR Code';
-            }
-        };
-        
-        // ส่งข้อมูลเป็น JSON
-        xhr.send(JSON.stringify({student_id: student_id}));
-    });
-}
-
-
-// ในฟังก์ชันที่สร้าง QR code
-var qr = qrcode(0, 'M');
-qr.addData(JSON.stringify(data.qr_data));
-qr.make();
-
-// เปลี่ยนค่าในการสร้าง QR code ให้มีขนาดใหญ่ขึ้น
-// เพิ่ม cellSize จาก 5 เป็น 8 และลด margin จาก 10 เป็น 4
-var qrDisplay = document.getElementById('qr-display');
-qrDisplay.innerHTML = qr.createImgTag(8, 4);
-
-// ปรับขนาดรูปภาพให้เต็มพื้นที่
-var img = qrDisplay.querySelector('img');
-if (img) {
-    img.style.maxWidth = '100%';
-    img.style.height = 'auto';
-}
-
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showResultModal('error', 'สร้าง QR Code ไม่สำเร็จ', 'เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่อีกครั้ง');
+                    this.disabled = false;
+                    this.innerHTML = '<span class="material-icons">qr_code</span> สร้าง QR Code';
+                });
+        });
+    }
 
     if (checkQrStatusBtn) {
         checkQrStatusBtn.addEventListener('click', checkQRStatus);
@@ -489,14 +394,14 @@ if (img) {
         const studentId = document.getElementById('student-id').value;
 
         fetch('api/check_qr_status.php', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                student_id: studentId
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    student_id: studentId
+                })
             })
-        })
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
@@ -537,7 +442,7 @@ if (img) {
     if (pinInputs.length > 0) {
         // ตั้งค่า input ให้รับได้เฉพาะตัวเลข และเลื่อนไปยัง input ถัดไปเมื่อกรอกเสร็จ
         pinInputs.forEach(input => {
-            input.addEventListener('keyup', function (e) {
+            input.addEventListener('keyup', function(e) {
                 // รับได้เฉพาะตัวเลข
                 this.value = this.value.replace(/[^0-9]/g, '');
 
@@ -559,14 +464,14 @@ if (img) {
             });
 
             // เมื่อคลิกที่ input ให้เลือกข้อความทั้งหมด
-            input.addEventListener('click', function () {
+            input.addEventListener('click', function() {
                 this.select();
             });
         });
     }
 
     if (submitPinBtn) {
-        submitPinBtn.addEventListener('click', function () {
+        submitPinBtn.addEventListener('click', function() {
             this.disabled = true;
             this.innerHTML = '<span class="material-icons">hourglass_top</span> กำลังตรวจสอบ...';
 
@@ -582,15 +487,15 @@ if (img) {
 
             // ส่งข้อมูลไปยัง server
             fetch('api/check_in_pin.php', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    student_id: studentId,
-                    pin: pin
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        student_id: studentId,
+                        pin: pin
+                    })
                 })
-            })
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
@@ -769,15 +674,15 @@ if (img) {
             if (qrData.type === 'pin') {
                 // กรณีเป็น PIN
                 fetch('api/check_in_pin.php', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        student_id: studentId,
-                        pin: qrData.pin
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            student_id: studentId,
+                            pin: qrData.pin
+                        })
                     })
-                })
                     .then(response => response.json())
                     .then(data => {
                         if (data.success) {
@@ -793,15 +698,15 @@ if (img) {
             } else if (qrData.type === 'check_in') {
                 // กรณีเป็น QR Code เช็คชื่อโดยตรง
                 fetch('api/scan_qr_check_in.php', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        student_id: studentId,
-                        qr_data: data
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            student_id: studentId,
+                            qr_data: data
+                        })
                     })
-                })
                     .then(response => response.json())
                     .then(data => {
                         if (data.success) {
@@ -834,7 +739,7 @@ if (img) {
     const closeModal = document.getElementById('close-modal');
 
     if (modalOk) {
-        modalOk.addEventListener('click', function () {
+        modalOk.addEventListener('click', function() {
             resultModal.style.display = 'none';
 
             // ถ้ามีการ reload หน้า
@@ -859,21 +764,21 @@ if (img) {
                     `;
 
                     // เพิ่ม event listener ให้กับปุ่มใหม่
-                    document.getElementById('generate-qr').addEventListener('click', function () {
+                    document.getElementById('generate-qr').addEventListener('click', function() {
                         this.disabled = true;
                         this.innerHTML = '<span class="material-icons">hourglass_top</span> กำลังสร้าง QR Code...';
 
                         const studentId = document.getElementById('student-id').value;
 
                         fetch('api/generate_qr.php', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify({
-                                student_id: studentId
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify({
+                                    student_id: studentId
+                                })
                             })
-                        })
                             .then(response => response.json())
                             .then(data => {
                                 if (data.success) {
@@ -949,7 +854,7 @@ if (img) {
     }
 
     if (closeModal) {
-        closeModal.addEventListener('click', function () {
+        closeModal.addEventListener('click', function() {
             resultModal.style.display = 'none';
         });
     }
