@@ -32,11 +32,7 @@
     
     <?php include $content_path; ?>
     
-    <!-- Loading Indicator -->
-    <div class="loading" id="loading-indicator">
-        <div class="spinner"></div>
-        <div class="loading-text">กำลังดำเนินการ...</div>
-    </div>
+  
 
     <!-- User Dropdown Menu -->
     <div class="user-dropdown" id="userDropdown">
