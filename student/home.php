@@ -227,12 +227,8 @@ try {
         'message' => "เช็คชื่อเข้าแถวได้ถึงเวลา $attendance_end_time น. เท่านั้น"
     ];
     
-    // กำหนด CSS เพิ่มเติม
-    $additional_css = ['assets/css/student-home.css'];
-    
-    // กำหนด JS เพิ่มเติม
-    $additional_js = ['assets/js/student-home.js'];
-    
+    $extra_css = ['assets/css/student-home.css'];
+    $extra_js = ['assets/js/student-home.js'];
     // กำหนดไฟล์เนื้อหา
     $content_path = 'pages/student_home_content.php';
     

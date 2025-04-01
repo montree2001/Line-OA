@@ -12,8 +12,8 @@
     <!-- Custom CSS -->
     <link href="assets/css/stlye.css" rel="stylesheet">
     
-    <?php if (isset($additional_css)): ?>
-        <?php foreach ($additional_css as $css): ?>
+    <?php if (isset($extra_css)): ?>
+        <?php foreach ($extra_css as $css): ?>
             <link href="<?php echo $css; ?>" rel="stylesheet">
         <?php endforeach; ?>
     <?php endif; ?>
@@ -65,8 +65,8 @@
     <!-- Core JS -->
     <script src="assets/js/main.js"></script>
     
-    <?php if (isset($additional_js)): ?>
-        <?php foreach ($additional_js as $js): ?>
+    <?php if (isset( $extra_js)): ?>
+        <?php foreach ( $extra_js as $js): ?>
             <script src="<?php echo $js; ?>"></script>
         <?php endforeach; ?>
     <?php endif; ?>
