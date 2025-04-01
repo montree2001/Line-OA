@@ -4,8 +4,8 @@
  * ระบบลงทะเบียนสำหรับนักเรียนที่เข้าใช้งานครั้งแรกผ่าน LINE
  */
 session_start();
-require_once '../config/db_config.php';
 require_once '../db_connect.php';
+
 
 // ตรวจสอบว่ามีการล็อกอินหรือไม่
 if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
@@ -52,7 +52,6 @@ try {
 
 // จัดการการส่งฟอร์ม
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // นำเข้าไฟล์สำหรับประมวลผลฟอร์ม
     require_once 'register_process.php';
 }
 
@@ -60,45 +59,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $page_title = "STD-Prasat - ลงทะเบียนนักเรียน";
 
 // เริ่มแสดงเพจ
-include 'templates/header.php';
+include 'includes/header.php';
 ?>
 
 <div class="container">
     <!-- Step Indicator -->
-    <div class="steps">
-        <div class="step <?php echo ($step == 1 || $step == 'error') ? 'active' : ($step > 1 ? 'completed' : ''); ?>">
-            <div class="step-number">1</div>
-            <div class="step-title">เริ่มต้น</div>
-        </div>
-        
-        <div class="step-line <?php echo $step > 1 ? 'completed' : ''; ?>"></div>
-        
-        <div class="step <?php echo $step == 2 ? 'active' : ($step > 2 ? 'completed' : ''); ?>">
-            <div class="step-number">2</div>
-            <div class="step-title">ค้นหาข้อมูล</div>
-        </div>
-        
-        <div class="step-line <?php echo $step > 2 ? 'completed' : ''; ?>"></div>
-        
-        <div class="step <?php echo ($step == 3 || $step == 33) ? 'active' : ($step > 3 ? 'completed' : ''); ?>">
-            <div class="step-number">3</div>
-            <div class="step-title">ยืนยันข้อมูล</div>
-        </div>
-        
-        <div class="step-line <?php echo $step > 3 ? 'completed' : ''; ?>"></div>
-        
-        <div class="step <?php echo $step == 4 ? 'active' : ($step > 4 ? 'completed' : ''); ?>">
-            <div class="step-number">4</div>
-            <div class="step-title">ครูที่ปรึกษา</div>
-        </div>
-        
-        <div class="step-line <?php echo $step > 4 ? 'completed' : ''; ?>"></div>
-        
-        <div class="step <?php echo $step == 5 || $step == 55 ? 'active' : ($step > 5 ? 'completed' : ''); ?>">
-            <div class="step-number">5</div>
-            <div class="step-title">สรุปข้อมูล</div>
-        </div>
-    </div>
+    <?php include 'includes/step_indicator.php'; ?>
 
     <!-- แสดงข้อความข้อผิดพลาดและสำเร็จ -->
     <?php if (!empty($error_message)): ?>
@@ -134,20 +100,10 @@ include 'templates/header.php';
                 exit;
             }
             break;
-        case 33:
-            // ตรวจสอบว่ามีรหัสนักศึกษาหรือไม่
-            if (!isset($_SESSION['student_code'])) {
-                header('Location: register.php?step=2');
-                exit;
-            }
+        case '3manual':
             include 'register_steps/step3_manual_info.php';
             break;
         case 4:
-            // ต้องมีข้อมูลพื้นฐานที่ได้จากขั้นตอนก่อนหน้า
-            if (!isset($_SESSION['student_code']) || !isset($_SESSION['student_first_name'])) {
-                header('Location: register.php?step=2');
-                exit;
-            }
             include 'register_steps/step4_advisor.php';
             break;
         case 5:
@@ -156,24 +112,14 @@ include 'templates/header.php';
                 include 'register_steps/step5_class.php';
             } else {
                 // ถ้าไม่มีผลลัพธ์ให้ไปหน้ากรอกข้อมูลห้องเรียนเอง
-                header('Location: register.php?step=55');
+                header('Location: register.php?step=5manual');
                 exit;
             }
             break;
-        case 55:
-            // ต้องมีข้อมูลพื้นฐานที่ได้จากขั้นตอนก่อนหน้า
-            if (!isset($_SESSION['student_code']) || !isset($_SESSION['student_first_name'])) {
-                header('Location: register.php?step=2');
-                exit;
-            }
+        case '5manual':
             include 'register_steps/step5_manual_class.php';
             break;
         case 6:
-            // ต้องมีข้อมูลพื้นฐานที่ได้จากขั้นตอนก่อนหน้า
-            if (!isset($_SESSION['student_code']) || !isset($_SESSION['student_first_name'])) {
-                header('Location: register.php?step=2');
-                exit;
-            }
             include 'register_steps/step6_additional.php';
             break;
         case 7:
@@ -188,4 +134,4 @@ include 'templates/header.php';
     ?>
 </div>
 
-<?php include 'templates/footer.php'; ?>
+<?php include 'includes/footer.php'; ?>

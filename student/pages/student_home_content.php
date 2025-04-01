@@ -1,166 +1,135 @@
 <div class="header">
-        <div class="app-name">STD-Prasat</div>
-        <div class="header-icons">
-            <span class="material-icons">notifications</span>
-            <span class="material-icons">account_circle</span>
+    <div class="app-name">STD-Prasat</div>
+    <div class="header-icons">
+        <span class="material-icons">notifications</span>
+        <span class="material-icons" id="userMenuToggle">account_circle</span>
+    </div>
+</div>
+
+<div class="container">
+    <!-- การ์ดแจ้งเตือน -->
+    <div class="alert-card">
+        <span class="material-icons alert-icon">warning</span>
+        <div class="alert-content">
+            <div class="alert-title"><?php echo $alert['title']; ?></div>
+            <div class="alert-message"><?php echo $alert['message']; ?></div>
         </div>
     </div>
 
-    <div class="container">
-        <!-- การ์ดแจ้งเตือน -->
-        <div class="alert-card">
-            <span class="material-icons alert-icon">warning</span>
-            <div class="alert-content">
-                <div class="alert-title">แจ้งเตือนเวลาเช็คชื่อ</div>
-                <div class="alert-message">เช็คชื่อเข้าแถวได้ถึงเวลา 08:30 น. เท่านั้น</div>
-            </div>
-        </div>
-
-        <!-- โปรไฟล์และสถิติ -->
-        <div class="profile-card">
-            <div class="profile-header">
-                <div class="profile-image">อ</div>
-                <div class="profile-info">
-                    <div class="profile-name">นายเอกชัย รักเรียน</div>
-                    <div class="profile-details">ม.6/1 เลขที่ 15</div>
-                    <div class="profile-status status-present">
-                        <span class="material-icons">check_circle</span> เข้าแถวแล้ววันนี้
-                    </div>
-                </div>
-            </div>
-            
-            <div class="stats-grid">
-                <div class="stat-box">
-                    <div class="stat-value">97</div>
-                    <div class="stat-label">วันเรียนทั้งหมด</div>
-                </div>
-                <div class="stat-box">
-                    <div class="stat-value">97</div>
-                    <div class="stat-label">วันเข้าแถว</div>
-                </div>
-                <div class="stat-box">
-                    <div class="stat-value good">100%</div>
-                    <div class="stat-label">อัตราการเข้าแถว</div>
+    <!-- โปรไฟล์และสถิติ -->
+    <div class="profile-card">
+        <div class="profile-header">
+            <?php if (!empty($student_info['profile_picture'])): ?>
+                <div class="profile-image profile-image-pic" style="background-image: url('<?php echo $student_info['profile_picture']; ?>');"></div>
+            <?php else: ?>
+                <div class="profile-image"><?php echo $first_char; ?></div>
+            <?php endif; ?>
+            <div class="profile-info">
+                <div class="profile-name"><?php echo $student_info['name']; ?></div>
+                <div class="profile-details"><?php echo $student_info['class']; ?></div>
+                <div class="profile-status <?php echo $attendance_status['status_class']; ?>">
+                    <span class="material-icons"><?php echo $attendance_status['status_icon']; ?></span> 
+                    <?php echo $attendance_status['status_text']; ?>
                 </div>
             </div>
         </div>
-
-        <!-- ปุ่มเช็คชื่อ -->
-        <button class="check-in-button" onclick="location.href='check-in.html'">
-            <span class="material-icons">how_to_reg</span> เช็คชื่อเข้าแถววันนี้
-        </button>
-
-        <!-- ประวัติการเช็คชื่อล่าสุด -->
-        <div class="card">
-            <div class="card-header">
-                <div class="card-title">
-                    <span class="material-icons">history</span> ประวัติการเช็คชื่อล่าสุด
-                </div>
-                <a href="#" class="view-all">ดูทั้งหมด</a>
+        
+        <div class="stats-grid">
+            <div class="stat-box">
+                <div class="stat-value"><?php echo $attendance_stats['total_days']; ?></div>
+                <div class="stat-label">วันเรียนทั้งหมด</div>
             </div>
-            
-            <ul class="history-list">
-                <li class="history-item">
-                    <div class="history-date">
-                        <div class="history-day">16</div>
-                        <div class="history-month">มี.ค.</div>
-                    </div>
-                    <div class="history-content">
-                        <div class="history-status">
-                            <div class="status-dot present"></div>
-                            <div class="history-status-text">เข้าแถว</div>
-                        </div>
-                        <div class="history-time">เช็คชื่อเวลา 07:45 น.</div>
-                        <div class="history-method">
-                            <span class="material-icons">gps_fixed</span> เช็คชื่อผ่าน GPS
-                        </div>
-                    </div>
-                </li>
-                
-                <li class="history-item">
-                    <div class="history-date">
-                        <div class="history-day">15</div>
-                        <div class="history-month">มี.ค.</div>
-                    </div>
-                    <div class="history-content">
-                        <div class="history-status">
-                            <div class="status-dot present"></div>
-                            <div class="history-status-text">เข้าแถว</div>
-                        </div>
-                        <div class="history-time">เช็คชื่อเวลา 07:40 น.</div>
-                        <div class="history-method">
-                            <span class="material-icons">pin</span> เช็คชื่อด้วยรหัส PIN
-                        </div>
-                    </div>
-                </li>
-                
-                <li class="history-item">
-                    <div class="history-date">
-                        <div class="history-day">14</div>
-                        <div class="history-month">มี.ค.</div>
-                    </div>
-                    <div class="history-content">
-                        <div class="history-status">
-                            <div class="status-dot present"></div>
-                            <div class="history-status-text">เข้าแถว</div>
-                        </div>
-                        <div class="history-time">เช็คชื่อเวลา 07:38 น.</div>
-                        <div class="history-method">
-                            <span class="material-icons">qr_code_scanner</span> เช็คชื่อด้วย QR Code
-                        </div>
-                    </div>
-                </li>
-            </ul>
-        </div>
-
-        <!-- ประกาศจากโรงเรียน -->
-        <div class="card">
-            <div class="card-header">
-                <div class="card-title">
-                    <span class="material-icons">campaign</span> ประกาศจากโรงเรียน
-                </div>
-                <a href="#" class="view-all">ดูทั้งหมด</a>
+            <div class="stat-box">
+                <div class="stat-value"><?php echo $attendance_stats['attendance_days']; ?></div>
+                <div class="stat-label">วันเข้าแถว</div>
             </div>
-            
-            <ul class="announcement-list">
-                <li class="announcement-item">
-                    <div class="announcement-title">
-                        <span class="announcement-badge badge-urgent">ด่วน</span>
-                        แจ้งกำหนดการสอบปลายภาค
-                    </div>
-                    <div class="announcement-content">
-                        แจ้งกำหนดการสอบปลายภาคเรียนที่ 2/2568 ระหว่างวันที่ 1-5 เมษายน 2568 โดยนักเรียนต้องมาถึงโรงเรียนก่อนเวลา 8.00 น.
-                    </div>
-                    <div class="announcement-date">
-                        <span class="material-icons">event</span> 14 มี.ค. 2025
-                    </div>
-                </li>
-                
-                <li class="announcement-item">
-                    <div class="announcement-title">
-                        <span class="announcement-badge badge-event">กิจกรรม</span>
-                        ประชุมผู้ปกครองภาคเรียนที่ 2
-                    </div>
-                    <div class="announcement-content">
-                        ขอเชิญผู้ปกครองทุกท่านเข้าร่วมประชุมผู้ปกครองภาคเรียนที่ 2 ในวันเสาร์ที่ 22 มีนาคม 2568 เวลา 9.00-12.00 น. ณ หอประชุมโรงเรียน
-                    </div>
-                    <div class="announcement-date">
-                        <span class="material-icons">event</span> 10 มี.ค. 2025
-                    </div>
-                </li>
-                
-                <li class="announcement-item">
-                    <div class="announcement-title">
-                        <span class="announcement-badge badge-info">ข่าวสาร</span>
-                        แนะแนวการศึกษาต่อ
-                    </div>
-                    <div class="announcement-content">
-                        จะมีการแนะแนวการศึกษาต่อระดับอุดมศึกษา ในวันพุธที่ 26 มีนาคม 2568 เวลา 13.00-16.00 น. ณ หอประชุมโรงเรียน
-                    </div>
-                    <div class="announcement-date">
-                        <span class="material-icons">event</span> 8 มี.ค. 2025
-                    </div>
-                </li>
-            </ul>
+            <div class="stat-box">
+                <?php
+                $color_class = '';
+                if ($attendance_stats['attendance_percentage'] >= 80) {
+                    $color_class = 'good';
+                } elseif ($attendance_stats['attendance_percentage'] >= 70) {
+                    $color_class = 'warning';
+                } else {
+                    $color_class = 'danger';
+                }
+                ?>
+                <div class="stat-value <?php echo $color_class; ?>"><?php echo $attendance_stats['attendance_percentage']; ?>%</div>
+                <div class="stat-label">อัตราการเข้าแถว</div>
+            </div>
         </div>
     </div>
+
+    <!-- ปุ่มเช็คชื่อ -->
+    <button class="check-in-button" onclick="location.href='check-in.php'" <?php echo $attendance_status['is_checked_in'] ? 'disabled' : ''; ?>>
+        <span class="material-icons"><?php echo $attendance_status['is_checked_in'] ? 'check_circle' : 'how_to_reg'; ?></span>
+        <?php echo $attendance_status['is_checked_in'] ? 'เช็คชื่อแล้ววันนี้' : 'เช็คชื่อเข้าแถววันนี้'; ?>
+    </button>
+
+    <!-- ประวัติการเช็คชื่อล่าสุด -->
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title">
+                <span class="material-icons">history</span> ประวัติการเช็คชื่อล่าสุด
+            </div>
+            <a href="history.php" class="view-all">ดูทั้งหมด</a>
+        </div>
+        
+        <ul class="history-list">
+            <?php if (empty($check_in_history)): ?>
+                <div class="empty-history">ยังไม่มีประวัติการเช็คชื่อ</div>
+            <?php else: ?>
+                <?php foreach ($check_in_history as $history): ?>
+                    <li class="history-item">
+                        <div class="history-date">
+                            <div class="history-day"><?php echo $history['day']; ?></div>
+                            <div class="history-month"><?php echo $history['month']; ?></div>
+                        </div>
+                        <div class="history-content">
+                            <div class="history-status">
+                                <div class="status-dot <?php echo $history['status']; ?>"></div>
+                                <div class="history-status-text"><?php echo $history['status_text']; ?></div>
+                            </div>
+                            <div class="history-time">เช็คชื่อเวลา <?php echo $history['time']; ?> น.</div>
+                            <div class="history-method">
+                                <span class="material-icons"><?php echo $history['method_icon']; ?></span> 
+                                <?php echo $history['method']; ?>
+                            </div>
+                        </div>
+                    </li>
+                <?php endforeach; ?>
+            <?php endif; ?>
+        </ul>
+    </div>
+
+    <!-- ประกาศจากโรงเรียน -->
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title">
+                <span class="material-icons">campaign</span> ประกาศจากวิทยาลัย
+            </div>
+            <a href="announcements.php" class="view-all">ดูทั้งหมด</a>
+        </div>
+        
+        <ul class="announcement-list">
+            <?php if (empty($announcements)): ?>
+                <div class="empty-announcements">ยังไม่มีประกาศ</div>
+            <?php else: ?>
+                <?php foreach ($announcements as $announcement): ?>
+                    <li class="announcement-item">
+                        <div class="announcement-title">
+                            <span class="announcement-badge badge-<?php echo $announcement['badge']; ?>"><?php echo $announcement['badge_text']; ?></span>
+                            <?php echo $announcement['title']; ?>
+                        </div>
+                        <div class="announcement-content">
+                            <?php echo $announcement['content']; ?>
+                        </div>
+                        <div class="announcement-date">
+                            <span class="material-icons">event</span> <?php echo $announcement['date']; ?>
+                        </div>
+                    </li>
+                <?php endforeach; ?>
+            <?php endif; ?>
+        </ul>
+    </div>
+</div>

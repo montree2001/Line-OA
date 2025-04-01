@@ -176,7 +176,7 @@
     <div class="card-title">
         <span class="material-icons">people</span>
         รายชื่อนักเรียน
-        <span class="badge"><?php echo count($data['students']); ?> รายการ</span>
+            <span class="badge"><?php echo count($data['students']); ?> รายการ</span>
     </div>
 
     <div class="bulk-actions">
@@ -257,7 +257,7 @@
                         </td>
                         <td>
                             <div class="attendance-rate">
-                                <?php 
+                            <?php
                                 $attendanceRate = isset($student['attendance_rate']) ? $student['attendance_rate'] : 0;
                                 $rateClass = '';
                                 
@@ -377,12 +377,12 @@
                         <div class="form-group">
                             <label class="form-label">ชั้นเรียน</label>
                             <div class="class-search-container">
-                                <input type="text" list="classList" class="form-control" id="class_search"
-                                    placeholder="เลือกหรือพิมพ์เพื่อค้นหาชั้นเรียน..." autocomplete="off">
-                                <input type="hidden" name="class_id" id="class_id">
-                                <datalist id="classList">
-                                    <!-- จะถูกเติมด้วย JavaScript -->
-                                </datalist>
+                            <input type="text" list="classList" class="form-control" id="class_search"
+                                placeholder="เลือกหรือพิมพ์เพื่อค้นหาชั้นเรียน..." autocomplete="off">
+                            <input type="hidden" name="class_id" id="class_id">
+                            <datalist id="classList">
+                                <!-- จะถูกเติมด้วย JavaScript -->
+                            </datalist>
                             </div>
                         </div>
                     </div>
@@ -662,13 +662,13 @@
                         </div>
                         <div class="file-info">
                             <p>ไฟล์ที่เลือก: <span id="fileLabel">ยังไม่ได้เลือกไฟล์</span></p>
-                        </div>
-                    </div>
+            </div>
+            </div>
 
-                    <div class="import-options">
+            <div class="import-options">
                         <div class="checkbox-wrapper">
-                            <input type="checkbox" id="skip_header" name="skip_header" checked>
-                            <label for="skip_header">ข้ามแถวแรก (หัวตาราง)</label>
+                    <input type="checkbox" id="skip_header" name="skip_header" checked>
+                    <label for="skip_header">ข้ามแถวแรก (หัวตาราง)</label>
                         </div>
                         <div class="checkbox-wrapper">
                             <input type="checkbox" id="update_existing" name="update_existing" checked>
@@ -684,18 +684,18 @@
                     <div class="form-group">
                         <select class="form-control" name="import_class_id" id="import_class_id">
                             <option value="">-- ไม่ระบุชั้นเรียน (ใช้ข้อมูลจากไฟล์) --</option>
-                            <?php
+                        <?php
                             // แสดงรายการชั้นเรียนจากฐานข้อมูล
                             if (isset($data['classGroups']) && is_array($data['classGroups'])):
                                 foreach ($data['classGroups'] as $level => $classes):
-                            ?>
-                                <optgroup label="<?php echo $level; ?>">
-                                    <?php foreach ($classes as $class): ?>
+                        ?>
+                            <optgroup label="<?php echo $level; ?>">
+                                <?php foreach ($classes as $class): ?>
                                         <option value="<?php echo $class['class_id']; ?>">
                                             <?php echo $level . '/' . $class['group_number'] . ' ' . $class['department_name']; ?>
                                         </option>
-                                    <?php endforeach; ?>
-                                </optgroup>
+                                <?php endforeach; ?>
+                            </optgroup>
                             <?php
                                 endforeach;
                             endif;
@@ -829,7 +829,7 @@
                                         <label>สถานะการศึกษา</label>
                                         <select id="map_status" name="map_status" class="form-control" data-field="status">
                                             <option value="-1">-- เลือกคอลัมน์ --</option>
-                                        </select>
+                    </select>
                                     </div>
                                 </div>
                             </div>

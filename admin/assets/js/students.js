@@ -12,7 +12,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 "url": "//cdn.datatables.net/plug-ins/1.10.25/i18n/Thai.json"
             },
             "responsive": true,
-            "order": [[0, "asc"]] // เรียงตามรหัสนักเรียน
+            "order": [
+                    [0, "asc"]
+                ] // เรียงตามรหัสนักเรียน
         });
     }
 
@@ -31,18 +33,18 @@ document.addEventListener('DOMContentLoaded', function() {
  */
 function initClassSelection() {
     console.log("Initializing class selection...");
-    
+
     // ตรวจสอบว่ามีแบบฟอร์มเพิ่มนักเรียนหรือไม่
     const addForm = document.getElementById('addStudentForm');
     if (!addForm) {
         console.log("Add student form not found!");
         return;
     }
-    
+
     // ตรวจสอบส่วนเลือกชั้นเรียนแบบ datalist
     const classSearchInput = document.getElementById('class_search');
     const classIdInput = document.getElementById('class_id');
-    
+
     // ตรวจสอบหรือสร้าง datalist
     let classList = document.getElementById('classList');
     if (!classList) {
@@ -51,10 +53,10 @@ function initClassSelection() {
         document.body.appendChild(classList);
         console.log("Created classList datalist");
     }
-    
+
     // หรือตรวจสอบและใช้ dropdown แบบ select
     const classSelectDropdown = document.getElementById('class_select');
-    
+
     // ดึงข้อมูลห้องเรียน
     console.log("Fetching class data...");
     fetch('api/classes_api.php?action=get_classes_with_advisors')
@@ -67,7 +69,7 @@ function initClassSelection() {
             if (data.success && data.classes) {
                 // แสดงผลจำนวนชั้นเรียนที่ได้รับ
                 console.log(`Received ${data.classes.length} classes`);
-                
+
                 // ถ้ามี datalist input 
                 if (classSearchInput && classIdInput && classList) {
                     // เติมข้อมูลใน datalist
@@ -79,13 +81,13 @@ function initClassSelection() {
                         option.setAttribute('data-id', cls.classId);
                         classList.appendChild(option);
                     });
-                    
+
                     // เพิ่ม event listener
                     classSearchInput.addEventListener('input', function() {
                         // ค้นหาห้องเรียนจากข้อความที่ป้อน
                         const options = Array.from(classList.options);
                         const found = options.find(option => option.value === this.value);
-                        
+
                         if (found) {
                             classIdInput.value = found.getAttribute('data-id');
                             console.log("Selected class ID:", classIdInput.value);
@@ -93,16 +95,16 @@ function initClassSelection() {
                             classIdInput.value = '';
                         }
                     });
-                    
+
                     console.log("Datalist initialized with class data");
-                } 
+                }
                 // ถ้ามี dropdown select
                 else if (classSelectDropdown) {
                     // เคลียร์ตัวเลือกเดิม (ยกเว้นตัวเลือกแรก)
                     while (classSelectDropdown.options.length > 1) {
                         classSelectDropdown.remove(1);
                     }
-                    
+
                     // เติมข้อมูลใน dropdown
                     data.classes.forEach(cls => {
                         const option = document.createElement('option');
@@ -111,18 +113,18 @@ function initClassSelection() {
                         option.text = `${levelName}/${cls.groupNumber} ${cls.departmentName}`;
                         classSelectDropdown.appendChild(option);
                     });
-                    
+
                     console.log("Dropdown select initialized with class data");
                 }
                 // หากทั้งสองแบบไม่มี ลองหา select ปกติที่มี ID เป็น 'class_id'
                 else if (document.getElementById('class_id') && document.getElementById('class_id').tagName === 'SELECT') {
                     const classSelect = document.getElementById('class_id');
-                    
+
                     // เคลียร์ตัวเลือกเดิม (ยกเว้นตัวเลือกแรก)
                     while (classSelect.options.length > 1) {
                         classSelect.remove(1);
                     }
-                    
+
                     // เติมข้อมูลใน select
                     data.classes.forEach(cls => {
                         const option = document.createElement('option');
@@ -131,7 +133,7 @@ function initClassSelection() {
                         option.text = `${levelName}/${cls.groupNumber} ${cls.departmentName}`;
                         classSelect.appendChild(option);
                     });
-                    
+
                     console.log("Regular select initialized with class data");
                 } else {
                     console.warn("No suitable class selection element found!");
@@ -154,10 +156,10 @@ function initClassSelection() {
 // เมื่อโหลด DOM เสร็จสมบูรณ์
 document.addEventListener('DOMContentLoaded', function() {
     console.log("DOM fully loaded");
-    
+
     // เรียกใช้ฟังก์ชันสำหรับการเลือกชั้นเรียน
     initClassSelection();
-    
+
     // เพิ่ม event listener สำหรับปุ่มเพิ่มนักเรียนใหม่เพื่อให้แน่ใจว่า datalist ทำงาน
     const addButtons = document.querySelectorAll('.btn-primary[onclick="showAddStudentModal()"]');
     addButtons.forEach(button => {
@@ -165,10 +167,10 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log("Add student button clicked");
             e.preventDefault();
             showAddStudentModal();
-            
+
             // รอสักครู่ให้ Modal แสดงและตรวจสอบว่าส่วนเลือกชั้นเรียนทำงานหรือไม่
             setTimeout(() => {
-                if (document.getElementById('classList') && 
+                if (document.getElementById('classList') &&
                     document.getElementById('classList').options.length === 0) {
                     console.log("Re-initializing class selection...");
                     initClassSelection();
@@ -183,7 +185,7 @@ document.addEventListener('DOMContentLoaded', function() {
  */
 function showAddStudentModal() {
     console.log("Showing add student modal");
-    
+
     // รีเซ็ตฟอร์ม
     const form = document.getElementById('addStudentForm');
     if (form) {
@@ -191,24 +193,24 @@ function showAddStudentModal() {
     } else {
         console.error("Add student form not found!");
     }
-    
+
     // แสดง Modal
     const modal = document.getElementById('addStudentModal');
     if (modal) {
         modal.style.display = 'flex';
         document.body.classList.add('modal-open');
-        
+
         // ตรวจสอบว่า datalist หรือ select ทำงานหรือไม่
         setTimeout(() => {
             console.log("Checking class selection elements...");
             const classList = document.getElementById('classList');
             const classSearchInput = document.getElementById('class_search');
             const classIdInput = document.getElementById('class_id');
-            
+
             console.log("- classList:", classList);
             console.log("- class_search:", classSearchInput);
             console.log("- class_id:", classIdInput);
-            
+
             if (classList && (!classList.options || classList.options.length === 0)) {
                 console.log("Class list is empty, re-initializing...");
                 initClassSelection();
@@ -311,7 +313,7 @@ function setupButtonListeners() {
 function showAddStudentModal() {
     // รีเซ็ตฟอร์ม
     document.getElementById('addStudentForm').reset();
-    
+
     // แสดง Modal
     showModal('addStudentModal');
 }
@@ -322,7 +324,7 @@ function showAddStudentModal() {
 function showImportModal() {
     // รีเซ็ตฟอร์ม
     document.getElementById('importForm').reset();
-    
+
     // แสดง Modal
     showModal('importModal');
 }
@@ -339,37 +341,37 @@ function viewStudent(studentId) {
         .then(data => {
             if (data.success) {
                 const student = data.student;
-                
+
                 // แสดงข้อมูลใน Modal
                 document.getElementById('view_avatar').innerText = student.first_name.charAt(0).toUpperCase();
                 document.getElementById('view_full_name').innerText = `${student.title}${student.first_name} ${student.last_name}`;
                 document.getElementById('view_student_code').innerText = student.student_code;
                 document.getElementById('view_class').innerText = student.class || '-';
-                
+
                 document.querySelector('#view_phone span').innerText = student.phone_number || '-';
                 document.querySelector('#view_email span').innerText = student.email || '-';
                 document.querySelector('#view_line span').innerText = student.line_connected ? 'เชื่อมต่อแล้ว' : 'ยังไม่ได้เชื่อมต่อ';
-                
+
                 document.querySelector('#view_advisor span').innerText = student.advisor_name || '-';
                 document.querySelector('#view_department span').innerText = student.department_name || '-';
                 document.querySelector('#view_status span').innerText = student.status;
-                
+
                 document.querySelector('#view_attendance_status span').innerText = student.attendance_status;
                 document.getElementById('view_attendance_days').innerText = student.attendance_days;
                 document.getElementById('view_absence_days').innerText = student.absence_days;
                 document.getElementById('view_attendance_rate').innerText = student.attendance_rate.toFixed(1) + '%';
-                
+
                 // ตั้งค่าปุ่มแก้ไขและสร้าง QR
                 document.getElementById('edit_btn').onclick = () => {
                     closeModal('viewStudentModal');
                     editStudent(studentId);
                 };
-                
+
                 document.getElementById('generate_qr_btn').onclick = () => {
                     closeModal('viewStudentModal');
                     generateLineQR(studentId);
                 };
-                
+
                 // แสดง Modal
                 showModal('viewStudentModal');
             } else {
@@ -394,7 +396,7 @@ function editStudent(studentId) {
         .then(data => {
             if (data.success) {
                 const student = data.student;
-                
+
                 // เติมข้อมูลในฟอร์ม
                 document.getElementById('edit_student_id').value = student.student_id;
                 document.getElementById('edit_title').value = student.title;
@@ -405,7 +407,7 @@ function editStudent(studentId) {
                 document.getElementById('edit_email').value = student.email || '';
                 document.getElementById('edit_class_id').value = student.class_id || '';
                 document.getElementById('edit_status').value = student.status;
-                
+
                 // แสดง Modal
                 showModal('editStudentModal');
             } else {
@@ -428,7 +430,7 @@ function deleteStudent(studentId, studentName) {
     // แสดงชื่อนักเรียนที่จะลบใน Modal
     document.getElementById('delete_student_name').innerText = studentName;
     document.getElementById('delete_student_id').value = studentId;
-    
+
     // แสดง Modal
     showModal('deleteStudentModal');
 }
@@ -444,38 +446,38 @@ function generateLineQR(studentId) {
     document.getElementById('qrcode-image').src = 'assets/images/loading.gif';
     document.getElementById('qr-expire-time').innerText = 'กำลังสร้าง QR Code...';
     document.getElementById('line-status-text').innerHTML = '<span class="status-badge warning">กำลังตรวจสอบ...</span>';
-    
+
     // สร้าง QR Code
     const formData = new FormData();
     formData.append('action', 'generate_qr_code');
     formData.append('student_id', studentId);
-    
+
     fetch('api/line_connect_api.php', {
-        method: 'POST',
-        body: formData
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            // แสดง QR Code
-            document.getElementById('qrcode-image').src = data.qr_code_url;
-            document.getElementById('qr-expire-time').innerText = new Date(data.expire_time).toLocaleString();
-            document.getElementById('line-connect-url').href = data.line_connect_url;
-            document.getElementById('line-status-text').innerHTML = '<span class="status-badge warning">รอการเชื่อมต่อ</span>';
-        } else {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // แสดง QR Code
+                document.getElementById('qrcode-image').src = data.qr_code_url;
+                document.getElementById('qr-expire-time').innerText = new Date(data.expire_time).toLocaleString();
+                document.getElementById('line-connect-url').href = data.line_connect_url;
+                document.getElementById('line-status-text').innerHTML = '<span class="status-badge warning">รอการเชื่อมต่อ</span>';
+            } else {
+                document.getElementById('qrcode-image').src = 'assets/images/error.png';
+                document.getElementById('qr-expire-time').innerText = '-';
+                document.getElementById('line-status-text').innerHTML = '<span class="status-badge danger">เกิดข้อผิดพลาด</span>';
+                showAlert(data.message || 'ไม่สามารถสร้าง QR Code ได้', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error generating QR code:', error);
             document.getElementById('qrcode-image').src = 'assets/images/error.png';
             document.getElementById('qr-expire-time').innerText = '-';
             document.getElementById('line-status-text').innerHTML = '<span class="status-badge danger">เกิดข้อผิดพลาด</span>';
-            showAlert(data.message || 'ไม่สามารถสร้าง QR Code ได้', 'error');
-        }
-    })
-    .catch(error => {
-        console.error('Error generating QR code:', error);
-        document.getElementById('qrcode-image').src = 'assets/images/error.png';
-        document.getElementById('qr-expire-time').innerText = '-';
-        document.getElementById('line-status-text').innerHTML = '<span class="status-badge danger">เกิดข้อผิดพลาด</span>';
-        showAlert('เกิดข้อผิดพลาดในการสร้าง QR Code', 'error');
-    });
+            showAlert('เกิดข้อผิดพลาดในการสร้าง QR Code', 'error');
+        });
 }
 
 /**
@@ -487,41 +489,41 @@ function checkLineStatus() {
         showAlert('ไม่พบรหัสนักเรียน', 'error');
         return;
     }
-    
+
     // แสดงสถานะกำลังตรวจสอบ
     document.getElementById('line-status-text').innerHTML = '<span class="status-badge warning">กำลังตรวจสอบ...</span>';
-    
+
     // ตรวจสอบสถานะ
     const formData = new FormData();
     formData.append('action', 'check_line_status');
     formData.append('student_id', studentId);
-    
+
     fetch('api/line_connect_api.php', {
-        method: 'POST',
-        body: formData
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            if (data.is_connected) {
-                document.getElementById('line-status-text').innerHTML = '<span class="status-badge success">เชื่อมต่อแล้ว</span>';
-                // รีโหลดหน้าหลังจาก 2 วินาที
-                setTimeout(() => {
-                    location.reload();
-                }, 2000);
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                if (data.is_connected) {
+                    document.getElementById('line-status-text').innerHTML = '<span class="status-badge success">เชื่อมต่อแล้ว</span>';
+                    // รีโหลดหน้าหลังจาก 2 วินาที
+                    setTimeout(() => {
+                        location.reload();
+                    }, 2000);
+                } else {
+                    document.getElementById('line-status-text').innerHTML = '<span class="status-badge warning">ยังไม่ได้เชื่อมต่อ</span>';
+                }
             } else {
-                document.getElementById('line-status-text').innerHTML = '<span class="status-badge warning">ยังไม่ได้เชื่อมต่อ</span>';
+                document.getElementById('line-status-text').innerHTML = '<span class="status-badge danger">เกิดข้อผิดพลาด</span>';
+                showAlert(data.message || 'ไม่สามารถตรวจสอบสถานะได้', 'error');
             }
-        } else {
+        })
+        .catch(error => {
+            console.error('Error checking LINE status:', error);
             document.getElementById('line-status-text').innerHTML = '<span class="status-badge danger">เกิดข้อผิดพลาด</span>';
-            showAlert(data.message || 'ไม่สามารถตรวจสอบสถานะได้', 'error');
-        }
-    })
-    .catch(error => {
-        console.error('Error checking LINE status:', error);
-        document.getElementById('line-status-text').innerHTML = '<span class="status-badge danger">เกิดข้อผิดพลาด</span>';
-        showAlert('เกิดข้อผิดพลาดในการตรวจสอบสถานะ', 'error');
-    });
+            showAlert('เกิดข้อผิดพลาดในการตรวจสอบสถานะ', 'error');
+        });
 }
 
 /**
@@ -531,12 +533,12 @@ function printStudentList() {
     // สร้างหน้าเพื่อพิมพ์
     const printWindow = window.open('', '_blank');
     const table = document.getElementById('studentDataTable');
-    
+
     if (!table) {
         showAlert('ไม่พบตารางข้อมูลนักเรียน', 'error');
         return;
     }
-    
+
     // สร้าง HTML สำหรับพิมพ์
     let printContent = `
         <!DOCTYPE html>
@@ -608,11 +610,11 @@ function printStudentList() {
                 </thead>
                 <tbody>
     `;
-    
+
     // คัดลอกข้อมูลจากตารางเดิม
     const rows = table.querySelectorAll('tbody tr');
     let index = 1;
-    
+
     rows.forEach(row => {
         const studentCode = row.querySelector('td:nth-child(1)').innerText;
         const nameCell = row.querySelector('td:nth-child(2)');
@@ -620,7 +622,7 @@ function printStudentList() {
         const classInfo = row.querySelector('td:nth-child(3)').innerText;
         const department = row.querySelector('td:nth-child(4)').innerText;
         const status = row.querySelector('td:nth-child(7) .status-badge').innerText;
-        
+
         printContent += `
             <tr>
                 <td>${index}</td>
@@ -631,10 +633,10 @@ function printStudentList() {
                 <td>${status}</td>
             </tr>
         `;
-        
+
         index++;
     });
-    
+
     printContent += `
                 </tbody>
             </table>
@@ -650,7 +652,7 @@ function printStudentList() {
         </body>
         </html>
     `;
-    
+
     printWindow.document.open();
     printWindow.document.write(printContent);
     printWindow.document.close();
@@ -662,13 +664,13 @@ function printStudentList() {
 function downloadExcel() {
     // สร้าง URL สำหรับดาวน์โหลด
     let url = 'api/export_students.php';
-    
+
     // เพิ่มพารามิเตอร์การค้นหา
     const urlParams = new URLSearchParams(window.location.search);
     const searchParams = ['name', 'student_code', 'level', 'group_number', 'department_id', 'status', 'attendance_status', 'line_status'];
-    
+
     let hasParams = false;
-    
+
     searchParams.forEach(param => {
         if (urlParams.has(param)) {
             if (!hasParams) {
@@ -680,7 +682,7 @@ function downloadExcel() {
             url += `${param}=${encodeURIComponent(urlParams.get(param))}`;
         }
     });
-    
+
     // เปิด URL ในแท็บใหม่
     window.open(url, '_blank');
 }
@@ -692,11 +694,11 @@ function initClassDatalist() {
     const classSearchInput = document.getElementById('class_search');
     const classIdInput = document.getElementById('class_id');
     const classList = document.getElementById('classList');
-    
+
     if (!classSearchInput || !classIdInput || !classList) {
         return;
     }
-    
+
     // ดึงข้อมูลห้องเรียน
     fetch('api/classes_api.php?action=get_classes_with_advisors')
         .then(response => response.json())
@@ -711,13 +713,13 @@ function initClassDatalist() {
                     option.setAttribute('data-id', cls.classId);
                     classList.appendChild(option);
                 });
-                
+
                 // เพิ่ม event listener
                 classSearchInput.addEventListener('input', function() {
                     // ค้นหาห้องเรียนจากข้อความที่ป้อน
                     const options = Array.from(classList.options);
                     const found = options.find(option => option.value === this.value);
-                    
+
                     if (found) {
                         classIdInput.value = found.getAttribute('data-id');
                     } else {
@@ -741,13 +743,13 @@ function showModal(modalId) {
     if (modal) {
         modal.style.display = 'flex';
         document.body.classList.add('modal-open');
-        
+
         // เพิ่มพารามิเตอร์สำหรับ QR Code
         if (modalId === 'lineQRModal') {
             const studentId = document.querySelector('button[onclick^="generateLineQR"]')
                 .getAttribute('onclick')
                 .match(/'([^']+)'/)[1];
-                
+
             document.getElementById('line-status-check').setAttribute('data-student-id', studentId);
         }
     }
@@ -775,7 +777,7 @@ function closeModal(modalId) {
 function showAlert(message, type = 'info') {
     const alertContainer = document.getElementById('alertContainer');
     if (!alertContainer) return;
-    
+
     const alert = document.createElement('div');
     alert.className = `alert alert-${type}`;
     alert.innerHTML = `
@@ -784,9 +786,9 @@ function showAlert(message, type = 'info') {
             <span class="material-icons">close</span>
         </button>
     `;
-    
+
     alertContainer.appendChild(alert);
-    
+
     // ลบข้อความแจ้งเตือนอัตโนมัติหลังจาก 5 วินาที
     setTimeout(() => {
         if (alert.parentElement) {
@@ -795,7 +797,7 @@ function showAlert(message, type = 'info') {
     }, 5000);
 
 
-    
+
 
 
 
