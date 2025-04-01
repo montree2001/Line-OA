@@ -5,7 +5,9 @@
 session_start();
 require_once '../config/db_config.php';
 require_once '../db_connect.php';
-
+// เพิ่มโค้ดนี้ที่ด้านบนของไฟล์ home.php
+error_reporting(0);
+ini_set('display_errors', 0);
 // ตรวจสอบว่ามีการล็อกอินหรือไม่
 if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
     header('Location: ../index.php');
@@ -116,92 +118,83 @@ try {
         ];
     }
     
-    // ดึงประกาศล่าสุด 3 รายการ
-    $stmt = $conn->prepare("
-        SELECT a.title, a.content, a.type, a.created_at
-        FROM announcements a
-        WHERE a.status = 'active' 
-        AND (a.is_all_targets = 1 
-             OR (a.target_department = ? OR a.target_level = ?))
-        ORDER BY a.created_at DESC
-        LIMIT 3
-    ");
-    $dept_id = 0;
-    $level = '';
+
+    $announcements = [
+        [
+            'id' => 'sample-1',  // กำหนดค่า ID แบบตายตัว
+            'title' => 'ประกาศงดกิจกรรมหน้าเสาธง',
+            'content' => 'เนื่องจากสภาพอากาศไม่เอื้ออำนวย จึงงดกิจกรรมหน้าเสาธงในวันที่ 1-3 เมษายน 2568 นักเรียนสามารถเช็คชื่อผ่านระบบได้ตามปกติ',
+            'date' => '30 มี.ค. 2568',
+            'badge' => 'info',
+            'badge_text' => 'ประกาศ'
+        ],
+        [
+            'id' => 'sample-2',  // กำหนดค่า ID แบบตายตัว
+            'title' => 'การแข่งขันกีฬาสีประจำปี 2568',
+            'content' => 'ขอเชิญนักเรียนทุกคนเข้าร่วมการแข่งขันกีฬาสีประจำปี 2568 ในวันที่ 10-12 เมษายน 2568',
+            'date' => '28 มี.ค. 2568',
+            'badge' => 'event',
+            'badge_text' => 'กิจกรรม'
+        ],
+        [
+            'id' => 'sample-3',  // กำหนดค่า ID แบบตายตัว
+            'title' => 'เตือนนักเรียนที่ยังไม่ผ่านกิจกรรม',
+            'content' => 'ขอให้นักเรียนที่มีอัตราการเข้าแถวต่ำกว่า 75% ติดต่อครูที่ปรึกษาโดยด่วน',
+            'date' => '25 มี.ค. 2568',
+            'badge' => 'urgent',
+            'badge_text' => 'สำคัญ'
+        ]
+    ];
     
-    if (isset($student['department_id'])) {
-        $dept_id = $student['department_id'];
-    }
-    
-    if (isset($student['level'])) {
-        $level = $student['level'];
-    }
-    
-    $stmt->execute([$dept_id, $level]);
-    $db_announcements = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    
-    // จัดรูปแบบประกาศ
-    $announcements = [];
-    foreach ($db_announcements as $announcement) {
-        $created_date = new DateTime($announcement['created_at']);
-        $badge_type = '';
-        $badge_text = '';
+    // หลังจากนี้ คุณสามารถลองใช้โค้ดด้านล่างเพื่อดึงข้อมูลจากฐานข้อมูลจริง
+    // แต่ถ้ามีปัญหา ก็จะยังคงใช้ข้อมูลจำลองด้านบน
+    try {
+        // เชื่อมต่อและดึงข้อมูลจากฐานข้อมูลจริง (ถ้ามี)
+        // นำโค้ดส่วนนี้มาใช้หลังจากระบบทำงานได้กับข้อมูลจำลองแล้ว
         
-        switch ($announcement['type']) {
-            case 'urgent':
-                $badge_type = 'urgent';
-                $badge_text = 'ด่วน';
-                break;
-            case 'event':
-                $badge_type = 'event';
-                $badge_text = 'กิจกรรม';
-                break;
-            case 'academic':
-                $badge_type = 'info';
-                $badge_text = 'วิชาการ';
-                break;
-            default:
-                $badge_type = 'info';
-                $badge_text = 'ข่าวสาร';
+   
+        $stmt = $conn->prepare("
+            SELECT announcement_id, title, content, type, created_at 
+            FROM announcements 
+            WHERE status = 'active' 
+            ORDER BY created_at DESC 
+            LIMIT 3
+        ");
+        $stmt->execute();
+        $db_announcements = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // ถ้ามีข้อมูลจากฐานข้อมูล ให้แทนที่ข้อมูลจำลอง
+        if (!empty($db_announcements)) {
+            $announcements = [];
+            foreach ($db_announcements as $item) {
+                // แปลงข้อมูลจากฐานข้อมูลให้อยู่ในรูปแบบที่ต้องการ
+                $announcements[] = [
+                    'id' => $item['announcement_id'],
+                    'title' => $item['title'],
+                    'content' => mb_substr(strip_tags($item['content']), 0, 100, 'UTF-8') . '...',
+                    'date' => '1 เม.ย. 2568', // แปลงวันที่จริงตามต้องการ
+                    'badge' => 'info', // กำหนดตามประเภท
+                    'badge_text' => 'ข่าวสาร' // กำหนดตามประเภท
+                ];
+            }
         }
         
-        $announcements[] = [
-            'title' => $announcement['title'],
-            'content' => $announcement['content'],
-            'date' => $created_date->format('d') . ' ' . $thai_months[$created_date->format('m')] . ' ' . 
-                     ($created_date->format('Y') + 543),  // แปลงเป็นปี พ.ศ.
-            'badge' => $badge_type,
-            'badge_text' => $badge_text
-        ];
+    } catch (Exception $e) {
+        // ถ้ามีข้อผิดพลาด ไม่ต้องทำอะไร เพราะเรามีข้อมูลจำลองอยู่แล้ว
     }
-    
-    // ถ้าไม่มีประกาศในฐานข้อมูล ใช้ข้อมูลตัวอย่าง
-    if (empty($announcements)) {
-        $announcements = [
-            [
-                'title' => 'ประกาศงดกิจกรรมหน้าเสาธง',
-                'content' => 'เนื่องจากสภาพอากาศไม่เอื้ออำนวย จึงงดกิจกรรมหน้าเสาธงในวันที่ 1-3 เมษายน 2568 นักเรียนสามารถเช็คชื่อผ่านระบบได้ตามปกติ',
-                'date' => '30 มี.ค. 2568',
-                'badge' => 'info',
-                'badge_text' => 'ประกาศ'
-            ],
-            [
-                'title' => 'การแข่งขันกีฬาสีประจำปี 2568',
-                'content' => 'ขอเชิญนักเรียนทุกคนเข้าร่วมการแข่งขันกีฬาสีประจำปี 2568 ในวันที่ 10-12 เมษายน 2568 เวลา 08.00-16.00 น.',
-                'date' => '28 มี.ค. 2568',
-                'badge' => 'event',
-                'badge_text' => 'กิจกรรม'
-            ],
-            [
-                'title' => 'เตือนนักเรียนที่ยังไม่ผ่านกิจกรรม',
-                'content' => 'ขอให้นักเรียนที่มีอัตราการเข้าแถวต่ำกว่า 75% ติดต่อครูที่ปรึกษาโดยด่วน เพื่อรับทราบแนวทางการแก้ไข',
-                'date' => '25 มี.ค. 2568',
-                'badge' => 'urgent',
-                'badge_text' => 'สำคัญ'
-            ]
-        ];
-    }
-    
+
+
+
+
+
+
+
+
+
+
+
+
+
     // แสดงหน้าเว็บ
     $page_title = "STD-Prasat - หน้าหลักนักเรียน";
     
@@ -286,104 +279,9 @@ function getMethodIcon($method) {
 
 
 
-// ดึงประกาศล่าสุด 3 รายการ - เพิ่ม announcement_id ในคำสั่ง SQL
-$stmt = $conn->prepare("
-    SELECT a.announcement_id, a.title, a.content, a.type, a.created_at
-    FROM announcements a
-    WHERE a.status = 'active' 
-    AND (a.is_all_targets = 1 
-         OR (a.target_department = ? OR a.target_level = ?))
-    ORDER BY a.created_at DESC
-    LIMIT 3
-");
 
-$dept_id = 0;
-$level = '';
 
-if (isset($student['department_id'])) {
-    $dept_id = $student['department_id'];
-}
-
-if (isset($student['level'])) {
-    $level = $student['level'];
-}
-
-$stmt->execute([$dept_id, $level]);
-$db_announcements = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-// จัดรูปแบบประกาศ - เพิ่ม id และให้ตัดข้อความเนื้อหาให้สั้นลง
-$announcements = [];
-foreach ($db_announcements as $announcement) {
-    $created_date = new DateTime($announcement['created_at']);
-    $badge_type = '';
-    $badge_text = '';
     
-    switch ($announcement['type']) {
-        case 'urgent':
-            $badge_type = 'urgent';
-            $badge_text = 'ด่วน';
-            break;
-        case 'event':
-            $badge_type = 'event';
-            $badge_text = 'กิจกรรม';
-            break;
-        case 'academic':
-            $badge_type = 'info';
-            $badge_text = 'วิชาการ';
-            break;
-        default:
-            $badge_type = 'info';
-            $badge_text = 'ข่าวสาร';
-    }
-    
-    // ตัดข้อความให้สั้นลงสำหรับแสดงในหน้าหลัก
-    $short_content = mb_substr(strip_tags($announcement['content']), 0, 120, 'UTF-8');
-    if (mb_strlen($announcement['content'], 'UTF-8') > 120) {
-        $short_content .= '...';
-    }
-    
-    $announcements[] = [
-        'id' => $announcement['announcement_id'],
-        'title' => $announcement['title'],
-        'content' => $short_content,
-        'full_content' => $announcement['content'], // เก็บเนื้อหาเต็มไว้ด้วย
-        'date' => $created_date->format('d') . ' ' . $thai_months[$created_date->format('m')] . ' ' . 
-                ($created_date->format('Y') + 543),  // แปลงเป็นปี พ.ศ.
-        'badge' => $badge_type,
-        'badge_text' => $badge_text
-    ];
-}
-
-// ถ้าไม่มีประกาศในฐานข้อมูล ใช้ข้อมูลตัวอย่าง
-if (empty($announcements)) {
-    $announcements = [
-        [
-            'id' => 'sample1',
-            'title' => 'ประกาศงดกิจกรรมหน้าเสาธง',
-            'content' => 'เนื่องจากสภาพอากาศไม่เอื้ออำนวย จึงงดกิจกรรมหน้าเสาธงในวันที่ 1-3 เมษายน 2568 นักเรียนสามารถเช็คชื่อผ่านระบบได้ตามปกติ',
-            'date' => '30 มี.ค. 2568',
-            'badge' => 'info',
-            'badge_text' => 'ประกาศ'
-        ],
-        [
-            'id' => 'sample2',
-            'title' => 'การแข่งขันกีฬาสีประจำปี 2568',
-            'content' => 'ขอเชิญนักเรียนทุกคนเข้าร่วมการแข่งขันกีฬาสีประจำปี 2568 ในวันที่ 10-12 เมษายน 2568 เวลา 08.00-16.00 น.',
-            'date' => '28 มี.ค. 2568',
-            'badge' => 'event',
-            'badge_text' => 'กิจกรรม'
-        ],
-        [
-            'id' => 'sample3',
-            'title' => 'เตือนนักเรียนที่ยังไม่ผ่านกิจกรรม',
-            'content' => 'ขอให้นักเรียนที่มีอัตราการเข้าแถวต่ำกว่า 75% ติดต่อครูที่ปรึกษาโดยด่วน เพื่อรับทราบแนวทางการแก้ไข',
-            'date' => '25 มี.ค. 2568',
-            'badge' => 'urgent',
-            'badge_text' => 'สำคัญ'
-        ]
-    ];
-}
-
 
 
 

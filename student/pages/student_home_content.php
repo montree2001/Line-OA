@@ -102,8 +102,8 @@
         </ul>
     </div>
 
-    <!-- ประกาศจากโรงเรียน -->
-  <!-- ประกาศจากโรงเรียน -->
+
+<!-- ประกาศจากวิทยาลัย -->
 <div class="card">
     <div class="card-header">
         <div class="card-title">
@@ -114,11 +114,15 @@
     
     <ul class="announcement-list">
         <?php if (empty($announcements)): ?>
-            <div class="empty-announcements">ยังไม่มีประกาศ</div>
+            <div class="empty-announcements">ยังไม่มีประกาศในขณะนี้</div>
         <?php else: ?>
             <?php foreach ($announcements as $announcement): ?>
                 <li class="announcement-item">
-                <a href="announcement_detail.php?id=<?php echo $announcement['id']; ?>&amp;from=home" class="announcement-link">
+                    <?php 
+                    // ตรวจสอบและรับประกันว่ามีค่า ID (สำหรับประกาศจริงและตัวอย่าง)
+                    $announcement_id = isset($announcement['id']) ? $announcement['id'] : 'no-id';
+                    ?>
+                    <a href="view_announcement.php?id=<?php echo $announcement_id; ?>" class="announcement-link">
                         <div class="announcement-title">
                             <span class="announcement-badge badge-<?php echo $announcement['badge']; ?>"><?php echo $announcement['badge_text']; ?></span>
                             <?php echo $announcement['title']; ?>
@@ -140,7 +144,6 @@
         <?php endif; ?>
     </ul>
 </div>
-
 
 </div>
 
