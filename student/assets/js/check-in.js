@@ -901,10 +901,4 @@ document.addEventListener('DOMContentLoaded', function() {
         resultModal.style.display = 'block';
     }
 
-
-
-
-
-
-
 });

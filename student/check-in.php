@@ -170,7 +170,7 @@ try {
     ];
     
     // กำหนด JS เพิ่มเติม
-    $extra_js = [
+     $extra_js = [
         'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/leaflet.min.js',
         'https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js',
         'https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js',
