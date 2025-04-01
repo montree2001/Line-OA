@@ -134,31 +134,32 @@
                     <input type="hidden" id="gps-radius" value="<?php echo $gps_info['radius']; ?>">
                     <input type="hidden" id="student-id" value="<?php echo $student_info['id']; ?>">
                 </div>
-<!-- QR Code Tab -->
-<div class="tab-pane" id="qr-tab">
-    <div class="tab-description">
-        <p>สร้าง QR Code ให้ครูสแกนเพื่อเช็คชื่อ</p>
-        <p class="small">QR Code จะหมดอายุภายใน 5 นาที หลังจากสร้าง</p>
-    </div>
-    
-    <div class="qr-container">
-        <div class="qr-wrapper">
-            <div id="qr-display"></div>
-            <div class="qr-placeholder">
-                <span class="material-icons">qr_code</span>
-                <span>กดปุ่มด้านล่างเพื่อสร้าง QR Code</span>
-            </div>
-        </div>
-    </div>
-    
-    <button id="generate-qr" class="btn primary">
-        <span class="material-icons">qr_code</span> สร้าง QR Code
-    </button>
-    
-    <input type="hidden" id="student-id" value="<?php echo $student_info['id']; ?>">
-</div>
+                <!-- QR Code Tab -->
+                <div class="tab-pane" id="qr-tab">
+                    <div class="tab-description">
+                        <p>สร้าง QR Code ให้ครูสแกนเพื่อเช็คชื่อ</p>
+                        <p class="small">QR Code จะหมดอายุภายใน 5 นาที หลังจากสร้าง</p>
+                        <p class="small">คลิกที่ QR Code เพื่อดูขนาดใหญ่</p>
+                    </div>
 
-                  
+                    <div class="qr-container">
+                        <div class="qr-wrapper">
+                            <div id="qr-display"></div>
+                            <div class="qr-placeholder">
+                                <span class="material-icons">qr_code</span>
+                                <span>กดปุ่มด้านล่างเพื่อสร้าง QR Code</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button id="generate-qr" class="btn primary">
+                        <span class="material-icons">qr_code</span> สร้าง QR Code
+                    </button>
+
+                    <input type="hidden" id="student-id" value="<?php echo $student_info['id']; ?>">
+                </div>
+
+
 
                 <!-- PIN Tab -->
                 <div class="tab-pane" id="pin-tab">
@@ -209,6 +210,22 @@
     <?php endif; ?>
 </div>
 
+
+<!-- เพิ่มโค้ดนี้ที่ส่วนท้ายของไฟล์ HTML ก่อนปิด body tag -->
+<div id="qr-fullscreen-modal" class="fullscreen-modal">
+    <div class="modal-content">
+        <span class="close-fullscreen">&times;</span>
+        <div id="fullscreen-qr-display"></div>
+        <div class="fullscreen-qr-info">
+            <span id="fullscreen-qr-expire" class="expire-text"></span>
+            <button id="download-qr" class="download-btn">
+                <span class="material-icons">file_download</span> บันทึกรูป
+            </button>
+        </div>
+    </div>
+</div>
+
+
 <!-- Modal สำหรับแสดงผลการเช็คชื่อ -->
 <div class="modal" id="result-modal">
     <div class="modal-content">
@@ -229,3 +246,128 @@
 
 <!-- เพิ่มลิงก์ CSS สำหรับ Leaflet Map -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/leaflet.min.css" />
+<script>
+    // เพิ่มโค้ดนี้ในไฟล์ JavaScript หรือใน <script> tag ที่ท้ายหน้าเว็บ
+    // เพิ่มโค้ดนี้เป็น <script> tag ที่ท้ายหน้าเว็บ (ก่อนปิด </body>)
+    document.addEventListener('DOMContentLoaded', function() {
+        // เพิ่ม event listener เมื่อคลิกที่ QR wrapper
+        const qrWrapper = document.querySelector('.qr-wrapper');
+        if (qrWrapper) {
+            qrWrapper.style.cursor = 'pointer';
+
+            qrWrapper.addEventListener('click', function() {
+                const qrImg = document.querySelector('#qr-display img');
+                const qrExpire = document.querySelector('.qr-expire');
+
+                if (qrImg) {
+                    // สร้าง modal เมื่อคลิกที่ QR code
+                    const modal = document.createElement('div');
+                    modal.style.position = 'fixed';
+                    modal.style.top = '0';
+                    modal.style.left = '0';
+                    modal.style.width = '100%';
+                    modal.style.height = '100%';
+                    modal.style.backgroundColor = 'rgba(0,0,0,0.9)';
+                    modal.style.zIndex = '9999';
+                    modal.style.display = 'flex';
+                    modal.style.flexDirection = 'column';
+                    modal.style.justifyContent = 'center';
+                    modal.style.alignItems = 'center';
+
+                    // สร้างปุ่มปิด
+                    const closeBtn = document.createElement('div');
+                    closeBtn.innerHTML = '&times;';
+                    closeBtn.style.position = 'absolute';
+                    closeBtn.style.top = '15px';
+                    closeBtn.style.right = '20px';
+                    closeBtn.style.color = 'white';
+                    closeBtn.style.fontSize = '40px';
+                    closeBtn.style.fontWeight = 'bold';
+                    closeBtn.style.cursor = 'pointer';
+                    closeBtn.style.zIndex = '10000';
+
+                    // สร้างพื้นที่แสดง QR code
+                    const qrContainer = document.createElement('div');
+                    qrContainer.style.width = '90%';
+                    qrContainer.style.maxWidth = '90vmin';
+                    qrContainer.style.display = 'flex';
+                    qrContainer.style.justifyContent = 'center';
+
+                    // สร้างรูปภาพ QR code
+                    const fullQrImg = document.createElement('img');
+                    fullQrImg.src = qrImg.src;
+                    fullQrImg.style.width = '100%';
+                    fullQrImg.style.height = 'auto';
+
+                    // สร้างข้อมูลเวลาหมดอายุ
+                    const expireInfo = document.createElement('div');
+                    expireInfo.style.position = 'absolute';
+                    expireInfo.style.bottom = '20%';
+                    expireInfo.style.backgroundColor = 'rgba(0,0,0,0.7)';
+                    expireInfo.style.color = 'white';
+                    expireInfo.style.padding = '10px 20px';
+                    expireInfo.style.borderRadius = '30px';
+                    expireInfo.style.fontSize = '16px';
+                    expireInfo.style.display = 'flex';
+                    expireInfo.style.alignItems = 'center';
+
+                    if (qrExpire) {
+                        expireInfo.innerHTML = qrExpire.innerHTML;
+                    }
+
+                    // สร้างปุ่มบันทึกรูป
+                    const downloadBtn = document.createElement('button');
+                    downloadBtn.innerHTML = '<span style="vertical-align:middle;margin-right:8px;">&#8595;</span> บันทึกรูป';
+                    downloadBtn.style.position = 'absolute';
+                    downloadBtn.style.bottom = '10%';
+                    downloadBtn.style.backgroundColor = '#06c755';
+                    downloadBtn.style.border = 'none';
+                    downloadBtn.style.color = 'white';
+                    downloadBtn.style.padding = '12px 25px';
+                    downloadBtn.style.borderRadius = '30px';
+                    downloadBtn.style.fontSize = '16px';
+                    downloadBtn.style.fontWeight = '500';
+                    downloadBtn.style.cursor = 'pointer';
+                    downloadBtn.style.fontFamily = "'Prompt', sans-serif";
+
+                    // รวมองค์ประกอบเข้าด้วยกัน
+                    qrContainer.appendChild(fullQrImg);
+                    modal.appendChild(closeBtn);
+                    modal.appendChild(qrContainer);
+                    modal.appendChild(expireInfo);
+                    modal.appendChild(downloadBtn);
+
+                    // ป้องกันการเลื่อนพื้นหลัง
+                    document.body.style.overflow = 'hidden';
+
+                    // เพิ่ม modal เข้าไปในหน้าเว็บ
+                    document.body.appendChild(modal);
+
+                    // ปิดเมื่อคลิกที่ปุ่มปิด
+                    closeBtn.addEventListener('click', function() {
+                        document.body.removeChild(modal);
+                        document.body.style.overflow = 'auto';
+                    });
+
+                    // ปิดเมื่อคลิกที่พื้นหลัง modal
+                    modal.addEventListener('click', function(e) {
+                        if (e.target === modal) {
+                            document.body.removeChild(modal);
+                            document.body.style.overflow = 'auto';
+                        }
+                    });
+
+                    // บันทึกรูป
+                    downloadBtn.addEventListener('click', function() {
+                        const link = document.createElement('a');
+                        link.href = qrImg.src;
+                        link.download = 'qr-code.png';
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                    });
+                }
+            });
+        }
+    });
+</script>

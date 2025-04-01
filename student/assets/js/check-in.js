@@ -995,5 +995,6 @@ if (img) {
         // แสดง modal
         resultModal.style.display = 'block';
     }
-
 });
+
+
