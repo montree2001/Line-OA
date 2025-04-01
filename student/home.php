@@ -241,7 +241,7 @@ try {
     $additional_js = ['assets/js/student-home.js'];
     
     // กำหนดไฟล์เนื้อหา
-    $content_path = 'student_home_content.php';
+    $content_path = 'pages/student_home_content.php';
     
     // รวม template หลัก
     include 'templates/main_template.php';
