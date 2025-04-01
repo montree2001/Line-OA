@@ -103,20 +103,22 @@
     </div>
 
     <!-- ประกาศจากโรงเรียน -->
-    <div class="card">
-        <div class="card-header">
-            <div class="card-title">
-                <span class="material-icons">campaign</span> ประกาศจากวิทยาลัย
-            </div>
-            <a href="announcements.php" class="view-all">ดูทั้งหมด</a>
+  <!-- ประกาศจากโรงเรียน -->
+<div class="card">
+    <div class="card-header">
+        <div class="card-title">
+            <span class="material-icons">campaign</span> ประกาศจากวิทยาลัย
         </div>
-        
-        <ul class="announcement-list">
-            <?php if (empty($announcements)): ?>
-                <div class="empty-announcements">ยังไม่มีประกาศ</div>
-            <?php else: ?>
-                <?php foreach ($announcements as $announcement): ?>
-                    <li class="announcement-item">
+        <a href="announcements.php" class="view-all">ดูทั้งหมด</a>
+    </div>
+    
+    <ul class="announcement-list">
+        <?php if (empty($announcements)): ?>
+            <div class="empty-announcements">ยังไม่มีประกาศ</div>
+        <?php else: ?>
+            <?php foreach ($announcements as $announcement): ?>
+                <li class="announcement-item">
+                <a href="announcement_detail.php?id=<?php echo $announcement['id']; ?>&amp;from=home" class="announcement-link">
                         <div class="announcement-title">
                             <span class="announcement-badge badge-<?php echo $announcement['badge']; ?>"><?php echo $announcement['badge_text']; ?></span>
                             <?php echo $announcement['title']; ?>
@@ -124,12 +126,23 @@
                         <div class="announcement-content">
                             <?php echo $announcement['content']; ?>
                         </div>
-                        <div class="announcement-date">
-                            <span class="material-icons">event</span> <?php echo $announcement['date']; ?>
+                        <div class="announcement-footer">
+                            <div class="announcement-date">
+                                <span class="material-icons">event</span> <?php echo $announcement['date']; ?>
+                            </div>
+                            <div class="read-more">
+                                อ่านเพิ่มเติม <span class="material-icons">arrow_forward</span>
+                            </div>
                         </div>
-                    </li>
-                <?php endforeach; ?>
-            <?php endif; ?>
-        </ul>
-    </div>
+                    </a>
+                </li>
+            <?php endforeach; ?>
+        <?php endif; ?>
+    </ul>
 </div>
+
+
+</div>
+
+
+

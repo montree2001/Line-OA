@@ -641,3 +641,103 @@ body {
     background-color: #f0f0f0;
     margin: 5px 0;
 }
+
+
+/* ประกาศจากโรงเรียน - ส่วนที่เพิ่มเติม */
+
+.announcement-link {
+    display: block;
+    text-decoration: none;
+    color: inherit;
+    transition: background-color 0.2s;
+    padding: 5px;
+    margin: -5px;
+    border-radius: 10px;
+}
+
+.announcement-link:hover {
+    background-color: #f9f9f9;
+}
+
+.announcement-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 5px;
+}
+
+.read-more {
+    font-size: 12px;
+    color: #06c755;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+}
+
+.read-more .material-icons {
+    font-size: 14px;
+    margin-left: 2px;
+}
+
+.announcement-item {
+    padding: 12px 0;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.announcement-item:last-child {
+    border-bottom: none;
+}
+
+.announcement-title {
+    font-weight: 500;
+    margin-bottom: 5px;
+    display: flex;
+    align-items: center;
+}
+
+.announcement-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 600;
+    margin-right: 8px;
+}
+
+.badge-urgent {
+    background-color: #ffebee;
+    color: #f44336;
+}
+
+.badge-info {
+    background-color: #e3f2fd;
+    color: #2196f3;
+}
+
+.badge-event {
+    background-color: #e8f5e9;
+    color: #4caf50;
+}
+
+.announcement-content {
+    font-size: 13px;
+    color: #666;
+    margin-bottom: 5px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+.announcement-date {
+    font-size: 12px;
+    color: #999;
+    display: flex;
+    align-items: center;
+}
+
+.announcement-date .material-icons {
+    font-size: 14px;
+    margin-right: 5px;
+}
