@@ -1,6 +1,30 @@
 /**
- * student-checkin.js - JavaScript สำหรับหน้าเช็คชื่อเข้าแถวสำหรับนักเรียน
+ * student-checkin.js - JavaScript สำหรับหน้าเช็คชื่อนักเรียน
  */
+
+document.addEventListener('DOMContentLoaded', function() {
+    // ป้องกันการแคช
+    preventCache();
+
+    // อัพเดทเวลา
+    updateTime();
+    setInterval(updateTime, 1000);
+
+    // ตั้งค่าเหตุการณ์คลิกสำหรับวิธีเช็คชื่อ
+    setupMethodCards();
+
+    // กำหนดให้ปุ่มย้อนกลับนำทางไปยังหน้าหลัก
+    setupBackButton();
+});
+
+// ป้องกันการแคช
+function preventCache() {
+    window.addEventListener('pageshow', function(event) {
+        if (event.persisted) {
+            window.location.reload();
+        }
+    });
+}
 
 // อัพเดทเวลาปัจจุบัน
 function updateTime() {
@@ -8,7 +32,11 @@ function updateTime() {
     const hours = String(now.getHours()).padStart(2, '0');
     const minutes = String(now.getMinutes()).padStart(2, '0');
     const seconds = String(now.getSeconds()).padStart(2, '0');
-    document.getElementById('current-time').textContent = `${hours}:${minutes}:${seconds}`;
+    const timeDisplay = document.getElementById('current-time');
+
+    if (timeDisplay) {
+        timeDisplay.textContent = `${hours}:${minutes}:${seconds}`;
+    }
 
     // อัพเดทสถานะการเช็คชื่อ (ถ้าต้องการ)
     const statusElement = document.querySelector('.status-indicator');
@@ -19,8 +47,8 @@ function updateTime() {
 
         // แปลงเป็นนาที
         const currentMinutes = (now.getHours() * 60) + now.getMinutes();
-        const startMinutes = (parseInt(startTime.split(':')[0]) * 60) + parseInt(startTime.split(':')[1]);
-        const endMinutes = (parseInt(endTime.split(':')[0]) * 60) + parseInt(endTime.split(':')[1]);
+        const startMinutes = (parseInt(startTime.split(':')[0]) * 60) + parseInt(startTime.split(':')[1] || 0);
+        const endMinutes = (parseInt(endTime.split(':')[0]) * 60) + parseInt(endTime.split(':')[1] || 0);
 
         // ตรวจสอบว่าอยู่ในช่วงเวลาเช็คชื่อหรือไม่
         if (currentMinutes >= startMinutes && currentMinutes <= endMinutes) {
@@ -33,9 +61,29 @@ function updateTime() {
     }
 }
 
-// อัพเดทเวลาทุกวินาที
-setInterval(updateTime, 1000);
-updateTime(); // เรียกใช้งานครั้งแรก
+// ตั้งค่าเหตุการณ์คลิกสำหรับวิธีเช็คชื่อ
+function setupMethodCards() {
+    const methodCards = document.querySelectorAll('.method-card');
+    if (methodCards) {
+        methodCards.forEach(card => {
+            card.addEventListener('click', function() {
+                const methodName = this.querySelector('.method-name').textContent.toLowerCase();
+                showMethod(methodName);
+            });
+        });
+    }
+}
+
+// ตั้งค่าปุ่มย้อนกลับ
+function setupBackButton() {
+    const backButton = document.querySelector('.header a');
+    if (backButton) {
+        backButton.addEventListener('click', function(e) {
+            e.preventDefault();
+            window.location.href = 'home.php';
+        });
+    }
+}
 
 // ฟังก์ชันแสดงวิธีการเช็คชื่อ
 function showMethod(method) {
@@ -48,17 +96,21 @@ function showMethod(method) {
     // แสดงวิธีการที่เลือก
     if (method === 'gps') {
         document.getElementById('gps-method').style.display = 'block';
-    } else if (method === 'qr') {
+        checkGPSLocation(); // เรียกใช้ฟังก์ชันตรวจสอบตำแหน่ง GPS
+    } else if (method === 'qr' || method === 'qr code') {
         document.getElementById('qr-method').style.display = 'block';
-    } else if (method === 'pin') {
+    } else if (method === 'pin' || method === 'รหัส pin') {
         document.getElementById('pin-method').style.display = 'block';
         setupPinInputs(); // ตั้งค่า input สำหรับรหัส PIN
-    } else if (method === 'photo') {
+    } else if (method === 'photo' || method === 'ถ่ายรูป') {
         document.getElementById('photo-method').style.display = 'block';
     }
 
     // เลื่อนไปยังวิธีการที่เลือก
-    document.getElementById(method + '-method').scrollIntoView({ behavior: 'smooth' });
+    const methodElement = document.getElementById(method.replace(' ', '-') + '-method');
+    if (methodElement) {
+        methodElement.scrollIntoView({ behavior: 'smooth' });
+    }
 }
 
 // ฟังก์ชันตั้งค่า input สำหรับรหัส PIN
@@ -103,9 +155,15 @@ function previewImage(input) {
         var reader = new FileReader();
 
         reader.onload = function(e) {
-            document.getElementById('preview-img').src = e.target.result;
-            document.getElementById('image-preview').style.display = 'block';
-            document.querySelector('.upload-area').style.display = 'none';
+            const previewImg = document.getElementById('preview-img');
+            const imagePreview = document.getElementById('image-preview');
+            const uploadArea = document.querySelector('.upload-area');
+
+            if (previewImg && imagePreview && uploadArea) {
+                previewImg.src = e.target.result;
+                imagePreview.style.display = 'block';
+                uploadArea.style.display = 'none';
+            }
         }
 
         reader.readAsDataURL(input.files[0]);
@@ -114,96 +172,154 @@ function previewImage(input) {
 
 // ฟังก์ชันรีเซ็ตรูปภาพ
 function resetImage() {
-    document.getElementById('file-upload').value = '';
-    document.getElementById('image-preview').style.display = 'none';
-    document.querySelector('.upload-area').style.display = 'block';
+    const fileUpload = document.getElementById('file-upload');
+    const imagePreview = document.getElementById('image-preview');
+    const uploadArea = document.querySelector('.upload-area');
+
+    if (fileUpload && imagePreview && uploadArea) {
+        fileUpload.value = '';
+        imagePreview.style.display = 'none';
+        uploadArea.style.display = 'block';
+    }
 }
 
-// ฟังก์ชันย้อนกลับ
-function goBack() {
-    window.location.href = 'home.php';
-}
+// ฟังก์ชันสำหรับตรวจสอบตำแหน่ง GPS
+function checkGPSLocation() {
+    const statusText = document.getElementById('gps-status-text');
+    const statusSubtext = document.getElementById('gps-status-subtext');
+    const statusValue = document.getElementById('gps-status-value');
+    const distanceValue = document.getElementById('gps-distance-value');
+    const accuracyValue = document.getElementById('gps-accuracy-value');
+    const submitButton = document.getElementById('gps-submit-button');
 
-// ฟังก์ชันแสดงข้อความแจ้งเตือน
-function showAlert(message, type = 'success') {
-    const alertContainer = document.createElement('div');
-    alertContainer.className = `alert alert-${type}`;
+    // ดึงตำแหน่งโรงเรียนจาก data attribute ของหน้าเว็บ (ถ้ามี)
+    const schoolLatElement = document.querySelector('[data-school-lat]');
+    const schoolLngElement = document.querySelector('[data-school-lng]');
+    const radiusElement = document.querySelector('[data-radius]');
 
-    const icon = document.createElement('span');
-    icon.className = 'material-icons';
-    icon.textContent = type === 'success' ? 'check_circle' : 'error';
+    // ให้ค่าเริ่มต้นเป็น 0,0 หากไม่มีข้อมูล
+    let schoolLat = 0;
+    let schoolLng = 0;
+    let radius = 100;
 
-    const alertMessage = document.createElement('span');
-    alertMessage.className = 'alert-message';
-    alertMessage.textContent = message;
+    // ถ้ามีข้อมูลบนหน้าเว็บ ใช้ข้อมูลจากหน้าเว็บ
+    if (schoolLatElement && schoolLngElement && radiusElement) {
+        schoolLat = parseFloat(schoolLatElement.dataset.schoolLat);
+        schoolLng = parseFloat(schoolLngElement.dataset.schoolLng);
+        radius = parseInt(radiusElement.dataset.radius);
+    }
 
-    alertContainer.appendChild(icon);
-    alertContainer.appendChild(alertMessage);
+    // ตรวจสอบว่าเบราว์เซอร์รองรับ Geolocation API หรือไม่
+    if (!navigator.geolocation) {
+        if (statusText) statusText.textContent = "เบราว์เซอร์ของคุณไม่รองรับการตรวจสอบตำแหน่ง";
+        if (statusSubtext) statusSubtext.textContent = "กรุณาใช้เบราว์เซอร์อื่น หรือเลือกวิธีการเช็คชื่ออื่น";
+        if (statusValue) statusValue.textContent = "ไม่รองรับ";
+        if (submitButton) submitButton.disabled = true;
+        return;
+    }
 
-    // เพิ่มปุ่มปิด
-    const closeButton = document.createElement('button');
-    closeButton.className = 'close-alert';
-    closeButton.innerHTML = '<span class="material-icons">close</span>';
-    closeButton.onclick = function() {
-        alertContainer.remove();
-    };
+    // แสดงสถานะกำลังค้นหา
+    if (statusText) statusText.textContent = "กำลังตรวจสอบตำแหน่ง";
+    if (statusSubtext) statusSubtext.textContent = "โปรดรอสักครู่...";
+    if (statusValue) statusValue.textContent = "กำลังค้นหา...";
 
-    alertContainer.appendChild(closeButton);
+    // ตรวจสอบตำแหน่ง
+    navigator.geolocation.getCurrentPosition(
+        // เมื่อได้รับตำแหน่งสำเร็จ
+        function(position) {
+            const latitude = position.coords.latitude;
+            const longitude = position.coords.longitude;
+            const accuracy = position.coords.accuracy;
 
-    // เพิ่มไปยังหน้าเว็บ
-    document.querySelector('.container').prepend(alertContainer);
+            // คำนวณระยะห่างจากโรงเรียน
+            const distance = calculateDistance(
+                latitude, longitude,
+                schoolLat, schoolLng
+            );
 
-    // ซ่อนหลังจาก 5 วินาที
-    setTimeout(() => {
-        alertContainer.classList.add('fade-out');
-        setTimeout(() => alertContainer.remove(), 500);
-    }, 5000);
-}
+            // บันทึกพิกัดลงใน hidden input
+            const latInput = document.getElementById('gps-latitude');
+            const lngInput = document.getElementById('gps-longitude');
+            const accInput = document.getElementById('gps-accuracy');
 
-// ฟังก์ชันสำหรับการทำงานของ QR Code Timer
-function startQRCodeTimer(expiryMinutes) {
-    const timerElement = document.getElementById('qr-timer');
-    if (!timerElement) return;
+            if (latInput) latInput.value = latitude;
+            if (lngInput) lngInput.value = longitude;
+            if (accInput) accInput.value = accuracy;
 
-    let timeLeft = expiryMinutes * 60; // แปลงเป็นวินาที
+            // อัปเดตสถานะ
+            if (statusValue) statusValue.textContent = "พร้อมใช้งาน";
+            if (distanceValue) distanceValue.textContent = Math.round(distance) + " เมตร";
+            if (accuracyValue) accuracyValue.textContent = "± " + Math.round(accuracy) + " เมตร";
 
-    function updateTimer() {
-        if (timeLeft <= 0) {
-            timerElement.textContent = '0:00';
-            clearInterval(timerInterval);
-            return;
+            // ตรวจสอบว่าอยู่ในรัศมีที่กำหนดหรือไม่
+            if (distance <= radius) {
+                if (statusText) statusText.textContent = "ตำแหน่งถูกต้อง";
+                if (statusSubtext) statusSubtext.textContent = "คุณอยู่ในรัศมีที่กำหนด";
+                if (submitButton) submitButton.disabled = false;
+            } else {
+                if (statusText) statusText.textContent = "ตำแหน่งไม่ถูกต้อง";
+                if (statusSubtext) statusSubtext.textContent = "คุณอยู่นอกรัศมีที่กำหนด (" + radius + " เมตร)";
+                if (submitButton) submitButton.disabled = true;
+            }
+        },
+        // เมื่อเกิดข้อผิดพลาด
+        function(error) {
+            if (statusValue) statusValue.textContent = "ไม่พร้อมใช้งาน";
+            if (submitButton) submitButton.disabled = true;
+
+            switch (error.code) {
+                case error.PERMISSION_DENIED:
+                    if (statusText) statusText.textContent = "ไม่ได้รับอนุญาตให้ใช้ตำแหน่ง";
+                    if (statusSubtext) statusSubtext.textContent = "กรุณาอนุญาตให้เข้าถึงตำแหน่งที่ตั้ง";
+                    break;
+                case error.POSITION_UNAVAILABLE:
+                    if (statusText) statusText.textContent = "ไม่สามารถระบุตำแหน่งได้";
+                    if (statusSubtext) statusSubtext.textContent = "โปรดตรวจสอบการเชื่อมต่อหรือลองใหม่อีกครั้ง";
+                    break;
+                case error.TIMEOUT:
+                    if (statusText) statusText.textContent = "หมดเวลาในการค้นหาตำแหน่ง";
+                    if (statusSubtext) statusSubtext.textContent = "โปรดลองใหม่อีกครั้ง";
+                    break;
+                case error.UNKNOWN_ERROR:
+                    if (statusText) statusText.textContent = "เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ";
+                    if (statusSubtext) statusSubtext.textContent = "โปรดลองใหม่อีกครั้ง";
+                    break;
+            }
+        },
+        // ตั้งค่าตัวเลือก
+        {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 0
         }
-
-        const minutes = Math.floor(timeLeft / 60);
-        let seconds = timeLeft % 60;
-        seconds = seconds < 10 ? '0' + seconds : seconds;
-
-        timerElement.textContent = `${minutes}:${seconds}`;
-        timeLeft--;
-    }
-
-    updateTimer(); // เริ่มนับถอยหลังทันที
-    const timerInterval = setInterval(updateTimer, 1000);
+    );
 }
 
-// เรียกใช้ฟังก์ชันเมื่อหน้าเว็บโหลดเสร็จ
-document.addEventListener('DOMContentLoaded', function() {
-    // ตั้งค่า PIN Inputs
-    if (document.querySelector('.pin-digit')) {
-        setupPinInputs();
+// ฟังก์ชันคำนวณระยะห่างระหว่างพิกัด GPS (หน่วยเป็นเมตร)
+function calculateDistance(lat1, lon1, lat2, lon2) {
+    if ((lat1 == lat2) && (lon1 == lon2)) {
+        return 0;
     }
 
-    // ตั้งค่า QR Code Timer (ถ้ามี)
-    if (document.getElementById('qr-timer')) {
-        startQRCodeTimer(5); // 5 นาที
-    }
+    const earthRadius = 6371000; // รัศมีของโลก (เมตร)
 
-    // จัดการเหตุการณ์สำหรับปุ่มย้อนกลับ
-    const backButton = document.querySelector('.header a[onclick="goBack()"]');
-    if (backButton) {
-        backButton.addEventListener('click', function(e) {
-            e.preventDefault();
-            goBack();
-        });
-    }
-});
+    const lat1Rad = toRadians(lat1);
+    const lon1Rad = toRadians(lon1);
+    const lat2Rad = toRadians(lat2);
+    const lon2Rad = toRadians(lon2);
+
+    const dLat = lat2Rad - lat1Rad;
+    const dLon = lon2Rad - lon1Rad;
+
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(lat1Rad) * Math.cos(lat2Rad) *
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    const distance = earthRadius * c;
+
+    return distance;
+}
+
+function toRadians(degrees) {
+    return degrees * (Math.PI / 180);
+}
