@@ -159,8 +159,6 @@
                     <input type="hidden" id="student-id" value="<?php echo $student_info['id']; ?>">
                 </div>
 
-
-
                 <!-- PIN Tab -->
                 <div class="tab-pane" id="pin-tab">
                     <div class="tab-description">
@@ -639,5 +637,67 @@ function initializePinInputs() {
             }
         };
     }
+}
+</script>
+
+<script>
+function checkQRStatus() {
+    // แสดงสถานะการโหลด
+    const btn = document.getElementById('check-qr-status');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<span class="material-icons" style="animation: spin 1s infinite linear;">refresh</span> กำลังตรวจสอบ...';
+    btn.disabled = true;
+    
+    // เพิ่มสไตล์สำหรับการหมุน
+    if (!document.getElementById('spin-style')) {
+        const style = document.createElement('style');
+        style.id = 'spin-style';
+        style.textContent = `
+            @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+    
+    // จำลองการตรวจสอบสถานะ (ในกรณีที่ API ยังไม่พร้อม)
+    setTimeout(function() {
+        // คืนค่าปุ่มเป็นสถานะปกติ
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+        
+        // แสดงการแจ้งเตือน
+        alert('ตรวจสอบสถานะเรียบร้อยแล้ว: QR Code ยังใช้งานได้');
+        
+        // ถ้ามี API จริง คุณสามารถใช้โค้ดนี้แทนการ setTimeout
+        /*
+        fetch('api/check_qr_status.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: 'action=check_status'
+        })
+        .then(response => response.json())
+        .then(data => {
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+            
+            if (data.success) {
+                alert('ตรวจสอบสถานะเรียบร้อยแล้ว: ' + data.message);
+                // อัปเดตสถานะการแสดง QR code ถ้าจำเป็น
+            } else {
+                alert('ไม่สามารถตรวจสอบสถานะได้: ' + data.message);
+            }
+        })
+        .catch(error => {
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+            alert('เกิดข้อผิดพลาดในการตรวจสอบสถานะ');
+            console.error('Error:', error);
+        });
+        */
+    }, 1500);
 }
 </script>

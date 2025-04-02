@@ -290,11 +290,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-
-    // แก้ไขส่วนนี้ในไฟล์ check-in.js
-
-    // แก้ไขส่วนนี้ในไฟล์ check-in.js
-
     // ปุ่มสร้าง QR Code
     if (document.getElementById('generate-qr')) {
         document.getElementById('generate-qr').addEventListener('click', function() {
@@ -394,6 +389,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 newButton.id = 'check-qr-status';
                                 newButton.className = 'btn secondary';
                                 newButton.innerHTML = '<span class="material-icons">refresh</span> ตรวจสอบสถานะ';
+                                newButton.onclick = checkQRStatus;
                                 // ตรวจสอบว่า button.parentNode มีอยู่จริง
                                 if (button.parentNode) {
                                     button.parentNode.appendChild(newButton);
@@ -436,25 +432,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-
-    // ในฟังก์ชันที่สร้าง QR code
-    var qr = qrcode(0, 'M');
-    qr.addData(JSON.stringify(data.qr_data));
-    qr.make();
-
-    // เปลี่ยนค่าในการสร้าง QR code ให้มีขนาดใหญ่ขึ้น
-    // เพิ่ม cellSize จาก 5 เป็น 8 และลด margin จาก 10 เป็น 4
-    var qrDisplay = document.getElementById('qr-display');
-    qrDisplay.innerHTML = qr.createImgTag(8, 4);
-
-    // ปรับขนาดรูปภาพให้เต็มพื้นที่
-    var img = qrDisplay.querySelector('img');
-    if (img) {
-        img.style.maxWidth = '100%';
-        img.style.height = 'auto';
-    }
-
-
     if (checkQrStatusBtn) {
         checkQrStatusBtn.addEventListener('click', checkQRStatus);
     }
@@ -491,11 +468,9 @@ document.addEventListener('DOMContentLoaded', function() {
         fetch('api/check_qr_status.php', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
+                    'Content-Type': 'application/x-www-form-urlencoded',
                 },
-                body: JSON.stringify({
-                    student_id: studentId
-                })
+                body: 'action=check_status&student_id=' + studentId
             })
             .then(response => response.json())
             .then(data => {
@@ -527,7 +502,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 this.innerHTML = '<span class="material-icons">refresh</span> ตรวจสอบสถานะ';
             });
     }
-
 
     // --------------------------
     // ส่วนการสแกน QR Code
@@ -724,6 +698,7 @@ document.addEventListener('DOMContentLoaded', function() {
         modalOk.addEventListener('click', function() {
             resultModal.style.display = 'none';
 
+
             // ถ้ามีการ reload หน้า
             if (this.dataset.reload === 'true') {
                 window.location.reload();
@@ -792,13 +767,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
                                     // เปลี่ยนปุ่มเป็นปุ่มตรวจสอบสถานะ
                                     this.outerHTML = `
-                                    <button id="check-qr-status" class="btn secondary">
+                                    <button id="check-qr-status" class="btn secondary" onclick="checkQRStatus()">
                                         <span class="material-icons">refresh</span> ตรวจสอบสถานะ
                                     </button>
                                 `;
-
-                                    // เพิ่ม event listener ให้กับปุ่มใหม่
-                                    document.getElementById('check-qr-status').addEventListener('click', checkQRStatus);
 
                                 } else {
                                     showResultModal('error', 'สร้าง QR Code ไม่สำเร็จ', data.message || 'เกิดข้อผิดพลาดในการสร้าง QR Code กรุณาลองใหม่อีกครั้ง');
@@ -832,6 +804,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     `;
                 }
             }
+            window.location.href = 'check-in.php';
+
         });
     }
 
@@ -966,7 +940,236 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    // แก้ไขฟังก์ชันตรวจสอบพิกัด
+    function checkLocation() {
+        const locationStatus = document.getElementById('location-status');
+        const checkLocationBtn = document.getElementById('check-location-btn');
 
+        // ปิดปุ่มชั่วคราวระหว่างตรวจสอบ
+        checkLocationBtn.disabled = true;
+        checkLocationBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> กำลังตรวจสอบ...';
 
+        // ตรวจสอบสถานะการเปิด GPS
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                function(position) {
+                    // เมื่อได้ตำแหน่งสำเร็จ
+                    const userLat = position.coords.latitude;
+                    const userLng = position.coords.longitude;
 
+                    // ขอข้อมูลพิกัดจุดเช็คชื่อจาก API
+                    fetch('api/check_location.php')
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                // คำนวณระยะห่าง
+                                const distance = calculateDistance(
+                                    userLat, userLng,
+                                    parseFloat(data.location.lat),
+                                    parseFloat(data.location.lng)
+                                );
+
+                                // ตรวจสอบระยะห่าง
+                                if (distance <= data.location.radius) {
+                                    locationStatus.innerHTML = '<span class="text-success">✓ คุณอยู่ในพื้นที่ที่กำหนด</span>';
+                                    document.getElementById('location-verified').value = 'true';
+                                    // เปิดให้ใช้งานส่วนถัดไป
+                                    document.getElementById('pin-section').classList.remove('disabled');
+                                } else {
+                                    locationStatus.innerHTML = '<span class="text-danger">✗ คุณอยู่ห่างจากจุดเช็คชื่อเกินไป (ห่าง ' + distance.toFixed(2) + ' เมตร)</span>';
+                                    document.getElementById('location-verified').value = 'false';
+                                }
+                            } else {
+                                locationStatus.innerHTML = '<span class="text-danger">✗ ไม่สามารถตรวจสอบตำแหน่งได้: ' + data.message + '</span>';
+                            }
+
+                            // เปิดปุ่มอีกครั้ง
+                            checkLocationBtn.disabled = false;
+                            checkLocationBtn.innerHTML = 'ตรวจสอบตำแหน่ง';
+                        })
+                        .catch(error => {
+                            console.error('Error:', error);
+                            locationStatus.innerHTML = '<span class="text-danger">✗ เกิดข้อผิดพลาดในการตรวจสอบตำแหน่ง</span>';
+                            checkLocationBtn.disabled = false;
+                            checkLocationBtn.innerHTML = 'ตรวจสอบตำแหน่ง';
+                        });
+                },
+                function(error) {
+                    // จัดการข้อผิดพลาด geolocation
+                    let errorMessage = 'ไม่สามารถระบุตำแหน่งได้';
+                    switch (error.code) {
+                        case error.PERMISSION_DENIED:
+                            errorMessage = 'คุณไม่อนุญาตให้เข้าถึงตำแหน่ง กรุณาเปิดการใช้งาน GPS';
+                            break;
+                        case error.POSITION_UNAVAILABLE:
+                            errorMessage = 'ข้อมูลตำแหน่งไม่พร้อมใช้งาน';
+                            break;
+                        case error.TIMEOUT:
+                            errorMessage = 'หมดเวลาในการรับข้อมูลตำแหน่ง';
+                            break;
+                    }
+                    locationStatus.innerHTML = '<span class="text-danger">✗ ' + errorMessage + '</span>';
+                    checkLocationBtn.disabled = false;
+                    checkLocationBtn.innerHTML = 'ตรวจสอบตำแหน่ง';
+                }, {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 0
+                }
+            );
+        } else {
+            locationStatus.innerHTML = '<span class="text-danger">✗ เบราว์เซอร์ของคุณไม่รองรับการระบุตำแหน่ง</span>';
+            checkLocationBtn.disabled = false;
+            checkLocationBtn.innerHTML = 'ตรวจสอบตำแหน่ง';
+        }
+    }
+
+    // ฟังก์ชันคำนวณระยะห่าง (ใช้สูตร Haversine)
+    function calculateDistance(lat1, lon1, lat2, lon2) {
+        const R = 6371000; // รัศมีของโลกในเมตร
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLon = (lon2 - lon1) * Math.PI / 180;
+        const a =
+            Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        const distance = R * c;
+        return distance; // ระยะห่างในเมตร
+    }
+
+    // ค้นหาปุ่มตรวจสอบสถานะด้วย ID
+    const checkStatusBtn = document.getElementById('check-qr-status');
+
+    if (checkStatusBtn) {
+        // เพิ่ม event listener สำหรับการคลิก
+        checkStatusBtn.addEventListener('click', function() {
+            // แสดงการโหลด
+            const originalText = this.innerHTML;
+            this.innerHTML = '<span class="material-icons spin">refresh</span> กำลังตรวจสอบ...';
+            this.disabled = true;
+
+            // ส่งคำขอไปยัง API เพื่อตรวจสอบสถานะ
+            fetch('api/check_qr_status.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: 'action=check_status'
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('การเชื่อมต่อมีปัญหา');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    // คืนค่าปุ่มเป็นสถานะปกติ
+                    this.innerHTML = originalText;
+                    this.disabled = false;
+
+                    // แสดงผลการตรวจสอบ
+                    if (data.success) {
+                        // แสดงข้อความสำเร็จ
+                        showNotification(data.message, 'success');
+
+                        // อัปเดตสถานะการแสดง QR code หากจำเป็น
+                        if (data.status === 'active') {
+                            document.getElementById('qr-status').textContent = 'กำลังใช้งาน';
+                            document.getElementById('qr-status').className = 'status active';
+                        } else {
+                            document.getElementById('qr-status').textContent = 'หมดอายุ';
+                            document.getElementById('qr-status').className = 'status inactive';
+                        }
+
+                        // เพิ่มเติม: อัปเดตเวลาตรวจสอบล่าสุด
+                        const lastCheckedEl = document.getElementById('last-checked');
+                        if (lastCheckedEl) {
+                            lastCheckedEl.textContent = data.last_checked || new Date().toLocaleString('th-TH');
+                        }
+                    } else {
+                        // แสดงข้อความข้อผิดพลาด
+                        showNotification(data.message || 'ไม่สามารถตรวจสอบสถานะได้', 'error');
+                    }
+                })
+                .catch(error => {
+                    // จัดการข้อผิดพลาด
+                    console.error('Error:', error);
+                    this.innerHTML = originalText;
+                    this.disabled = false;
+                    showNotification('เกิดข้อผิดพลาดในการตรวจสอบสถานะ: ' + error.message, 'error');
+                });
+        });
+    } else {
+        console.error('ไม่พบปุ่มตรวจสอบสถานะ QR');
+    }
+
+    // ฟังก์ชันแสดงการแจ้งเตือน
+    function showNotification(message, type) {
+        // ตรวจสอบว่ามี container สำหรับการแจ้งเตือนหรือไม่
+        let notificationContainer = document.querySelector('.notification-container');
+
+        // ถ้าไม่มี container ให้สร้างใหม่
+        if (!notificationContainer) {
+            notificationContainer = document.createElement('div');
+            notificationContainer.className = 'notification-container';
+            notificationContainer.style.position = 'fixed';
+            notificationContainer.style.top = '20px';
+            notificationContainer.style.right = '20px';
+            notificationContainer.style.zIndex = '9999';
+            document.body.appendChild(notificationContainer);
+        }
+
+        // สร้างการแจ้งเตือน
+        const notification = document.createElement('div');
+        notification.className = `notification ${type}`;
+        notification.innerHTML = `
+            <div class="notification-content">
+                <span class="material-icons">${type === 'success' ? 'check_circle' : 'error'}</span>
+                <span class="message">${message}</span>
+            </div>
+            <button class="close-btn" onclick="this.parentElement.remove();">×</button>
+        `;
+
+        // กำหนด style พื้นฐาน
+        notification.style.padding = '10px 15px';
+        notification.style.margin = '10px 0';
+        notification.style.borderRadius = '4px';
+        notification.style.display = 'flex';
+        notification.style.justifyContent = 'space-between';
+        notification.style.alignItems = 'center';
+        notification.style.boxShadow = '0 2px 10px rgba(0,0,0,0.1)';
+
+        if (type === 'success') {
+            notification.style.backgroundColor = '#d4edda';
+            notification.style.color = '#155724';
+            notification.style.borderLeft = '4px solid #28a745';
+        } else {
+            notification.style.backgroundColor = '#f8d7da';
+            notification.style.color = '#721c24';
+            notification.style.borderLeft = '4px solid #dc3545';
+        }
+
+        // เพิ่มการแจ้งเตือน
+        notificationContainer.appendChild(notification);
+
+        // ซ่อนการแจ้งเตือนหลังจาก 5 วินาที
+        setTimeout(() => {
+            notification.remove();
+        }, 5000);
+    }
+
+    // เพิ่ม CSS สำหรับการหมุนไอคอน
+    const style = document.createElement('style');
+    style.textContent = `
+        .material-icons.spin {
+            animation: spin 1s infinite linear;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    `;
+    document.head.appendChild(style);
 });
