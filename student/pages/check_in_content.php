@@ -236,7 +236,16 @@
             </button>
         </div>
         <div class="modal-body" id="modal-body">
-            <!-- ข้อความจะถูกเพิ่มด้วย JavaScript -->
+            <!-- เนื้อหาจะถูกเพิ่มด้วย JavaScript ตามรูปแบบด้านล่าง -->
+            <!-- 
+            <div class="modal-icon success">
+                <span class="material-icons">check_circle</span>
+                <div class="success-glow"></div>
+            </div>
+            <div class="modal-message">เช็คชื่อเข้าแถวเรียบร้อยแล้ว</div>
+            <div class="modal-submessage">เวลา 08:30 น.</div>
+            <div class="modal-submessage">วิธีการ: เช็คชื่อผ่าน GPS</div>
+            -->
         </div>
         <div class="modal-footer">
             <button class="btn primary" id="modal-ok">ตกลง</button>
@@ -370,4 +379,265 @@
             });
         }
     });
+</script>
+
+
+<script>
+    // โค้ดเลื่อนช่องกรอก PIN อัตโนมัติที่แก้ไขแล้ว
+// คัดลอกโค้ดนี้ทั้งหมดไปใส่ในไฟล์ assets/js/check-in.js
+
+document.addEventListener('DOMContentLoaded', function() {
+    // ฟังก์ชั่นสำหรับแท็บ PIN
+    initializePinInputs();
+    
+    // ตรวจสอบว่าหน้านี้มีแท็บหรือไม่
+    const tabItems = document.querySelectorAll('.tab-item');
+    if (tabItems.length > 0) {
+        // เพิ่ม event listener สำหรับแท็บ
+        tabItems.forEach(function(item) {
+            item.addEventListener('click', function() {
+                // ลบคลาส active จากทุกแท็บ
+                tabItems.forEach(tab => tab.classList.remove('active'));
+                // เพิ่มคลาส active ให้แท็บที่คลิก
+                this.classList.add('active');
+                
+                // ซ่อนทุกแท็บเพน
+                const tabPanes = document.querySelectorAll('.tab-pane');
+                tabPanes.forEach(pane => pane.classList.remove('active'));
+                
+                // แสดงแท็บเพนที่ตรงกับแท็บที่คลิก
+                const tabId = this.getAttribute('data-tab');
+                document.getElementById(tabId + '-tab').classList.add('active');
+                
+                // หากเป็นแท็บ PIN ให้ focus ที่ช่องแรก
+                if (tabId === 'pin') {
+                    const firstPinInput = document.querySelector('.pin-input[data-index="0"]');
+                    if (firstPinInput) {
+                        setTimeout(() => {
+                            firstPinInput.focus();
+                        }, 100);
+                    }
+                }
+            });
+        });
+    }
+});
+
+// ฟังก์ชั่นสำหรับการจัดการ PIN input
+function initializePinInputs() {
+    const pinInputs = document.querySelectorAll('.pin-input');
+    const submitPinBtn = document.getElementById('submit-pin');
+    const pinStatus = document.getElementById('pin-status');
+    const studentIdElement = document.getElementById('student-id');
+    
+    if (!pinInputs.length || !submitPinBtn || !pinStatus || !studentIdElement) {
+        return; // ถ้าไม่พบองค์ประกอบที่จำเป็น ให้ออกจากฟังก์ชั่น
+    }
+    
+    const studentId = studentIdElement.value;
+    
+    // ตั้งค่า autofocus สำหรับช่องแรก
+    pinInputs[0].setAttribute('autofocus', 'true');
+    
+    // ล้างค่าทุกช่องเมื่อโหลดหน้า
+    pinInputs.forEach(input => {
+        input.value = '';
+    });
+    
+    // เพิ่ม event listener สำหรับแต่ละช่อง
+    pinInputs.forEach(function(input, index) {
+        // เมื่อกรอกข้อมูล
+        input.addEventListener('input', function(e) {
+            // ให้รับเฉพาะตัวเลข
+            this.value = this.value.replace(/[^0-9]/g, '');
+            
+            // ถ้ากรอกตัวเลขแล้ว และไม่ใช่ช่องสุดท้าย ให้เลื่อนไปช่องถัดไป
+            if (this.value !== '' && index < pinInputs.length - 1) {
+                setTimeout(() => {
+                    pinInputs[index + 1].focus();
+                }, 10);
+            }
+            
+            // ตรวจสอบว่ากรอกครบทุกช่องหรือยัง
+            checkPinComplete();
+        });
+        
+        // เมื่อกด keydown
+        input.addEventListener('keydown', function(e) {
+            // ถ้ากด Backspace และช่องนี้ว่าง และไม่ใช่ช่องแรก
+            if (e.key === 'Backspace' && this.value === '' && index > 0) {
+                // เลื่อนไปช่องก่อนหน้า
+                setTimeout(() => {
+                    pinInputs[index - 1].focus();
+                    // เลือกข้อความในช่องก่อนหน้าเพื่อให้พร้อมลบ
+                    pinInputs[index - 1].select();
+                }, 10);
+            }
+            
+            // ถ้ากดลูกศรซ้าย และไม่ใช่ช่องแรก
+            else if (e.key === 'ArrowLeft' && index > 0) {
+                e.preventDefault();
+                pinInputs[index - 1].focus();
+            }
+            
+            // ถ้ากดลูกศรขวา และไม่ใช่ช่องสุดท้าย
+            else if (e.key === 'ArrowRight' && index < pinInputs.length - 1) {
+                e.preventDefault();
+                pinInputs[index + 1].focus();
+            }
+        });
+        
+        // เมื่อ paste ข้อมูล
+        input.addEventListener('paste', function(e) {
+            e.preventDefault();
+            
+            // รับข้อมูลที่ paste
+            const pasteData = (e.clipboardData || window.clipboardData).getData('text');
+            
+            // กรองเฉพาะตัวเลข
+            const numbers = pasteData.replace(/[^0-9]/g, '');
+            
+            // ถ้ามีตัวเลขอย่างน้อย 1 ตัว
+            if (numbers.length > 0) {
+                // กำหนดค่าให้แต่ละช่อง
+                for (let i = 0; i < pinInputs.length; i++) {
+                    if (i < numbers.length) {
+                        pinInputs[i].value = numbers[i];
+                    }
+                }
+                
+                // โฟกัสที่ช่องถัดจากตัวเลขสุดท้าย หรือช่องสุดท้าย
+                const focusIndex = Math.min(numbers.length, pinInputs.length - 1);
+                pinInputs[focusIndex].focus();
+                
+                // ตรวจสอบว่ากรอกครบทุกช่องหรือยัง
+                checkPinComplete();
+            }
+        });
+    });
+    
+    // ฟังก์ชั่นตรวจสอบว่ากรอก PIN ครบหรือยัง
+    function checkPinComplete() {
+        let isPinComplete = true;
+        let pin = '';
+        
+        // ตรวจสอบทุกช่อง
+        pinInputs.forEach(function(input) {
+            if (input.value === '') {
+                isPinComplete = false;
+            }
+            pin += input.value;
+        });
+        
+        // เปิดใช้งานปุ่มยืนยันถ้ากรอกครบ
+        submitPinBtn.disabled = !isPinComplete;
+        
+        return pin;
+    }
+    
+    // เมื่อกดปุ่มยืนยัน PIN
+    submitPinBtn.addEventListener('click', submitPin);
+    
+    // ฟังก์ชั่นส่ง PIN ไปตรวจสอบ
+    function submitPin() {
+        const pin = checkPinComplete();
+        
+        if (pin.length === 4) {
+            // แสดงสถานะกำลังตรวจสอบ
+            pinStatus.innerHTML = '<span class="status-checking">กำลังตรวจสอบรหัส PIN...</span>';
+            
+            // ส่งข้อมูลไปยัง API
+            fetch('api/check_in_pin.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    student_id: studentId,
+                    pin: pin
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // เช็คชื่อสำเร็จ
+                    showResultModal('สำเร็จ', 'เช็คชื่อเข้าแถวเรียบร้อยแล้ว', 'success', function() {
+                        window.location.reload();
+                    });
+                } else {
+                    // เช็คชื่อไม่สำเร็จ
+                    pinStatus.innerHTML = '<span class="status-error">' + data.message + '</span>';
+                    
+                    // ล้างช่องกรอกและตั้งโฟกัสที่ช่องแรก
+                    pinInputs.forEach(input => input.value = '');
+                    pinInputs[0].focus();
+                    
+                    // ปิดใช้งานปุ่มยืนยัน
+                    submitPinBtn.disabled = true;
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                pinStatus.innerHTML = '<span class="status-error">เกิดข้อผิดพลาดในการเชื่อมต่อ</span>';
+            });
+        }
+    }
+    
+    // ฟังก์ชั่นแสดง Modal ผลการเช็คชื่อ
+    function showResultModal(title, message, type, callback) {
+        const modal = document.getElementById('result-modal');
+        const modalTitle = document.getElementById('modal-title');
+        const modalBody = document.getElementById('modal-body');
+        const modalOk = document.getElementById('modal-ok');
+        
+        if (!modal || !modalTitle || !modalBody || !modalOk) {
+            alert(message);
+            if (typeof callback === 'function') callback();
+            return;
+        }
+        
+        modalTitle.textContent = title;
+        
+        // สร้าง icon ตามประเภท
+        let icon = '';
+        if (type === 'success') {
+            icon = '<span class="material-icons success-icon">check_circle</span>';
+        } else if (type === 'error') {
+            icon = '<span class="material-icons error-icon">error</span>';
+        }
+        
+        modalBody.innerHTML = `
+            <div class="modal-message">
+                ${icon}
+                <p>${message}</p>
+            </div>
+        `;
+        
+        // แสดง modal
+        modal.style.display = 'flex';
+        
+        // เมื่อกดปุ่มตกลง
+        modalOk.onclick = function() {
+            modal.style.display = 'none';
+            if (typeof callback === 'function') {
+                callback();
+            }
+        };
+        
+        // ปิด modal เมื่อกดปุ่มปิด
+        const closeModalBtn = document.getElementById('close-modal');
+        if (closeModalBtn) {
+            closeModalBtn.onclick = function() {
+                modal.style.display = 'none';
+            };
+        }
+        
+        // ปิด modal เมื่อคลิกภายนอก
+        window.onclick = function(event) {
+            if (event.target === modal) {
+                modal.style.display = 'none';
+            }
+        };
+    }
+}
 </script>
