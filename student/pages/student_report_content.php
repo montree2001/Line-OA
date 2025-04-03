@@ -1,19 +1,25 @@
 <div class="header">
-        <a href="#" onclick="goBack()" class="header-icon">
-            <span class="material-icons">arrow_back</span>
-        </a>
-        <h1>ประวัติการเช็คชื่อ</h1>
-        <div class="header-icon">
-            <span class="material-icons">notifications</span>
-        </div>
+    <a href="#" onclick="goBack()" class="header-icon">
+        <span class="material-icons">arrow_back</span>
+    </a>
+    <h1>ประวัติการเช็คชื่อ</h1>
+    <div class="header-icon">
+        <span class="material-icons">notifications</span>
     </div>
+</div>
 
 <div class="container">
     <!-- โปรไฟล์ -->
     <div class="profile-card">
+        <?php if (!empty($student_info['profile_image'])): ?>
+        <div class="profile-image profile-photo">
+            <img src="<?php echo $student_info['profile_image']; ?>" alt="<?php echo $student_info['name']; ?>">
+        </div>
+        <?php else: ?>
         <div class="profile-image">
             <span><?php echo $student_info['avatar']; ?></span>
         </div>
+        <?php endif; ?>
         <div class="profile-info">
             <h2><?php echo $student_info['name']; ?></h2>
             <p><?php echo $student_info['class'] . ' เลขที่ ' . $student_info['number']; ?></p>
@@ -23,7 +29,7 @@
     <!-- การ์ดสรุปข้อมูล -->
     <div class="summary-card">
         <div class="summary-title">
-            <span>สรุปการเข้าแถวเดือนมีนาคม</span>
+            <span>สรุปการเข้าแถวเดือน<?php echo $current_month_name ?? 'มีนาคม'; ?></span>
             <span class="material-icons">equalizer</span>
         </div>
         
@@ -33,11 +39,22 @@
                 <div class="stat-label">วันเข้าแถว</div>
             </div>
             <div class="stat-box">
-                <div class="stat-value"><?php echo $monthly_summary['absent_days']; ?></div>
+                <div class="stat-value <?php echo $monthly_summary['absent_days'] > 0 ? 'warning' : ''; ?>"><?php echo $monthly_summary['absent_days']; ?></div>
                 <div class="stat-label">วันขาดแถว</div>
             </div>
             <div class="stat-box">
-                <div class="stat-value good"><?php echo $monthly_summary['attendance_percentage']; ?>%</div>
+                <?php 
+                $attendance_percentage = $monthly_summary['attendance_percentage'];
+                $status_class = '';
+                if ($attendance_percentage >= 90) {
+                    $status_class = 'good';
+                } elseif ($attendance_percentage >= 80) {
+                    $status_class = 'warning';
+                } else {
+                    $status_class = 'danger';
+                }
+                ?>
+                <div class="stat-value <?php echo $status_class; ?>"><?php echo $attendance_percentage; ?>%</div>
                 <div class="stat-label">อัตราการเข้าแถว</div>
             </div>
         </div>
@@ -45,12 +62,39 @@
         <div class="progress-container">
             <div class="progress-label">
                 <span>ความสม่ำเสมอ</span>
-                <span>ดีเยี่ยม</span>
+                <?php 
+                $regularity = $monthly_summary['regularity_score'];
+                $regularity_text = 'พอใช้';
+                if ($regularity >= 90) {
+                    $regularity_text = 'ดีเยี่ยม';
+                } elseif ($regularity >= 80) {
+                    $regularity_text = 'ดี';
+                } elseif ($regularity >= 70) {
+                    $regularity_text = 'พอใช้';
+                } else {
+                    $regularity_text = 'ต้องปรับปรุง';
+                }
+                ?>
+                <span><?php echo $regularity_text; ?></span>
             </div>
             <div class="progress-bar">
-                <div class="progress-fill" style="width: <?php echo $monthly_summary['regularity_score']; ?>%;"></div>
+                <div class="progress-fill" style="width: <?php echo $regularity; ?>%;"></div>
             </div>
         </div>
+        
+        <?php if (isset($monthly_summary['is_at_risk']) && $monthly_summary['is_at_risk']): ?>
+        <div class="risk-alert">
+            <div class="risk-icon">
+                <span class="material-icons">warning</span>
+            </div>
+            <div class="risk-message">
+                <div class="risk-title">เสี่ยงตกกิจกรรม</div>
+                <div class="risk-description">
+                    อัตราการเข้าแถวต่ำกว่าเกณฑ์ที่กำหนด (<?php echo $monthly_summary['min_percentage']; ?>%)
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
         
         <div class="chart-container">
             <div class="chart-bars">
@@ -78,7 +122,7 @@
                 <button class="nav-button" onclick="prevMonth()">
                     <span class="material-icons">chevron_left</span>
                 </button>
-                <div class="calendar-month">มีนาคม 2025</div>
+                <div class="calendar-month"><?php echo $current_month_year; ?></div>
                 <button class="nav-button" onclick="nextMonth()">
                     <span class="material-icons">chevron_right</span>
                 </button>
@@ -96,54 +140,16 @@
         </div>
         
         <div class="calendar-dates">
-            <!-- The calendar dates would be dynamically generated based on actual attendance data -->
-            <div class="date-cell other-month">23</div>
-            <div class="date-cell other-month">24</div>
-            <div class="date-cell other-month">25</div>
-            <div class="date-cell other-month">26</div>
-            <div class="date-cell other-month">27</div>
-            <div class="date-cell other-month">28</div>
-            <div class="date-cell">1</div>
-            
-            <div class="date-cell">2</div>
-            <div class="date-cell present">3</div>
-            <div class="date-cell present">4</div>
-            <div class="date-cell present">5</div>
-            <div class="date-cell present">6</div>
-            <div class="date-cell present">7</div>
-            <div class="date-cell">8</div>
-            
-            <div class="date-cell">9</div>
-            <div class="date-cell present">10</div>
-            <div class="date-cell present">11</div>
-            <div class="date-cell present">12</div>
-            <div class="date-cell present">13</div>
-            <div class="date-cell present">14</div>
-            <div class="date-cell">15</div>
-            
-            <div class="date-cell">16</div>
-            <div class="date-cell today present">17</div>
-            <div class="date-cell">18</div>
-            <div class="date-cell">19</div>
-            <div class="date-cell">20</div>
-            <div class="date-cell">21</div>
-            <div class="date-cell">22</div>
-            
-            <div class="date-cell">23</div>
-            <div class="date-cell">24</div>
-            <div class="date-cell">25</div>
-            <div class="date-cell">26</div>
-            <div class="date-cell">27</div>
-            <div class="date-cell">28</div>
-            <div class="date-cell">29</div>
-            
-            <div class="date-cell">30</div>
-            <div class="date-cell">31</div>
-            <div class="date-cell other-month">1</div>
-            <div class="date-cell other-month">2</div>
-            <div class="date-cell other-month">3</div>
-            <div class="date-cell other-month">4</div>
-            <div class="date-cell other-month">5</div>
+            <?php foreach ($calendar_dates as $date): ?>
+                <div class="date-cell <?php echo $date['status'] . ' ' . ($date['is_today'] ?? ''); ?>">
+                    <?php echo $date['day']; ?>
+                    <?php if (isset($date['status']) && $date['status'] === 'absent'): ?>
+                        <div class="status-dot absent"></div>
+                    <?php elseif (isset($date['status']) && $date['status'] === 'present'): ?>
+                        <div class="status-dot present"></div>
+                    <?php endif; ?>
+                </div>
+            <?php endforeach; ?>
         </div>
     </div>
 
@@ -151,43 +157,116 @@
     <div class="history-card" id="history-tab" style="display: none;">
         <div class="history-title">
             <span>ประวัติการเข้าแถว</span>
-            <button class="filter-button">
+            <button class="filter-button" onclick="showFilterOptions()">
                 <span class="material-icons">filter_list</span>
                 กรอง
             </button>
         </div>
         
         <div class="history-list">
-            <?php foreach ($check_in_history as $entry): ?>
-                <div class="history-item">
-                    <div class="history-date">
-                        <div class="history-day"><?php echo substr($entry['date'], 0, 2); ?></div>
-                        <div class="history-month"><?php echo substr($entry['date'], 3); ?></div>
+            <?php if (empty($check_in_history)): ?>
+                <div class="no-history">
+                    <div class="no-data-icon">
+                        <span class="material-icons">event_busy</span>
                     </div>
-                    <div class="history-details">
-                        <div class="history-status">
-                            <div class="status-indicator <?php echo $entry['status']; ?>"></div>
-                            <div class="status-text <?php echo $entry['status']; ?>">
-                                <?php echo $entry['status'] === 'present' ? 'มาเรียน' : 'ขาดเรียน'; ?>
+                    <div class="no-data-message">ไม่พบประวัติการเช็คชื่อในขณะนี้</div>
+                </div>
+            <?php else: ?>
+                <?php foreach ($check_in_history as $entry): ?>
+                    <div class="history-item">
+                        <div class="history-date">
+                            <div class="history-day"><?php echo substr($entry['date'], 0, 2); ?></div>
+                            <div class="history-month"><?php echo substr($entry['date'], 3); ?></div>
+                        </div>
+                        <div class="history-details">
+                            <div class="history-status">
+                                <div class="status-indicator <?php echo $entry['status']; ?>"></div>
+                                <div class="status-text <?php echo $entry['status']; ?>">
+                                    <?php echo $entry['status'] === 'present' ? 'มาเรียน' : 'ขาดเรียน'; ?>
+                                </div>
+                            </div>
+                            <div class="history-time">เช็คชื่อเวลา <?php echo $entry['time']; ?> น.</div>
+                            <div class="history-method">
+                                <span class="material-icons">
+                                    <?php 
+                                    switch ($entry['method']) {
+                                        case 'GPS': echo 'gps_fixed'; break;
+                                        case 'PIN': echo 'pin'; break;
+                                        case 'QR Code': echo 'qr_code_scanner'; break;
+                                        default: echo 'check_circle';
+                                    } 
+                                    ?>
+                                </span>
+                                เช็คชื่อด้วย <?php echo $entry['method']; ?>
                             </div>
                         </div>
-                        <div class="history-time">เช็คชื่อเวลา <?php echo $entry['time']; ?> น.</div>
-                        <div class="history-method">
-                            <span class="material-icons">
-                                <?php 
-                                switch ($entry['method']) {
-                                    case 'GPS': echo 'gps_fixed'; break;
-                                    case 'PIN': echo 'pin'; break;
-                                    case 'QR Code': echo 'qr_code_scanner'; break;
-                                    default: echo 'check_circle';
-                                } 
-                                ?>
-                            </span>
-                            เช็คชื่อด้วย <?php echo $entry['method']; ?>
-                        </div>
+                    </div>
+                <?php endforeach; ?>
+            <?php endif; ?>
+        </div>
+    </div>
+
+    <!-- ตัวกรองข้อมูลรายงาน -->
+    <div class="filter-modal" id="filterModal">
+        <div class="filter-modal-content">
+            <div class="filter-header">
+                <h3>ตัวกรองข้อมูล</h3>
+                <span class="material-icons close-filter" onclick="hideFilterOptions()">close</span>
+            </div>
+            <div class="filter-body">
+                <div class="filter-section">
+                    <h4>สถานะ</h4>
+                    <div class="filter-options">
+                        <label class="filter-option">
+                            <input type="radio" name="status" value="all" checked> ทั้งหมด
+                        </label>
+                        <label class="filter-option">
+                            <input type="radio" name="status" value="present"> มาเรียน
+                        </label>
+                        <label class="filter-option">
+                            <input type="radio" name="status" value="absent"> ขาดเรียน
+                        </label>
                     </div>
                 </div>
-            <?php endforeach; ?>
+                <div class="filter-section">
+                    <h4>วิธีการเช็คชื่อ</h4>
+                    <div class="filter-options">
+                        <label class="filter-option">
+                            <input type="radio" name="method" value="all" checked> ทั้งหมด
+                        </label>
+                        <label class="filter-option">
+                            <input type="radio" name="method" value="GPS"> GPS
+                        </label>
+                        <label class="filter-option">
+                            <input type="radio" name="method" value="PIN"> PIN
+                        </label>
+                        <label class="filter-option">
+                            <input type="radio" name="method" value="QR_Code"> QR Code
+                        </label>
+                    </div>
+                </div>
+                <div class="filter-section">
+                    <h4>ช่วงเวลา</h4>
+                    <div class="filter-options">
+                        <label class="filter-option">
+                            <input type="radio" name="period" value="all" checked> ทั้งหมด
+                        </label>
+                        <label class="filter-option">
+                            <input type="radio" name="period" value="this_month"> เดือนนี้
+                        </label>
+                        <label class="filter-option">
+                            <input type="radio" name="period" value="last_month"> เดือนที่แล้ว
+                        </label>
+                        <label class="filter-option">
+                            <input type="radio" name="period" value="three_months"> 3 เดือนล่าสุด
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <div class="filter-footer">
+                <button class="reset-btn" onclick="resetFilter()">รีเซ็ต</button>
+                <button class="apply-btn" onclick="applyFilter()">ค้นหา</button>
+            </div>
         </div>
     </div>
 </div>
@@ -218,12 +297,215 @@
         history.back();
     }
 
-    // การนำทางเดือน (ตัวอย่าง)
+    // การนำทางเดือน
     function prevMonth() {
-        alert('ดึงข้อมูลเดือนก่อนหน้า');
+        // ในระบบจริงจะส่ง request ไปดึงข้อมูลเดือนก่อนหน้า
+        window.location.href = 'history.php?month=' + (new Date().getMonth()) + '&year=' + new Date().getFullYear();
     }
 
     function nextMonth() {
-        alert('ดึงข้อมูลเดือนถัดไป');
+        // ในระบบจริงจะส่ง request ไปดึงข้อมูลเดือนถัดไป
+        window.location.href = 'history.php?month=' + (new Date().getMonth() + 2) + '&year=' + new Date().getFullYear();
+    }
+    
+    // ฟังก์ชันสำหรับตัวกรอง
+    function showFilterOptions() {
+        document.getElementById('filterModal').style.display = 'block';
+    }
+    
+    function hideFilterOptions() {
+        document.getElementById('filterModal').style.display = 'none';
+    }
+    
+    function resetFilter() {
+        // รีเซ็ตค่าทุกอันเป็นค่าเริ่มต้น
+        document.querySelectorAll('input[name="status"][value="all"]')[0].checked = true;
+        document.querySelectorAll('input[name="method"][value="all"]')[0].checked = true;
+        document.querySelectorAll('input[name="period"][value="all"]')[0].checked = true;
+    }
+    
+    function applyFilter() {
+        // ดึงค่าตัวกรองที่เลือก
+        const status = document.querySelector('input[name="status"]:checked').value;
+        const method = document.querySelector('input[name="method"]:checked').value;
+        const period = document.querySelector('input[name="period"]:checked').value;
+        
+        // ส่ง request ไปยัง API เพื่อกรองข้อมูล
+        window.location.href = 'history.php?status=' + status + '&method=' + method + '&period=' + period;
+        
+        // ปิดหน้าต่างตัวกรอง
+        hideFilterOptions();
     }
 </script>
+
+<style>
+/* เพิ่มสไตล์ให้กับหน้า history */
+.risk-alert {
+    display: flex;
+    align-items: center;
+    background-color: #fff3e0;
+    border-radius: 8px;
+    padding: 12px;
+    margin-top: 15px;
+    border-left: 4px solid #ff9800;
+}
+
+.risk-icon {
+    margin-right: 12px;
+}
+
+.risk-icon .material-icons {
+    color: #ff9800;
+    font-size: 24px;
+}
+
+.risk-title {
+    font-weight: bold;
+    margin-bottom: 4px;
+    color: #e65100;
+}
+
+.risk-description {
+    font-size: 12px;
+    color: #666;
+}
+
+.profile-photo {
+    overflow: hidden;
+}
+
+.profile-photo img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.no-history {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 0;
+    color: #999;
+}
+
+.no-data-icon {
+    margin-bottom: 15px;
+}
+
+.no-data-icon .material-icons {
+    font-size: 48px;
+    color: #ccc;
+}
+
+.no-data-message {
+    font-size: 14px;
+}
+
+/* สไตล์สำหรับตัวกรอง */
+.filter-modal {
+    display: none;
+    position: fixed;
+    z-index: 2000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.5);
+}
+
+.filter-modal-content {
+    background-color: white;
+    margin: 20% auto;
+    width: 90%;
+    max-width: 400px;
+    border-radius: 10px;
+    overflow: hidden;
+    animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(50px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.filter-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.filter-header h3 {
+    margin: 0;
+    font-size: 18px;
+}
+
+.close-filter {
+    cursor: pointer;
+}
+
+.filter-body {
+    padding: 15px;
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+.filter-section {
+    margin-bottom: 20px;
+}
+
+.filter-section h4 {
+    margin: 0 0 10px 0;
+    font-size: 16px;
+}
+
+.filter-options {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.filter-option {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+}
+
+.filter-option input {
+    margin-right: 8px;
+}
+
+.filter-footer {
+    display: flex;
+    justify-content: flex-end;
+    padding: 15px;
+    border-top: 1px solid #f0f0f0;
+    gap: 10px;
+}
+
+.reset-btn {
+    background-color: #f5f5f5;
+    color: #333;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.apply-btn {
+    background-color: #06c755;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 5px;
+    cursor: pointer;
+}
+</style>
