@@ -43,6 +43,10 @@
                 <div class="stat-label">วันขาดแถว</div>
             </div>
             <div class="stat-box">
+                <div class="stat-value"><?php echo $monthly_summary['required_days']; ?></div>
+                <div class="stat-label">วันที่ต้องเข้าแถว</div>
+            </div>
+            <div class="stat-box">
                 <?php 
                 $attendance_percentage = $monthly_summary['attendance_percentage'];
                 $status_class = '';
@@ -182,7 +186,7 @@
                             <div class="history-status">
                                 <div class="status-indicator <?php echo $entry['status']; ?>"></div>
                                 <div class="status-text <?php echo $entry['status']; ?>">
-                                    <?php echo $entry['status'] === 'present' ? 'มาเรียน' : 'ขาดเรียน'; ?>
+                                    <?php echo $entry['status'] === 'present' ? 'เข้าแถว' : 'ขาดแถว'; ?>
                                 </div>
                             </div>
                             <div class="history-time">เช็คชื่อเวลา <?php echo $entry['time']; ?> น.</div>
@@ -221,10 +225,10 @@
                             <input type="radio" name="status" value="all" checked> ทั้งหมด
                         </label>
                         <label class="filter-option">
-                            <input type="radio" name="status" value="present"> มาเรียน
+                            <input type="radio" name="status" value="present"> เข้าแถว
                         </label>
                         <label class="filter-option">
-                            <input type="radio" name="status" value="absent"> ขาดเรียน
+                            <input type="radio" name="status" value="absent"> ขาดแถว
                         </label>
                     </div>
                 </div>
@@ -270,6 +274,9 @@
         </div>
     </div>
 </div>
+
+<!-- พื้นที่ว่างสำหรับรองรับ bottom_nav -->
+<div style="height: 70px;"></div>
 
 <script>
     // สลับแท็บ
@@ -507,5 +514,19 @@
     padding: 8px 16px;
     border-radius: 5px;
     cursor: pointer;
+}
+
+/* ปรับ grid layout สำหรับ summary-stats */
+.summary-stats {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+@media (max-width: 360px) {
+    .summary-stats {
+        grid-template-columns: repeat(1, 1fr);
+    }
 }
 </style>

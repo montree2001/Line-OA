@@ -31,13 +31,13 @@ $already_checked_in = false;
 $check_in_method = '';
 
 try {
-    // ดึงข้อมูลนักเรียน
+// ดึงข้อมูลนักเรียน
     $stmt = $conn->prepare("
         SELECT s.student_id, s.student_code, s.title, s.current_class_id, 
                u.first_name, u.last_name, u.profile_picture, u.phone_number, u.email,
                c.level, c.group_number, d.department_name
-        FROM students s
-        JOIN users u ON s.user_id = u.user_id
+               FROM students s
+               JOIN users u ON s.user_id = u.user_id
         LEFT JOIN classes c ON s.current_class_id = c.class_id
         LEFT JOIN departments d ON c.department_id = d.department_id
         WHERE s.user_id = ?
@@ -47,10 +47,10 @@ try {
     
     if (!$student) {
         // ไม่พบข้อมูลนักเรียน - อาจยังไม่ได้ลงทะเบียน
-        header('Location: register.php');
-        exit;
-    }
-    
+    header('Location: register.php');
+    exit;
+}
+
     // ตรวจสอบปีการศึกษาปัจจุบัน
     $stmt = $conn->prepare("SELECT academic_year_id FROM academic_years WHERE is_active = 1 LIMIT 1");
     $stmt->execute();
@@ -66,7 +66,7 @@ try {
     $today_attendance = $stmt->fetch(PDO::FETCH_ASSOC);
     
     if ($today_attendance) {
-        $already_checked_in = true;
+                    $already_checked_in = true;
         $check_in_method = $today_attendance['check_method'];
         $check_in_time = $today_attendance['check_time'];
     }
@@ -200,7 +200,7 @@ function mapCheckMethod($method) {
             return 'เช็คชื่อด้วยรหัส PIN';
         case 'Manual':
             return 'ครูเช็คชื่อให้';
-        default:
+                default:
             return '';
     }
 }

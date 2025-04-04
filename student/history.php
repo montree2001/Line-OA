@@ -10,13 +10,13 @@ require_once '../db_connect.php';
 error_reporting(0);
 ini_set('display_errors', 0);
 
-// ตรวจสอบว่ามีการล็อกอินหรือไม่
+// ตรวจสอบการล็อกอิน
 if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
     header('Location: ../index.php');
     exit;
 }
 
-// ตรวจสอบว่าเป็นบทบาทนักเรียนหรือไม่
+// ตรวจสอบว่าเป็นบทบาทนักเรียน
 if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'student') {
     header('Location: ../index.php');
     exit;
@@ -96,6 +96,17 @@ try {
     $current_month_name = $thai_months[date('m')];
     $current_year_thai = (int)date('Y') + 543;
     
+    // ดึงค่า required_attendance_days จากตาราง system_settings
+    $stmt = $conn->prepare("
+        SELECT setting_value 
+        FROM system_settings 
+        WHERE setting_key = 'required_attendance_days'
+    ");
+    $stmt->execute();
+    $required_days_setting = $stmt->fetch(PDO::FETCH_ASSOC);
+    $total_days = isset($required_days_setting['setting_value']) ? 
+                 intval($required_days_setting['setting_value']) : 80; // ค่าเริ่มต้นถ้าไม่พบในฐานข้อมูล
+    
     if ($academic_year_id) {
         // ดึงข้อมูลการเข้าแถวของเดือนปัจจุบัน
         $stmt = $conn->prepare("
@@ -110,28 +121,27 @@ try {
         $stmt->execute([$student_id, $academic_year_id, $current_month, $current_year]);
         $monthly_data = $stmt->fetch(PDO::FETCH_ASSOC);
         
-        // ดึงข้อมูลเกณฑ์การผ่านกิจกรรม
-        $stmt = $conn->prepare("
-            SELECT setting_value FROM system_settings 
-            WHERE setting_key = 'min_attendance_rate'
-        ");
-        $stmt->execute();
-        $min_percentage = $stmt->fetch(PDO::FETCH_ASSOC);
-        $min_percentage = $min_percentage ? floatval($min_percentage['setting_value']) : 80.0;
-        
         // คำนวณข้อมูลสรุป
         $total_days = $monthly_data ? intval($monthly_data['total_days']) : 0;
         $present_days = $monthly_data ? intval($monthly_data['present_days']) : 0;
         $absent_days = $total_days - $present_days;
         
-        // คำนวณเปอร์เซ็นต์การเข้าแถว
-        $attendance_percentage = $total_days > 0 ? round(($present_days / $total_days) * 100) : 0;
+        // คำนวณอัตราการเข้าแถว (ใช้ $total_days ที่ดึงมาจาก setting แทนการคำนวณ)
+        if ($total_days > 0) {
+            $attendance_percentage = round(($present_days / $total_days) * 100, 1);
+            // จำกัดค่าไม่ให้เกิน 100%
+            $attendance_percentage = min($attendance_percentage, 100);
+            
+            // กำหนดค่าความเสี่ยง
+            $is_at_risk = $attendance_percentage < 75;
+            $min_percentage = 75;
+        } else {
+            $attendance_percentage = 0;
+            $is_at_risk = false;
+        }
         
         // คำนวณคะแนนความสม่ำเสมอ
         $regularity_score = $attendance_percentage;
-        
-        // ตรวจสอบความเสี่ยงตกกิจกรรม
-        $is_at_risk = $attendance_percentage < $min_percentage;
         
         $monthly_summary = [
             'total_days' => $total_days,
@@ -365,6 +375,36 @@ try {
         ];
     }
     
+    // คำนวณอัตราการเข้าแถว (ใช้ $total_days ที่ดึงมาจาก setting แทนการคำนวณ)
+    if ($total_days > 0) {
+        $attendance_percentage = round(($monthly_summary['total_days'] / $total_days) * 100, 1);
+        // จำกัดค่าไม่ให้เกิน 100%
+        $attendance_percentage = min($attendance_percentage, 100);
+        
+        // กำหนดค่าความเสี่ยง
+        $monthly_summary['is_at_risk'] = $attendance_percentage < 75;
+        $monthly_summary['min_percentage'] = 75;
+    } else {
+        $attendance_percentage = 0;
+        $monthly_summary['is_at_risk'] = false;
+    }
+    
+    $monthly_summary['attendance_percentage'] = $attendance_percentage;
+    
+    // กำหนดค่าสำหรับ template
+    $content_path = 'pages/student_report_content.php';
+    
+    // กำหนด CSS และ JS เพิ่มเติม
+    $extra_css = [
+        'assets/css/student-report.css'
+    ];
+    $extra_js = [
+        'assets/js/student-report.js'
+    ];
+
+    // เรียกใช้ template หลัก
+    include 'templates/main_template.php';
+
 } catch (PDOException $e) {
     // กรณีมีข้อผิดพลาดในการดึงข้อมูล ใช้ข้อมูลตัวอย่าง
     error_log("Database error in history.php: " . $e->getMessage());
@@ -479,18 +519,21 @@ try {
     for ($i = 1; $i <= 8; $i++) {
         $calendar_dates[] = ['day' => $i, 'status' => 'other-month'];
     }
+
+    // กำหนดค่าสำหรับ template
+    $content_path = 'pages/student_report_content.php';
+    
+    // กำหนด CSS และ JS เพิ่มเติม
+    $extra_css = [
+        'assets/css/student-report.css'
+    ];
+    $extra_js = [
+        'assets/js/student-report.js'
+    ];
+
+    // เรียกใช้ template หลัก
+    include 'templates/main_template.php';
 }
-
-// รวม CSS และ JS
-$extra_css = [
-    'assets/css/student-report.css'
-];
-$extra_js = [
-    'assets/js/student-report.js'
-];
-
-// กำหนดเส้นทางเนื้อหา
-$content_path = 'pages/student_report_content.php';
 
 // ฟังก์ชันแปลงรูปแบบการเช็คชื่อ
 function mapCheckMethod($method) {
@@ -523,9 +566,3 @@ function getMethodIcon($method) {
             return 'help_outline';
     }
 }
-
-// โหลดเทมเพลต
-require_once 'templates/header.php';
-require_once 'templates/main_content.php';
-require_once 'templates/footer.php';
-?>
