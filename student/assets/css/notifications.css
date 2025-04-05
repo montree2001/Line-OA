@@ -1,0 +1,109 @@
+/* สไตล์สำหรับการแจ้งเตือน */
+.notification {
+    position: fixed;
+    bottom: 70px;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background-color: white;
+    box-shadow: 0 2px 15px rgba(0,0,0,0.2);
+    border-radius: 10px;
+    min-width: 280px;
+    max-width: 90%;
+    padding: 12px 15px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    z-index: 9999;
+    opacity: 0;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.notification.show {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+}
+
+.notification-content {
+    display: flex;
+    align-items: center;
+}
+
+.notification-content .material-icons {
+    margin-right: 10px;
+    font-size: 24px;
+}
+
+.notification.success .material-icons {
+    color: #06c755;
+}
+
+.notification.error .material-icons {
+    color: #f44336;
+}
+
+.notification.info .material-icons {
+    color: #2196f3;
+}
+
+.notification-message {
+    flex: 1;
+    font-size: 14px;
+}
+
+.close-notification {
+    cursor: pointer;
+    color: #999;
+    font-size: 20px;
+}
+
+/* สไตล์สำหรับการอัปโหลด */
+.upload-loading {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.7);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    z-index: 9999;
+}
+
+.upload-loading .spinner {
+    border: 4px solid rgba(255,255,255,0.3);
+    border-radius: 50%;
+    border-top: 4px solid white;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+    margin-bottom: 15px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* สไตล์สำหรับข้อความแสดงข้อผิดพลาด */
+.input-error {
+    color: #f44336;
+    font-size: 12px;
+    margin-top: 5px;
+    margin-bottom: 5px;
+}
+
+input.invalid {
+    border-color: #f44336 !important;
+}
+
+/* เอฟเฟกต์สำหรับ input focus */
+.form-group.focused label {
+    color: #06c755;
+}
+
+.form-group.focused input:not([readonly]) {
+    border-color: #06c755;
+} 

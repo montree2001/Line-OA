@@ -20,7 +20,7 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
         <span>ประวัติ</span>
     </a>
     
-    <a href="profile.php" class="nav-item <?php echo $current_page == 'profile' ? 'active' : ''; ?>">
+    <a href="student_profile.php" class="nav-item <?php echo $current_page == 'student_profile' ? 'active' : ''; ?>">
         <span class="material-icons nav-icon">person</span>
         <span>โปรไฟล์</span>
     </a>
