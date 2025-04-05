@@ -36,19 +36,15 @@ try {
     
     // ดึงข้อมูลนักเรียน
     $stmt = $conn->prepare("
-        SELECT s.student_id, s.student_code, s.title, s.current_class_id, 
-               DATE_FORMAT(s.birth_date, '%d/%m/%Y') as birth_date_formatted,
-               u.first_name, u.last_name, u.profile_picture, u.phone_number, u.email, u.line_id,
-               c.level, c.group_number, d.department_name, d.department_short_name,
-               n.nationality_name, r.religion_name, s.blood_type
-        FROM students s
-        JOIN users u ON s.user_id = u.user_id
-        LEFT JOIN classes c ON s.current_class_id = c.class_id
-        LEFT JOIN departments d ON c.department_id = d.department_id
-        LEFT JOIN nationalities n ON s.nationality_id = n.nationality_id
-        LEFT JOIN religions r ON s.religion_id = r.religion_id
-        WHERE s.user_id = ?
-    ");
+    SELECT s.student_id, s.student_code, s.title, s.current_class_id, 
+           u.first_name, u.last_name, u.profile_picture, u.phone_number, u.email, u.line_id,
+           c.level, c.group_number, d.department_name
+    FROM students s
+    JOIN users u ON s.user_id = u.user_id
+    LEFT JOIN classes c ON s.current_class_id = c.class_id
+    LEFT JOIN departments d ON c.department_id = d.department_id
+    WHERE s.user_id = ?
+");
     $stmt->execute([$user_id]);
     $student_data = $stmt->fetch(PDO::FETCH_ASSOC);
     
@@ -81,7 +77,7 @@ try {
         'nationality' => $student_data['nationality_name'],
         'religion' => $student_data['religion_name'],
         'avatar' => $first_char,
-        'profile_image' => !empty($student_data['profile_picture']) ? '../' . $student_data['profile_picture'] : null
+        'profile_image' => !empty($student_data['profile_picture']) ? $student_data['profile_picture'] : null
     ];
     
     // ดึงข้อมูลครูที่ปรึกษา
@@ -126,14 +122,14 @@ try {
     
     // ดึงข้อมูลผู้ปกครอง
     $stmt = $conn->prepare("
-        SELECT p.parent_id, p.title, p.first_name, p.last_name, 
-               p.relationship, p.phone_number, p.email, p.line_id,
-               p.address, p.profile_picture
-        FROM parents p
-        JOIN student_parents sp ON p.parent_id = sp.parent_id
-        WHERE sp.student_id = ?
-        LIMIT 1
-    ");
+    SELECT p.parent_id, p.title, p.relationship,
+           u.first_name, u.last_name, u.profile_picture, u.phone_number, u.email, u.line_id
+    FROM parents p
+    JOIN users u ON p.user_id = u.user_id
+    JOIN parent_student_relation psr ON p.parent_id = psr.parent_id
+    WHERE psr.student_id = ?
+    LIMIT 1
+");
     $stmt->execute([$student_id]);
     $parent_data = $stmt->fetch(PDO::FETCH_ASSOC);
     
