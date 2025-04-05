@@ -87,18 +87,18 @@
         </div>
         
         <?php if (isset($monthly_summary['is_at_risk']) && $monthly_summary['is_at_risk']): ?>
-        <div class="risk-alert">
-            <div class="risk-icon">
-                <span class="material-icons">warning</span>
-            </div>
-            <div class="risk-message">
-                <div class="risk-title">เสี่ยงตกกิจกรรม</div>
-                <div class="risk-description">
-                    อัตราการเข้าแถวต่ำกว่าเกณฑ์ที่กำหนด (<?php echo $monthly_summary['min_percentage']; ?>%)
-                </div>
-            </div>
+<div class="risk-alert">
+    <div class="risk-icon">
+        <span class="material-icons">warning</span>
+    </div>
+    <div class="risk-message">
+        <div class="risk-title">เสี่ยงตกกิจกรรม</div>
+        <div class="risk-description">
+            อัตราการเข้าแถวต่ำกว่าเกณฑ์ที่กำหนด (<?php echo $monthly_summary['min_percentage']; ?>%)
         </div>
-        <?php endif; ?>
+    </div>
+</div>
+<?php endif; ?>
         
         <div class="chart-container">
             <div class="chart-bars">

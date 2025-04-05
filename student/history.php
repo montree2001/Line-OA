@@ -104,8 +104,45 @@ try {
     ");
     $stmt->execute();
     $required_days_setting = $stmt->fetch(PDO::FETCH_ASSOC);
-    $total_days = isset($required_days_setting['setting_value']) ? 
+    $required_days = isset($required_days_setting['setting_value']) ? 
                  intval($required_days_setting['setting_value']) : 80; // ค่าเริ่มต้นถ้าไม่พบในฐานข้อมูล
+                 
+    // ดึงค่า custom_attendance_rate จากตาราง system_settings (ค่าที่กำหนดเอง)
+    $stmt = $conn->prepare("
+        SELECT setting_value 
+        FROM system_settings 
+        WHERE setting_key = 'custom_attendance_rate'
+    ");
+    $stmt->execute();
+    $custom_rate_setting = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    // ดึงค่า min_attendance_rate จากตาราง system_settings (ค่าขั้นต่ำ)
+    $stmt = $conn->prepare("
+        SELECT setting_value 
+        FROM system_settings 
+        WHERE setting_key = 'min_attendance_rate'
+    ");
+    $stmt->execute();
+    $min_rate_setting = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    // กำหนดลำดับความสำคัญในการใช้ค่า: custom_rate > min_rate > default (75%)
+    if (isset($custom_rate_setting['setting_value']) && !empty($custom_rate_setting['setting_value'])) {
+        $passing_rate = floatval($custom_rate_setting['setting_value']);
+        $rate_source = 'custom_attendance_rate';
+    } elseif (isset($min_rate_setting['setting_value']) && !empty($min_rate_setting['setting_value'])) {
+        $passing_rate = floatval($min_rate_setting['setting_value']);
+        $rate_source = 'min_attendance_rate';
+    } else {
+        $passing_rate = 75; // ค่าเริ่มต้น 75% ถ้าไม่พบในฐานข้อมูล
+        $rate_source = 'default';
+    }
+    
+    // กำหนดตัวแปรสำหรับตรวจสอบสถานะความเสี่ยง
+    $passing_status_level = [
+        'safe' => 90, // สถานะปลอดภัย (เข้าแถวมากกว่า 90%)
+        'warning' => $passing_rate, // สถานะเตือน (ตามค่าที่กำหนดในฐานข้อมูล)
+        'danger' => $passing_rate * 0.9 // สถานะอันตราย (ต่ำกว่าค่าที่กำหนด 10%)
+    ];
     
     if ($academic_year_id) {
         // ดึงข้อมูลการเข้าแถวของเดือนปัจจุบัน
@@ -122,19 +159,18 @@ try {
         $monthly_data = $stmt->fetch(PDO::FETCH_ASSOC);
         
         // คำนวณข้อมูลสรุป
-        $total_days = $monthly_data ? intval($monthly_data['total_days']) : 0;
-        $present_days = $monthly_data ? intval($monthly_data['present_days']) : 0;
-        $absent_days = $total_days - $present_days;
+        $attended_days = $monthly_data ? intval($monthly_data['present_days']) : 0;
+        $absent_days = $required_days - $attended_days;
+        if ($absent_days < 0) $absent_days = 0; // ป้องกันกรณีเข้าแถวเกินจำนวนวันที่กำหนด
         
-        // คำนวณอัตราการเข้าแถว (ใช้ $total_days ที่ดึงมาจาก setting แทนการคำนวณ)
-        if ($total_days > 0) {
-            $attendance_percentage = round(($present_days / $total_days) * 100, 1);
+        // คำนวณอัตราการเข้าแถวโดยใช้วันที่ต้องเข้าแถวเป็นฐาน 100%
+        if ($required_days > 0) {
+            $attendance_percentage = round(($attended_days / $required_days) * 100, 1);
             // จำกัดค่าไม่ให้เกิน 100%
             $attendance_percentage = min($attendance_percentage, 100);
             
-            // กำหนดค่าความเสี่ยง
-            $is_at_risk = $attendance_percentage < 75;
-            $min_percentage = 75;
+            // กำหนดค่าความเสี่ยงโดยใช้ค่าจากฐานข้อมูล
+            $is_at_risk = $attendance_percentage < $passing_rate;
         } else {
             $attendance_percentage = 0;
             $is_at_risk = false;
@@ -144,20 +180,24 @@ try {
         $regularity_score = $attendance_percentage;
         
         $monthly_summary = [
-            'total_days' => $total_days,
-            'present_days' => $present_days,
-            'absent_days' => $absent_days,
+            'total_days' => $attended_days,     // จำนวนวันที่เข้าแถวจริง
+            'present_days' => $attended_days,   // จำนวนวันที่เข้าแถว (เหมือนกับ total_days)
+            'absent_days' => $absent_days,      // จำนวนวันที่ขาด
+            'required_days' => $required_days,  // จำนวนวันที่ต้องเข้าแถวทั้งหมด
             'attendance_percentage' => $attendance_percentage,
             'regularity_score' => $regularity_score,
             'is_at_risk' => $is_at_risk,
-            'min_percentage' => $min_percentage
+            'min_percentage' => $passing_rate,
+            'passing_status_level' => $passing_status_level,
+            'rate_source' => $rate_source      // แหล่งที่มาของอัตราที่ใช้ (custom, min, หรือ default)
         ];
     } else {
         // ข้อมูลสรุปตัวอย่าง (ใช้ในกรณีไม่มีฐานข้อมูล)
         $monthly_summary = [
-            'total_days' => 23,
-            'present_days' => 23,
-            'absent_days' => 0,
+            'total_days' => 23,       // จำนวนวันที่เข้าแถวจริง
+            'present_days' => 23,     // จำนวนวันที่เข้าแถว
+            'absent_days' => 0,       // จำนวนวันที่ขาด
+            'required_days' => 23,    // จำนวนวันที่ต้องเข้าแถวทั้งหมด
             'attendance_percentage' => 100,
             'regularity_score' => 97,
             'is_at_risk' => false,
@@ -186,14 +226,14 @@ try {
             $stmt->execute([$student_id, $academic_year_id, $month, $year]);
             $chart_data = $stmt->fetch(PDO::FETCH_ASSOC);
             
-            $chart_total = $chart_data ? intval($chart_data['total_days']) : 0;
             $chart_present = $chart_data ? intval($chart_data['present_days']) : 0;
-            $chart_percentage = $chart_total > 0 ? round(($chart_present / $chart_total) * 100) : 0;
+            // คำนวณเปอร์เซ็นต์จากวันที่เข้าแถวจริงเทียบกับวันที่ต้องเข้าแถวทั้งหมด
+            $chart_percentage = $required_days > 0 ? round(($chart_present / $required_days) * 100) : 0;
             
             $attendance_chart[] = [
                 'month' => $thai_months[$month],
                 'percentage' => $chart_percentage,
-                'total_days' => $chart_total,
+                'total_days' => $required_days,
                 'present_days' => $chart_present
             ];
         }
@@ -375,22 +415,8 @@ try {
         ];
     }
     
-    // คำนวณอัตราการเข้าแถว (ใช้ $total_days ที่ดึงมาจาก setting แทนการคำนวณ)
-    if ($total_days > 0) {
-        $attendance_percentage = round(($monthly_summary['total_days'] / $total_days) * 100, 1);
-        // จำกัดค่าไม่ให้เกิน 100%
-        $attendance_percentage = min($attendance_percentage, 100);
-        
-        // กำหนดค่าความเสี่ยง
-        $monthly_summary['is_at_risk'] = $attendance_percentage < 75;
-        $monthly_summary['min_percentage'] = 75;
-    } else {
-        $attendance_percentage = 0;
-        $monthly_summary['is_at_risk'] = false;
-    }
-    
-    $monthly_summary['attendance_percentage'] = $attendance_percentage;
-    
+    // ส่งค่าเกณฑ์ผ่านจากฐานข้อมูลไปยัง template ทุกครั้ง
+
     // กำหนดค่าสำหรับ template
     $content_path = 'pages/student_report_content.php';
     
@@ -420,13 +446,20 @@ try {
     
     // สรุปการเข้าแถวประจำเดือน
     $monthly_summary = [
-        'total_days' => 23,
-        'present_days' => 23,
-        'absent_days' => 0,
+        'total_days' => 23,       // จำนวนวันที่เข้าแถวจริง
+        'present_days' => 23,     // จำนวนวันที่เข้าแถว
+        'absent_days' => 0,       // จำนวนวันที่ขาด
+        'required_days' => 23,    // จำนวนวันที่ต้องเข้าแถวทั้งหมด
         'attendance_percentage' => 100,
         'regularity_score' => 97,
         'is_at_risk' => false,
-        'min_percentage' => 80
+        'min_percentage' => $passing_rate,
+        'passing_status_level' => [
+            'safe' => 90,
+            'warning' => $passing_rate,
+            'danger' => $passing_rate * 0.9
+        ],
+        'rate_source' => $rate_source ?? 'default'
     ];
     
     // กราฟข้อมูลการเข้าแถว

@@ -79,9 +79,63 @@ try {
     $stmt->execute([$student['student_id'], $current_academic_year_id]);
     $attendance_record = $stmt->fetch(PDO::FETCH_ASSOC);
     
-    // คำนวณเปอร์เซ็นต์การเข้าแถว
-    $total_days = ($attendance_record['total_attendance_days'] ?? 0) + ($attendance_record['total_absence_days'] ?? 0);
-    $attendance_percentage = $total_days > 0 ? round((($attendance_record['total_attendance_days'] ?? 0) / $total_days) * 100, 1) : 0;
+    // ดึงค่า required_attendance_days จากตาราง system_settings
+    $stmt = $conn->prepare("
+        SELECT setting_value 
+        FROM system_settings 
+        WHERE setting_key = 'required_attendance_days'
+    ");
+    $stmt->execute();
+    $required_days_setting = $stmt->fetch(PDO::FETCH_ASSOC);
+    $required_days = isset($required_days_setting['setting_value']) ? 
+                 intval($required_days_setting['setting_value']) : 80; // ค่าเริ่มต้นถ้าไม่พบในฐานข้อมูล
+    
+    // ดึงค่า custom_attendance_rate จากตาราง system_settings
+    $stmt = $conn->prepare("
+        SELECT setting_value 
+        FROM system_settings 
+        WHERE setting_key = 'custom_attendance_rate'
+    ");
+    $stmt->execute();
+    $custom_rate_setting = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    // ดึงค่า min_attendance_rate จากตาราง system_settings
+    $stmt = $conn->prepare("
+        SELECT setting_value 
+        FROM system_settings 
+        WHERE setting_key = 'min_attendance_rate'
+    ");
+    $stmt->execute();
+    $min_rate_setting = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    // กำหนดลำดับความสำคัญในการใช้ค่า: custom_rate > min_rate > default (75%)
+    if (isset($custom_rate_setting['setting_value']) && !empty($custom_rate_setting['setting_value'])) {
+        $passing_rate = floatval($custom_rate_setting['setting_value']);
+        $rate_source = 'custom_attendance_rate';
+    } elseif (isset($min_rate_setting['setting_value']) && !empty($min_rate_setting['setting_value'])) {
+        $passing_rate = floatval($min_rate_setting['setting_value']);
+        $rate_source = 'min_attendance_rate';
+    } else {
+        $passing_rate = 75; // ค่าเริ่มต้น 75% ถ้าไม่พบในฐานข้อมูล
+        $rate_source = 'default';
+    }
+    
+    // คำนวณเปอร์เซ็นต์การเข้าแถวโดยใช้วันที่ต้องเข้าแถวเป็นฐาน 100%
+    $attendance_days = $attendance_record['total_attendance_days'] ?? 0;
+    $attendance_percentage = $required_days > 0 ? round(($attendance_days / $required_days) * 100, 1) : 0;
+    
+    // จำกัดค่าไม่ให้เกิน 100%
+    $attendance_percentage = min($attendance_percentage, 100);
+    
+    // กำหนดสถานะความเสี่ยง
+    $is_at_risk = $attendance_percentage < $passing_rate;
+    
+    // กำหนดระดับสถานะ
+    $status_level = [
+        'safe' => 90,
+        'warning' => $passing_rate,
+        'danger' => $passing_rate * 0.9
+    ];
     
     // ดึงประวัติการเช็คชื่อล่าสุด 5 รายการ
     $stmt = $conn->prepare("
@@ -118,7 +172,6 @@ try {
         ];
     }
     
-
     $announcements = [
         [
             'id' => 'sample-1',  // กำหนดค่า ID แบบตายตัว
@@ -139,7 +192,7 @@ try {
         [
             'id' => 'sample-3',  // กำหนดค่า ID แบบตายตัว
             'title' => 'เตือนนักเรียนที่ยังไม่ผ่านกิจกรรม',
-            'content' => 'ขอให้นักเรียนที่มีอัตราการเข้าแถวต่ำกว่า 75% ติดต่อครูที่ปรึกษาโดยด่วน',
+            'content' => "ขอให้นักเรียนที่มีอัตราการเข้าแถวต่ำกว่า {$passing_rate}% ติดต่อครูที่ปรึกษาโดยด่วน",
             'date' => '25 มี.ค. 2568',
             'badge' => 'urgent',
             'badge_text' => 'สำคัญ'
@@ -183,18 +236,6 @@ try {
         // ถ้ามีข้อผิดพลาด ไม่ต้องทำอะไร เพราะเรามีข้อมูลจำลองอยู่แล้ว
     }
 
-
-
-
-
-
-
-
-
-
-
-
-
     // แสดงหน้าเว็บ
     $page_title = "STD-Prasat - หน้าหลักนักเรียน";
     
@@ -210,9 +251,12 @@ try {
     $first_char = mb_substr($student['first_name'], 0, 1, 'UTF-8');
     
     $attendance_stats = [
-        'total_days' => $total_days,
-        'attendance_days' => $attendance_record['total_attendance_days'] ?? 0,
-        'attendance_percentage' => $attendance_percentage
+        'required_days' => $required_days,
+        'attendance_days' => $attendance_days,
+        'attendance_percentage' => $attendance_percentage,
+        'passing_rate' => $passing_rate,
+        'is_at_risk' => $is_at_risk,
+        'status_level' => $status_level
     ];
     
     $attendance_status = [
@@ -272,14 +316,4 @@ function getMethodIcon($method) {
             return 'help_outline';
     }
 }
-
-
-
-
-
-    
-
-
-
-
 ?>
