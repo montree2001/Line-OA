@@ -165,7 +165,7 @@ switch ($role) {
     case 'student':
         // ตรวจสอบว่าเป็นการลงทะเบียนครั้งแรกหรือไม่
         if (!checkStudentRegistered($user_id)) {
-            header('Location: student/register.php?step=2');
+            header('Location: student/register.php?step=1');
         } else {
             header('Location: student/dashboard.php');
         }

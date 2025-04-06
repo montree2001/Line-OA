@@ -45,7 +45,8 @@ $stmt->bind_param("i", $user_id);
 $stmt->execute();
 $result = $stmt->get_result();
 
-if ($result->num_rows > 0) {
+// เพิ่มเงื่อนไข: ถ้าอยู่ในขั้นตอนที่ 4 ให้แสดงหน้า success ไม่ต้อง redirect
+if ($result->num_rows > 0 && $step !== 4) {
     // มีข้อมูลครูแล้ว นำไปที่หน้า dashboard
     header('Location: home.php');
     exit;
@@ -189,7 +190,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $error_message = "ไม่สามารถลบข้อมูลในตาราง users ได้: " . $conn->error;
                     } else {
                         // บันทึกสำเร็จ ไปยังขั้นตอนถัดไป
-                        header('Location: register.php?step=4');
+                        // ในทั้งสองเงื่อนไขที่บันทึกข้อมูลสำเร็จ (ทั้งกรณีมีข้อมูลเดิมและไม่มีข้อมูลเดิม)
+                        // เปลี่ยนจาก
+                        // header('Location: register.php?step=4');
+                        // เป็น
+                        header('Location: registration_complete.php');
                         exit;
                     }
                 } else {
