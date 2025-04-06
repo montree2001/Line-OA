@@ -288,7 +288,7 @@ class Teacher {
                 'phone_number' => $data['phone_number'] ?? null,
                 'email' => $data['email'] ?? null,
                 // สร้าง line_id ชั่วคราว (จะเปลี่ยนเมื่อมีการเชื่อมต่อ Line จริง)
-                'line_id' => 'temp_' . time() . rand(1000, 9999)
+                'line_id' => 'TEMP_' . time() . rand(1000, 9999)
             ];
             
             $userQuery = "INSERT INTO users (line_id, role, title, first_name, last_name, phone_number, email, gdpr_consent, created_at) 

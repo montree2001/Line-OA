@@ -66,6 +66,7 @@ $line_id = $user_profile['userId'];
 $display_name = $user_profile['displayName'];
 $picture_url = isset($user_profile['pictureUrl']) ? $user_profile['pictureUrl'] : '';
 
+
 // เชื่อมต่อฐานข้อมูล
 $conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
 if ($conn->connect_error) {
@@ -141,6 +142,7 @@ if ($result->num_rows > 0) {
         // บันทึกข้อมูลเพิ่มเติมใน session
         $_SESSION['profile_picture'] = $picture_url;
         
+        
     } catch (Exception $e) {
         // บันทึกข้อผิดพลาดและแสดงผล
         error_log("ข้อผิดพลาดในการเพิ่มข้อมูลผู้ใช้: " . $e->getMessage());
@@ -163,17 +165,17 @@ switch ($role) {
     case 'student':
         // ตรวจสอบว่าเป็นการลงทะเบียนครั้งแรกหรือไม่
         if (!checkStudentRegistered($user_id)) {
-            header('Location: student/register.php');
+            header('Location: student/register.php?step=2');
         } else {
-            header('Location: student/home.php');
+            header('Location: student/dashboard.php');
         }
         break;
     case 'teacher':
         // ตรวจสอบว่าเป็นการลงทะเบียนครั้งแรกหรือไม่
         if (!checkTeacherRegistered($user_id)) {
-            header('Location: teacher/register.php');
+            header('Location: teacher/register.php?step=1');
         } else {
-            header('Location: teacher/dashboard.php');
+            header('Location: teacher/home.php');
         }
         break;
     case 'parent':
