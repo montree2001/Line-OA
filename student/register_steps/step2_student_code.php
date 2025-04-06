@@ -20,7 +20,7 @@
     
     <div class="text-center mt-30">
         <p>หากไม่ทราบรหัสนักศึกษา หรือเป็นนักเรียนใหม่ สามารถกดปุ่มด้านล่างเพื่อกรอกข้อมูลด้วยตนเอง</p>
-        <a href="register.php?step=33" class="btn secondary mt-10">กรอกข้อมูลด้วยตนเอง</a>
+        <a href="register.php?step=3manual" class="btn secondary mt-10">กรอกข้อมูลด้วยตนเอง</a>
     </div>
 </div>
 

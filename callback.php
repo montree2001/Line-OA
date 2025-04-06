@@ -167,7 +167,7 @@ switch ($role) {
         if (!checkStudentRegistered($user_id)) {
             header('Location: student/register.php?step=1');
         } else {
-            header('Location: student/dashboard.php');
+            header('Location: student/home.php');
         }
         break;
     case 'teacher':

@@ -50,7 +50,7 @@
     </div>
     
     <div class="mt-30">
-        <a href="dashboard.php" class="btn primary">
+        <a href="home.php" class="btn primary">
             เข้าสู่หน้าหลัก
             <span class="material-icons">home</span>
         </a>
@@ -70,6 +70,6 @@
     
     // ตั้งเวลาไปยังหน้าหลักโดยอัตโนมัติ
     setTimeout(function() {
-        window.location.href = 'dashboard.php';
+        window.location.href = 'home.php';
     }, 10000); // 10 วินาที
 </script>

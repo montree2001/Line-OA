@@ -175,6 +175,7 @@ if (isset($_POST['search_student'])) {
                     $_SESSION['student_department_id'] = $student['department_id'];
                     $_SESSION['student_department_name'] = $student['department_name'];
                     $_SESSION['student_status'] = $student['status'];
+                    $_SESSION['line_id'] = $student['line_id'];
                     
                     // ถ้าเป็นบัญชีชั่วคราว ให้อัปเดตข้อมูลผู้ใช้ทันที
                     if ($is_temp_line_id) {
@@ -215,7 +216,7 @@ if (isset($_POST['search_student'])) {
                 $error_message = "ไม่พบข้อมูลนักศึกษารหัส: " . $student_code . " ในระบบ";
                 
                 // ตรวจสอบว่ามีข้อมูลในตาราง student_pending หรือไม่
-                $stmt = $conn->prepare("SELECT * FROM student_pending WHERE student_code = ?");
+                $stmt = $conn->prepare("SELECT * FROM students WHERE student_code = ?");
                 $stmt->execute([$student_code]);
                 $pending_student = $stmt->fetch(PDO::FETCH_ASSOC);
                 
@@ -230,7 +231,7 @@ if (isset($_POST['search_student'])) {
                     logRegistrationActivity($conn, $user_id, "search_student_pending", "Student ID: " . $student_code);
                     
                     // ไปยังขั้นตอนกรอกข้อมูลเพิ่มเติม
-                    header('Location: register.php?step=33');
+                    header('Location: register.php?step=3manual');
                     exit;
                 } else {
                     // แนะนำให้ลงทะเบียนใหม่
@@ -261,6 +262,9 @@ if (isset($_POST['confirm_student_info'])) {
         $error_message = "ข้อมูลนักศึกษาไม่ครบถ้วน กรุณาเริ่มต้นใหม่";
     } else {
         try {
+
+        
+
             // อัปเดตข้อมูลผู้ใช้จาก LINE ให้ตรงกับข้อมูลนักศึกษา
             $stmt = $conn->prepare("
                 UPDATE users 
@@ -284,6 +288,15 @@ if (isset($_POST['confirm_student_info'])) {
                 WHERE student_id = ?
             ");
             $stmt->execute([$user_id, $_SESSION['student_id']]);
+
+            // ลบข้อมูลในตาราง users อันเก่า
+            $delete_sql = "DELETE FROM users WHERE line_id = ?";
+            $stmt = $conn->prepare($delete_sql);
+            $stmt->execute([$_SESSION['line_id']]);
+
+           
+            
+            
             
             // สร้าง QR Code สำหรับนักเรียน
             createStudentQRCode($conn, $_SESSION['student_id'], $_SESSION['student_code']);
