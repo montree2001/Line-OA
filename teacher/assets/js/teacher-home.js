@@ -1,11 +1,14 @@
 /**
- * teacher-home.js - สคริปต์เฉพาะสำหรับหน้าหลักของระบบ Teacher-Prasat
+ * teacher-home.js - สคริปต์เฉพาะสำหรับหน้าหลักของระบบน้องชูใจ AI
  */
 
 // Document Ready Function
 document.addEventListener('DOMContentLoaded', function() {
     // เริ่มต้นการทำงานของหน้าหลัก
     initHomePage();
+    
+    // เริ่มการอัพเดทข้อมูลแบบเรียลไทม์
+    startRealtimeUpdates();
 });
 
 /**
@@ -17,6 +20,24 @@ function initHomePage() {
     
     // ตั้งค่าแท็บเริ่มต้น
     showTab('attendance');
+    
+    // ตั้งค่าการแสดงผู้ใช้เมื่อคลิกที่ไอคอนบัญชี
+    document.getElementById('account-icon').addEventListener('click', function() {
+        const userDropdown = document.getElementById('userDropdown');
+        if (userDropdown) {
+            userDropdown.classList.toggle('show');
+        }
+    });
+    
+    // ปิดเมนูผู้ใช้เมื่อคลิกที่อื่น
+    document.addEventListener('click', function(e) {
+        if (!e.target.matches('#account-icon') && !e.target.closest('#userDropdown')) {
+            const userDropdown = document.getElementById('userDropdown');
+            if (userDropdown && userDropdown.classList.contains('show')) {
+                userDropdown.classList.remove('show');
+            }
+        }
+    });
 }
 
 /**
@@ -24,8 +45,6 @@ function initHomePage() {
  * @param {string} classId - ID ของห้องเรียน
  */
 function changeClass(classId) {
-    // ในระบบจริงจะใช้ AJAX เพื่อเรียกข้อมูลของห้องเรียนใหม่
-    // สำหรับตัวอย่าง เราจะนำทางไปยังหน้าเดิมพร้อมกับเปลี่ยนพารามิเตอร์
     window.location.href = 'home.php?class_id=' + classId;
 }
 
@@ -33,6 +52,9 @@ function changeClass(classId) {
  * สร้างรหัส PIN สำหรับการเช็คชื่อ
  */
 function generatePin() {
+    // เตรียมข้อมูลสำหรับส่งไป API
+    const classId = getCurrentClassId();
+    
     // แสดง Modal สร้างรหัส PIN
     const modal = document.getElementById('pin-modal');
     if (modal) {
@@ -45,25 +67,54 @@ function generatePin() {
  * สร้างรหัส PIN ใหม่
  */
 function generateNewPin() {
-    // สร้างรหัส PIN 4 หลักแบบสุ่ม
-    const pin = Math.floor(1000 + Math.random() * 9000);
-    const pinDisplay = document.querySelector('.pin-code');
+    // เตรียมข้อมูลสำหรับส่งไป API
+    const classId = getCurrentClassId();
     
-    if (pinDisplay) {
-        pinDisplay.textContent = pin;
-    }
-    
-    // อัพเดทรหัส PIN ในหน้าหลัก (ถ้ามี)
-    const activePin = document.getElementById('active-pin-code');
-    if (activePin) {
-        activePin.textContent = pin;
-    }
-    
-    // รีเซ็ต Timer
-    setupPinTimer();
-    
-    // แสดงข้อความแจ้งเตือน
-    showAlert('สร้างรหัส PIN ใหม่เรียบร้อย', 'success');
+    // ส่งคำขอสร้าง PIN ใหม่ไปยัง API
+    fetch('api/create_pin.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            class_id: classId
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // อัพเดท PIN ที่แสดงใน Modal
+            const pinDisplay = document.querySelector('.pin-code');
+            if (pinDisplay) {
+                pinDisplay.textContent = data.pin_code;
+            }
+            
+            // อัพเดทรหัส PIN ในหน้าหลัก (ถ้ามี)
+            const activePin = document.getElementById('active-pin-code');
+            if (activePin) {
+                activePin.textContent = data.pin_code;
+            }
+            
+            // อัพเดทเวลาที่เหลือ
+            const pinExpireTime = document.getElementById('pin-expire-time');
+            if (pinExpireTime) {
+                pinExpireTime.textContent = data.expire_minutes;
+            }
+            
+            // รีเซ็ต Timer
+            setupPinTimer();
+            
+            // แสดงข้อความแจ้งเตือนสำเร็จ
+            showAlert('สร้างรหัส PIN ใหม่เรียบร้อย', 'success');
+        } else {
+            // แสดงข้อความเมื่อมีข้อผิดพลาด
+            showAlert(data.message || 'เกิดข้อผิดพลาดในการสร้าง PIN', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showAlert('เกิดข้อผิดพลาดในการเชื่อมต่อกับเซิร์ฟเวอร์', 'error');
+    });
 }
 
 /**
@@ -88,8 +139,11 @@ function scanQRCode() {
         modal.classList.add('active');
         document.body.style.overflow = 'hidden';
         
-        // ในระบบจริงจะต้องขออนุญาตใช้งานกล้องและเริ่มสแกน QR Code
+        // ในระบบจริงจะใช้ JavaScript QR Scanner API
         // startQRScanner();
+        
+        // สำหรับตัวอย่าง (รออัพเดทในเวอร์ชันถัดไป)
+        showAlert('ระบบกำลังเรียกใช้กล้อง กรุณารอสักครู่...', 'info');
     }
 }
 
@@ -106,10 +160,10 @@ function setupPinTimer() {
         pinTimer = null;
     }
     
-    // ตั้งค่าเวลาเริ่มต้น (10 นาที)
+    // ตั้งค่าเวลาเริ่มต้นจากข้อมูลที่มี
     const pinExpireTime = document.getElementById('pin-expire-time');
     if (pinExpireTime) {
-        remainingTime = parseInt(pinExpireTime.textContent) * 60;
+        remainingTime = parseInt(pinExpireTime.textContent || "10") * 60;
     } else {
         remainingTime = 600;
     }
@@ -138,8 +192,14 @@ function startPinTimer() {
             clearInterval(pinTimer);
             pinTimer = null;
             
-            // สร้าง PIN ใหม่โดยอัตโนมัติเมื่อหมดเวลา
-            generateNewPin();
+            // ซ่อนการแสดง PIN ที่หมดอายุ
+            const activePinCard = document.querySelector('.active-pin-card');
+            if (activePinCard) {
+                activePinCard.style.display = 'none';
+            }
+            
+            // แจ้งเตือนผู้ใช้
+            showAlert('รหัส PIN หมดอายุแล้ว กรุณาสร้างใหม่', 'warning');
         }
         
         updatePinTimeDisplay();
@@ -201,13 +261,30 @@ function viewStudentDetail(studentId) {
  * @param {number} studentId - ID ของนักเรียน
  */
 function notifyParent(studentId) {
-    // ในระบบจริงจะมีการนำทางไปยังหน้าส่งการแจ้งเตือนหรือแสดง Modal
-    showAlert('กำลังส่งการแจ้งเตือนไปยังผู้ปกครอง...', 'info');
-    
-    // จำลองการส่งข้อความ
-    setTimeout(() => {
-        showAlert('ส่งการแจ้งเตือนไปยังผู้ปกครองเรียบร้อยแล้ว', 'success');
-    }, 2000);
+    // ส่งคำขอแจ้งเตือนไปยัง API
+    fetch('api/notify_parent.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            student_id: studentId,
+            notification_type: 'risk_alert',
+            message: 'แจ้งเตือนเรื่องการเข้าแถวกิจกรรมหน้าเสาธง'
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAlert('ส่งการแจ้งเตือนไปยังผู้ปกครองเรียบร้อยแล้ว', 'success');
+        } else {
+            showAlert(data.message || 'เกิดข้อผิดพลาดในการส่งการแจ้งเตือน', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showAlert('เกิดข้อผิดพลาดในการเชื่อมต่อกับเซิร์ฟเวอร์', 'error');
+    });
 }
 
 /**
@@ -216,7 +293,7 @@ function notifyParent(studentId) {
  */
 function getCurrentClassId() {
     const classSelect = document.getElementById('class-select');
-    return classSelect ? classSelect.value : '1';
+    return classSelect ? classSelect.value : '0';
 }
 
 /**
@@ -231,8 +308,52 @@ function showAlert(message, type = 'info') {
         return;
     }
     
-    // ถ้าไม่มีฟังก์ชันใน main.js ให้สร้าง alert ง่ายๆ
-    alert(`${type.toUpperCase()}: ${message}`);
+    // สร้าง alert ถ้าไม่มีฟังก์ชันใน main.js
+    const alertContainer = document.getElementById('alertContainer');
+    if (alertContainer) {
+        const alertDiv = document.createElement('div');
+        alertDiv.className = `alert alert-${type}`;
+        alertDiv.innerHTML = `
+            <div class="alert-content">
+                <span class="alert-icon material-icons">${getAlertIcon(type)}</span>
+                <span class="alert-message">${message}</span>
+            </div>
+            <span class="alert-close material-icons">close</span>
+        `;
+        
+        // เพิ่มการจัดการเหตุการณ์ปิดการแจ้งเตือน
+        const closeButton = alertDiv.querySelector('.alert-close');
+        closeButton.addEventListener('click', () => {
+            alertDiv.remove();
+        });
+        
+        // เพิ่มการแจ้งเตือนในคอนเทนเนอร์
+        alertContainer.appendChild(alertDiv);
+        
+        // กำหนดให้ปิดอัตโนมัติหลังจาก 5 วินาที
+        setTimeout(() => {
+            if (alertDiv.parentNode === alertContainer) {
+                alertDiv.remove();
+            }
+        }, 5000);
+    } else {
+        console.log(`${type.toUpperCase()}: ${message}`);
+    }
+}
+
+/**
+ * รับไอคอนสำหรับประเภทการแจ้งเตือน
+ * @param {string} type - ประเภทการแจ้งเตือน
+ * @returns {string} - ชื่อไอคอน Material Icons
+ */
+function getAlertIcon(type) {
+    switch (type) {
+        case 'success': return 'check_circle';
+        case 'warning': return 'warning';
+        case 'error': return 'error';
+        case 'info':
+        default: return 'info';
+    }
 }
 
 /**
@@ -240,35 +361,33 @@ function showAlert(message, type = 'info') {
  * สามารถใช้เทคโนโลยีเช่น WebSocket หรือ AJAX Polling
  */
 function startRealtimeUpdates() {
-    // ในระบบจริงจะใช้ WebSocket หรือ Server-Sent Events
+    // ในระบบจริงอาจใช้ WebSocket หรือ Server-Sent Events
     // แต่ตัวอย่างนี้จะใช้ setInterval แทน
     
     setInterval(() => {
         // เรียกข้อมูลการเช็คชื่อล่าสุดจาก server
         fetchLatestAttendanceData();
-    }, 30000); // ทุก 30 วินาที
+    }, 60000); // ทุก 1 นาที
 }
 
 /**
  * ดึงข้อมูลการเช็คชื่อล่าสุดจาก server
  */
 function fetchLatestAttendanceData() {
-    // ในระบบจริงจะใช้ AJAX เพื่อดึงข้อมูลจาก server
-    // ตัวอย่าง:
-    /*
-    fetch(`api/attendance.php?class_id=${getCurrentClassId()}`)
+    const classId = getCurrentClassId();
+    if (!classId || classId === '0') return;
+    
+    fetch(`api/get_attendance.php?class_id=${classId}`)
         .then(response => response.json())
         .then(data => {
-            updateAttendanceStats(data.stats);
-            updateStudentList(data.students);
+            if (data.success) {
+                updateAttendanceStats(data.stats);
+                updateStudentList(data.students);
+            }
         })
         .catch(error => {
             console.error('เกิดข้อผิดพลาดในการดึงข้อมูล:', error);
         });
-    */
-    
-    // ในตัวอย่างนี้ไม่ได้ทำอะไร
-    console.log('Fetching latest attendance data...');
 }
 
 /**
