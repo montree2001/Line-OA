@@ -301,4 +301,7 @@ $content_path = 'pages/teacher_home_content.php';
 require_once 'templates/header.php';
 require_once 'templates/main_content.php';
 require_once 'templates/footer.php';
+
 ?>
+
+<script src="assets/js/teacher-home.js?v=<?php echo time(); ?>"></script>

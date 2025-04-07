@@ -77,15 +77,15 @@
     <!-- การ์ดปุ่มทางลัด -->
     <div class="action-cards">
         <!-- ปุ่มสร้าง PIN -->
-        <div class="action-card" onclick="generatePin()">
-            <div class="action-icon">
-                <span class="material-icons">pin</span>
-            </div>
-            <div class="action-text">
-                <div class="action-title">สร้างรหัส PIN</div>
-                <div class="action-subtitle">สำหรับนักเรียนเช็คชื่อเข้าแถว</div>
-            </div>
-        </div>
+        <div class="action-card" id="generate-pin-btn">
+    <div class="action-icon">
+        <span class="material-icons">pin</span>
+    </div>
+    <div class="action-text">
+        <div class="action-title">สร้างรหัส PIN</div>
+        <div class="action-subtitle">สำหรับนักเรียนเช็คชื่อเข้าแถว</div>
+    </div>
+</div>
 
         <!-- ปุ่มสแกน QR -->
         <div class="action-card" onclick="scanQRCode()">
@@ -277,3 +277,20 @@
         </div>
     </div>
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+    const generatePinBtn = document.getElementById('generate-pin-btn');
+    if (generatePinBtn) {
+        generatePinBtn.addEventListener('click', function() {
+            // เรียกใช้ฟังก์ชัน generatePin ที่อยู่ในไฟล์ teacher-home.js
+            if (typeof generatePin === 'function') {
+                generatePin();
+            } else {
+                console.error('ฟังก์ชัน generatePin ไม่ถูกโหลด');
+                alert('เกิดข้อผิดพลาด: ไม่พบฟังก์ชันสร้าง PIN');
+            }
+        });
+    }
+});
+</script>

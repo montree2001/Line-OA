@@ -1,6 +1,10 @@
 /**
- * teacher-home.js - สคริปต์เฉพาะสำหรับหน้าหลักของระบบน้องชูใจ AI
+ * teacher-home.js - สคริปต์สำหรับหน้าหลักครูที่ปรึกษา
  */
+
+// ตัวแปร Global
+window.pinTimer = null;
+window.remainingTime = 600; // 10 นาทีในวินาที
 
 // Document Ready Function
 document.addEventListener('DOMContentLoaded', function() {
@@ -15,8 +19,10 @@ document.addEventListener('DOMContentLoaded', function() {
  * เริ่มต้นการทำงานของหน้าหลัก
  */
 function initHomePage() {
-    // ตั้งค่า PIN Timer
-    setupPinTimer();
+    // ตั้งค่า PIN Timer ถ้ามีการแสดง PIN
+    if (document.getElementById('pin-expire-time')) {
+        setupPinTimer();
+    }
     
     // ตั้งค่าแท็บเริ่มต้น
     showTab('attendance');
@@ -94,9 +100,6 @@ function generateNewPin() {
     })
     .then(response => {
         console.log('การตอบกลับจาก API:', response);
-        if (!response.ok) {
-            throw new Error('การเชื่อมต่อกับเซิร์ฟเวอร์มีปัญหา (HTTP ' + response.status + ')');
-        }
         return response.json();
     })
     .then(data => {
@@ -121,6 +124,7 @@ function generateNewPin() {
             }
             
             // รีเซ็ต Timer
+            window.remainingTime = data.expire_minutes * 60;
             setupPinTimer();
             
             // แสดงข้อความแจ้งเตือนสำเร็จ
@@ -172,6 +176,7 @@ function createActivePinCard(pinCode, expireMinutes) {
     actionCards.insertAdjacentElement('afterend', pinCard);
     
     // เริ่ม Timer ใหม่
+    window.remainingTime = expireMinutes * 60;
     setupPinTimer();
 }
 
@@ -197,9 +202,6 @@ function scanQRCode() {
         modal.classList.add('active');
         document.body.style.overflow = 'hidden';
         
-        // ในระบบจริงจะใช้ JavaScript QR Scanner API
-        // startQRScanner();
-        
         // สำหรับตัวอย่าง (รออัพเดทในเวอร์ชันถัดไป)
         displayAlert('ระบบกำลังเรียกใช้กล้อง กรุณารอสักครู่...', 'info');
     }
@@ -208,12 +210,6 @@ function scanQRCode() {
 /**
  * ตั้งค่า Timer สำหรับ PIN
  */
-// กำหนดตัวแปรแบบ global scope
-if (typeof window.pinTimer === 'undefined') {
-    window.pinTimer = null;
-    window.remainingTime = 600; // 10 นาทีในวินาที
-}
-
 function setupPinTimer() {
     // เคลียร์ Timer เดิม (ถ้ามี)
     if (window.pinTimer) {
@@ -225,8 +221,6 @@ function setupPinTimer() {
     const pinExpireTime = document.getElementById('pin-expire-time');
     if (pinExpireTime) {
         window.remainingTime = parseInt(pinExpireTime.textContent || "10") * 60;
-    } else {
-        window.remainingTime = 600;
     }
     
     // อัพเดทการแสดงผล
@@ -390,7 +384,7 @@ function displayAlert(message, type = 'info') {
     
     // กำหนดให้ปิดอัตโนมัติหลังจาก 5 วินาที
     setTimeout(() => {
-        if (alertDiv.parentNode === alertContainer) {
+        if (alertDiv && alertDiv.parentNode === alertContainer) {
             alertDiv.remove();
         }
     }, 5000);
@@ -413,14 +407,10 @@ function getAlertIcon(type) {
 
 /**
  * อัพเดทข้อมูลการเช็คชื่อในเรียลไทม์
- * สามารถใช้เทคโนโลยีเช่น WebSocket หรือ AJAX Polling
  */
 function startRealtimeUpdates() {
-    // ในระบบจริงอาจใช้ WebSocket หรือ Server-Sent Events
-    // แต่ตัวอย่างนี้จะใช้ setInterval แทน
-    
+    // ใช้ setInterval เพื่ออัพเดทข้อมูล
     setInterval(() => {
-        // เรียกข้อมูลการเช็คชื่อล่าสุดจาก server
         fetchLatestAttendanceData();
     }, 60000); // ทุก 1 นาที
 }
