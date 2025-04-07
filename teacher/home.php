@@ -16,11 +16,15 @@ $page_title = 'น้องชูใจ AI - หน้าหลักครู�
 $page_header = 'หน้าหลัก';
 
 // เชื่อมต่อฐานข้อมูล
-$conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
-if ($conn->connect_error) {
-    die("การเชื่อมต่อฐานข้อมูลล้มเหลว: " . $conn->connect_error);
+try {
+    $conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
+    if ($conn->connect_error) {
+        die("การเชื่อมต่อฐานข้อมูลล้มเหลว: " . $conn->connect_error);
+    }
+    $conn->set_charset("utf8mb4");
+} catch (Exception $e) {
+    die("การเชื่อมต่อฐานข้อมูลล้มเหลว: " . $e->getMessage());
 }
-$conn->set_charset("utf8mb4");
 
 // ดึงข้อมูลครูที่ปรึกษาจากฐานข้อมูล
 $user_id = $_SESSION['user_id'];
@@ -281,7 +285,9 @@ $conn->close();
 
 // รวม CSS และ JS
 $extra_css = [
-    'assets/css/teacher-home.css'
+    'assets/css/teacher-home.css',
+    'assets/css/modal.css',
+    'assets/css/alerts.css'
 ];
 
 $extra_js = [

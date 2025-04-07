@@ -22,12 +22,15 @@ function initHomePage() {
     showTab('attendance');
     
     // ตั้งค่าการแสดงผู้ใช้เมื่อคลิกที่ไอคอนบัญชี
-    document.getElementById('account-icon').addEventListener('click', function() {
-        const userDropdown = document.getElementById('userDropdown');
-        if (userDropdown) {
-            userDropdown.classList.toggle('show');
-        }
-    });
+    const accountIcon = document.getElementById('account-icon');
+    if (accountIcon) {
+        accountIcon.addEventListener('click', function() {
+            const userDropdown = document.getElementById('userDropdown');
+            if (userDropdown) {
+                userDropdown.classList.toggle('show');
+            }
+        });
+    }
     
     // ปิดเมนูผู้ใช้เมื่อคลิกที่อื่น
     document.addEventListener('click', function(e) {
@@ -52,9 +55,6 @@ function changeClass(classId) {
  * สร้างรหัส PIN สำหรับการเช็คชื่อ
  */
 function generatePin() {
-    // เตรียมข้อมูลสำหรับส่งไป API
-    const classId = getCurrentClassId();
-    
     // แสดง Modal สร้างรหัส PIN
     const modal = document.getElementById('pin-modal');
     if (modal) {
@@ -70,6 +70,18 @@ function generateNewPin() {
     // เตรียมข้อมูลสำหรับส่งไป API
     const classId = getCurrentClassId();
     
+    // ตรวจสอบว่า classId มีค่าและถูกต้อง
+    if (!classId || classId === '0') {
+        console.error('ไม่พบรหัสห้องเรียน');
+        displayAlert('กรุณาเลือกห้องเรียน', 'error');
+        return;
+    }
+    
+    console.log('กำลังสร้าง PIN สำหรับห้องเรียน ID:', classId);
+    
+    // แสดงข้อความกำลังดำเนินการ
+    displayAlert('กำลังสร้างรหัส PIN...', 'info');
+    
     // ส่งคำขอสร้าง PIN ใหม่ไปยัง API
     fetch('api/create_pin.php', {
         method: 'POST',
@@ -80,8 +92,15 @@ function generateNewPin() {
             class_id: classId
         })
     })
-    .then(response => response.json())
+    .then(response => {
+        console.log('การตอบกลับจาก API:', response);
+        if (!response.ok) {
+            throw new Error('การเชื่อมต่อกับเซิร์ฟเวอร์มีปัญหา (HTTP ' + response.status + ')');
+        }
+        return response.json();
+    })
     .then(data => {
+        console.log('ข้อมูลที่ได้รับจาก API:', data);
         if (data.success) {
             // อัพเดท PIN ที่แสดงใน Modal
             const pinDisplay = document.querySelector('.pin-code');
@@ -105,16 +124,55 @@ function generateNewPin() {
             setupPinTimer();
             
             // แสดงข้อความแจ้งเตือนสำเร็จ
-            showAlert('สร้างรหัส PIN ใหม่เรียบร้อย', 'success');
+            displayAlert('สร้างรหัส PIN ใหม่เรียบร้อย', 'success');
+            
+            // แสดงการ์ด PIN ถ้าซ่อนอยู่
+            const activePinCard = document.querySelector('.active-pin-card');
+            if (activePinCard) {
+                activePinCard.style.display = 'block';
+            } else {
+                // ถ้ายังไม่มีการ์ด PIN ให้สร้างใหม่
+                createActivePinCard(data.pin_code, data.expire_minutes);
+            }
         } else {
             // แสดงข้อความเมื่อมีข้อผิดพลาด
-            showAlert(data.message || 'เกิดข้อผิดพลาดในการสร้าง PIN', 'error');
+            console.error('ข้อผิดพลาดการสร้าง PIN:', data.message);
+            displayAlert(data.message || 'เกิดข้อผิดพลาดในการสร้าง PIN', 'error');
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        showAlert('เกิดข้อผิดพลาดในการเชื่อมต่อกับเซิร์ฟเวอร์', 'error');
+        displayAlert('เกิดข้อผิดพลาดในการเชื่อมต่อกับเซิร์ฟเวอร์: ' + error.message, 'error');
     });
+}
+
+/**
+ * สร้างการ์ด PIN ถ้ายังไม่มี
+ * @param {string} pinCode - รหัส PIN
+ * @param {number} expireMinutes - เวลาที่เหลือ (นาที)
+ */
+function createActivePinCard(pinCode, expireMinutes) {
+    const container = document.querySelector('.container');
+    if (!container) return;
+    
+    // ค้นหาตำแหน่งที่จะใส่การ์ด PIN (หลังการ์ดปุ่มทางลัด)
+    const actionCards = document.querySelector('.action-cards');
+    if (!actionCards) return;
+    
+    // สร้างการ์ด PIN
+    const pinCard = document.createElement('div');
+    pinCard.className = 'active-pin-card';
+    pinCard.innerHTML = `
+        <h3>รหัส PIN สำหรับเช็คชื่อเข้าแถว</h3>
+        <div class="active-pin" id="active-pin-code">${pinCode}</div>
+        <div class="pin-expire">หมดอายุในอีก <span id="pin-expire-time">${expireMinutes}</span> นาที</div>
+    `;
+    
+    // แทรกการ์ด PIN หลังการ์ดปุ่มทางลัด
+    actionCards.insertAdjacentElement('afterend', pinCard);
+    
+    // เริ่ม Timer ใหม่
+    setupPinTimer();
 }
 
 /**
@@ -143,29 +201,32 @@ function scanQRCode() {
         // startQRScanner();
         
         // สำหรับตัวอย่าง (รออัพเดทในเวอร์ชันถัดไป)
-        showAlert('ระบบกำลังเรียกใช้กล้อง กรุณารอสักครู่...', 'info');
+        displayAlert('ระบบกำลังเรียกใช้กล้อง กรุณารอสักครู่...', 'info');
     }
 }
 
 /**
  * ตั้งค่า Timer สำหรับ PIN
  */
-let pinTimer = null;
-let remainingTime = 600; // 10 นาทีในวินาที
+// กำหนดตัวแปรแบบ global scope
+if (typeof window.pinTimer === 'undefined') {
+    window.pinTimer = null;
+    window.remainingTime = 600; // 10 นาทีในวินาที
+}
 
 function setupPinTimer() {
     // เคลียร์ Timer เดิม (ถ้ามี)
-    if (pinTimer) {
-        clearInterval(pinTimer);
-        pinTimer = null;
+    if (window.pinTimer) {
+        clearInterval(window.pinTimer);
+        window.pinTimer = null;
     }
     
     // ตั้งค่าเวลาเริ่มต้นจากข้อมูลที่มี
     const pinExpireTime = document.getElementById('pin-expire-time');
     if (pinExpireTime) {
-        remainingTime = parseInt(pinExpireTime.textContent || "10") * 60;
+        window.remainingTime = parseInt(pinExpireTime.textContent || "10") * 60;
     } else {
-        remainingTime = 600;
+        window.remainingTime = 600;
     }
     
     // อัพเดทการแสดงผล
@@ -180,17 +241,17 @@ function setupPinTimer() {
  */
 function startPinTimer() {
     // เคลียร์ Timer เดิม (ถ้ามี)
-    if (pinTimer) {
-        clearInterval(pinTimer);
+    if (window.pinTimer) {
+        clearInterval(window.pinTimer);
     }
     
     // เริ่ม Timer ใหม่
-    pinTimer = setInterval(function() {
-        remainingTime--;
+    window.pinTimer = setInterval(function() {
+        window.remainingTime--;
         
-        if (remainingTime <= 0) {
-            clearInterval(pinTimer);
-            pinTimer = null;
+        if (window.remainingTime <= 0) {
+            clearInterval(window.pinTimer);
+            window.pinTimer = null;
             
             // ซ่อนการแสดง PIN ที่หมดอายุ
             const activePinCard = document.querySelector('.active-pin-card');
@@ -199,7 +260,7 @@ function startPinTimer() {
             }
             
             // แจ้งเตือนผู้ใช้
-            showAlert('รหัส PIN หมดอายุแล้ว กรุณาสร้างใหม่', 'warning');
+            displayAlert('รหัส PIN หมดอายุแล้ว กรุณาสร้างใหม่', 'warning');
         }
         
         updatePinTimeDisplay();
@@ -213,7 +274,7 @@ function updatePinTimeDisplay() {
     const pinExpireTime = document.getElementById('pin-expire-time');
     
     if (pinExpireTime) {
-        const minutes = Math.floor(remainingTime / 60);
+        const minutes = Math.floor(window.remainingTime / 60);
         pinExpireTime.textContent = minutes;
     }
 }
@@ -276,14 +337,14 @@ function notifyParent(studentId) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            showAlert('ส่งการแจ้งเตือนไปยังผู้ปกครองเรียบร้อยแล้ว', 'success');
+            displayAlert('ส่งการแจ้งเตือนไปยังผู้ปกครองเรียบร้อยแล้ว', 'success');
         } else {
-            showAlert(data.message || 'เกิดข้อผิดพลาดในการส่งการแจ้งเตือน', 'error');
+            displayAlert(data.message || 'เกิดข้อผิดพลาดในการส่งการแจ้งเตือน', 'error');
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        showAlert('เกิดข้อผิดพลาดในการเชื่อมต่อกับเซิร์ฟเวอร์', 'error');
+        displayAlert('เกิดข้อผิดพลาดในการเชื่อมต่อกับเซิร์ฟเวอร์', 'error');
     });
 }
 
@@ -297,48 +358,42 @@ function getCurrentClassId() {
 }
 
 /**
- * แสดงข้อความแจ้งเตือน (อิงจาก main.js)
+ * แสดงข้อความแจ้งเตือน
  * @param {string} message - ข้อความ
  * @param {string} type - ประเภท (success, info, warning, error)
  */
-function showAlert(message, type = 'info') {
-    // เรียกใช้ฟังก์ชันจาก main.js (ถ้ามี)
-    if (typeof window.showAlert === 'function') {
-        window.showAlert(message, type);
+function displayAlert(message, type = 'info') {
+    const alertContainer = document.getElementById('alertContainer');
+    if (!alertContainer) {
+        console.log(`${type.toUpperCase()}: ${message}`);
         return;
     }
     
-    // สร้าง alert ถ้าไม่มีฟังก์ชันใน main.js
-    const alertContainer = document.getElementById('alertContainer');
-    if (alertContainer) {
-        const alertDiv = document.createElement('div');
-        alertDiv.className = `alert alert-${type}`;
-        alertDiv.innerHTML = `
-            <div class="alert-content">
-                <span class="alert-icon material-icons">${getAlertIcon(type)}</span>
-                <span class="alert-message">${message}</span>
-            </div>
-            <span class="alert-close material-icons">close</span>
-        `;
-        
-        // เพิ่มการจัดการเหตุการณ์ปิดการแจ้งเตือน
-        const closeButton = alertDiv.querySelector('.alert-close');
-        closeButton.addEventListener('click', () => {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type}`;
+    alertDiv.innerHTML = `
+        <div class="alert-content">
+            <span class="alert-icon material-icons">${getAlertIcon(type)}</span>
+            <span class="alert-message">${message}</span>
+        </div>
+        <span class="alert-close material-icons">close</span>
+    `;
+    
+    // เพิ่มการจัดการเหตุการณ์ปิดการแจ้งเตือน
+    const closeButton = alertDiv.querySelector('.alert-close');
+    closeButton.addEventListener('click', () => {
+        alertDiv.remove();
+    });
+    
+    // เพิ่มการแจ้งเตือนในคอนเทนเนอร์
+    alertContainer.appendChild(alertDiv);
+    
+    // กำหนดให้ปิดอัตโนมัติหลังจาก 5 วินาที
+    setTimeout(() => {
+        if (alertDiv.parentNode === alertContainer) {
             alertDiv.remove();
-        });
-        
-        // เพิ่มการแจ้งเตือนในคอนเทนเนอร์
-        alertContainer.appendChild(alertDiv);
-        
-        // กำหนดให้ปิดอัตโนมัติหลังจาก 5 วินาที
-        setTimeout(() => {
-            if (alertDiv.parentNode === alertContainer) {
-                alertDiv.remove();
-            }
-        }, 5000);
-    } else {
-        console.log(`${type.toUpperCase()}: ${message}`);
-    }
+        }
+    }, 5000);
 }
 
 /**

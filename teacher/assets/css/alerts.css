@@ -1,0 +1,157 @@
+/* สไตล์สำหรับการแจ้งเตือน */
+.alert-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+    max-width: 350px;
+    width: calc(100% - 40px);
+}
+
+.alert {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+.alert-content {
+    display: flex;
+    align-items: center;
+    flex: 1;
+}
+
+.alert-icon {
+    margin-right: 10px;
+}
+
+.alert-message {
+    font-size: 14px;
+}
+
+.alert-close {
+    cursor: pointer;
+    margin-left: 10px;
+    font-size: 18px;
+    opacity: 0.6;
+}
+
+.alert-close:hover {
+    opacity: 1;
+}
+
+.alert-success {
+    background-color: #e8f5e9;
+    border-left: 4px solid #4caf50;
+    color: #2e7d32;
+}
+
+.alert-info {
+    background-color: #e3f2fd;
+    border-left: 4px solid #2196f3;
+    color: #0d47a1;
+}
+
+.alert-warning {
+    background-color: #fff3e0;
+    border-left: 4px solid #ff9800;
+    color: #e65100;
+}
+
+.alert-error {
+    background-color: #ffebee;
+    border-left: 4px solid #f44336;
+    color: #c62828;
+}
+
+/* สไตล์สำหรับ Alert-Card ที่แสดงในหน้า */
+.alert-card {
+    display: flex;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    box-shadow: var(--card-shadow, 0 2px 6px rgba(0,0,0,0.1));
+}
+
+.alert-card .alert-icon {
+    margin-right: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+}
+
+.alert-card .alert-icon .material-icons {
+    font-size: 24px;
+}
+
+.alert-card .alert-content {
+    flex: 1;
+}
+
+.alert-card .alert-title {
+    font-weight: bold;
+    margin-bottom: 4px;
+}
+
+.alert-card .alert-message {
+    font-size: 14px;
+}
+
+/* ประเภทของ Alert-Card */
+.alert-card.warning {
+    background-color: #fff8e1;
+    border-left: 4px solid #ffc107;
+}
+
+.alert-card.warning .alert-icon {
+    background-color: #fff3e0;
+    color: #ff9800;
+}
+
+.alert-card.success {
+    background-color: #e8f5e9;
+    border-left: 4px solid #4caf50;
+}
+
+.alert-card.success .alert-icon {
+    background-color: #dcedc8;
+    color: #4caf50;
+}
+
+.alert-card.info {
+    background-color: #e3f2fd;
+    border-left: 4px solid #2196f3;
+}
+
+.alert-card.info .alert-icon {
+    background-color: #bbdefb;
+    color: #2196f3;
+}
+
+.alert-card.error {
+    background-color: #ffebee;
+    border-left: 4px solid #f44336;
+}
+
+.alert-card.error .alert-icon {
+    background-color: #ffcdd2;
+    color: #f44336;
+}
