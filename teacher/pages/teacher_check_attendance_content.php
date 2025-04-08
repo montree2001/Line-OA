@@ -1,5 +1,5 @@
 <div class="header">
-    <a href="#" onclick="goBack()" class="header-icon">
+    <a href="home.php" class="header-icon">
         <span class="material-icons">arrow_back</span>
     </a>
     <h1>เช็คชื่อนักเรียน</h1>
@@ -15,10 +15,23 @@
         <select id="class-select" onchange="changeClass(this.value)">
             <?php foreach ($teacher_classes as $class): ?>
                 <option value="<?php echo $class['id']; ?>" <?php echo ($class['id'] == $current_class_id) ? 'selected' : ''; ?>>
-                    <?php echo $class['name']; ?> (<?php echo $class['present_count'] + $class['absent_count']; ?>/<?php echo $class['total_students']; ?>)
+                    <?php echo $class['name']; ?> (<?php echo $class['total_students']; ?> คน)
                 </option>
             <?php endforeach; ?>
         </select>
+    </div>
+
+    <!-- ตัวเลือกวันที่ -->
+    <div class="date-selector">
+        <label for="date-select">วันที่เช็คชื่อ:</label>
+        <input type="date" id="date-select" value="<?php echo $check_date; ?>" max="<?php echo date('Y-m-d'); ?>" onchange="changeDate(this.value)">
+        
+        <?php if ($is_retroactive): ?>
+            <div class="retroactive-warning">
+                <span class="material-icons">warning</span>
+                <span>คุณกำลังเช็คชื่อย้อนหลังสำหรับวันที่ <?php echo date('d/m/Y', strtotime($check_date)); ?></span>
+            </div>
+        <?php endif; ?>
     </div>
 
     <!-- ข้อมูลชั้นเรียน -->
@@ -28,7 +41,7 @@
             <p>นักเรียนทั้งหมด <?php echo $current_class['total_students']; ?> คน</p>
         </div>
         <div class="date-info">
-            <p>วันที่ <?php echo date('j F Y'); ?></p>
+            <p>วันที่ <?php echo date('j F Y', strtotime($check_date)); ?></p>
             <p>เวลา <?php echo date('H:i'); ?> น.</p>
         </div>
     </div>
@@ -72,6 +85,7 @@
         <input type="text" class="search-input" id="search-input" placeholder="ค้นหาชื่อนักเรียน..." oninput="searchStudents()">
     </div>
 
+    <!-- แท็บเมนู -->
     <div class="tabs">
         <button class="tab-btn active" onclick="showTab('unchecked')">
             <span class="material-icons">schedule</span> รอเช็คชื่อ <span class="count"><?php echo count($unchecked_students); ?></span>
@@ -80,7 +94,6 @@
             <span class="material-icons">done_all</span> เช็คชื่อแล้ว <span class="count"><?php echo count($checked_students); ?></span>
         </button>
     </div>
-
 
     <!-- รายชื่อนักเรียนที่ยังไม่ได้เช็คชื่อ -->
     <div id="unchecked-tab" class="tab-content active">
@@ -93,14 +106,17 @@
             <div class="student-list">
                 <div class="list-header">
                     <div>เลขที่</div>
-                    <div>ชื่อ-นามสกุล</div>
+                    <div>รหัส/ชื่อ-นามสกุล</div>
                     <div>การเช็คชื่อ</div>
                 </div>
 
                 <?php foreach ($unchecked_students as $student): ?>
-                    <div class="student-item" data-name="<?php echo $student['name']; ?>">
+                    <div class="student-item" data-name="<?php echo $student['name']; ?>" data-id="<?php echo $student['id']; ?>">
                         <div class="student-number"><?php echo $student['number']; ?></div>
-                        <div class="student-name"><?php echo $student['name']; ?></div>
+                        <div class="student-name">
+                            <div><?php echo $student['code']; ?></div>
+                            <div><?php echo $student['name']; ?></div>
+                        </div>
                         <div class="attendance-actions">
                             <button class="action-button present" onclick="markAttendance(this, 'present', <?php echo $student['id']; ?>)">
                                 <span class="material-icons">check</span>
@@ -126,15 +142,21 @@
             <div class="student-list">
                 <div class="list-header">
                     <div>เลขที่</div>
-                    <div>ชื่อ-นามสกุล</div>
+                    <div>รหัส/ชื่อ-นามสกุล</div>
                     <div>สถานะ</div>
-                    <div>เวลา</div>
+                    <div>เวลา/วิธี</div>
                 </div>
 
                 <?php foreach ($checked_students as $student): ?>
-                    <div class="student-item" data-name="<?php echo $student['name']; ?>">
+                    <div class="student-item" data-name="<?php echo $student['name']; ?>" data-id="<?php echo $student['id']; ?>" data-status="<?php echo $student['status']; ?>">
                         <div class="student-number"><?php echo $student['number']; ?></div>
-                        <div class="student-name"><?php echo $student['name']; ?></div>
+                        <div class="student-name">
+                            <div><?php echo $student['code']; ?></div>
+                            <div><?php echo $student['name']; ?></div>
+                            <?php if (!empty($student['remarks'])): ?>
+                                <div class="student-remarks"><?php echo $student['remarks']; ?></div>
+                            <?php endif; ?>
+                        </div>
                         <div class="student-status <?php echo $student['status']; ?>">
                             <?php if ($student['status'] === 'present'): ?>
                                 <span class="material-icons">check_circle</span> มา
@@ -142,7 +164,10 @@
                                 <span class="material-icons">cancel</span> ขาด
                             <?php endif; ?>
                         </div>
-                        <div class="check-time"><?php echo $student['time_checked']; ?></div>
+                        <div class="check-info">
+                            <div class="check-time"><?php echo $student['time_checked']; ?></div>
+                            <div class="check-method"><?php echo getCheckMethodText($student['check_method']); ?></div>
+                        </div>
                     </div>
                 <?php endforeach; ?>
             </div>
@@ -160,11 +185,26 @@
     <div class="modal-content">
         <div class="modal-title">สร้างรหัส PIN สำหรับการเช็คชื่อ</div>
         <div class="modal-subtitle"><?php echo $current_class['name']; ?></div>
-        <div class="pin-code"><?php echo $pin_code; ?></div>
-        <p class="pin-info">รหัส PIN นี้จะหมดอายุใน 10 นาที</p>
+        <div id="pin-display" class="pin-code">----</div>
+        <p class="pin-info">รหัส PIN นี้จะหมดอายุใน <span id="pin-expire-time">10</span> นาที</p>
         <div class="modal-buttons">
             <button class="modal-button cancel" onclick="closeModal('pin-modal')">ปิด</button>
             <button class="modal-button confirm" onclick="generateNewPin()">สร้างใหม่</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal QR Code Scanner -->
+<div class="modal" id="qr-modal">
+    <div class="modal-content">
+        <div class="modal-title">สแกน QR Code นักเรียน</div>
+        <div class="modal-subtitle"><?php echo $current_class['name']; ?></div>
+        <div class="qr-scanner-placeholder">
+            <span class="material-icons">qr_code_scanner</span>
+            <p>กรุณาอนุญาตการใช้งานกล้อง</p>
+        </div>
+        <div class="modal-buttons">
+            <button class="modal-button cancel" onclick="closeModal('qr-modal')">ยกเลิก</button>
         </div>
     </div>
 </div>
@@ -175,6 +215,14 @@
         <div class="modal-title">เช็คชื่อนักเรียนทั้งหมด</div>
         <div class="modal-subtitle"><?php echo $current_class['name']; ?></div>
         <p>คุณต้องการเช็คชื่อนักเรียนที่ยังไม่ได้เช็คทั้งหมดเป็น "มาเรียน" ใช่หรือไม่?</p>
+        
+        <?php if ($is_retroactive): ?>
+        <div class="retroactive-note">
+            <div class="note-title">ระบุหมายเหตุสำหรับการเช็คชื่อย้อนหลัง:</div>
+            <textarea id="retroactive-note" placeholder="ระบุหมายเหตุการเช็คชื่อย้อนหลัง เช่น เอกสารลาป่วย เอกสารขออนุญาต ฯลฯ"></textarea>
+        </div>
+        <?php endif; ?>
+        
         <div class="modal-buttons">
             <button class="modal-button cancel" onclick="closeModal('mark-all-modal')">ยกเลิก</button>
             <button class="modal-button confirm" onclick="markAllPresent()">ยืนยัน</button>
@@ -187,8 +235,16 @@
     <div class="modal-content">
         <div class="modal-title">บันทึกการเช็คชื่อ</div>
         <div class="modal-subtitle"><?php echo $current_class['name']; ?></div>
-        <p>ยังมีนักเรียนที่ยังไม่ได้เช็คชื่ออีก <?php echo $current_class['not_checked']; ?> คน</p>
+        <p>ยังมีนักเรียนที่ยังไม่ได้เช็คชื่ออีก <span id="remaining-students"><?php echo $current_class['not_checked']; ?></span> คน</p>
         <p>คุณต้องการบันทึกการเช็คชื่อเข้าแถวนี้ใช่หรือไม่?</p>
+        
+        <?php if ($is_retroactive): ?>
+        <div class="retroactive-note">
+            <div class="note-title">ระบุหมายเหตุสำหรับการเช็คชื่อย้อนหลัง:</div>
+            <textarea id="retroactive-save-note" placeholder="ระบุหมายเหตุการเช็คชื่อย้อนหลัง เช่น เอกสารลาป่วย เอกสารขออนุญาต ฯลฯ"></textarea>
+        </div>
+        <?php endif; ?>
+        
         <div class="modal-buttons">
             <button class="modal-button cancel" onclick="closeModal('save-modal')">ยกเลิก</button>
             <button class="modal-button confirm" onclick="confirmSaveAttendance()">บันทึก</button>
@@ -196,36 +252,60 @@
     </div>
 </div>
 
-<!-- สร้างฟังก์ชัน switchTab -->
-<script>function showTab(tabName) {
-    // ซ่อนทุกแท็บ
-    const tabContents = document.querySelectorAll('.tab-content');
-    tabContents.forEach(tab => {
-        tab.classList.remove('active');
-    });
+<!-- Modal แสดงเช็คชื่อรายบุคคล -->
+<div class="modal" id="mark-attendance-modal">
+    <div class="modal-content">
+        <div class="modal-title">เช็คชื่อนักเรียน</div>
+        <div class="modal-subtitle"><span id="student-name-display"></span></div>
+        
+        <div class="attendance-status-selector">
+            <div class="status-option">
+                <input type="radio" id="status-present" name="attendance-status" value="present" checked>
+                <label for="status-present">
+                    <span class="material-icons present">check_circle</span> มาเรียน
+                </label>
+            </div>
+            <div class="status-option">
+                <input type="radio" id="status-absent" name="attendance-status" value="absent">
+                <label for="status-absent">
+                    <span class="material-icons absent">cancel</span> ขาดเรียน
+                </label>
+            </div>
+        </div>
+        
+        <?php if ($is_retroactive): ?>
+        <div class="retroactive-note">
+            <div class="note-title">ระบุหมายเหตุสำหรับการเช็คชื่อย้อนหลัง:</div>
+            <textarea id="individual-note" placeholder="ระบุหมายเหตุการเช็คชื่อย้อนหลัง เช่น เอกสารลาป่วย เอกสารขออนุญาต ฯลฯ"></textarea>
+        </div>
+        <?php endif; ?>
+        
+        <input type="hidden" id="student-id-input" value="">
+        
+        <div class="modal-buttons">
+            <button class="modal-button cancel" onclick="closeModal('mark-attendance-modal')">ยกเลิก</button>
+            <button class="modal-button confirm" onclick="confirmMarkAttendance()">บันทึก</button>
+        </div>
+    </div>
+</div>
 
-    // แสดงแท็บที่เลือก
-    const selectedTab = document.getElementById(`${tabName}-tab`);
-    if (selectedTab) {
-        selectedTab.classList.add('active');
-    }
+<script>
+// สร้างตัวแปรที่ส่งค่าไปยัง JavaScript
+const currentClassId = <?php echo $current_class_id; ?>;
+const checkDate = '<?php echo $check_date; ?>';
+const isRetroactive = <?php echo $is_retroactive ? 'true' : 'false'; ?>;
+const currentTeacherId = <?php echo $teacher_id; ?>;
+</script>
 
-    // ปรับปุ่มแท็บ
-    const tabButtons = document.querySelectorAll('.tab-btn');
-    tabButtons.forEach(button => {
-        button.classList.remove('active');
-    });
-
-    // เพิ่มคลาส active ให้กับปุ่มที่เลือก
-    const selectedButton = document.querySelector(`.tab-btn[onclick="showTab('${tabName}')"]`);
-    if (selectedButton) {
-        selectedButton.classList.add('active');
+<?php
+// ฟังก์ชัน helper สำหรับแปลงรหัสวิธีการเช็คชื่อเป็นข้อความ
+function getCheckMethodText($method) {
+    switch ($method) {
+        case 'PIN': return 'PIN';
+        case 'QR_Code': return 'QR';
+        case 'GPS': return 'GPS';
+        case 'Manual': return 'ครู';
+        default: return '';
     }
 }
-
-// ตั้งค่าให้แท็บ "ยังไม่ได้เช็ค" (unchecked) เป็นแท็บที่แสดงเริ่มต้น
-document.addEventListener('DOMContentLoaded', function() {
-    showTab('unchecked'); // แสดงแท็บที่ยังไม่ได้เช็ค
-});
-
-</script>
+?>

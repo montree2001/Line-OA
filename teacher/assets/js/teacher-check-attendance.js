@@ -1,6 +1,19 @@
 /**
- * teacher-check-attendance.js - สคริปต์เฉพาะสำหรับหน้าเช็คชื่อนักเรียน
+ * teacher-check-attendance.js - สคริปต์สำหรับหน้าเช็คชื่อนักเรียน
+ * 
+ * ฟังก์ชันหลัก:
+ * - จัดการการเช็คชื่อนักเรียน
+ * - อัพเดทสถิติการเช็คชื่อ
+ * - บันทึกข้อมูลการเช็คชื่อ
+ * - สร้างรหัส PIN สำหรับการเช็คชื่อ
  */
+
+// ตัวแปร Global สำหรับเก็บสถานะการเช็คชื่อ
+let attendanceData = {
+    class_id: currentClassId,
+    date: checkDate,
+    students: []
+};
 
 // Document Ready Function
 document.addEventListener('DOMContentLoaded', function() {
@@ -19,7 +32,10 @@ function initCheckAttendance() {
     initSearchFunction();
     
     // ตั้งค่าแท็บเริ่มต้น
-    setActiveTab('unchecked');
+    showTab('unchecked');
+    
+    // จัดการเหตุการณ์คลิกที่รายการนักเรียน
+    setupStudentItemEvents();
 }
 
 /**
@@ -27,9 +43,17 @@ function initCheckAttendance() {
  * @param {string} classId - ID ของห้องเรียน
  */
 function changeClass(classId) {
-    // ในระบบจริงจะใช้ AJAX เพื่อเรียกข้อมูลของห้องเรียนใหม่
-    // สำหรับตัวอย่าง เราจะนำทางไปยังหน้าเดิมพร้อมกับเปลี่ยนพารามิเตอร์
-    window.location.href = 'check-attendance.php?class_id=' + classId;
+    // นำทางไปยังหน้าเดิมพร้อมกับเปลี่ยนพารามิเตอร์ห้องเรียน
+    window.location.href = 'check-attendance.php?class_id=' + classId + '&date=' + checkDate;
+}
+
+/**
+ * เปลี่ยนวันที่
+ * @param {string} date - วันที่ต้องการเช็คชื่อ
+ */
+function changeDate(date) {
+    // นำทางไปยังหน้าเดิมพร้อมกับเปลี่ยนพารามิเตอร์วันที่
+    window.location.href = 'check-attendance.php?class_id=' + currentClassId + '&date=' + date;
 }
 
 /**
@@ -60,31 +84,74 @@ function closeModal(modalId) {
  * สร้างรหัส PIN ใหม่
  */
 function generateNewPin() {
-    // สร้างรหัส PIN 4 หลักแบบสุ่ม
-    const pin = Math.floor(1000 + Math.random() * 9000);
-    const pinDisplay = document.querySelector('.pin-code');
+    // แสดงข้อความกำลังดำเนินการ
+    showAlert('กำลังสร้างรหัส PIN...', 'info');
     
-    if (pinDisplay) {
-        pinDisplay.textContent = pin;
-    }
-    
-    // แสดงข้อความแจ้งเตือน
-    showAlert('สร้างรหัส PIN ใหม่เรียบร้อย', 'success');
+    // ส่งคำขอสร้าง PIN ใหม่ไปยัง API
+    fetch('api/create_pin.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            class_id: currentClassId
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // อัพเดท PIN ที่แสดงใน Modal
+            const pinDisplay = document.getElementById('pin-display');
+            if (pinDisplay) {
+                pinDisplay.textContent = data.pin_code;
+            }
+            
+            // อัพเดทเวลาที่เหลือ
+            const pinExpireTime = document.getElementById('pin-expire-time');
+            if (pinExpireTime) {
+                pinExpireTime.textContent = data.expire_minutes;
+            }
+            
+            // แสดงข้อความแจ้งเตือนสำเร็จ
+            showAlert('สร้างรหัส PIN ใหม่เรียบร้อย', 'success');
+        } else {
+            // แสดงข้อความเมื่อมีข้อผิดพลาด
+            showAlert(data.message || 'เกิดข้อผิดพลาดในการสร้าง PIN', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showAlert('เกิดข้อผิดพลาดในการเชื่อมต่อกับเซิร์ฟเวอร์', 'error');
+    });
 }
 
 /**
  * สแกน QR Code
  */
 function scanQRCode() {
-    // ในระบบจริงจะมีการเรียกใช้ API สำหรับสแกน QR Code
-    // ตัวอย่างนี้จะแสดงการแจ้งเตือนเท่านั้น
-    showAlert('กำลังเปิดกล้องเพื่อสแกน QR Code...', 'info');
+    // แสดง Modal สแกน QR Code
+    const modal = document.getElementById('qr-modal');
+    if (modal) {
+        modal.classList.add('active');
+        document.body.style.overflow = 'hidden';
+        
+        // สำหรับตัวอย่าง (รออัพเดทในเวอร์ชันถัดไป)
+        showAlert('ระบบกำลังเรียกใช้กล้อง กรุณารอสักครู่...', 'info');
+    }
 }
 
 /**
  * แสดง Modal ยืนยันเช็คชื่อทั้งหมด
  */
 function showMarkAllModal() {
+    // ตรวจสอบว่ามีนักเรียนที่ยังไม่ได้เช็คชื่อหรือไม่
+    const uncheckedCount = document.querySelectorAll('#unchecked-tab .student-item').length;
+    
+    if (uncheckedCount === 0) {
+        showAlert('ไม่มีนักเรียนที่ต้องเช็คชื่อแล้ว', 'info');
+        return;
+    }
+    
     // แสดง Modal ยืนยันเช็คชื่อทั้งหมด
     const modal = document.getElementById('mark-all-modal');
     if (modal) {
@@ -108,24 +175,82 @@ function markAllPresent() {
         return;
     }
     
-    // เปลี่ยนสถานะให้เป็น "มาเรียน" ทั้งหมด
+    // ดึงหมายเหตุสำหรับการเช็คชื่อย้อนหลัง (ถ้ามี)
+    let remarks = '';
+    if (isRetroactive) {
+        const remarksInput = document.getElementById('retroactive-note');
+        if (remarksInput) {
+            remarks = remarksInput.value.trim();
+            
+            // ตรวจสอบว่ามีการระบุหมายเหตุหรือไม่
+            if (remarks === '') {
+                showAlert('กรุณาระบุหมายเหตุสำหรับการเช็คชื่อย้อนหลัง', 'warning');
+                return;
+            }
+        }
+    }
+    
+    // เตรียมข้อมูลสำหรับการบันทึก
+    const studentsToMark = [];
+    
+    // เก็บข้อมูลนักเรียนที่จะเช็คชื่อทั้งหมด
     studentItems.forEach(item => {
-        // จำลองการคลิกปุ่ม "มาเรียน"
-        const presentButton = item.querySelector('.action-button.present');
-        markAttendanceInternal(presentButton, 'present', item.getAttribute('data-id'));
+        studentsToMark.push({
+            student_id: item.getAttribute('data-id'),
+            status: 'present',
+            remarks: remarks
+        });
     });
     
-    // อัพเดทจำนวนนักเรียน
-    updateAttendanceCounters();
-    
-    // รีเฟรชแท็บ
-    refreshTabs();
+    // บันทึกข้อมูลการเช็คชื่อทั้งหมด
+    saveMultipleAttendance(studentsToMark);
     
     // ปิด Modal
     closeModal('mark-all-modal');
+}
+
+/**
+ * บันทึกการเช็คชื่อหลายคนพร้อมกัน
+ * @param {Array} students - รายการนักเรียนที่จะเช็คชื่อ
+ */
+function saveMultipleAttendance(students) {
+    // แสดงการโหลด
+    showAlert('กำลังบันทึกการเช็คชื่อ...', 'info');
     
-    // แสดงข้อความแจ้งเตือน
-    showAlert(`เช็คชื่อนักเรียนที่ยังไม่ได้เช็คทั้งหมด ${studentItems.length} คน สำเร็จ`, 'success');
+    // ส่งข้อมูลไปยัง API
+    fetch('api/save_attendance.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            class_id: currentClassId,
+            date: checkDate,
+            teacher_id: currentTeacherId,
+            students: students,
+            is_retroactive: isRetroactive,
+            check_method: 'Manual'
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // แสดงข้อความสำเร็จ
+            showAlert(`เช็คชื่อนักเรียน ${students.length} คน สำเร็จ`, 'success');
+            
+            // รีโหลดหน้าเพื่ออัพเดทข้อมูล
+            setTimeout(() => {
+                window.location.reload();
+            }, 1500);
+        } else {
+            // แสดงข้อความเมื่อมีข้อผิดพลาด
+            showAlert(data.message || 'เกิดข้อผิดพลาดในการบันทึกการเช็คชื่อ', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showAlert('เกิดข้อผิดพลาดในการเชื่อมต่อกับเซิร์ฟเวอร์', 'error');
+    });
 }
 
 /**
@@ -137,23 +262,63 @@ function markAllPresent() {
 function markAttendance(button, status, studentId) {
     // ดึงรายการนักเรียน
     const studentItem = button.closest('.student-item');
+    const studentName = studentItem.querySelector('.student-name').textContent.trim();
     
-    // ตรวจสอบว่าเป็นรายการในแท็บที่ยังไม่ได้เช็คชื่อหรือไม่
-    if (studentItem.parentElement.closest('#unchecked-tab')) {
-        markAttendanceInternal(button, status, studentId);
+    // กรณีเช็คชื่อย้อนหลัง แสดง Modal ให้กรอกหมายเหตุ
+    if (isRetroactive) {
+        // เตรียมข้อมูลสำหรับ Modal
+        document.getElementById('student-name-display').textContent = studentName;
+        document.getElementById('student-id-input').value = studentId;
         
-        // เลื่อนรายการไปยังแท็บที่เช็คชื่อแล้ว
-        moveToCheckedTab(studentItem, status);
+        // เลือกสถานะการเช็คชื่อตามที่คลิก
+        if (status === 'present') {
+            document.getElementById('status-present').checked = true;
+        } else {
+            document.getElementById('status-absent').checked = true;
+        }
         
-        // อัพเดทจำนวนการเข้าแถว
-        updateAttendanceCounters();
-        
-        // อัพเดทจำนวนในแท็บ
-        updateTabCounts();
+        // แสดง Modal
+        const modal = document.getElementById('mark-attendance-modal');
+        if (modal) {
+            modal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
     } else {
-        // ถ้าอยู่ในแท็บเช็คชื่อแล้ว จะไม่สามารถเปลี่ยนสถานะได้
-        showAlert('รายการนี้เช็คชื่อแล้ว ไม่สามารถเปลี่ยนแปลงได้', 'info');
+        // ถ้าไม่ใช่การเช็คชื่อย้อนหลัง ให้ดำเนินการเช็คชื่อทันที
+        markAttendanceInternal(button, status, studentId);
     }
+}
+
+/**
+ * ยืนยันการเช็คชื่อจาก Modal
+ */
+function confirmMarkAttendance() {
+    // ดึงข้อมูลจาก Modal
+    const studentId = document.getElementById('student-id-input').value;
+    const status = document.querySelector('input[name="attendance-status"]:checked').value;
+    let remarks = '';
+    
+    if (isRetroactive) {
+        remarks = document.getElementById('individual-note').value.trim();
+        
+        // ตรวจสอบว่ามีการระบุหมายเหตุหรือไม่
+        if (remarks === '') {
+            showAlert('กรุณาระบุหมายเหตุสำหรับการเช็คชื่อย้อนหลัง', 'warning');
+            return;
+        }
+    }
+    
+    // ปิด Modal
+    closeModal('mark-attendance-modal');
+    
+    // บันทึกการเช็คชื่อ
+    const student = {
+        student_id: studentId,
+        status: status,
+        remarks: remarks
+    };
+    
+    saveMultipleAttendance([student]);
 }
 
 /**
@@ -180,8 +345,28 @@ function markAttendanceInternal(button, status, studentId) {
     // เพิ่มข้อมูลสถานะให้กับรายการนักเรียน
     studentItem.setAttribute('data-status', status);
     
-    // ในระบบจริงจะมีการบันทึกข้อมูลไปยัง server
-    console.log(`เช็คชื่อนักเรียน ID: ${studentId} สถานะ: ${status}`);
+    // บันทึกข้อมูลในตัวแปร attendanceData
+    const studentIndex = attendanceData.students.findIndex(student => student.student_id === studentId);
+    
+    if (studentIndex >= 0) {
+        // อัพเดทข้อมูลเดิม
+        attendanceData.students[studentIndex].status = status;
+    } else {
+        // เพิ่มข้อมูลใหม่
+        attendanceData.students.push({
+            student_id: studentId,
+            status: status
+        });
+    }
+    
+    // เลื่อนรายการไปยังแท็บที่เช็คชื่อแล้ว
+    moveToCheckedTab(studentItem, status);
+    
+    // อัพเดทจำนวนการเข้าแถว
+    updateAttendanceCounters();
+    
+    // อัพเดทจำนวนในแท็บ
+    updateTabCounts();
 }
 
 /**
@@ -195,7 +380,7 @@ function moveToCheckedTab(studentItem, status) {
     
     // สร้างรายการใหม่สำหรับแท็บที่เช็คชื่อแล้ว
     const number = newItem.querySelector('.student-number').textContent;
-    const name = newItem.querySelector('.student-name').textContent;
+    const nameElement = newItem.querySelector('.student-name');
     const studentId = newItem.getAttribute('data-id');
     
     // สร้าง HTML สำหรับรายการในแท็บที่เช็คชื่อแล้ว
@@ -205,19 +390,22 @@ function moveToCheckedTab(studentItem, status) {
     // สร้างรายการใหม่
     const checkedItem = document.createElement('div');
     checkedItem.className = 'student-item';
-    checkedItem.setAttribute('data-name', name);
+    checkedItem.setAttribute('data-name', nameElement.textContent);
     checkedItem.setAttribute('data-id', studentId);
     checkedItem.setAttribute('data-status', status);
     
     checkedItem.innerHTML = `
         <div class="student-number">${number}</div>
-        <div class="student-name">${name}</div>
+        <div class="student-name">${nameElement.innerHTML}</div>
         <div class="student-status ${status}">
             ${status === 'present' 
               ? '<span class="material-icons">check_circle</span> มา' 
               : '<span class="material-icons">cancel</span> ขาด'}
         </div>
-        <div class="check-time">${timeString}</div>
+        <div class="check-info">
+            <div class="check-time">${timeString}</div>
+            <div class="check-method">ครู</div>
+        </div>
     `;
     
     // เพิ่มรายการใหม่ไปยังแท็บที่เช็คชื่อแล้ว
@@ -237,9 +425,9 @@ function moveToCheckedTab(studentItem, status) {
             newList.innerHTML = `
                 <div class="list-header">
                     <div>เลขที่</div>
-                    <div>ชื่อ-นามสกุล</div>
+                    <div>รหัส/ชื่อ-นามสกุล</div>
                     <div>สถานะ</div>
-                    <div>เวลา</div>
+                    <div>เวลา/วิธี</div>
                 </div>
             `;
             
@@ -328,7 +516,7 @@ function initSearchFunction() {
  * สลับแท็บที่แสดง
  * @param {string} tabName - ชื่อแท็บ
  */
-function switchTab(tabName) {
+function showTab(tabName) {
     // ซ่อนทุกแท็บ
     const tabContents = document.querySelectorAll('.tab-content');
     tabContents.forEach(tab => {
@@ -342,24 +530,16 @@ function switchTab(tabName) {
     }
     
     // ปรับปุ่มแท็บ
-    const tabButtons = document.querySelectorAll('.tab-button');
+    const tabButtons = document.querySelectorAll('.tab-btn');
     tabButtons.forEach(button => {
         button.classList.remove('active');
     });
     
     // เพิ่มคลาส active ให้กับปุ่มที่เลือก
-    const selectedButton = document.querySelector(`.tab-button[onclick="switchTab('${tabName}')"]`);
+    const selectedButton = document.querySelector(`.tab-btn[onclick="showTab('${tabName}')"]`);
     if (selectedButton) {
         selectedButton.classList.add('active');
     }
-}
-
-/**
- * กำหนดแท็บเริ่มต้น
- * @param {string} tabName - ชื่อแท็บ
- */
-function setActiveTab(tabName) {
-    switchTab(tabName);
 }
 
 /**
@@ -371,8 +551,8 @@ function updateTabCounts() {
     const checkedCount = document.querySelectorAll('#checked-tab .student-item').length;
     
     // อัพเดทจำนวนในปุ่มแท็บ
-    const uncheckedButton = document.querySelector('.tab-button[onclick="switchTab(\'unchecked\')"] .count');
-    const checkedButton = document.querySelector('.tab-button[onclick="switchTab(\'checked\')"] .count');
+    const uncheckedButton = document.querySelector('.tab-btn[onclick="showTab(\'unchecked\')"] .count');
+    const checkedButton = document.querySelector('.tab-btn[onclick="showTab(\'checked\')"] .count');
     
     if (uncheckedButton) {
         uncheckedButton.textContent = uncheckedCount;
@@ -382,94 +562,40 @@ function updateTabCounts() {
         checkedButton.textContent = checkedCount;
     }
     
-    // อัพเดทสถิติ
-    document.getElementById('not-checked-count').textContent = uncheckedCount;
-    
-    // คำนวณนักเรียนมาเรียนและขาดเรียน
-    const presentCount = document.querySelectorAll('#checked-tab .student-item[data-status="present"]').length;
-    const absentCount = document.querySelectorAll('#checked-tab .student-item[data-status="absent"]').length;
-    
-    document.getElementById('present-count').textContent = presentCount;
-    document.getElementById('absent-count').textContent = absentCount;
-}
-
-/**
- * รีเฟรชข้อมูลในแท็บ
- */
-function refreshTabs() {
-    // รีเฟรชแท็บที่ยังไม่ได้เช็ค
-    const uncheckedTab = document.getElementById('unchecked-tab');
-    const uncheckedItems = uncheckedTab.querySelectorAll('.student-item');
-    
-    if (uncheckedItems.length === 0) {
-        // ถ้าว่าง ให้แสดงข้อความว่าง
-        const uncheckedList = uncheckedTab.querySelector('.student-list');
-        if (uncheckedList) {
-            uncheckedList.remove();
-            
-            // สร้างข้อความว่าง
-            const emptyUnchecked = document.createElement('div');
-            emptyUnchecked.className = 'empty-state';
-            emptyUnchecked.innerHTML = `
-                <span class="material-icons">check_circle</span>
-                <p>เช็คชื่อครบทุกคนแล้ว!</p>
-            `;
-            
-            uncheckedTab.appendChild(emptyUnchecked);
-        }
+    // อัพเดท Remaining Students ใน Save Modal
+    const remainingStudents = document.getElementById('remaining-students');
+    if (remainingStudents) {
+        remainingStudents.textContent = uncheckedCount;
     }
-    
-    // รีเฟรชแท็บที่เช็คแล้ว
-    const checkedTab = document.getElementById('checked-tab');
-    const checkedItems = checkedTab.querySelectorAll('.student-item');
-    
-    if (checkedItems.length === 0) {
-        // ถ้าว่าง ให้แสดงข้อความว่าง
-        const checkedList = checkedTab.querySelector('.student-list');
-        if (checkedList) {
-            checkedList.remove();
-            
-            // สร้างข้อความว่าง
-            const emptyChecked = document.createElement('div');
-            emptyChecked.className = 'empty-state';
-            emptyChecked.innerHTML = `
-                <span class="material-icons">schedule</span>
-                <p>ยังไม่มีการเช็คชื่อในวันนี้</p>
-            `;
-            
-            checkedTab.appendChild(emptyChecked);
-        }
-    }
-    
-    // อัพเดทจำนวนในแท็บ
-    updateTabCounts();
 }
 
 /**
  * อัพเดทจำนวนการเข้าแถว
  */
 function updateAttendanceCounters() {
-    // อัพเดทจำนวนในแท็บ
-    updateTabCounts();
+    // คำนวณนักเรียนมาเรียนและขาดเรียน
+    const presentCount = document.querySelectorAll('#checked-tab .student-item[data-status="present"]').length;
+    const absentCount = document.querySelectorAll('#checked-tab .student-item[data-status="absent"]').length;
+    const notCheckedCount = document.querySelectorAll('#unchecked-tab .student-item').length;
+    
+    // อัพเดทสถิติ
+    document.getElementById('present-count').textContent = presentCount;
+    document.getElementById('absent-count').textContent = absentCount;
+    document.getElementById('not-checked-count').textContent = notCheckedCount;
 }
 
 /**
  * ฟังก์ชันเมื่อคลิกปุ่มบันทึก
  */
 function saveAttendance() {
-    // ตรวจสอบว่ายังมีนักเรียนที่ยังไม่ได้เช็คชื่อหรือไม่
+    // ตรวจสอบว่าถ้ามีนักเรียนที่ยังไม่ได้เช็คชื่อ
     const uncheckedCount = document.querySelectorAll('#unchecked-tab .student-item').length;
     
-    if (uncheckedCount > 0) {
-        // ถ้ายังมี ให้แสดง Modal ยืนยัน
-        const modal = document.getElementById('save-modal');
-        if (modal) {
-            modal.classList.add('active');
-            document.body.style.overflow = 'hidden';
-        }
-    } else {
-        // ถ้าไม่มี ให้บันทึกทันที
-        confirmSaveAttendance();
+    // ถ้ามี ให้แสดง Modal ยืนยัน
+    const modal = document.getElementById('save-modal');
+    if (modal) {
+        modal.classList.add('active');
+        document.body.style.overflow = 'hidden';
     }
 }
 
@@ -477,8 +603,46 @@ function saveAttendance() {
  * ยืนยันการบันทึกการเช็คชื่อ
  */
 function confirmSaveAttendance() {
-    // ในระบบจริงจะมีการส่งข้อมูลไปยัง server
-    // ตัวอย่างนี้จะแสดงการแจ้งเตือนเท่านั้น
+    // รวบรวมข้อมูลการเช็คชื่อทั้งหมด
+    let allStudents = [];
+    
+    // ดึงรายการนักเรียนที่เช็คแล้ว
+    const checkedStudents = document.querySelectorAll('#checked-tab .student-item');
+    checkedStudents.forEach(item => {
+        allStudents.push({
+            student_id: item.getAttribute('data-id'),
+            status: item.getAttribute('data-status')
+        });
+    });
+    
+    // ดึงรายการนักเรียนที่ยังไม่ได้เช็ค
+    const uncheckedStudents = document.querySelectorAll('#unchecked-tab .student-item');
+    uncheckedStudents.forEach(item => {
+        allStudents.push({
+            student_id: item.getAttribute('data-id'),
+            status: 'absent' // ถ้าไม่ได้เช็ค ให้เป็นขาด
+        });
+    });
+    
+    // ดึงหมายเหตุสำหรับการเช็คชื่อย้อนหลัง (ถ้ามี)
+    let remarks = '';
+    if (isRetroactive) {
+        const remarksInput = document.getElementById('retroactive-save-note');
+        if (remarksInput) {
+            remarks = remarksInput.value.trim();
+            
+            // ตรวจสอบว่ามีการระบุหมายเหตุหรือไม่
+            if (remarks === '') {
+                showAlert('กรุณาระบุหมายเหตุสำหรับการเช็คชื่อย้อนหลัง', 'warning');
+                return;
+            }
+            
+            // เพิ่มหมายเหตุให้กับทุกรายการ
+            allStudents.forEach(student => {
+                student.remarks = remarks;
+            });
+        }
+    }
     
     // ปิด Modal
     closeModal('save-modal');
@@ -495,29 +659,146 @@ function confirmSaveAttendance() {
         loadingButton.disabled = true;
         loadingButton.style.backgroundColor = '#9e9e9e';
         
-        // จำลองเวลาในการบันทึก
-        setTimeout(() => {
+        // ส่งข้อมูลไปยัง API
+        fetch('api/save_attendance.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                class_id: currentClassId,
+                date: checkDate,
+                teacher_id: currentTeacherId,
+                students: allStudents,
+                is_retroactive: isRetroactive,
+                check_method: 'Manual'
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
             // คืนค่าเดิม
             icon.textContent = originalIcon;
             loadingButton.disabled = false;
             loadingButton.style.backgroundColor = '';
             
-            // แสดงข้อความแจ้งเตือน
-            showAlert('บันทึกการเช็คชื่อเรียบร้อย', 'success');
+            if (data.success) {
+                // แสดงข้อความแจ้งเตือน
+                showAlert('บันทึกการเช็คชื่อเรียบร้อย', 'success');
+                
+                // นำทางไปยังหน้ารายงาน
+                setTimeout(() => {
+                    window.location.href = 'home.php?class_id=' + currentClassId;
+                }, 1500);
+            } else {
+                // แสดงข้อความเมื่อมีข้อผิดพลาด
+                showAlert(data.message || 'เกิดข้อผิดพลาดในการบันทึกการเช็คชื่อ', 'error');
+            }
+        })
+        .catch(error => {
+            // คืนค่าเดิม
+            icon.textContent = originalIcon;
+            loadingButton.disabled = false;
+            loadingButton.style.backgroundColor = '';
             
-            // นำทางไปยังหน้ารายงาน (ตัวอย่าง)
-            // window.location.href = 'reports.php?class_id=' + getCurrentClassId();
-        }, 2000);
+            // แสดงข้อความเมื่อมีข้อผิดพลาด
+            console.error('Error:', error);
+            showAlert('เกิดข้อผิดพลาดในการเชื่อมต่อกับเซิร์ฟเวอร์', 'error');
+        });
     }
 }
 
 /**
- * ดึง ID ของห้องเรียนปัจจุบัน
- * @returns {string} ID ของห้องเรียน
+ * จัดการเหตุการณ์คลิกที่รายการนักเรียน
  */
-function getCurrentClassId() {
-    const classSelect = document.getElementById('class-select');
-    return classSelect ? classSelect.value : '1';
+function setupStudentItemEvents() {
+    // เพิ่มเหตุการณ์คลิกที่รายการนักเรียนในแท็บที่ยังไม่ได้เช็ค
+    const uncheckedItems = document.querySelectorAll('#unchecked-tab .student-item');
+    uncheckedItems.forEach(item => {
+        item.addEventListener('click', function(e) {
+            // ถ้าคลิกที่ปุ่มเช็คชื่อ ไม่ต้องทำอะไร
+            if (e.target.closest('.action-button')) {
+                return;
+            }
+            
+            // แสดง Modal เช็คชื่อรายบุคคล
+            const studentId = this.getAttribute('data-id');
+            const studentName = this.querySelector('.student-name').textContent.trim();
+            
+            document.getElementById('student-name-display').textContent = studentName;
+            document.getElementById('student-id-input').value = studentId;
+            document.getElementById('status-present').checked = true; // เลือกสถานะ "มาเรียน" เป็นค่าเริ่มต้น
+            
+            const modal = document.getElementById('mark-attendance-modal');
+            if (modal) {
+                modal.classList.add('active');
+                document.body.style.overflow = 'hidden';
+            }
+        });
+    });
+}
+
+/**
+ * แสดงข้อความแจ้งเตือน
+ * @param {string} message - ข้อความ
+ * @param {string} type - ประเภท (success, info, warning, error)
+ */
+function showAlert(message, type = 'info') {
+    // ถ้ามีฟังก์ชันจาก main.js ใช้อันนั้น
+    if (typeof window.displayAlert === 'function') {
+        window.displayAlert(message, type);
+        return;
+    }
+    
+    // สร้าง Alert Container ถ้ายังไม่มี
+    let alertContainer = document.getElementById('alertContainer');
+    if (!alertContainer) {
+        alertContainer = document.createElement('div');
+        alertContainer.id = 'alertContainer';
+        alertContainer.className = 'alert-container';
+        document.body.appendChild(alertContainer);
+    }
+    
+    // สร้าง Alert
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type}`;
+    alertDiv.innerHTML = `
+        <div class="alert-content">
+            <span class="alert-icon material-icons">${getAlertIcon(type)}</span>
+            <span class="alert-message">${message}</span>
+        </div>
+        <span class="alert-close material-icons">close</span>
+    `;
+    
+    // เพิ่มการจัดการเหตุการณ์ปิดการแจ้งเตือน
+    const closeButton = alertDiv.querySelector('.alert-close');
+    closeButton.addEventListener('click', () => {
+        alertDiv.remove();
+    });
+    
+    // เพิ่มการแจ้งเตือนในคอนเทนเนอร์
+    alertContainer.appendChild(alertDiv);
+    
+    // กำหนดให้ปิดอัตโนมัติหลังจาก 5 วินาที
+    setTimeout(() => {
+        if (alertDiv && alertDiv.parentNode === alertContainer) {
+            alertDiv.remove();
+        }
+    }, 5000);
+}
+
+/**
+ * รับไอคอนสำหรับประเภทการแจ้งเตือน
+ * @param {string} type - ประเภทการแจ้งเตือน
+ * @returns {string} - ชื่อไอคอน Material Icons
+ */
+function getAlertIcon(type) {
+    switch (type) {
+        case 'success': return 'check_circle';
+        case 'warning': return 'warning';
+        case 'error': return 'error';
+        case 'info':
+        default: return 'info';
+    }
 }
 
 /**
@@ -534,24 +815,3 @@ function toggleOptions() {
     // ในระบบจริงจะมีการแสดงเมนูเพิ่มเติม
     showAlert('เมนูเพิ่มเติม', 'info');
 }
-
-/**
- * แสดงข้อความแจ้งเตือน (อิงจาก main.js)
- * @param {string} message - ข้อความ
- * @param {string} type - ประเภท (success, info, warning, error)
- */
-function showAlert(message, type = 'info') {
-    // เรียกใช้ฟังก์ชันจาก main.js (ถ้ามี)
-    if (typeof window.showAlert === 'function') {
-        window.showAlert(message, type);
-        return;
-    }
-    
-    // ถ้าไม่มีฟังก์ชันใน main.js ให้สร้าง alert ง่ายๆ
-    alert(`${type.toUpperCase()}: ${message}`);
-}
-
-
-  
-
-
