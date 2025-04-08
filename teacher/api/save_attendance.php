@@ -8,7 +8,7 @@
  * - teacher_id: รหัสครูผู้เช็คชื่อ
  * - students: รายการนักเรียนที่เช็คชื่อ (array)
  *   - student_id: รหัสนักเรียน
- *   - status: สถานะการเช็คชื่อ (present/absent)
+ *   - status: สถานะการเช็คชื่อ (present/absent/late/leave)
  *   - remarks: หมายเหตุ (ถ้ามี)
  * - is_retroactive: เป็นการเช็คชื่อย้อนหลังหรือไม่ (boolean)
  * - check_method: วิธีการเช็คชื่อ (Manual/PIN/QR_Code/GPS)
@@ -17,6 +17,10 @@
 // เริ่มต้น session และตรวจสอบการล็อกอิน
 session_start();
 header('Content-Type: application/json');
+
+// เปิด error reporting เพื่อช่วยในการดีบัก
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
 
 // ตรวจสอบการล็อกอิน
 if (!isset($_SESSION['user_id']) || ($_SESSION['role'] !== 'teacher' && $_SESSION['role'] !== 'admin')) {
@@ -142,8 +146,9 @@ try {
     
     // เตรียม Prepared Statements
     $delete_stmt = $conn->prepare("DELETE FROM attendance WHERE student_id = ? AND date = ?");
+    // ใช้ attendance_status แทน is_present
     $insert_stmt = $conn->prepare("INSERT INTO attendance 
-                                  (student_id, academic_year_id, date, is_present, check_method, 
+                                  (student_id, academic_year_id, date, attendance_status, check_method, 
                                   checker_user_id, check_time, created_at, remarks) 
                                   VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW(), ?)");
     
@@ -179,19 +184,26 @@ try {
         }
         
         $student_id = intval($student['student_id']);
-        $is_present = ($student['status'] === 'present') ? 1 : 0;
+        $attendance_status = $student['status']; // present, absent, late, leave
         $remarks = isset($student['remarks']) ? $student['remarks'] : ($is_retroactive ? 'เช็คชื่อย้อนหลังโดยครู' : '');
+        
+        // เพิ่มหมายเหตุอัตโนมัติตามสถานะ
+        if ($attendance_status === 'late' && empty($remarks)) {
+            $remarks = 'มาสาย';
+        } else if ($attendance_status === 'leave' && empty($remarks)) {
+            $remarks = 'ลา';
+        }
         
         // ลบข้อมูลเดิม (ถ้ามี)
         $delete_stmt->bind_param("is", $student_id, $check_date);
         $delete_stmt->execute();
         
         // เพิ่มข้อมูลใหม่
-        $insert_stmt->bind_param("iisisss", 
+        $insert_stmt->bind_param("iississ", 
             $student_id, 
             $academic_year_id, 
             $check_date, 
-            $is_present, 
+            $attendance_status, 
             $check_method, 
             $checker_user_id, 
             $remarks
@@ -204,20 +216,24 @@ try {
     $insert_stmt->close();
     
     // อัพเดตสถิติการเข้าแถวในตาราง student_academic_records
+    // คำนวณตามกฎใหม่: มาสาย 2 ครั้ง = ขาด 1 ครั้ง, ลาไม่นับเป็นขาด
     $update_records_query = "
         UPDATE student_academic_records sar
         JOIN (
             SELECT 
                 student_id,
-                SUM(CASE WHEN is_present = 1 THEN 1 ELSE 0 END) as total_present,
-                SUM(CASE WHEN is_present = 0 THEN 1 ELSE 0 END) as total_absent
+                SUM(CASE WHEN attendance_status = 'present' THEN 1 ELSE 0 END) as total_present,
+                SUM(CASE 
+                    WHEN attendance_status = 'absent' THEN 1 
+                    WHEN attendance_status = 'late' THEN 0.5 /* มาสาย 2 ครั้ง = ขาด 1 ครั้ง */
+                    ELSE 0 END) as total_absent /* ลาไม่นับเป็นขาด */
             FROM attendance
             WHERE academic_year_id = ?
             GROUP BY student_id
         ) att ON sar.student_id = att.student_id
         SET 
             sar.total_attendance_days = att.total_present,
-            sar.total_absence_days = att.total_absent,
+            sar.total_absence_days = FLOOR(att.total_absent), /* ปัดลงเพื่อให้เป็นจำนวนเต็ม */
             sar.updated_at = NOW()
         WHERE sar.academic_year_id = ?
     ";

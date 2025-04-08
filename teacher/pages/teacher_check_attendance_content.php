@@ -25,7 +25,7 @@
     <div class="date-selector">
         <label for="date-select">วันที่เช็คชื่อ:</label>
         <input type="date" id="date-select" value="<?php echo $check_date; ?>" max="<?php echo date('Y-m-d'); ?>" onchange="changeDate(this.value)">
-        
+
         <?php if ($is_retroactive): ?>
             <div class="retroactive-warning">
                 <span class="material-icons">warning</span>
@@ -121,6 +121,12 @@
                             <button class="action-button present" onclick="markAttendance(this, 'present', <?php echo $student['id']; ?>)">
                                 <span class="material-icons">check</span>
                             </button>
+                            <button class="action-button late" onclick="markAttendance(this, 'late', <?php echo $student['id']; ?>)">
+                                <span class="material-icons">schedule</span>
+                            </button>
+                            <button class="action-button leave" onclick="markAttendance(this, 'leave', <?php echo $student['id']; ?>)">
+                                <span class="material-icons">event_note</span>
+                            </button>
                             <button class="action-button absent" onclick="markAttendance(this, 'absent', <?php echo $student['id']; ?>)">
                                 <span class="material-icons">close</span>
                             </button>
@@ -215,14 +221,14 @@
         <div class="modal-title">เช็คชื่อนักเรียนทั้งหมด</div>
         <div class="modal-subtitle"><?php echo $current_class['name']; ?></div>
         <p>คุณต้องการเช็คชื่อนักเรียนที่ยังไม่ได้เช็คทั้งหมดเป็น "มาเรียน" ใช่หรือไม่?</p>
-        
+
         <?php if ($is_retroactive): ?>
-        <div class="retroactive-note">
-            <div class="note-title">ระบุหมายเหตุสำหรับการเช็คชื่อย้อนหลัง:</div>
-            <textarea id="retroactive-note" placeholder="ระบุหมายเหตุการเช็คชื่อย้อนหลัง เช่น เอกสารลาป่วย เอกสารขออนุญาต ฯลฯ"></textarea>
-        </div>
+            <div class="retroactive-note">
+                <div class="note-title">ระบุหมายเหตุสำหรับการเช็คชื่อย้อนหลัง:</div>
+                <textarea id="retroactive-note" placeholder="ระบุหมายเหตุการเช็คชื่อย้อนหลัง เช่น เอกสารลาป่วย เอกสารขออนุญาต ฯลฯ"></textarea>
+            </div>
         <?php endif; ?>
-        
+
         <div class="modal-buttons">
             <button class="modal-button cancel" onclick="closeModal('mark-all-modal')">ยกเลิก</button>
             <button class="modal-button confirm" onclick="markAllPresent()">ยืนยัน</button>
@@ -237,14 +243,14 @@
         <div class="modal-subtitle"><?php echo $current_class['name']; ?></div>
         <p>ยังมีนักเรียนที่ยังไม่ได้เช็คชื่ออีก <span id="remaining-students"><?php echo $current_class['not_checked']; ?></span> คน</p>
         <p>คุณต้องการบันทึกการเช็คชื่อเข้าแถวนี้ใช่หรือไม่?</p>
-        
+
         <?php if ($is_retroactive): ?>
-        <div class="retroactive-note">
-            <div class="note-title">ระบุหมายเหตุสำหรับการเช็คชื่อย้อนหลัง:</div>
-            <textarea id="retroactive-save-note" placeholder="ระบุหมายเหตุการเช็คชื่อย้อนหลัง เช่น เอกสารลาป่วย เอกสารขออนุญาต ฯลฯ"></textarea>
-        </div>
+            <div class="retroactive-note">
+                <div class="note-title">ระบุหมายเหตุสำหรับการเช็คชื่อย้อนหลัง:</div>
+                <textarea id="retroactive-save-note" placeholder="ระบุหมายเหตุการเช็คชื่อย้อนหลัง เช่น เอกสารลาป่วย เอกสารขออนุญาต ฯลฯ"></textarea>
+            </div>
         <?php endif; ?>
-        
+
         <div class="modal-buttons">
             <button class="modal-button cancel" onclick="closeModal('save-modal')">ยกเลิก</button>
             <button class="modal-button confirm" onclick="confirmSaveAttendance()">บันทึก</button>
@@ -257,12 +263,24 @@
     <div class="modal-content">
         <div class="modal-title">เช็คชื่อนักเรียน</div>
         <div class="modal-subtitle"><span id="student-name-display"></span></div>
-        
+
         <div class="attendance-status-selector">
             <div class="status-option">
                 <input type="radio" id="status-present" name="attendance-status" value="present" checked>
                 <label for="status-present">
                     <span class="material-icons present">check_circle</span> มาเรียน
+                </label>
+            </div>
+            <div class="status-option">
+                <input type="radio" id="status-late" name="attendance-status" value="late">
+                <label for="status-late">
+                    <span class="material-icons late">schedule</span> มาสาย
+                </label>
+            </div>
+            <div class="status-option">
+                <input type="radio" id="status-leave" name="attendance-status" value="leave">
+                <label for="status-leave">
+                    <span class="material-icons leave">event_note</span> ลา
                 </label>
             </div>
             <div class="status-option">
@@ -272,16 +290,21 @@
                 </label>
             </div>
         </div>
-        
-        <?php if ($is_retroactive): ?>
-        <div class="retroactive-note">
-            <div class="note-title">ระบุหมายเหตุสำหรับการเช็คชื่อย้อนหลัง:</div>
-            <textarea id="individual-note" placeholder="ระบุหมายเหตุการเช็คชื่อย้อนหลัง เช่น เอกสารลาป่วย เอกสารขออนุญาต ฯลฯ"></textarea>
+
+        <div class="remarks-input">
+            <div class="note-title">หมายเหตุ:</div>
+            <textarea id="attendance-remarks" placeholder="ระบุหมายเหตุเพิ่มเติม เช่น สาเหตุการมาสาย เหตุผลการลา"></textarea>
         </div>
+
+        <?php if ($is_retroactive): ?>
+            <div class="retroactive-note">
+                <div class="note-title">ระบุหมายเหตุสำหรับการเช็คชื่อย้อนหลัง:</div>
+                <textarea id="individual-note" placeholder="ระบุหมายเหตุการเช็คชื่อย้อนหลัง เช่น เอกสารลาป่วย เอกสารขออนุญาต ฯลฯ"></textarea>
+            </div>
         <?php endif; ?>
-        
+
         <input type="hidden" id="student-id-input" value="">
-        
+
         <div class="modal-buttons">
             <button class="modal-button cancel" onclick="closeModal('mark-attendance-modal')">ยกเลิก</button>
             <button class="modal-button confirm" onclick="confirmMarkAttendance()">บันทึก</button>
@@ -290,22 +313,28 @@
 </div>
 
 <script>
-// สร้างตัวแปรที่ส่งค่าไปยัง JavaScript
-const currentClassId = <?php echo $current_class_id; ?>;
-const checkDate = '<?php echo $check_date; ?>';
-const isRetroactive = <?php echo $is_retroactive ? 'true' : 'false'; ?>;
-const currentTeacherId = <?php echo $teacher_id; ?>;
+    // สร้างตัวแปรที่ส่งค่าไปยัง JavaScript
+    const currentClassId = <?php echo $current_class_id; ?>;
+    const checkDate = '<?php echo $check_date; ?>';
+    const isRetroactive = <?php echo $is_retroactive ? 'true' : 'false'; ?>;
+    const currentTeacherId = <?php echo $teacher_id; ?>;
 </script>
 
 <?php
 // ฟังก์ชัน helper สำหรับแปลงรหัสวิธีการเช็คชื่อเป็นข้อความ
-function getCheckMethodText($method) {
+function getCheckMethodText($method)
+{
     switch ($method) {
-        case 'PIN': return 'PIN';
-        case 'QR_Code': return 'QR';
-        case 'GPS': return 'GPS';
-        case 'Manual': return 'ครู';
-        default: return '';
+        case 'PIN':
+            return 'PIN';
+        case 'QR_Code':
+            return 'QR';
+        case 'GPS':
+            return 'GPS';
+        case 'Manual':
+            return 'ครู';
+        default:
+            return '';
     }
 }
 ?>

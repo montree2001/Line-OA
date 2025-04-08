@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost
--- Generation Time: Apr 06, 2025 at 04:51 PM
+-- Generation Time: Apr 08, 2025 at 03:23 PM
 -- Server version: 10.4.28-MariaDB
 -- PHP Version: 8.0.28
 
@@ -105,6 +105,13 @@ CREATE TABLE `announcements` (
   `updated_at` datetime DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+--
+-- Dumping data for table `announcements`
+--
+
+INSERT INTO `announcements` (`announcement_id`, `title`, `content`, `type`, `status`, `is_all_targets`, `target_department`, `target_level`, `expiration_date`, `scheduled_date`, `created_by`, `created_at`, `updated_at`) VALUES
+(2, 'ทดสอบการประกาศ', 'หยุกเรียน', 'general', 'active', 1, NULL, NULL, NULL, NULL, 188, '2025-04-07 15:41:24', NULL);
+
 -- --------------------------------------------------------
 
 --
@@ -116,7 +123,7 @@ CREATE TABLE `attendance` (
   `student_id` int(11) NOT NULL COMMENT 'รหัสนักเรียน',
   `academic_year_id` int(11) NOT NULL COMMENT 'รหัสปีการศึกษา',
   `date` date NOT NULL COMMENT 'วันที่เช็คชื่อ',
-  `is_present` tinyint(1) NOT NULL DEFAULT 1 COMMENT 'มาเข้าแถวหรือไม่',
+  `attendance_status` enum('present','absent','late','leave') NOT NULL DEFAULT 'absent' COMMENT 'สถานะการเข้าแถว (มา/ขาด/สาย/ลา)',
   `check_method` enum('GPS','QR_Code','PIN','Manual') NOT NULL COMMENT 'วิธีการเช็คชื่อ',
   `checker_user_id` int(11) DEFAULT NULL COMMENT 'ผู้ที่เช็คชื่อ (ครูหรือแอดมิน)',
   `location_lat` decimal(10,7) DEFAULT NULL COMMENT 'พิกัด GPS Latitude',
@@ -346,6 +353,22 @@ CREATE TABLE `pins` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- Dumping data for table `pins`
+--
+
+INSERT INTO `pins` (`pin_id`, `pin_code`, `creator_user_id`, `academic_year_id`, `valid_from`, `valid_until`, `is_active`, `class_id`, `created_at`) VALUES
+(9, '6889', 183, 1, '2025-04-07 12:45:56', '2025-04-07 12:55:56', 0, 12, '2025-04-07 05:45:56'),
+(10, '0209', 183, 1, '2025-04-07 12:46:08', '2025-04-07 12:56:08', 0, 12, '2025-04-07 05:46:08'),
+(11, '0882', 183, 1, '2025-04-07 12:46:14', '2025-04-07 12:56:14', 0, 12, '2025-04-07 05:46:14'),
+(12, '6632', 183, 1, '2025-04-07 12:46:14', '2025-04-07 12:56:14', 0, 12, '2025-04-07 05:46:14'),
+(13, '7912', 183, 1, '2025-04-07 12:46:16', '2025-04-07 12:56:16', 0, 12, '2025-04-07 05:46:16'),
+(14, '4948', 183, 1, '2025-04-07 12:46:17', '2025-04-07 12:56:17', 0, 12, '2025-04-07 05:46:17'),
+(15, '9448', 183, 1, '2025-04-07 12:51:57', '2025-04-07 13:01:57', 0, 12, '2025-04-07 05:51:57'),
+(16, '9778', 183, 1, '2025-04-07 12:54:02', '2025-04-07 13:04:02', 0, 12, '2025-04-07 05:54:02'),
+(17, '3640', 183, 1, '2025-04-07 18:43:59', '2025-04-07 18:53:59', 0, 12, '2025-04-07 11:43:59'),
+(18, '1660', 183, 1, '2025-04-08 20:06:19', '2025-04-08 20:16:19', 1, 12, '2025-04-08 13:06:19');
+
 -- --------------------------------------------------------
 
 --
@@ -361,6 +384,13 @@ CREATE TABLE `qr_codes` (
   `is_active` tinyint(1) NOT NULL DEFAULT 1 COMMENT 'ใช้งานได้หรือไม่',
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `qr_codes`
+--
+
+INSERT INTO `qr_codes` (`qr_code_id`, `student_id`, `qr_code_data`, `valid_from`, `valid_until`, `is_active`, `created_at`) VALUES
+(41, 52, '{\"type\":\"student_link\",\"student_id\":\"52\",\"student_code\":\"12345678913\",\"token\":\"d2141839235ed80cde7b9009891a581c\",\"expire_time\":\"2025-04-14 06:31:36\"}', '2025-04-07 11:31:36', '2025-04-14 06:31:36', 1, '2025-04-07 04:31:36');
 
 -- --------------------------------------------------------
 
@@ -402,7 +432,9 @@ CREATE TABLE `students` (
 --
 
 INSERT INTO `students` (`student_id`, `user_id`, `student_code`, `title`, `current_class_id`, `status`, `created_at`, `updated_at`) VALUES
-(50, 182, '12345678911', 'นาย', 12, 'กำลังศึกษา', '2025-04-06 14:48:35', '2025-04-06 14:48:35');
+(50, 182, '12345678911', 'นาย', 12, 'กำลังศึกษา', '2025-04-06 14:48:35', '2025-04-06 14:48:35'),
+(51, 184, '12345678912', 'นาย', 12, 'กำลังศึกษา', '2025-04-07 03:55:36', '2025-04-07 03:55:36'),
+(52, 188, '12345678913', 'นาย', 12, 'กำลังศึกษา', '2025-04-07 04:30:49', '2025-04-07 04:31:36');
 
 -- --------------------------------------------------------
 
@@ -427,7 +459,9 @@ CREATE TABLE `student_academic_records` (
 --
 
 INSERT INTO `student_academic_records` (`record_id`, `student_id`, `academic_year_id`, `class_id`, `total_attendance_days`, `total_absence_days`, `passed_activity`, `created_at`, `updated_at`) VALUES
-(39, 50, 1, 12, 0, 0, NULL, '2025-04-06 14:48:35', '2025-04-06 14:48:35');
+(39, 50, 1, 12, 0, 2, NULL, '2025-04-06 14:48:35', '2025-04-08 13:07:36'),
+(40, 51, 1, 12, 2, 1, NULL, '2025-04-07 03:55:36', '2025-04-08 13:07:36'),
+(41, 52, 1, 12, 2, 0, NULL, '2025-04-07 04:30:49', '2025-04-08 13:07:36');
 
 -- --------------------------------------------------------
 
@@ -673,7 +707,9 @@ CREATE TABLE `users` (
 
 INSERT INTO `users` (`user_id`, `line_id`, `role`, `title`, `first_name`, `last_name`, `profile_picture`, `phone_number`, `email`, `gdpr_consent`, `gdpr_consent_date`, `created_at`, `updated_at`, `last_login`) VALUES
 (182, 'TEMP_12345678911_1743950915_4be7d4', 'student', 'นาย', 'มนตรี', 'ศรีสุข', NULL, '', '', 1, NULL, '2025-04-06 14:48:35', '2025-04-06 14:48:35', NULL),
-(183, 'Uab9dff8376554a091aa4cfe6cc9791d6', 'teacher', 'นาย', 'มนตรี', 'ศรีสุข', 'https://profile.line-scdn.net/0hG24vO_T7GB0ZDwnP_yJmYmlfG3c6fkEPPWtQeS9bFSskNlpCZmFWeisOFSQkO1hNZ2gEKylcEi4VHG97B1nkKR4_RSwlOV5CPG9W_Q', '0956313677', '', 1, '2025-04-06 21:50:02', '2025-04-06 14:49:15', '2025-04-06 14:51:15', '2025-04-06 21:51:15');
+(183, 'Uab9dff8376554a091aa4cfe6cc9791d6', 'teacher', 'นาย', 'มนตรี', 'ศรีสุข', 'https://profile.line-scdn.net/0hG24vO_T7GB0ZDwnP_yJmYmlfG3c6fkEPPWtQeS9bFSskNlpCZmFWeisOFSQkO1hNZ2gEKylcEi4VHG97B1nkKR4_RSwlOV5CPG9W_Q', '0956313677', '', 1, '2025-04-06 21:50:02', '2025-04-06 14:49:15', '2025-04-08 13:09:12', '2025-04-08 20:09:12'),
+(184, 'TEMP_12345678912_1743998136_e2dc99', 'student', 'นาย', 'มนตรี', 'ศรีสุข2', NULL, '', '', 1, NULL, '2025-04-07 03:55:36', '2025-04-07 03:55:36', NULL),
+(188, 'U49ad4a0501507e1289883a6ceffd4a71', 'student', 'นาย', 'สิรภพ', 'ห้องแซง', 'https://profile.line-scdn.net/0hAuKhaG28HlpmETYISrlgJRZBHTBFYEdIHXABaVcRF28OIlleGicDPVoQF2wMI1kNSHFYO1NDEmxqAmk8eEfibmEhQ2taJ1gFQ3FQug', '', '', 1, '2025-04-07 11:31:36', '2025-04-07 04:30:59', '2025-04-07 05:46:44', '2025-04-07 12:46:44');
 
 -- --------------------------------------------------------
 
@@ -728,25 +764,6 @@ CREATE TABLE `view_classes` (
 -- (See below for the actual view)
 --
 CREATE TABLE `view_students_with_class` (
-`student_id` int(11)
-,`user_id` int(11)
-,`student_code` varchar(11)
-,`title` enum('นาย','นางสาว','อื่นๆ')
-,`first_name` varchar(255)
-,`last_name` varchar(255)
-,`phone_number` varchar(15)
-,`email` varchar(255)
-,`current_class_id` int(11)
-,`level` enum('ปวช.1','ปวช.2','ปวช.3','ปวส.1','ปวส.2')
-,`department_name` varchar(100)
-,`group_number` int(11)
-,`academic_year` int(11)
-,`semester` tinyint(1)
-,`attendance_count` bigint(21)
-,`total_attendance_days` int(11)
-,`total_absence_days` int(11)
-,`activity_status` varchar(9)
-,`status` enum('กำลังศึกษา','พักการเรียน','พ้นสภาพ','สำเร็จการศึกษา')
 );
 
 -- --------------------------------------------------------
@@ -998,13 +1015,13 @@ ALTER TABLE `admin_actions`
 -- AUTO_INCREMENT for table `announcements`
 --
 ALTER TABLE `announcements`
-  MODIFY `announcement_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `announcement_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT for table `attendance`
 --
 ALTER TABLE `attendance`
-  MODIFY `attendance_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=292;
+  MODIFY `attendance_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=299;
 
 --
 -- AUTO_INCREMENT for table `attendance_settings`
@@ -1064,13 +1081,13 @@ ALTER TABLE `parent_student_relation`
 -- AUTO_INCREMENT for table `pins`
 --
 ALTER TABLE `pins`
-  MODIFY `pin_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `pin_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=19;
 
 --
 -- AUTO_INCREMENT for table `qr_codes`
 --
 ALTER TABLE `qr_codes`
-  MODIFY `qr_code_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=41;
+  MODIFY `qr_code_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=42;
 
 --
 -- AUTO_INCREMENT for table `risk_students`
@@ -1082,13 +1099,13 @@ ALTER TABLE `risk_students`
 -- AUTO_INCREMENT for table `students`
 --
 ALTER TABLE `students`
-  MODIFY `student_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=51;
+  MODIFY `student_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=53;
 
 --
 -- AUTO_INCREMENT for table `student_academic_records`
 --
 ALTER TABLE `student_academic_records`
-  MODIFY `record_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=40;
+  MODIFY `record_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=42;
 
 --
 -- AUTO_INCREMENT for table `student_promotion_batch`
@@ -1106,13 +1123,13 @@ ALTER TABLE `system_settings`
 -- AUTO_INCREMENT for table `teachers`
 --
 ALTER TABLE `teachers`
-  MODIFY `teacher_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=35;
+  MODIFY `teacher_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=36;
 
 --
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `user_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=184;
+  MODIFY `user_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=189;
 
 --
 -- Constraints for dumped tables

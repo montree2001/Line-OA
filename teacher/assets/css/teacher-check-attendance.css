@@ -622,6 +622,70 @@
     padding-bottom: 80px;
 }
 
+
+/* ปุ่มมาสาย */
+.action-button.late {
+    background-color: #ffecb3;
+    color: #ff9800;
+}
+
+.action-button.late:hover {
+    background-color: #ffecb3;
+    transform: scale(1.1);
+}
+
+.action-button.late.active, .action-button.late:active {
+    background-color: #ff9800;
+    color: white;
+}
+
+/* ปุ่มลา */
+.action-button.leave {
+    background-color: #e0f7fa;
+    color: #00bcd4;
+}
+
+.action-button.leave:hover {
+    background-color: #e0f7fa;
+    transform: scale(1.1);
+}
+
+.action-button.leave.active, .action-button.leave:active {
+    background-color: #00bcd4;
+    color: white;
+}
+
+/* สถานะมาสาย */
+.student-status.late {
+    color: #ff9800;
+}
+
+/* สถานะลา */
+.student-status.leave {
+    color: #00bcd4;
+}
+
+/* ส่วนกรอกหมายเหตุ */
+.remarks-input {
+    margin-top: 15px;
+    width: 100%;
+}
+
+.remarks-input .note-title {
+    font-weight: 500;
+    margin-bottom: 5px;
+}
+
+#attendance-remarks {
+    width: 100%;
+    min-height: 80px;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-family: 'Prompt', sans-serif;
+    resize: vertical;
+}
+
 /* Modal */
 .modal {
     display: none;
