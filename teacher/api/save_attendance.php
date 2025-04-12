@@ -18,6 +18,10 @@
 session_start();
 header('Content-Type: application/json');
 
+// แสดงข้อผิดพลาดเพื่อช่วยในการดีบัก
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
 // ตรวจสอบการล็อกอิน
 if (!isset($_SESSION['user_id']) || ($_SESSION['role'] !== 'teacher' && $_SESSION['role'] !== 'admin')) {
     echo json_encode([
@@ -216,6 +220,7 @@ try {
     $insert_stmt->close();
     
     // อัพเดตสถิติการเข้าแถวในตาราง student_academic_records
+    // คำนวณใหม่โดยดูจากจำนวนการเข้าแถวทั้งหมดของนักเรียนในปีการศึกษานี้
     $update_records_query = "
         UPDATE student_academic_records sar
         JOIN (
@@ -243,6 +248,50 @@ try {
     $update_records_stmt->bind_param("ii", $academic_year_id, $academic_year_id);
     $update_records_stmt->execute();
     $update_records_stmt->close();
+    
+    // ตรวจสอบนักเรียนที่เสี่ยงตกกิจกรรม และอัพเดทข้อมูลในตาราง risk_students
+    $update_risk_query = "
+        INSERT INTO risk_students 
+            (student_id, academic_year_id, absence_count, risk_level, notification_sent, created_at, updated_at)
+        SELECT 
+            s.student_id, 
+            ?, 
+            sar.total_absence_days,
+            CASE 
+                WHEN sar.total_absence_days >= 20 THEN 'critical'
+                WHEN sar.total_absence_days >= 15 THEN 'high'
+                WHEN sar.total_absence_days >= 10 THEN 'medium'
+                ELSE 'low'
+            END as risk_level,
+            0, 
+            NOW(), 
+            NOW()
+        FROM 
+            students s
+            JOIN student_academic_records sar ON s.student_id = sar.student_id
+        WHERE 
+            sar.academic_year_id = ? 
+            AND sar.total_absence_days >= 10
+        ON DUPLICATE KEY UPDATE 
+            absence_count = sar.total_absence_days,
+            risk_level = CASE 
+                WHEN sar.total_absence_days >= 20 THEN 'critical'
+                WHEN sar.total_absence_days >= 15 THEN 'high'
+                WHEN sar.total_absence_days >= 10 THEN 'medium'
+                ELSE 'low'
+            END,
+            updated_at = NOW()
+    ";
+    
+    $update_risk_stmt = $conn->prepare($update_risk_query);
+    
+    if (!$update_risk_stmt) {
+        throw new Exception("เตรียมคำสั่ง SQL ล้มเหลว (risk_students): " . $conn->error);
+    }
+    
+    $update_risk_stmt->bind_param("ii", $academic_year_id, $academic_year_id);
+    $update_risk_stmt->execute();
+    $update_risk_stmt->close();
     
     // Commit Transaction
     $conn->commit();
