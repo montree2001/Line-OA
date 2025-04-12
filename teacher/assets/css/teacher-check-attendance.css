@@ -311,7 +311,6 @@
 .tab-btn.active {
     color: #fff;
     background-color: #1e88e5;
-    border-radius: 10px 10px 0 0;
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
 }
 
@@ -346,19 +345,19 @@
     border-radius: 10px;
     padding: 40px 20px;
     text-align: center;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    box-shadow: var(--card-shadow);
     margin-bottom: 20px;
 }
 
 .empty-state .material-icons {
     font-size: 60px;
-    color: #4caf50;
+    color: var(--secondary-color);
     margin-bottom: 20px;
 }
 
 .empty-state p {
     font-size: 18px;
-    color: #333;
+    color: var(--text-dark);
     font-weight: 500;
 }
 
@@ -372,54 +371,102 @@
     display: block;
 }
 
-/* ตารางรายชื่อนักเรียน */
+/* รายชื่อนักเรียน */
 .student-list {
     background-color: white;
     border-radius: 10px;
-    overflow: hidden;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
     margin-bottom: 20px;
+    box-shadow: var(--card-shadow);
+    overflow: hidden;
 }
 
 .list-header {
-    background-color: #f5f5f5;
+    background-color: var(--primary-color);
+    color: white;
     padding: 15px;
     font-weight: bold;
     display: grid;
-    grid-template-columns: 50px 1fr 120px;
-    border-bottom: 1px solid #eee;
+    grid-template-columns: 50px 1fr auto auto;
 }
 
 .student-item {
     padding: 15px;
     display: grid;
-    grid-template-columns: 50px 1fr 120px;
+    grid-template-columns: 50px 1fr auto auto;
     border-bottom: 1px solid #eee;
     align-items: center;
-    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+/* ปรับพื้นที่แสดงปุ่มให้กว้างขึ้น */
+#unchecked-tab .list-header,
+#unchecked-tab .student-item {
+    grid-template-columns: 50px 1fr 180px; /* เพิ่มพื้นที่สำหรับปุ่ม */
 }
 
 .student-item:last-child {
     border-bottom: none;
 }
 
+.student-item:hover {
+    background-color: #f9f9f9;
+}
+
 .student-item:nth-child(even) {
     background-color: #f9f9f9;
 }
 
-.student-item:hover {
-    background-color: #f0f5ff;
+.student-item:nth-child(even):hover {
+    background-color: #f5f5f5;
 }
 
 .student-number {
     text-align: center;
     font-weight: bold;
-    color: #666;
+    color: var(--text-light);
 }
 
 .student-name {
     font-weight: 500;
 }
+
+.student-remarks {
+    font-size: 13px;
+    color: var(--text-light);
+    margin-top: 4px;
+    font-style: italic;
+}
+
+.student-status {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-weight: 500;
+}
+
+.student-status.present {
+    color: var(--secondary-color);
+}
+
+.student-status.late {
+    color: var(--warning-color);
+}
+
+.student-status.leave {
+    color: #9c27b0; /* purple color for leave status */
+}
+
+.student-status.absent {
+    color: var(--danger-color);
+}
+
+.check-info {
+    display: flex;
+    flex-direction: column;
+    font-size: 14px;
+    color: var(--text-light);
+}
+
 
 .attendance-actions {
     display: flex;
@@ -427,7 +474,6 @@
     justify-content: center;
 }
 
-/* ปุ่มเช็คชื่อแบบวงกลม */
 .action-button {
     width: 36px;
     height: 36px;
@@ -460,62 +506,41 @@
     color: white;
 }
 
-/* สถานะว่าง */
-.empty-state {
-    background-color: white;
-    border-radius: 10px;
-    padding: 40px 20px;
-    text-align: center;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-    margin-bottom: 20px;
+/* ปุ่มลอย */
+.floating-button {
+    position: fixed;
+    bottom: 80px;
+    right: 20px;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background-color: var(--secondary-color);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    border: none;
+    cursor: pointer;
+    z-index: 999;
+    transition: all 0.3s;
 }
 
-.empty-state .material-icons {
-    font-size: 60px;
-    color: #4caf50;
-    margin-bottom: 20px;
+.floating-button:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 6px 15px rgba(0,0,0,0.25);
+    background-color: #388e3c;
 }
 
-.empty-state p {
-    font-size: 18px;
-    color: #333;
-    font-weight: 500;
+.floating-button .material-icons {
+    font-size: 28px;
 }
 
-/* ส่วนระบุเหตุผลในโมดัล */
-.reason-container {
-    margin-top: 15px;
-    border: 1px solid #e0e0e0;
-    border-radius: 5px;
-    padding: 10px;
-    background-color: #f9f9f9;
-    display: none; /* ซ่อนไว้ก่อน จะแสดงเมื่อเลือกสถานะสายหรือลา */
+.container {
+    padding-bottom: 80px;
 }
 
-.reason-container.show {
-    display: block;
-}
-
-.reason-title {
-    font-weight: 500;
-    margin-bottom: 8px;
-    color: #333;
-}
-
-
-
-
-#status-reason {
-    width: 100%;
-    min-height: 80px;
-    border: 1px solid #e0e0e0;
-    border-radius: 5px;
-    padding: 8px;
-    font-family: 'Prompt', sans-serif;
-    resize: vertical;
-}
-
-/* Modal popup */
+/* Modal */
 .modal {
     display: none;
     position: fixed;
@@ -525,8 +550,8 @@
     height: 100%;
     background-color: rgba(0,0,0,0.5);
     z-index: 2000;
-    justify-content: center;
     align-items: center;
+    justify-content: center;
 }
 
 .modal.active {
@@ -535,39 +560,120 @@
 
 .modal-content {
     background-color: white;
-    padding: 20px;
+    padding: 25px;
     border-radius: 10px;
     width: 90%;
     max-width: 400px;
-    text-align: center;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    position: relative;
+    max-height: 90vh;
+    overflow-y: auto;
 }
 
 .modal-title {
     font-size: 18px;
     font-weight: bold;
-    margin-bottom: 10px;
+    margin-bottom: 5px;
+    color: var(--primary-color);
+    text-align: center;
 }
 
 .modal-subtitle {
     font-size: 16px;
-    color: #666;
+    color: var(--text-light);
     margin-bottom: 20px;
+    text-align: center;
+}
+
+.modal-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin-top: 25px;
+}
+
+.modal-button {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.modal-button.confirm {
+    background-color: var(--secondary-color);
+    color: white;
+}
+
+.modal-button.confirm:hover {
+    background-color: #388e3c;
+}
+
+.modal-button.cancel {
+    background-color: #f5f5f5;
+    color: var(--text-dark);
+}
+
+.modal-button.cancel:hover {
+    background-color: #e0e0e0;
+}
+
+/* PIN Code Display */
+.pin-code {
+    font-size: 48px;
+    font-weight: bold;
+    color: var(--primary-color);
+    text-align: center;
+    letter-spacing: 5px;
+    margin: 20px 0;
+}
+
+.pin-info {
+    text-align: center;
+    color: var(--text-light);
+    margin-bottom: 5px;
+}
+
+/* QR Scanner Placeholder */
+.qr-scanner-placeholder {
+    height: 250px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background-color: #f5f5f5;
+    border-radius: 8px;
+    margin: 20px 0;
+}
+
+.qr-scanner-placeholder .material-icons {
+    font-size: 64px;
+    color: #bbbbbb;
+    margin-bottom: 15px;
+}
+
+.qr-scanner-placeholder p {
+    color: #999;
 }
 
 /* Attendance Status Selector */
-.attendance-status-selector {
+.attendance-status-selector,
+.mark-all-options {
     display: flex;
     flex-direction: column;
     gap: 12px;
     margin: 15px 0;
 }
 
-.status-option {
+.status-option,
+.mark-all-option {
     display: flex;
     align-items: center;
 }
 
-.status-option input[type="radio"] {
+.status-option input[type="radio"],
+.mark-all-option input[type="radio"] {
     display: none;
 }
 
@@ -587,8 +693,8 @@
 }
 
 .status-label.present {
-    color: #4caf50;
-    background-color: #e8f5e9;
+    color: var(--secondary-color);
+    background-color: var(--secondary-color-light);
 }
 
 .status-label.late {
@@ -602,12 +708,12 @@
 }
 
 .status-label.absent {
-    color: #f44336;
-    background-color: #ffebee;
+    color: var(--danger-color);
+    background-color: var(--danger-color-light);
 }
 
 input[type="radio"]:checked + .status-label.present {
-    background-color: #4caf50;
+    background-color: var(--secondary-color);
     color: white;
 }
 
@@ -622,55 +728,56 @@ input[type="radio"]:checked + .status-label.leave {
 }
 
 input[type="radio"]:checked + .status-label.absent {
-    background-color: #f44336;
+    background-color: var(--danger-color);
     color: white;
 }
 
-/* ตารางที่เช็คชื่อแล้ว */
-#checked-tab .list-header,
-#checked-tab .student-item {
-    grid-template-columns: 50px 1fr auto 100px;
+/* Note textarea */
+.retroactive-note {
+    margin-top: 15px;
+    border: 1px solid #e0e0e0;
+    border-radius: 5px;
+    padding: 10px;
+    background-color: #f9f9f9;
 }
 
-/* การปรับแต่งสำหรับอุปกรณ์มือถือ */
-@media (max-width: 480px) {
-    .student-item {
-        padding: 10px;
-    }
-    
-    .action-button {
-        width: 32px;
-        height: 32px;
-    }
-    
-    .action-button .material-icons {
-        font-size: 16px;
-    }
-    
-    .attendance-actions {
-        gap: 8px;
-    }
+.retroactive-note .note-title {
+    font-weight: 500;
+    margin-bottom: 8px;
+    color: var(--text-dark);
+}
+
+.retroactive-note textarea {
+    width: 100%;
+    min-height: 80px;
+    border: 1px solid #e0e0e0;
+    border-radius: 5px;
+    padding: 8px;
+    font-family: 'Prompt', sans-serif;
+    resize: vertical;
+}
+
+.retroactive-note textarea:focus {
+    border-color: var(--primary-color);
+    outline: none;
 }
 
 /* Responsive Design */
 @media (max-width: 768px) {
     .control-buttons {
-        grid-template-columns: 1fr;
+        flex-direction: column;
     }
     
     .stats-container {
         grid-template-columns: repeat(2, 1fr);
     }
     
-    .action-button {
-        min-width: 32px;
-        height: 30px;
-        padding: 0;
+    #unchecked-tab .list-header,
+    #unchecked-tab .student-item {
+        grid-template-columns: 40px 1fr 160px; /* ปรับตามขนาดหน้าจอ */
     }
     
-    .action-button .material-icons {
-        font-size: 16px;
-    }
+   
 }
 
 @media (max-width: 480px) {
@@ -696,9 +803,12 @@ input[type="radio"]:checked + .status-label.absent {
         font-size: 14px;
     }
     
-    .attendance-actions {
-        gap: 3px;
+    #unchecked-tab .list-header,
+    #unchecked-tab .student-item {
+        grid-template-columns: 30px 1fr 140px; /* ปรับตามขนาดหน้าจอ */
     }
+    
+   
     
     .tab-btn {
         padding: 10px 8px;

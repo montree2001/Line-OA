@@ -2,9 +2,10 @@
 /**
  * check-attendance.php - หน้าเช็คชื่อนักเรียนสำหรับครูที่ปรึกษา
  * 
- * ฟังก์ชันหลัก:
+ * คุณสมบัติหลัก:
  * - แสดงรายชื่อนักเรียนสำหรับเช็คชื่อ
  * - เลือกวันที่เพื่อเช็คชื่อย้อนหลังได้
+ * - เช็คชื่อนักเรียนเป็น มา/ขาด/สาย/ลา
  * - บันทึกข้อมูลการเช็คชื่อลงฐานข้อมูล
  * - แสดงสถิติการเช็คชื่อ
  */
@@ -43,6 +44,7 @@ $teacher_query = "SELECT t.teacher_id, u.first_name, u.last_name, t.title, u.pro
                  JOIN users u ON t.user_id = u.user_id 
                  LEFT JOIN departments d ON t.department_id = d.department_id 
                  WHERE t.user_id = ?";
+                 
 $teacher_stmt = $conn->prepare($teacher_query);
 if ($teacher_stmt === false) {
     die("เกิดข้อผิดพลาดในการเตรียมคำสั่ง SQL (teacher_query): " . $conn->error);
@@ -65,13 +67,14 @@ $teacher_info = [
 // ดึงห้องเรียนที่ครูเป็นที่ปรึกษา
 $classes_query = "SELECT c.class_id, CONCAT(c.level, '/', d.department_code, '/', c.group_number) AS class_name, 
                  c.level, d.department_name, c.group_number, ay.year, ay.semester, ca.is_primary,
-                 (SELECT COUNT(*) FROM students WHERE current_class_id = c.class_id AND status = 'กำลังศึกษา') as student_count
+                 (SELECT COUNT(*) FROM students WHERE current_class_id = c.class_id AND status = 'กำลังศึกษา') as total_students
                  FROM class_advisors ca 
                  JOIN classes c ON ca.class_id = c.class_id 
                  JOIN departments d ON c.department_id = d.department_id 
                  JOIN academic_years ay ON c.academic_year_id = ay.academic_year_id
                  WHERE ca.teacher_id = ? AND c.is_active = 1 AND ay.is_active = 1
                  ORDER BY ca.is_primary DESC, c.level, c.group_number";
+                 
 $classes_stmt = $conn->prepare($classes_query);
 if ($classes_stmt === false) {
     die("เกิดข้อผิดพลาดในการเตรียมคำสั่ง SQL (classes_query): " . $conn->error);
@@ -86,7 +89,7 @@ while ($class = $classes_result->fetch_assoc()) {
     $teacher_classes[] = [
         'id' => $class['class_id'],
         'name' => $class['class_name'],
-        'total_students' => $class['student_count']
+        'total_students' => $class['total_students']
     ];
 }
 
@@ -195,7 +198,7 @@ if ($_SESSION['role'] !== 'admin' && $check_date > date('Y-m-d')) {
     $check_date = date('Y-m-d');
 }
 
-// หาสถิติการเข้าแถววันนี้ - แก้ไขคอลัมน์จาก is_present เป็น attendance_status
+// หาสถิติการเข้าแถววันนี้
 $attendance_stats_query = "SELECT 
                            COUNT(DISTINCT s.student_id) as total_students,
                            SUM(CASE WHEN a.attendance_status = 'present' THEN 1 ELSE 0 END) as present_count,
@@ -225,7 +228,7 @@ $current_class['present_count'] = $present_count;
 $current_class['absent_count'] = $absent_count;
 $current_class['not_checked'] = $not_checked;
 
-// ดึงรายชื่อนักเรียนทั้งหมดพร้อมสถานะการเช็คชื่อ - แก้ไขจาก is_present เป็น attendance_status
+// ดึงรายชื่อนักเรียนทั้งหมดพร้อมสถานะการเช็คชื่อ
 $students_query = "SELECT s.student_id, s.student_code, s.title, u.first_name, u.last_name, 
                   (SELECT COUNT(*) + 1 FROM students WHERE current_class_id = s.current_class_id AND student_code < s.student_code) as number,
                   a.attendance_status, TIME_FORMAT(a.check_time, '%H:%i') as check_time, a.check_method, a.remarks
@@ -248,13 +251,13 @@ $unchecked_students = [];
 $checked_students = [];
 
 while ($student = $students_result->fetch_assoc()) {
-    // สร้างข้อมูลนักเรียน และเปลี่ยนการตรวจสอบจาก is_present เป็น attendance_status
+    // สร้างข้อมูลนักเรียน
     $student_data = [
         'id' => $student['student_id'],
         'number' => $student['number'],
         'code' => $student['student_code'],
         'name' => $student['title'] . $student['first_name'] . ' ' . $student['last_name'],
-        'status' => isset($student['attendance_status']) ? ($student['attendance_status'] == 'present' ? 'present' : 'absent') : 'not_checked',
+        'status' => isset($student['attendance_status']) ? $student['attendance_status'] : 'not_checked',
         'time_checked' => $student['check_time'] ?? '',
         'check_method' => $student['check_method'] ?? '',
         'remarks' => $student['remarks'] ?? ''

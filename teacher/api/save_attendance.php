@@ -1,6 +1,6 @@
 <?php
 /**
- * api/save_attendance.php - API บันทึกการเช็คชื่อนักเรียน (ปรับปรุงใหม่)
+ * api/save_attendance.php - API บันทึกการเช็คชื่อนักเรียน
  * 
  * รับข้อมูล:
  * - class_id: รหัสห้องเรียน
@@ -200,7 +200,7 @@ try {
             $student_id, 
             $academic_year_id, 
             $check_date, 
-            $status, // เปลี่ยนจาก $is_present เป็น $status
+            $status,
             $check_method, 
             $checker_user_id, 
             $remarks
