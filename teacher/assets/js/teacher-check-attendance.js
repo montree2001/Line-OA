@@ -733,31 +733,65 @@ function confirmSaveAttendance() {
 /**
  * จัดการเหตุการณ์คลิกที่รายการนักเรียน
  */
+/**
+ * จัดการเหตุการณ์คลิกที่รายการนักเรียน
+ */
 function setupStudentItemEvents() {
     // เพิ่มเหตุการณ์คลิกที่รายการนักเรียนในแท็บที่ยังไม่ได้เช็ค
     const uncheckedItems = document.querySelectorAll('#unchecked-tab .student-item');
     uncheckedItems.forEach(item => {
-        item.addEventListener('click', function(e) {
-            // ถ้าคลิกที่ปุ่มเช็คชื่อ ไม่ต้องทำอะไร
-            if (e.target.closest('.action-button')) {
-                return;
-            }
-            
-            // แสดง Modal เช็คชื่อรายบุคคล
-            const studentId = this.getAttribute('data-id');
-            const studentName = this.querySelector('.student-name').textContent.trim();
-            
-            document.getElementById('student-name-display').textContent = studentName;
-            document.getElementById('student-id-input').value = studentId;
-            document.getElementById('status-present').checked = true; // เลือกสถานะ "มาเรียน" เป็นค่าเริ่มต้น
-            
-            const modal = document.getElementById('mark-attendance-modal');
-            if (modal) {
-                modal.classList.add('active');
-                document.body.style.overflow = 'hidden';
-            }
+        // เพิ่มเหตุการณ์เมื่อคลิกที่ชื่อนักเรียน (ไม่รวมการคลิกที่ปุ่ม)
+        const studentName = item.querySelector('.student-name');
+        if (studentName) {
+            studentName.addEventListener('click', function(e) {
+                e.stopPropagation(); // ป้องกันการเกิด event bubbling
+                
+                // แสดง Modal เช็คชื่อรายบุคคล
+                const studentId = item.getAttribute('data-id');
+                const studentNameText = this.textContent.trim();
+                
+                document.getElementById('student-name-display').textContent = studentNameText;
+                document.getElementById('student-id-input').value = studentId;
+                document.getElementById('status-present').checked = true; // เลือกสถานะ "มาเรียน" เป็นค่าเริ่มต้น
+                
+                // รีเซ็ตข้อมูลที่กรอก
+                document.getElementById('status-reason').value = '';
+                if (document.getElementById('individual-note')) {
+                    document.getElementById('individual-note').value = '';
+                }
+                
+                // ซ่อนหรือแสดงช่องเหตุผลตามสถานะที่เลือก
+                toggleReasonField('present');
+                
+                const modal = document.getElementById('mark-attendance-modal');
+                if (modal) {
+                    modal.classList.add('active');
+                    document.body.style.overflow = 'hidden';
+                }
+            });
+        }
+    });
+    
+    // เพิ่มการจัดการเมื่อเลือกสถานะในโมดัล
+    const statusOptions = document.querySelectorAll('input[name="attendance-status"]');
+    statusOptions.forEach(option => {
+        option.addEventListener('change', function() {
+            toggleReasonField(this.value);
         });
     });
+}
+
+/**
+ * แสดงหรือซ่อนช่องกรอกเหตุผล ขึ้นอยู่กับสถานะที่เลือก
+ * @param {string} status - สถานะการเช็คชื่อ
+ */
+function toggleReasonField(status) {
+    const reasonContainer = document.getElementById('reason-container');
+    if (status === 'late' || status === 'leave') {
+        reasonContainer.classList.add('show');
+    } else {
+        reasonContainer.classList.remove('show');
+    }
 }
 
 /**
