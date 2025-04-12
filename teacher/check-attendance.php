@@ -44,6 +44,9 @@ $teacher_query = "SELECT t.teacher_id, u.first_name, u.last_name, t.title, u.pro
                  LEFT JOIN departments d ON t.department_id = d.department_id 
                  WHERE t.user_id = ?";
 $teacher_stmt = $conn->prepare($teacher_query);
+if ($teacher_stmt === false) {
+    die("เกิดข้อผิดพลาดในการเตรียมคำสั่ง SQL (teacher_query): " . $conn->error);
+}
 $teacher_stmt->bind_param("i", $user_id);
 $teacher_stmt->execute();
 $teacher_result = $teacher_stmt->get_result();
@@ -70,6 +73,9 @@ $classes_query = "SELECT c.class_id, CONCAT(c.level, '/', d.department_code, '/'
                  WHERE ca.teacher_id = ? AND c.is_active = 1 AND ay.is_active = 1
                  ORDER BY ca.is_primary DESC, c.level, c.group_number";
 $classes_stmt = $conn->prepare($classes_query);
+if ($classes_stmt === false) {
+    die("เกิดข้อผิดพลาดในการเตรียมคำสั่ง SQL (classes_query): " . $conn->error);
+}
 $classes_stmt->bind_param("i", $teacher_id);
 $classes_stmt->execute();
 $classes_result = $classes_stmt->get_result();
@@ -125,6 +131,9 @@ if ($_SESSION['role'] === 'teacher') {
                     JOIN academic_years ay ON c.academic_year_id = ay.academic_year_id
                     WHERE c.class_id = ? AND c.is_active = 1 AND ay.is_active = 1";
     $class_stmt = $conn->prepare($class_query);
+    if ($class_stmt === false) {
+        die("เกิดข้อผิดพลาดในการเตรียมคำสั่ง SQL (class_query): " . $conn->error);
+    }
     $class_stmt->bind_param("i", $current_class_id);
     $class_stmt->execute();
     $class_result = $class_stmt->get_result();
@@ -186,17 +195,20 @@ if ($_SESSION['role'] !== 'admin' && $check_date > date('Y-m-d')) {
     $check_date = date('Y-m-d');
 }
 
-// หาสถิติการเข้าแถววันนี้
+// หาสถิติการเข้าแถววันนี้ - แก้ไขคอลัมน์จาก is_present เป็น attendance_status
 $attendance_stats_query = "SELECT 
                            COUNT(DISTINCT s.student_id) as total_students,
-                           SUM(CASE WHEN a.is_present = 1 THEN 1 ELSE 0 END) as present_count,
-                           SUM(CASE WHEN a.is_present = 0 THEN 1 ELSE 0 END) as absent_count,
+                           SUM(CASE WHEN a.attendance_status = 'present' THEN 1 ELSE 0 END) as present_count,
+                           SUM(CASE WHEN a.attendance_status = 'absent' THEN 1 ELSE 0 END) as absent_count,
                            COUNT(a.attendance_id) as checked_count
                           FROM students s
                           LEFT JOIN attendance a ON s.student_id = a.student_id AND a.date = ?
                           WHERE s.current_class_id = ? AND s.status = 'กำลังศึกษา'";
 
 $stats_stmt = $conn->prepare($attendance_stats_query);
+if ($stats_stmt === false) {
+    die("เกิดข้อผิดพลาดในการเตรียมคำสั่ง SQL (attendance_stats_query): " . $conn->error);
+}
 $stats_stmt->bind_param("si", $check_date, $current_class_id);
 $stats_stmt->execute();
 $stats_result = $stats_stmt->get_result();
@@ -213,10 +225,10 @@ $current_class['present_count'] = $present_count;
 $current_class['absent_count'] = $absent_count;
 $current_class['not_checked'] = $not_checked;
 
-// ดึงรายชื่อนักเรียนทั้งหมดพร้อมสถานะการเช็คชื่อ
+// ดึงรายชื่อนักเรียนทั้งหมดพร้อมสถานะการเช็คชื่อ - แก้ไขจาก is_present เป็น attendance_status
 $students_query = "SELECT s.student_id, s.student_code, s.title, u.first_name, u.last_name, 
                   (SELECT COUNT(*) + 1 FROM students WHERE current_class_id = s.current_class_id AND student_code < s.student_code) as number,
-                  a.is_present, TIME_FORMAT(a.check_time, '%H:%i') as check_time, a.check_method, a.remarks
+                  a.attendance_status, TIME_FORMAT(a.check_time, '%H:%i') as check_time, a.check_method, a.remarks
                  FROM students s
                  JOIN users u ON s.user_id = u.user_id
                  LEFT JOIN attendance a ON s.student_id = a.student_id AND a.date = ?
@@ -224,6 +236,9 @@ $students_query = "SELECT s.student_id, s.student_code, s.title, u.first_name, u
                  ORDER BY s.student_code";
 
 $students_stmt = $conn->prepare($students_query);
+if ($students_stmt === false) {
+    die("เกิดข้อผิดพลาดในการเตรียมคำสั่ง SQL (students_query): " . $conn->error);
+}
 $students_stmt->bind_param("si", $check_date, $current_class_id);
 $students_stmt->execute();
 $students_result = $students_stmt->get_result();
@@ -233,13 +248,13 @@ $unchecked_students = [];
 $checked_students = [];
 
 while ($student = $students_result->fetch_assoc()) {
-    // สร้างข้อมูลนักเรียน
+    // สร้างข้อมูลนักเรียน และเปลี่ยนการตรวจสอบจาก is_present เป็น attendance_status
     $student_data = [
         'id' => $student['student_id'],
         'number' => $student['number'],
         'code' => $student['student_code'],
         'name' => $student['title'] . $student['first_name'] . ' ' . $student['last_name'],
-        'status' => isset($student['is_present']) ? ($student['is_present'] ? 'present' : 'absent') : 'not_checked',
+        'status' => isset($student['attendance_status']) ? ($student['attendance_status'] == 'present' ? 'present' : 'absent') : 'not_checked',
         'time_checked' => $student['check_time'] ?? '',
         'check_method' => $student['check_method'] ?? '',
         'remarks' => $student['remarks'] ?? ''

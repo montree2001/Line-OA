@@ -2,7 +2,7 @@
  * teacher-check-attendance.js - สคริปต์สำหรับหน้าเช็คชื่อนักเรียน
  * 
  * ฟังก์ชันหลัก:
- * - จัดการการเช็คชื่อนักเรียน
+ * - จัดการการเช็คชื่อนักเรียน (มา/ขาด/สาย/ลา)
  * - อัพเดทสถิติการเช็คชื่อ
  * - บันทึกข้อมูลการเช็คชื่อ
  * - สร้างรหัส PIN สำหรับการเช็คชื่อ
@@ -161,9 +161,9 @@ function showMarkAllModal() {
 }
 
 /**
- * เช็คชื่อนักเรียนที่ยังไม่ได้เช็คทั้งหมดเป็น "มาเรียน"
+ * เช็คชื่อนักเรียนที่ยังไม่ได้เช็คทั้งหมดตามสถานะที่เลือก
  */
-function markAllPresent() {
+function markAllWithStatus() {
     // ดึงทุกรายการนักเรียนในแท็บที่ยังไม่ได้เช็ค
     const uncheckedTab = document.getElementById('unchecked-tab');
     const studentItems = uncheckedTab.querySelectorAll('.student-item');
@@ -174,6 +174,9 @@ function markAllPresent() {
         showAlert('ไม่มีนักเรียนที่ต้องเช็คชื่อแล้ว', 'info');
         return;
     }
+    
+    // ดึงสถานะที่เลือก
+    const selectedStatus = document.querySelector('input[name="mark-all-status"]:checked').value;
     
     // ดึงหมายเหตุสำหรับการเช็คชื่อย้อนหลัง (ถ้ามี)
     let remarks = '';
@@ -197,7 +200,7 @@ function markAllPresent() {
     studentItems.forEach(item => {
         studentsToMark.push({
             student_id: item.getAttribute('data-id'),
-            status: 'present',
+            status: selectedStatus,
             remarks: remarks
         });
     });
@@ -256,7 +259,7 @@ function saveMultipleAttendance(students) {
 /**
  * เช็คชื่อนักเรียน (ฟังก์ชันที่เรียกจากปุ่มในหน้าเว็บ)
  * @param {HTMLElement} button - ปุ่มที่ถูกคลิก
- * @param {string} status - สถานะการเข้าแถว (present/absent)
+ * @param {string} status - สถานะการเข้าแถว (present/late/leave/absent)
  * @param {number} studentId - ID ของนักเรียน
  */
 function markAttendance(button, status, studentId) {
@@ -271,11 +274,7 @@ function markAttendance(button, status, studentId) {
         document.getElementById('student-id-input').value = studentId;
         
         // เลือกสถานะการเช็คชื่อตามที่คลิก
-        if (status === 'present') {
-            document.getElementById('status-present').checked = true;
-        } else {
-            document.getElementById('status-absent').checked = true;
-        }
+        document.getElementById('status-' + status).checked = true;
         
         // แสดง Modal
         const modal = document.getElementById('mark-attendance-modal');
@@ -296,18 +295,16 @@ function confirmMarkAttendance() {
     // ดึงข้อมูลจาก Modal
     const studentId = document.getElementById('student-id-input').value;
     const status = document.querySelector('input[name="attendance-status"]:checked').value;
-    let remarks = document.getElementById('attendance-remarks').value.trim();
+    let remarks = '';
     
-    // ตรวจสอบว่ามีการระบุหมายเหตุหรือไม่สำหรับกรณีมาสายหรือลา
-    if ((status === 'late' || status === 'leave') && remarks === '') {
-        showAlert('กรุณาระบุหมายเหตุสำหรับการมาสายหรือลา', 'warning');
-        return;
-    }
-    
-    // ถ้าเป็นการเช็คชื่อย้อนหลัง ให้เพิ่มตรวจสอบหมายเหตุเช่นกัน
-    if (isRetroactive && remarks === '') {
-        showAlert('กรุณาระบุหมายเหตุสำหรับการเช็คชื่อย้อนหลัง', 'warning');
-        return;
+    if (isRetroactive) {
+        remarks = document.getElementById('individual-note').value.trim();
+        
+        // ตรวจสอบว่ามีการระบุหมายเหตุหรือไม่
+        if (remarks === '') {
+            showAlert('กรุณาระบุหมายเหตุสำหรับการเช็คชื่อย้อนหลัง', 'warning');
+            return;
+        }
     }
     
     // ปิด Modal
@@ -326,20 +323,18 @@ function confirmMarkAttendance() {
 /**
  * ฟังก์ชันภายในสำหรับเช็คชื่อนักเรียน
  * @param {HTMLElement} button - ปุ่มที่ถูกคลิก
- * @param {string} status - สถานะการเข้าแถว (present/absent)
+ * @param {string} status - สถานะการเข้าแถว (present/late/leave/absent)
  * @param {number} studentId - ID ของนักเรียน
  */
 function markAttendanceInternal(button, status, studentId) {
     // ดึงรายการนักเรียน
     const studentItem = button.closest('.student-item');
     
-    // ดึงปุ่มมาเรียนและขาดเรียน
-    const presentButton = studentItem.querySelector('.action-button.present');
-    const absentButton = studentItem.querySelector('.action-button.absent');
+    // ดึงปุ่มทั้งหมด
+    const buttons = studentItem.querySelectorAll('.action-button');
     
-    // ลบคลาส active จากทั้งสองปุ่ม
-    presentButton.classList.remove('active');
-    absentButton.classList.remove('active');
+    // ลบคลาส active จากทุกปุ่ม
+    buttons.forEach(btn => btn.classList.remove('active'));
     
     // เพิ่มคลาส active ให้กับปุ่มที่ถูกคลิก
     button.classList.add('active');
@@ -374,9 +369,10 @@ function markAttendanceInternal(button, status, studentId) {
 /**
  * ย้ายรายการนักเรียนไปยังแท็บที่เช็คชื่อแล้ว
  * @param {HTMLElement} studentItem - รายการนักเรียน
- * @param {string} status - สถานะการเข้าแถว (present/absent)
+ * @param {string} status - สถานะการเข้าแถว (present/late/leave/absent)
  */
 function moveToCheckedTab(studentItem, status) {
+    // คลอนรายการ
     const newItem = studentItem.cloneNode(true);
     
     // สร้างรายการใหม่สำหรับแท็บที่เช็คชื่อแล้ว
@@ -388,42 +384,51 @@ function moveToCheckedTab(studentItem, status) {
     const currentTime = new Date();
     const timeString = `${currentTime.getHours().toString().padStart(2, '0')}:${currentTime.getMinutes().toString().padStart(2, '0')}`;
     
-    // สร้างข้อความสถานะตามประเภท
-    let statusHtml = '';
-    if (status === 'present') {
-        statusHtml = '<span class="material-icons">check_circle</span> มา';
-    } else if (status === 'absent') {
-        statusHtml = '<span class="material-icons">cancel</span> ขาด';
-    } else if (status === 'late') {
-        statusHtml = '<span class="material-icons">schedule</span> สาย';
-    } else if (status === 'leave') {
-        statusHtml = '<span class="material-icons">event_note</span> ลา';
+    // กำหนดไอคอนและข้อความตามสถานะ
+    let statusIcon, statusText;
+    
+    switch (status) {
+        case 'present':
+            statusIcon = 'check_circle';
+            statusText = 'มา';
+            break;
+        case 'late':
+            statusIcon = 'schedule';
+            statusText = 'สาย';
+            break;
+        case 'leave':
+            statusIcon = 'event_note';
+            statusText = 'ลา';
+            break;
+        case 'absent':
+        default:
+            statusIcon = 'cancel';
+            statusText = 'ขาด';
+            break;
     }
     
- // สร้างรายการใหม่
- const checkedItem = document.createElement('div');
- checkedItem.className = 'student-item';
- checkedItem.setAttribute('data-name', nameElement.textContent);
- checkedItem.setAttribute('data-id', studentId);
- checkedItem.setAttribute('data-status', status);
-
- checkedItem.innerHTML = `
+    // สร้างรายการใหม่
+    const checkedItem = document.createElement('div');
+    checkedItem.className = 'student-item';
+    checkedItem.setAttribute('data-name', nameElement.textContent);
+    checkedItem.setAttribute('data-id', studentId);
+    checkedItem.setAttribute('data-status', status);
+    
+    checkedItem.innerHTML = `
         <div class="student-number">${number}</div>
         <div class="student-name">${nameElement.innerHTML}</div>
         <div class="student-status ${status}">
-            ${statusHtml}
+            <span class="material-icons">${statusIcon}</span> ${statusText}
         </div>
         <div class="check-info">
             <div class="check-time">${timeString}</div>
             <div class="check-method">ครู</div>
         </div>
     `;
-
-
+    
     // เพิ่มรายการใหม่ไปยังแท็บที่เช็คชื่อแล้ว
-  // เพิ่มรายการใหม่ไปยังแท็บที่เช็คชื่อแล้ว
-  const checkedTab = document.getElementById('checked-tab');
-  const studentList = checkedTab.querySelector('.student-list');
+    const checkedTab = document.getElementById('checked-tab');
+    const studentList = checkedTab.querySelector('.student-list');
     
     if (studentList) {
         // เช็คว่ามีข้อความว่างหรือไม่
@@ -586,21 +591,20 @@ function updateTabCounts() {
  * อัพเดทจำนวนการเข้าแถว
  */
 function updateAttendanceCounters() {
-    // คำนวณนักเรียนมาเรียนและขาดเรียน
+    // คำนวณสถิติการเช็คชื่อ
     const presentCount = document.querySelectorAll('#checked-tab .student-item[data-status="present"]').length;
-    const absentCount = document.querySelectorAll('#checked-tab .student-item[data-status="absent"]').length;
     const lateCount = document.querySelectorAll('#checked-tab .student-item[data-status="late"]').length;
     const leaveCount = document.querySelectorAll('#checked-tab .student-item[data-status="leave"]').length;
+    const absentCount = document.querySelectorAll('#checked-tab .student-item[data-status="absent"]').length;
     const notCheckedCount = document.querySelectorAll('#unchecked-tab .student-item').length;
-  // มาสาย 2 ครั้ง = ขาด 1 ครั้ง
-  const equivalentAbsent = Math.floor(lateCount / 2);
-  const totalAbsent = absentCount + equivalentAbsent;
-  
     
-      // อัพเดทสถิติบนหน้าจอ
-      document.getElementById('present-count').textContent = presentCount;
-      document.getElementById('absent-count').textContent = totalAbsent;
-      document.getElementById('not-checked-count').textContent = notCheckedCount;
+    // ในหน้าเว็บนี้ มา+สาย+ลา จะนับในกลุ่มมาเรียน ส่วนขาดก็จะนับในกลุ่มขาดเรียน
+    const totalPresent = presentCount + lateCount + leaveCount;
+    
+    // อัพเดทสถิติ
+    document.getElementById('present-count').textContent = totalPresent;
+    document.getElementById('absent-count').textContent = absentCount;
+    document.getElementById('not-checked-count').textContent = notCheckedCount;
 }
 
 /**
@@ -634,7 +638,7 @@ function confirmSaveAttendance() {
         });
     });
     
-    // ดึงรายการนักเรียนที่ยังไม่ได้เช็ค
+    // ดึงรายการนักเรียนที่ยังไม่ได้เช็ค (จะเป็นสถานะขาด)
     const uncheckedStudents = document.querySelectorAll('#unchecked-tab .student-item');
     uncheckedStudents.forEach(item => {
         allStudents.push({

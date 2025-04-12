@@ -1,3 +1,12 @@
+<?php
+
+/**
+ * teacher/pages/teacher_check_attendance_content.php
+ * 
+ * เนื้อหาหน้าเช็คชื่อนักเรียนที่ปรับปรุงใหม่
+ * เพิ่มสถานะการเช็คชื่อ: มา, ขาด, สาย, ลา และปรับปรุงปุ่มจากวงกลมเป็นสี่เหลี่ยมขอบมน
+ */
+?>
 <div class="header">
     <a href="home.php" class="header-icon">
         <span class="material-icons">arrow_back</span>
@@ -53,15 +62,15 @@
             <div class="label">ทั้งหมด</div>
         </div>
         <div class="stat-card present">
-            <div class="value" id="present-count"><?php echo $current_class['present_count']; ?></div>
+            <div class="value" id="present-count"><?php echo $present_count; ?></div>
             <div class="label">มาเรียน</div>
         </div>
         <div class="stat-card absent">
-            <div class="value" id="absent-count"><?php echo $current_class['absent_count']; ?></div>
+            <div class="value" id="absent-count"><?php echo $absent_count; ?></div>
             <div class="label">ขาดเรียน</div>
         </div>
         <div class="stat-card not-checked">
-            <div class="value" id="not-checked-count"><?php echo $current_class['not_checked']; ?></div>
+            <div class="value" id="not-checked-count"><?php echo $not_checked; ?></div>
             <div class="label">ยังไม่เช็ค</div>
         </div>
     </div>
@@ -114,20 +123,20 @@
                     <div class="student-item" data-name="<?php echo $student['name']; ?>" data-id="<?php echo $student['id']; ?>">
                         <div class="student-number"><?php echo $student['number']; ?></div>
                         <div class="student-name">
-                            <div><?php echo $student['code']; ?></div>
+
                             <div><?php echo $student['name']; ?></div>
                         </div>
                         <div class="attendance-actions">
-                            <button class="action-button present" onclick="markAttendance(this, 'present', <?php echo $student['id']; ?>)">
+                            <button class="action-button present" title="มาเรียน" onclick="markAttendance(this, 'present', <?php echo $student['id']; ?>)">
                                 <span class="material-icons">check</span>
                             </button>
-                            <button class="action-button late" onclick="markAttendance(this, 'late', <?php echo $student['id']; ?>)">
+                            <button class="action-button late" title="มาสาย" onclick="markAttendance(this, 'late', <?php echo $student['id']; ?>)">
                                 <span class="material-icons">schedule</span>
                             </button>
-                            <button class="action-button leave" onclick="markAttendance(this, 'leave', <?php echo $student['id']; ?>)">
+                            <button class="action-button leave" title="ลา" onclick="markAttendance(this, 'leave', <?php echo $student['id']; ?>)">
                                 <span class="material-icons">event_note</span>
                             </button>
-                            <button class="action-button absent" onclick="markAttendance(this, 'absent', <?php echo $student['id']; ?>)">
+                            <button class="action-button absent" title="ขาด" onclick="markAttendance(this, 'absent', <?php echo $student['id']; ?>)">
                                 <span class="material-icons">close</span>
                             </button>
                         </div>
@@ -166,6 +175,10 @@
                         <div class="student-status <?php echo $student['status']; ?>">
                             <?php if ($student['status'] === 'present'): ?>
                                 <span class="material-icons">check_circle</span> มา
+                            <?php elseif ($student['status'] === 'late'): ?>
+                                <span class="material-icons">schedule</span> สาย
+                            <?php elseif ($student['status'] === 'leave'): ?>
+                                <span class="material-icons">event_note</span> ลา
                             <?php else: ?>
                                 <span class="material-icons">cancel</span> ขาด
                             <?php endif; ?>
@@ -220,7 +233,33 @@
     <div class="modal-content">
         <div class="modal-title">เช็คชื่อนักเรียนทั้งหมด</div>
         <div class="modal-subtitle"><?php echo $current_class['name']; ?></div>
-        <p>คุณต้องการเช็คชื่อนักเรียนที่ยังไม่ได้เช็คทั้งหมดเป็น "มาเรียน" ใช่หรือไม่?</p>
+
+        <div class="mark-all-options">
+            <div class="mark-all-option">
+                <input type="radio" id="mark-all-present" name="mark-all-status" value="present" checked>
+                <label for="mark-all-present" class="status-label present">
+                    <span class="material-icons">check</span> เช็คทั้งหมดเป็น "มาเรียน"
+                </label>
+            </div>
+            <div class="mark-all-option">
+                <input type="radio" id="mark-all-late" name="mark-all-status" value="late">
+                <label for="mark-all-late" class="status-label late">
+                    <span class="material-icons">schedule</span> เช็คทั้งหมดเป็น "มาสาย"
+                </label>
+            </div>
+            <div class="mark-all-option">
+                <input type="radio" id="mark-all-leave" name="mark-all-status" value="leave">
+                <label for="mark-all-leave" class="status-label leave">
+                    <span class="material-icons">event_note</span> เช็คทั้งหมดเป็น "ลา"
+                </label>
+            </div>
+            <div class="mark-all-option">
+                <input type="radio" id="mark-all-absent" name="mark-all-status" value="absent">
+                <label for="mark-all-absent" class="status-label absent">
+                    <span class="material-icons">close</span> เช็คทั้งหมดเป็น "ขาดเรียน"
+                </label>
+            </div>
+        </div>
 
         <?php if ($is_retroactive): ?>
             <div class="retroactive-note">
@@ -231,7 +270,7 @@
 
         <div class="modal-buttons">
             <button class="modal-button cancel" onclick="closeModal('mark-all-modal')">ยกเลิก</button>
-            <button class="modal-button confirm" onclick="markAllPresent()">ยืนยัน</button>
+            <button class="modal-button confirm" onclick="markAllWithStatus()">ยืนยัน</button>
         </div>
     </div>
 </div>
@@ -267,33 +306,28 @@
         <div class="attendance-status-selector">
             <div class="status-option">
                 <input type="radio" id="status-present" name="attendance-status" value="present" checked>
-                <label for="status-present">
-                    <span class="material-icons present">check_circle</span> มาเรียน
+                <label for="status-present" class="status-label present">
+                    <span class="material-icons">check</span> มาเรียน
                 </label>
             </div>
             <div class="status-option">
                 <input type="radio" id="status-late" name="attendance-status" value="late">
-                <label for="status-late">
-                    <span class="material-icons late">schedule</span> มาสาย
+                <label for="status-late" class="status-label late">
+                    <span class="material-icons">schedule</span> มาสาย
                 </label>
             </div>
             <div class="status-option">
                 <input type="radio" id="status-leave" name="attendance-status" value="leave">
-                <label for="status-leave">
-                    <span class="material-icons leave">event_note</span> ลา
+                <label for="status-leave" class="status-label leave">
+                    <span class="material-icons">event_note</span> ลา
                 </label>
             </div>
             <div class="status-option">
                 <input type="radio" id="status-absent" name="attendance-status" value="absent">
-                <label for="status-absent">
-                    <span class="material-icons absent">cancel</span> ขาดเรียน
+                <label for="status-absent" class="status-label absent">
+                    <span class="material-icons">close</span> ขาดเรียน
                 </label>
             </div>
-        </div>
-
-        <div class="remarks-input">
-            <div class="note-title">หมายเหตุ:</div>
-            <textarea id="attendance-remarks" placeholder="ระบุหมายเหตุเพิ่มเติม เช่น สาเหตุการมาสาย เหตุผลการลา"></textarea>
         </div>
 
         <?php if ($is_retroactive): ?>

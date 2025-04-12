@@ -28,15 +28,17 @@ try {
 
 // ดึงข้อมูลครูที่ปรึกษาจากฐานข้อมูล
 $user_id = $_SESSION['user_id'];
+
+// ทดลองใช้การ Query ตรงๆ เพื่อหลีกเลี่ยงปัญหา prepared statement
 $teacher_query = "SELECT t.teacher_id, u.first_name, u.last_name, t.title, u.profile_picture, d.department_name 
                  FROM teachers t 
                  JOIN users u ON t.user_id = u.user_id 
                  LEFT JOIN departments d ON t.department_id = d.department_id 
-                 WHERE t.user_id = ?";
-$teacher_stmt = $conn->prepare($teacher_query);
-$teacher_stmt->bind_param("i", $user_id);
-$teacher_stmt->execute();
-$teacher_result = $teacher_stmt->get_result();
+                 WHERE t.user_id = $user_id";
+$teacher_result = $conn->query($teacher_query);
+if (!$teacher_result) {
+    die("การดึงข้อมูลครูล้มเหลว: " . $conn->error);
+}
 $teacher_data = $teacher_result->fetch_assoc();
 
 // สร้างข้อมูลครูที่ปรึกษา
@@ -56,22 +58,23 @@ $classes_query = "SELECT c.class_id, CONCAT(c.level, '/', d.department_code, '/'
                  JOIN classes c ON ca.class_id = c.class_id 
                  JOIN departments d ON c.department_id = d.department_id 
                  JOIN academic_years ay ON c.academic_year_id = ay.academic_year_id
-                 WHERE ca.teacher_id = ? AND c.is_active = 1 AND ay.is_active = 1
+                 WHERE ca.teacher_id = $teacher_id AND c.is_active = 1 AND ay.is_active = 1
                  ORDER BY ca.is_primary DESC, c.level, c.group_number";
-$classes_stmt = $conn->prepare($classes_query);
-$classes_stmt->bind_param("i", $teacher_id);
-$classes_stmt->execute();
-$classes_result = $classes_stmt->get_result();
+$classes_result = $conn->query($classes_query);
+if (!$classes_result) {
+    die("การดึงข้อมูลชั้นเรียนล้มเหลว: " . $conn->error);
+}
 
 // อ่านข้อมูลห้องเรียนและเตรียมข้อมูลสำหรับแสดงผล
 $teacher_classes = [];
 while ($class = $classes_result->fetch_assoc()) {
     // นับจำนวนนักเรียนในห้อง
-    $student_count_query = "SELECT COUNT(*) as total FROM students WHERE current_class_id = ? AND status = 'กำลังศึกษา'";
-    $student_count_stmt = $conn->prepare($student_count_query);
-    $student_count_stmt->bind_param("i", $class['class_id']);
-    $student_count_stmt->execute();
-    $student_count_result = $student_count_stmt->get_result();
+    $class_id = $class['class_id'];
+    $student_count_query = "SELECT COUNT(*) as total FROM students WHERE current_class_id = $class_id AND status = 'กำลังศึกษา'";
+    $student_count_result = $conn->query($student_count_query);
+    if (!$student_count_result) {
+        continue; // ข้ามห้องเรียนนี้ถ้ามีปัญหา
+    }
     $student_count_data = $student_count_result->fetch_assoc();
     $total_students = $student_count_data['total'];
     
@@ -83,16 +86,19 @@ while ($class = $classes_result->fetch_assoc()) {
                           COUNT(*) as checked_count
                          FROM attendance a 
                          JOIN students s ON a.student_id = s.student_id 
-                         WHERE s.current_class_id = ? AND a.date = ?";
-    $attendance_stmt = $conn->prepare($attendance_query);
-    $attendance_stmt->bind_param("is", $class['class_id'], $today);
-    $attendance_stmt->execute();
-    $attendance_result = $attendance_stmt->get_result();
-    $attendance_data = $attendance_result->fetch_assoc();
-    
-    $present_today = $attendance_data['present_count'] ?? 0;
-    $absent_today = $attendance_data['absent_count'] ?? 0;
-    $checked_count = $attendance_data['checked_count'] ?? 0;
+                         WHERE s.current_class_id = $class_id AND a.date = '$today'";
+    $attendance_result = $conn->query($attendance_query);
+    if (!$attendance_result) {
+        // ตั้งค่าเริ่มต้นถ้าคำสั่ง SQL ผิดพลาด
+        $present_today = 0;
+        $absent_today = 0;
+        $checked_count = 0;
+    } else {
+        $attendance_data = $attendance_result->fetch_assoc();
+        $present_today = $attendance_data['present_count'] ?? 0;
+        $absent_today = $attendance_data['absent_count'] ?? 0;
+        $checked_count = $attendance_data['checked_count'] ?? 0;
+    }
     $not_checked = $total_students - $checked_count;
     
     // คำนวณอัตราการเข้าแถวเฉลี่ย
@@ -100,26 +106,28 @@ while ($class = $classes_result->fetch_assoc()) {
                               (SUM(CASE WHEN a.is_present = 1 THEN 1 ELSE 0 END) * 100.0 / COUNT(*)) as rate
                              FROM attendance a 
                              JOIN students s ON a.student_id = s.student_id 
-                             WHERE s.current_class_id = ? AND a.date BETWEEN DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY) AND CURRENT_DATE()";
-    $attendance_rate_stmt = $conn->prepare($attendance_rate_query);
-    $attendance_rate_stmt->bind_param("i", $class['class_id']);
-    $attendance_rate_stmt->execute();
-    $attendance_rate_result = $attendance_rate_stmt->get_result();
-    $attendance_rate_data = $attendance_rate_result->fetch_assoc();
-    $attendance_rate = $attendance_rate_data['rate'] ?? 0;
+                             WHERE s.current_class_id = $class_id AND a.date BETWEEN DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY) AND CURRENT_DATE()";
+    $attendance_rate_result = $conn->query($attendance_rate_query);
+    if (!$attendance_rate_result) {
+        $attendance_rate = 0;
+    } else {
+        $attendance_rate_data = $attendance_rate_result->fetch_assoc();
+        $attendance_rate = $attendance_rate_data['rate'] ?? 0;
+    }
     
     // หาจำนวนนักเรียนเสี่ยงตกกิจกรรม
     $risk_query = "SELECT COUNT(DISTINCT s.student_id) as risk_count
                   FROM students s
                   JOIN student_academic_records sar ON s.student_id = sar.student_id
-                  WHERE s.current_class_id = ? 
+                  WHERE s.current_class_id = $class_id 
                   AND sar.total_absence_days > (SELECT required_attendance_days * 0.3 FROM academic_years WHERE is_active = 1)";
-    $risk_stmt = $conn->prepare($risk_query);
-    $risk_stmt->bind_param("i", $class['class_id']);
-    $risk_stmt->execute();
-    $risk_result = $risk_stmt->get_result();
-    $risk_data = $risk_result->fetch_assoc();
-    $at_risk_count = $risk_data['risk_count'] ?? 0;
+    $risk_result = $conn->query($risk_query);
+    if (!$risk_result) {
+        $at_risk_count = 0;
+    } else {
+        $risk_data = $risk_result->fetch_assoc();
+        $at_risk_count = $risk_data['risk_count'] ?? 0;
+    }
     
     // เพิ่มในอาร์เรย์ของห้องเรียน
     $teacher_classes[] = [
@@ -138,11 +146,6 @@ while ($class = $classes_result->fetch_assoc()) {
         'attendance_rate' => number_format($attendance_rate, 1),
         'at_risk_count' => $at_risk_count
     ];
-    
-    $student_count_stmt->close();
-    $attendance_stmt->close();
-    $attendance_rate_stmt->close();
-    $risk_stmt->close();
 }
 
 // ดึงห้องเรียนที่กำลังดูข้อมูล (จาก URL หรือค่าเริ่มต้น)
@@ -173,22 +176,17 @@ $active_pin = null;
 if ($current_class !== null) {
     $pin_query = "SELECT pin_code, TIMESTAMPDIFF(MINUTE, NOW(), valid_until) as expire_in_minutes
                  FROM pins
-                 WHERE creator_user_id = ? AND class_id = ? AND is_active = 1 AND valid_until > NOW()
+                 WHERE creator_user_id = $user_id AND class_id = $current_class_id AND is_active = 1 AND valid_until > NOW()
                  ORDER BY valid_until DESC
                  LIMIT 1";
-    $pin_stmt = $conn->prepare($pin_query);
-    $pin_stmt->bind_param("ii", $user_id, $current_class_id);
-    $pin_stmt->execute();
-    $pin_result = $pin_stmt->get_result();
-    
-    if ($pin_result->num_rows > 0) {
+    $pin_result = $conn->query($pin_query);
+    if ($pin_result && $pin_result->num_rows > 0) {
         $pin_data = $pin_result->fetch_assoc();
         $active_pin = [
             'code' => $pin_data['pin_code'],
             'expire_in_minutes' => $pin_data['expire_in_minutes']
         ];
     }
-    $pin_stmt->close();
 }
 
 // ดึงข้อมูลนักเรียน 5 คนล่าสุดที่เช็คชื่อ
@@ -201,25 +199,22 @@ if ($current_class !== null) {
                             FROM attendance a
                             JOIN students s ON a.student_id = s.student_id
                             JOIN users u ON s.user_id = u.user_id
-                            WHERE s.current_class_id = ? AND a.date = ?
+                            WHERE s.current_class_id = $current_class_id AND a.date = '$today'
                             ORDER BY a.check_time DESC
                             LIMIT 5";
-    $student_summary_stmt = $conn->prepare($student_summary_query);
-    $student_summary_stmt->bind_param("is", $current_class_id, $today);
-    $student_summary_stmt->execute();
-    $student_summary_result = $student_summary_stmt->get_result();
-    
-    while ($student = $student_summary_result->fetch_assoc()) {
-        $students_summary[] = [
-            'id' => $student['student_id'],
-            'number' => $student['number'],
-            'student_code' => $student['student_code'],
-            'name' => $student['title'] . $student['first_name'] . ' ' . $student['last_name'],
-            'status' => $student['is_present'] ? 'present' : 'absent',
-            'time' => $student['check_time']
-        ];
+    $student_summary_result = $conn->query($student_summary_query);
+    if ($student_summary_result) {
+        while ($student = $student_summary_result->fetch_assoc()) {
+            $students_summary[] = [
+                'id' => $student['student_id'],
+                'number' => $student['number'],
+                'student_code' => $student['student_code'],
+                'name' => $student['title'] . $student['first_name'] . ' ' . $student['last_name'],
+                'status' => $student['is_present'] ? 'present' : 'absent',
+                'time' => $student['check_time']
+            ];
+        }
     }
-    $student_summary_stmt->close();
 }
 
 // ดึงข้อมูลนักเรียนที่มีความเสี่ยงตกกิจกรรม
@@ -227,32 +222,32 @@ $at_risk_students = [];
 if ($current_class !== null) {
     $risk_students_query = "SELECT s.student_id, s.student_code, s.title, u.first_name, u.last_name,
                            sar.total_attendance_days, sar.total_absence_days,
-                           (sar.total_attendance_days * 100.0 / (sar.total_attendance_days + sar.total_absence_days)) as attendance_rate,
+                           CASE 
+                               WHEN (sar.total_attendance_days + sar.total_absence_days) = 0 THEN 0 
+                               ELSE (sar.total_attendance_days * 100.0 / (sar.total_attendance_days + sar.total_absence_days)) 
+                           END as attendance_rate,
                            (SELECT DATE_FORMAT(MAX(a.date), '%d/%m/%Y') FROM attendance a WHERE a.student_id = s.student_id AND a.is_present = 0) as last_absent,
                            (SELECT COUNT(*) + 1 FROM students WHERE current_class_id = s.current_class_id AND student_code < s.student_code) as number
                           FROM students s
                           JOIN users u ON s.user_id = u.user_id
                           JOIN student_academic_records sar ON s.student_id = sar.student_id
-                          WHERE s.current_class_id = ? AND s.status = 'กำลังศึกษา'
+                          WHERE s.current_class_id = $current_class_id AND s.status = 'กำลังศึกษา'
                           AND sar.total_absence_days > (SELECT required_attendance_days * 0.3 FROM academic_years WHERE is_active = 1)
                           ORDER BY attendance_rate ASC
                           LIMIT 5";
-    $risk_students_stmt = $conn->prepare($risk_students_query);
-    $risk_students_stmt->bind_param("i", $current_class_id);
-    $risk_students_stmt->execute();
-    $risk_students_result = $risk_students_stmt->get_result();
-    
-    while ($student = $risk_students_result->fetch_assoc()) {
-        $at_risk_students[] = [
-            'id' => $student['student_id'],
-            'number' => $student['number'],
-            'name' => $student['title'] . $student['first_name'] . ' ' . $student['last_name'],
-            'attendance_rate' => number_format($student['attendance_rate'], 1),
-            'absent_days' => $student['total_absence_days'],
-            'last_absent' => $student['last_absent'] ?? 'ไม่มีข้อมูล'
-        ];
+    $risk_students_result = $conn->query($risk_students_query);
+    if ($risk_students_result) {
+        while ($student = $risk_students_result->fetch_assoc()) {
+            $at_risk_students[] = [
+                'id' => $student['student_id'],
+                'number' => $student['number'],
+                'name' => $student['title'] . $student['first_name'] . ' ' . $student['last_name'],
+                'attendance_rate' => number_format($student['attendance_rate'], 1),
+                'absent_days' => $student['total_absence_days'],
+                'last_absent' => $student['last_absent'] ?? 'ไม่มีข้อมูล'
+            ];
+        }
     }
-    $risk_students_stmt->close();
 }
 
 // ดึงประกาศล่าสุด
@@ -260,27 +255,22 @@ $announcements = [];
 $announcements_query = "SELECT announcement_id, title, content, DATE_FORMAT(created_at, '%d %b %Y') as formatted_date
                        FROM announcements
                        WHERE status = 'active' AND (is_all_targets = 1 OR target_department IS NULL OR 
-                             target_department = (SELECT department_id FROM teachers WHERE teacher_id = ?))
+                             target_department = (SELECT department_id FROM teachers WHERE teacher_id = $teacher_id))
                        ORDER BY created_at DESC
                        LIMIT 3";
-$announcements_stmt = $conn->prepare($announcements_query);
-$announcements_stmt->bind_param("i", $teacher_id);
-$announcements_stmt->execute();
-$announcements_result = $announcements_stmt->get_result();
-
-while ($announcement = $announcements_result->fetch_assoc()) {
-    $announcements[] = [
-        'id' => $announcement['announcement_id'],
-        'title' => $announcement['title'],
-        'content' => $announcement['content'],
-        'date' => $announcement['formatted_date']
-    ];
+$announcements_result = $conn->query($announcements_query);
+if ($announcements_result) {
+    while ($announcement = $announcements_result->fetch_assoc()) {
+        $announcements[] = [
+            'id' => $announcement['announcement_id'],
+            'title' => $announcement['title'],
+            'content' => $announcement['content'],
+            'date' => $announcement['formatted_date']
+        ];
+    }
 }
 
 // ปิดการเชื่อมต่อฐานข้อมูล
-$teacher_stmt->close();
-$classes_stmt->close();
-$announcements_stmt->close();
 $conn->close();
 
 // รวม CSS และ JS
@@ -301,7 +291,6 @@ $content_path = 'pages/teacher_home_content.php';
 require_once 'templates/header.php';
 require_once 'templates/main_content.php';
 require_once 'templates/footer.php';
-
 ?>
 
 <script src="assets/js/teacher-home.js?v=<?php echo time(); ?>"></script>
