@@ -1269,23 +1269,41 @@ function updateAttendanceCounters() {
 }
 
 /**
- * ฟังก์ชันเมื่อคลิกปุ่มบันทึก
+ * ฟังก์ชันเมื่อคลิกปุ่มบันทึก - แสดง Modal ยืนยันการบันทึก
  */
 function saveAttendance() {
-    // ตรวจสอบว่าถ้ามีนักเรียนที่ยังไม่ได้เช็คชื่อ
-    const uncheckedCount = document.querySelectorAll('#unchecked-tab .student-item').length;
+    console.log("saveAttendance เริ่มทำงาน");
     
-    // ถ้ามี ให้แสดง Modal ยืนยัน
+    // เวอร์ชั่นใหม่: ไม่ต้องตรวจสอบข้อมูลก่อน เพราะเราต้องการให้ Modal แสดงเสมอ
+    // เพื่อยืนยันการบันทึกทั้งกรณีมีการเปลี่ยนแปลงและไม่มีการเปลี่ยนแปลง
+    
+    // ตรวจสอบจำนวนนักเรียนที่ยังไม่ได้เช็คชื่อ
+    const uncheckedCount = document.querySelectorAll('#unchecked-tab .student-item').length;
+    console.log("จำนวนนักเรียนที่ยังไม่ได้เช็คชื่อ:", uncheckedCount);
+    
+    // อัพเดทจำนวนนักเรียนที่ยังไม่ได้เช็คชื่อในโมดัล
+    const remainingStudents = document.getElementById('remaining-students');
+    if (remainingStudents) {
+        remainingStudents.textContent = uncheckedCount;
+    }
+    
+    // แสดง Modal ยืนยัน
     const modal = document.getElementById('save-modal');
+    console.log("Modal element:", modal);
+    
     if (modal) {
         modal.classList.add('active');
         document.body.style.overflow = 'hidden';
+        console.log("เปิด Modal แล้ว");
+    } else {
+        console.error("ไม่พบ Modal element ที่มี ID 'save-modal'");
+        // หากไม่พบ Modal ให้เรียก confirmSaveAttendance() เลย
+        confirmSaveAttendance();
     }
-   
 }
 
 /**
- * ยืนยันการบันทึกการเช็คชื่อ
+ * ยืนยันการบันทึกการเช็คชื่อ - รวบรวมข้อมูลและส่งไปยัง API
  */
 function confirmSaveAttendance() {
     // รวบรวมข้อมูลการเช็คชื่อทั้งหมด
@@ -1294,39 +1312,54 @@ function confirmSaveAttendance() {
     // ดึงรายการนักเรียนที่เช็คแล้ว (อยู่ในแท็บ "เช็คชื่อแล้ว")
     const checkedStudents = document.querySelectorAll('#checked-tab .student-item');
     checkedStudents.forEach(item => {
-        // ดึงหมายเหตุ (ถ้ามี)
-        const remarksElem = item.querySelector('.student-remarks');
-        const remarks = remarksElem ? remarksElem.textContent : '';
+        const studentId = item.getAttribute('data-id');
         
-        allStudents.push({
-            student_id: item.getAttribute('data-id'),
-            status: item.getAttribute('data-status'),
-            remarks: remarks
-        });
+        // ตรวจสอบว่ามีข้อมูลใน attendanceData หรือไม่
+        const studentDataIndex = attendanceData.students.findIndex(s => s.student_id === studentId);
+        
+        if (studentDataIndex >= 0) {
+            // ถ้ามี ใช้ข้อมูลจาก attendanceData
+            allStudents.push({
+                student_id: studentId,
+                status: attendanceData.students[studentDataIndex].status,
+                remarks: attendanceData.students[studentDataIndex].remarks || ''
+            });
+        } else {
+            // ถ้าไม่มี ใช้ข้อมูลจาก DOM
+            const remarksElem = item.querySelector('.student-remarks');
+            const remarks = remarksElem ? remarksElem.textContent : '';
+            
+            allStudents.push({
+                student_id: studentId,
+                status: item.getAttribute('data-status'),
+                remarks: remarks
+            });
+        }
     });
     
     // ดึงรายการนักเรียนที่ยังไม่ได้เช็ค (อยู่ในแท็บ "รอเช็คชื่อ")
     const uncheckedStudents = document.querySelectorAll('#unchecked-tab .student-item');
     uncheckedStudents.forEach(item => {
-        // ดึงสถานะที่เลือกจาก attribute
-        const status = item.getAttribute('data-status') || 'absent';
-        let remarks = '';
+        const studentId = item.getAttribute('data-id');
         
-        // ถ้ามีปุ่มที่ active อยู่ แสดงว่ามีการเลือกสถานะไว้แล้ว
-        const activeButton = item.querySelector('.action-button.active');
-        if (activeButton) {
-            if (activeButton.classList.contains('present')) {
-                remarks = attendanceData.students.find(s => s.student_id === item.getAttribute('data-id'))?.remarks || '';
-            } else if (activeButton.classList.contains('absent')) {
-                remarks = attendanceData.students.find(s => s.student_id === item.getAttribute('data-id'))?.remarks || '';
-            }
+        // ตรวจสอบว่ามีข้อมูลใน attendanceData หรือไม่
+        const studentDataIndex = attendanceData.students.findIndex(s => s.student_id === studentId);
+        
+        if (studentDataIndex >= 0) {
+            // ถ้ามี ใช้ข้อมูลจาก attendanceData
+            allStudents.push({
+                student_id: studentId,
+                status: attendanceData.students[studentDataIndex].status,
+                remarks: attendanceData.students[studentDataIndex].remarks || ''
+            });
+        } else {
+            // ถ้าไม่มี ใช้ค่าเริ่มต้นเป็น absent
+            allStudents.push({
+                student_id: studentId,
+                status: 'absent',
+                remarks: ''
+            });
         }
-        
-        allStudents.push({
-            student_id: item.getAttribute('data-id'),
-            status: status,
-            remarks: remarks
-        });
     });
     
     // ดึงหมายเหตุสำหรับการเช็คชื่อย้อนหลัง (ถ้ามี)
@@ -1391,9 +1424,9 @@ function confirmSaveAttendance() {
                 // แสดงข้อความแจ้งเตือน
                 showAlert('บันทึกการเช็คชื่อเรียบร้อย', 'success');
                 
-                // นำทางไปยังหน้ารายงาน
+                // นำทางไปยังหน้าหลัก (ปรับเป็นหน้าเดิมแทนเพื่อให้ครูตรวจสอบผลการบันทึก)
                 setTimeout(() => {
-                    window.location.href = 'home.php?class_id=' + currentClassId;
+                    window.location.reload();
                 }, 1500);
             } else {
                 // แสดงข้อความเมื่อมีข้อผิดพลาด
@@ -1412,6 +1445,8 @@ function confirmSaveAttendance() {
         });
     }
 }
+
+
 
 /**
  * จัดการเหตุการณ์คลิกที่รายการนักเรียน
