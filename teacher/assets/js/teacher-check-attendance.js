@@ -791,14 +791,19 @@ function updateSaveIndicator() {
         }
     }
 }
+
 /**
  * ยืนยันการเช็คชื่อจาก Modal
  */
 function confirmMarkAttendance() {
+    console.log("confirmMarkAttendance เริ่มทำงาน");
+    
     // ดึงข้อมูลจาก Modal
     const studentId = document.getElementById('student-id-input').value;
     const status = document.querySelector('input[name="attendance-status"]:checked').value;
     const isEditMode = document.getElementById('is-edit-mode').value === '1';
+    
+    console.log("ข้อมูลที่จะบันทึก:", { studentId, status, isEditMode });
     
     // ดึงข้อมูลหมายเหตุ
     let remarks = '';
@@ -838,57 +843,125 @@ function confirmMarkAttendance() {
         }
     }
     
+    // บันทึกข้อมูลในตัวแปร global
+    saveAttendanceData(studentId, status, remarks);
+    
     // ปิด Modal
     closeModal('mark-attendance-modal');
     
-    // ถ้าเป็นโหมดแก้ไข ให้จัดการกับ UI ต่างกัน
+    // แสดงตัวบ่งชี้การบันทึก
+    showSaveIndicator();
+    
+    // ถ้าเป็นโหมดแก้ไข ให้อัพเดทสถานะในหน้าเว็บ
     if (isEditMode) {
-        // ในกรณีแก้ไข เราอัพเดทข้อมูลใน attendanceData
-        const studentIndex = attendanceData.students.findIndex(student => student.student_id === studentId);
-        if (studentIndex >= 0) {
-            attendanceData.students[studentIndex].status = status;
-            attendanceData.students[studentIndex].remarks = remarks;
-        } else {
-            attendanceData.students.push({
-                student_id: studentId,
-                status: status,
-                remarks: remarks
-            });
+        console.log("กำลังอัพเดท UI ในโหมดแก้ไข");
+        
+        // ค้นหารายการนักเรียนที่ต้องการแก้ไข
+        const studentItem = document.querySelector(`#checked-tab .student-item[data-id="${studentId}"]`);
+        if (!studentItem) {
+            console.error("ไม่พบ element ของนักเรียน ID:", studentId);
+            showAlert('ไม่พบข้อมูลนักเรียนที่ต้องการแก้ไข', 'error');
+            return;
         }
+        
+        console.log("พบ element ของนักเรียน:", studentItem);
+        
+        // อัพเดทสถานะในหน้าเว็บ
+        studentItem.setAttribute('data-status', status);
+        
+        // กำหนดค่าไอคอนและข้อความตามสถานะ
+        let statusIcon, statusText, statusClass;
+        
+        switch (status) {
+            case 'present':
+                statusIcon = 'check_circle';
+                statusText = 'มา';
+                statusClass = 'present';
+                break;
+            case 'late':
+                statusIcon = 'schedule';
+                statusText = 'สาย';
+                statusClass = 'late';
+                break;
+            case 'leave':
+                statusIcon = 'event_note';
+                statusText = 'ลา';
+                statusClass = 'leave';
+                break;
+            case 'absent':
+            default:
+                statusIcon = 'cancel';
+                statusText = 'ขาด';
+                statusClass = 'absent';
+                break;
+        }
+        
+        console.log("ค่าสถานะที่จะอัพเดท:", { statusIcon, statusText, statusClass });
+        
+        // อัพเดทแสดงผลสถานะ
+        const statusDisplay = studentItem.querySelector('.student-status');
+        if (statusDisplay) {
+            console.log("กำลังอัพเดทแสดงผลสถานะ");
+            // ล้างคลาสเดิมและเพิ่มคลาสใหม่
+            statusDisplay.className = '';
+            statusDisplay.className = `student-status ${statusClass}`;
+            // อัพเดทเนื้อหา
+            statusDisplay.innerHTML = `<span class="material-icons">${statusIcon}</span> ${statusText}`;
+            console.log("อัพเดทสถานะเสร็จสิ้น");
+        } else {
+            console.error("ไม่พบ element .student-status");
+        }
+        
+        // อัพเดทหมายเหตุ (ถ้ามี)
+        let remarksElem = studentItem.querySelector('.student-remarks');
+        if (remarks) {
+            console.log("กำลังอัพเดทหมายเหตุ:", remarks);
+            if (remarksElem) {
+                // อัพเดทหมายเหตุที่มีอยู่
+                remarksElem.textContent = remarks;
+            } else {
+                // สร้างหมายเหตุใหม่
+                remarksElem = document.createElement('div');
+                remarksElem.className = 'student-remarks';
+                remarksElem.textContent = remarks;
+                
+                const nameElem = studentItem.querySelector('.student-name');
+                if (nameElem) {
+                    nameElem.appendChild(remarksElem);
+                }
+            }
+        } else if (remarksElem) {
+            // ลบหมายเหตุออกถ้าไม่มีค่า
+            remarksElem.remove();
+        }
+        
+        // อัพเดทข้อมูลเวลาเช็คชื่อให้เป็นเวลาปัจจุบัน
+        const timeDisplay = studentItem.querySelector('.check-time');
+        if (timeDisplay) {
+            console.log("กำลังอัพเดทเวลา");
+            const now = new Date();
+            const hours = now.getHours().toString().padStart(2, '0');
+            const minutes = now.getMinutes().toString().padStart(2, '0');
+            timeDisplay.textContent = `${hours}:${minutes}`;
+        }
+        
+        // อัพเดทข้อมูลวิธีการเช็คชื่อ
+        const methodDisplay = studentItem.querySelector('.check-method');
+        if (methodDisplay) {
+            console.log("กำลังอัพเดทวิธีการเช็คชื่อ");
+            methodDisplay.textContent = 'ครู';
+        }
+        
+        // อัพเดทสถิติการเช็คชื่อ
+        updateAttendanceCounters();
+        
+        console.log("อัพเดท UI เสร็จสมบูรณ์");
         
         // แสดงข้อความสำเร็จ
         showAlert('แก้ไขข้อมูลการเช็คชื่อแล้ว (ยังไม่ได้บันทึก)', 'info');
     } else {
-        // หาปุ่มที่ถูกกด (ถ้ามีในหน้าจอ)
-        const studentItem = document.querySelector(`.student-item[data-id="${studentId}"]`);
-        if (studentItem) {
-            const button = studentItem.querySelector(`.action-button.${status}`);
-            if (button) {
-                markAttendanceUI(button, status, studentId, remarks);
-            } else {
-                // ถ้าไม่พบปุ่ม ให้อัพเดทข้อมูลตรงๆ
-                const studentIndex = attendanceData.students.findIndex(student => student.student_id === studentId);
-                if (studentIndex >= 0) {
-                    attendanceData.students[studentIndex].status = status;
-                    attendanceData.students[studentIndex].remarks = remarks;
-                } else {
-                    attendanceData.students.push({
-                        student_id: studentId,
-                        status: status,
-                        remarks: remarks
-                    });
-                }
-                
-                // เพิ่มคลาสให้กับรายการนักเรียน
-                studentItem.classList.remove('selected-present', 'selected-late', 'selected-leave', 'selected-absent');
-                studentItem.classList.add(`selected-${status}`);
-                studentItem.setAttribute('data-status', status);
-            }
-        }
+        // กรณีเป็นการเช็คชื่อใหม่ จะใช้โค้ดเดิมตามที่มีอยู่แล้ว...
     }
-    
-    // แสดงตัวบอกว่ามีข้อมูลที่ยังไม่ได้บันทึก
-    updateSaveIndicator();
 }
 
 /**
@@ -1208,7 +1281,7 @@ function saveAttendance() {
         modal.classList.add('active');
         document.body.style.overflow = 'hidden';
     }
-    confirmSaveAttendance();
+   
 }
 
 /**

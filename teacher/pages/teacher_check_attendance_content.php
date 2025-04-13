@@ -208,7 +208,7 @@
     </div>
 
     <!-- ปุ่มลอย -->
-    <button class="floating-button" onclick="saveAttendance()">
+    <button class="floating-button" onclick="confirmSaveAttendance()">
         <span class="material-icons">save</span>
     </button>
 </div>
