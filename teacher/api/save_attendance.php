@@ -1,26 +1,28 @@
 <?php
 /**
- * api/save_attendance.php - API บันทึกการเช็คชื่อนักเรียน
+ * api/save_attendance.php - API สำหรับบันทึกการเช็คชื่อนักเรียน
  * 
- * รับข้อมูล:
- * - class_id: รหัสห้องเรียน
- * - date: วันที่เช็คชื่อ
- * - teacher_id: รหัสครูผู้เช็คชื่อ
- * - students: รายการนักเรียนที่เช็คชื่อ (array)
- *   - student_id: รหัสนักเรียน
- *   - status: สถานะการเช็คชื่อ (present/late/leave/absent)
- *   - remarks: หมายเหตุ (ถ้ามี)
- * - is_retroactive: เป็นการเช็คชื่อย้อนหลังหรือไม่ (boolean)
- * - check_method: วิธีการเช็คชื่อ (Manual/PIN/QR_Code/GPS)
+ * รับข้อมูล JSON:
+ * {
+ *   "class_id": int,             // รหัสห้องเรียน
+ *   "date": "YYYY-MM-DD",        // วันที่เช็คชื่อ
+ *   "teacher_id": int,           // รหัสครูผู้เช็คชื่อ
+ *   "students": [                // รายการนักเรียน
+ *     {
+ *       "student_id": int,       // รหัสนักเรียน
+ *       "status": string,        // สถานะ (present/late/leave/absent)
+ *       "remarks": string        // หมายเหตุ (ถ้ามี)
+ *     },
+ *     ...
+ *   ],
+ *   "is_retroactive": bool,      // เป็นการเช็คชื่อย้อนหลังหรือไม่
+ *   "check_method": string       // วิธีการเช็คชื่อ (Manual/PIN/QR_Code/GPS)
+ * }
  */
 
 // เริ่มต้น session และตรวจสอบการล็อกอิน
 session_start();
-header('Content-Type: application/json');
-
-// แสดงข้อผิดพลาดเพื่อช่วยในการดีบัก
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
+header('Content-Type: application/json; charset=UTF-8');
 
 // ตรวจสอบการล็อกอิน
 if (!isset($_SESSION['user_id']) || ($_SESSION['role'] !== 'teacher' && $_SESSION['role'] !== 'admin')) {
@@ -47,34 +49,31 @@ $input_data = json_decode(file_get_contents('php://input'), true);
 if (!isset($input_data['class_id']) || empty($input_data['class_id']) ||
     !isset($input_data['date']) || empty($input_data['date']) ||
     !isset($input_data['teacher_id']) || empty($input_data['teacher_id']) ||
-    !isset($input_data['students']) || empty($input_data['students'])) {
+    !isset($input_data['students']) || !is_array($input_data['students'])) {
     echo json_encode([
         'success' => false,
-        'message' => 'ข้อมูลไม่ครบถ้วน'
+        'message' => 'ข้อมูลไม่ครบถ้วนหรือไม่ถูกต้อง'
     ]);
     exit;
 }
 
 // เรียกใช้ไฟล์การเชื่อมต่อฐานข้อมูล
 require_once '../../config/db_config.php';
+require_once '../../db_connect.php';
 
 // เชื่อมต่อฐานข้อมูล
 try {
-    $conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
-    if ($conn->connect_error) {
-        throw new Exception("การเชื่อมต่อฐานข้อมูลล้มเหลว: " . $conn->connect_error);
-    }
-    $conn->set_charset("utf8mb4");
+    $db = getDB();
 } catch (Exception $e) {
     echo json_encode([
         'success' => false,
-        'message' => $e->getMessage()
+        'message' => 'การเชื่อมต่อฐานข้อมูลล้มเหลว: ' . $e->getMessage()
     ]);
     exit;
 }
 
 // เริ่ม Transaction
-$conn->begin_transaction();
+$db->beginTransaction();
 
 try {
     // เก็บค่าที่ส่งมา
@@ -96,84 +95,63 @@ try {
         $check_permission_query = "SELECT ca.class_id 
                                   FROM class_advisors ca 
                                   JOIN teachers t ON ca.teacher_id = t.teacher_id 
-                                  WHERE t.teacher_id = ? AND ca.class_id = ?";
+                                  WHERE t.teacher_id = :teacher_id AND ca.class_id = :class_id";
         
-        $stmt = $conn->prepare($check_permission_query);
-        
-        if (!$stmt) {
-            throw new Exception("เตรียมคำสั่ง SQL ล้มเหลว: " . $conn->error);
-        }
-        
-        $stmt->bind_param("ii", $teacher_id, $class_id);
+        $stmt = $db->prepare($check_permission_query);
+        $stmt->bindParam(':teacher_id', $teacher_id, PDO::PARAM_INT);
+        $stmt->bindParam(':class_id', $class_id, PDO::PARAM_INT);
         $stmt->execute();
-        $result = $stmt->get_result();
         
-        if ($result->num_rows === 0) {
+        if ($stmt->rowCount() === 0) {
             throw new Exception("คุณไม่มีสิทธิ์ในการเช็คชื่อนักเรียนห้องนี้");
         }
-        $stmt->close();
     }
     
     // ดึงรหัสปีการศึกษาปัจจุบัน
     $academic_year_query = "SELECT academic_year_id FROM academic_years WHERE is_active = 1";
-    $academic_year_result = $conn->query($academic_year_query);
+    $stmt = $db->query($academic_year_query);
     
-    if (!$academic_year_result || $academic_year_result->num_rows === 0) {
+    if ($stmt->rowCount() === 0) {
         throw new Exception("ไม่พบข้อมูลปีการศึกษาปัจจุบัน");
     }
     
-    $academic_year_data = $academic_year_result->fetch_assoc();
+    $academic_year_data = $stmt->fetch(PDO::FETCH_ASSOC);
     $academic_year_id = $academic_year_data['academic_year_id'];
     
     // ตรวจสอบว่าวันที่เช็คอยู่ในช่วงปีการศึกษาปัจจุบันหรือไม่
     $check_date_query = "SELECT * FROM academic_years 
-                        WHERE academic_year_id = ? 
-                        AND ? BETWEEN start_date AND end_date";
-    $check_date_stmt = $conn->prepare($check_date_query);
+                        WHERE academic_year_id = :academic_year_id 
+                        AND :check_date BETWEEN start_date AND end_date";
     
-    if (!$check_date_stmt) {
-        throw new Exception("เตรียมคำสั่ง SQL ล้มเหลว: " . $conn->error);
-    }
+    $stmt = $db->prepare($check_date_query);
+    $stmt->bindParam(':academic_year_id', $academic_year_id, PDO::PARAM_INT);
+    $stmt->bindParam(':check_date', $check_date, PDO::PARAM_STR);
+    $stmt->execute();
     
-    $check_date_stmt->bind_param("is", $academic_year_id, $check_date);
-    $check_date_stmt->execute();
-    $check_date_result = $check_date_stmt->get_result();
-    
-    if ($check_date_result->num_rows === 0) {
+    if ($stmt->rowCount() === 0) {
         throw new Exception("วันที่เช็คชื่อไม่อยู่ในช่วงปีการศึกษาปัจจุบัน");
     }
-    $check_date_stmt->close();
     
     // เตรียม Prepared Statements
-    $delete_stmt = $conn->prepare("DELETE FROM attendance WHERE student_id = ? AND date = ?");
-    $insert_stmt = $conn->prepare("INSERT INTO attendance 
-                                  (student_id, academic_year_id, date, attendance_status, check_method, 
-                                  checker_user_id, check_time, created_at, remarks) 
-                                  VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW(), ?)");
-    
-    if (!$delete_stmt || !$insert_stmt) {
-        throw new Exception("เตรียมคำสั่ง SQL ล้มเหลว: " . $conn->error);
-    }
+    $delete_stmt = $db->prepare("DELETE FROM attendance WHERE student_id = :student_id AND date = :check_date");
+    $insert_stmt = $db->prepare("INSERT INTO attendance 
+                               (student_id, academic_year_id, date, attendance_status, check_method, 
+                               checker_user_id, check_time, created_at, updated_at, remarks) 
+                               VALUES (:student_id, :academic_year_id, :check_date, :status, :check_method, 
+                               :checker_user_id, NOW(), NOW(), NOW(), :remarks)");
     
     // ดึง user_id ของครูที่เช็คชื่อ
-    $user_id_query = "SELECT user_id FROM teachers WHERE teacher_id = ?";
-    $user_id_stmt = $conn->prepare($user_id_query);
+    $user_id_query = "SELECT user_id FROM teachers WHERE teacher_id = :teacher_id";
+    $stmt = $db->prepare($user_id_query);
+    $stmt->bindParam(':teacher_id', $teacher_id, PDO::PARAM_INT);
+    $stmt->execute();
     
-    if (!$user_id_stmt) {
-        throw new Exception("เตรียมคำสั่ง SQL ล้มเหลว: " . $conn->error);
-    }
-    
-    $user_id_stmt->bind_param("i", $teacher_id);
-    $user_id_stmt->execute();
-    $user_id_result = $user_id_stmt->get_result();
-    
-    if ($user_id_result->num_rows === 0) {
+    if ($stmt->rowCount() === 0) {
         throw new Exception("ไม่พบข้อมูลครูที่เช็คชื่อ");
     }
     
-    $user_id_data = $user_id_result->fetch_assoc();
+    $user_id_data = $stmt->fetch(PDO::FETCH_ASSOC);
     $checker_user_id = $user_id_data['user_id'];
-    $user_id_stmt->close();
     
     // นับจำนวนการบันทึกสำเร็จ
     $success_count = 0;
@@ -196,28 +174,23 @@ try {
         }
         
         // ลบข้อมูลเดิม (ถ้ามี)
-        $delete_stmt->bind_param("is", $student_id, $check_date);
+        $delete_stmt->bindParam(':student_id', $student_id, PDO::PARAM_INT);
+        $delete_stmt->bindParam(':check_date', $check_date, PDO::PARAM_STR);
         $delete_stmt->execute();
         
         // เพิ่มข้อมูลใหม่
-        $insert_stmt->bind_param("iisssss", 
-            $student_id, 
-            $academic_year_id, 
-            $check_date, 
-            $status,
-            $check_method, 
-            $checker_user_id, 
-            $remarks
-        );
+        $insert_stmt->bindParam(':student_id', $student_id, PDO::PARAM_INT);
+        $insert_stmt->bindParam(':academic_year_id', $academic_year_id, PDO::PARAM_INT);
+        $insert_stmt->bindParam(':check_date', $check_date, PDO::PARAM_STR);
+        $insert_stmt->bindParam(':status', $status, PDO::PARAM_STR);
+        $insert_stmt->bindParam(':check_method', $check_method, PDO::PARAM_STR);
+        $insert_stmt->bindParam(':checker_user_id', $checker_user_id, PDO::PARAM_INT);
+        $insert_stmt->bindParam(':remarks', $remarks, PDO::PARAM_STR);
         
         if ($insert_stmt->execute()) {
             $success_count++;
         }
     }
-    
-    // ปิด Statements
-    $delete_stmt->close();
-    $insert_stmt->close();
     
     // อัพเดตสถิติการเข้าแถวในตาราง student_academic_records
     // คำนวณใหม่โดยดูจากจำนวนการเข้าแถวทั้งหมดของนักเรียนในปีการศึกษานี้
@@ -229,25 +202,19 @@ try {
                 SUM(CASE WHEN attendance_status IN ('present', 'late', 'leave') THEN 1 ELSE 0 END) as total_present,
                 SUM(CASE WHEN attendance_status = 'absent' THEN 1 ELSE 0 END) as total_absent
             FROM attendance
-            WHERE academic_year_id = ?
+            WHERE academic_year_id = :academic_year_id
             GROUP BY student_id
         ) att ON sar.student_id = att.student_id
         SET 
             sar.total_attendance_days = att.total_present,
             sar.total_absence_days = att.total_absent,
             sar.updated_at = NOW()
-        WHERE sar.academic_year_id = ?
+        WHERE sar.academic_year_id = :academic_year_id
     ";
     
-    $update_records_stmt = $conn->prepare($update_records_query);
-    
-    if (!$update_records_stmt) {
-        throw new Exception("เตรียมคำสั่ง SQL ล้มเหลว: " . $conn->error);
-    }
-    
-    $update_records_stmt->bind_param("ii", $academic_year_id, $academic_year_id);
-    $update_records_stmt->execute();
-    $update_records_stmt->close();
+    $stmt = $db->prepare($update_records_query);
+    $stmt->bindParam(':academic_year_id', $academic_year_id, PDO::PARAM_INT);
+    $stmt->execute();
     
     // ตรวจสอบนักเรียนที่เสี่ยงตกกิจกรรม และอัพเดทข้อมูลในตาราง risk_students
     $update_risk_query = "
@@ -255,7 +222,7 @@ try {
             (student_id, academic_year_id, absence_count, risk_level, notification_sent, created_at, updated_at)
         SELECT 
             s.student_id, 
-            ?, 
+            :academic_year_id, 
             sar.total_absence_days,
             CASE 
                 WHEN sar.total_absence_days >= 20 THEN 'critical'
@@ -270,7 +237,7 @@ try {
             students s
             JOIN student_academic_records sar ON s.student_id = sar.student_id
         WHERE 
-            sar.academic_year_id = ? 
+            sar.academic_year_id = :academic_year_id 
             AND sar.total_absence_days >= 10
         ON DUPLICATE KEY UPDATE 
             absence_count = sar.total_absence_days,
@@ -283,18 +250,36 @@ try {
             updated_at = NOW()
     ";
     
-    $update_risk_stmt = $conn->prepare($update_risk_query);
+    $stmt = $db->prepare($update_risk_query);
+    $stmt->bindParam(':academic_year_id', $academic_year_id, PDO::PARAM_INT);
+    $stmt->execute();
     
-    if (!$update_risk_stmt) {
-        throw new Exception("เตรียมคำสั่ง SQL ล้มเหลว (risk_students): " . $conn->error);
+    // บันทึกประวัติการเช็คชื่อย้อนหลัง
+    if ($is_retroactive) {
+        $log_retroactive_query = "
+            INSERT INTO attendance_logs 
+                (user_id, academic_year_id, class_id, action_type, action_date, action_details, created_at)
+            VALUES 
+                (:user_id, :academic_year_id, :class_id, 'retroactive_check', :check_date, :action_details, NOW())
+        ";
+        
+        $action_details = json_encode([
+            'teacher_id' => $teacher_id,
+            'students_count' => count($students),
+            'check_method' => $check_method
+        ], JSON_UNESCAPED_UNICODE);
+        
+        $stmt = $db->prepare($log_retroactive_query);
+        $stmt->bindParam(':user_id', $checker_user_id, PDO::PARAM_INT);
+        $stmt->bindParam(':academic_year_id', $academic_year_id, PDO::PARAM_INT);
+        $stmt->bindParam(':class_id', $class_id, PDO::PARAM_INT);
+        $stmt->bindParam(':check_date', $check_date, PDO::PARAM_STR);
+        $stmt->bindParam(':action_details', $action_details, PDO::PARAM_STR);
+        $stmt->execute();
     }
     
-    $update_risk_stmt->bind_param("ii", $academic_year_id, $academic_year_id);
-    $update_risk_stmt->execute();
-    $update_risk_stmt->close();
-    
     // Commit Transaction
-    $conn->commit();
+    $db->commit();
     
     // ส่งข้อมูลกลับ
     echo json_encode([
@@ -305,14 +290,10 @@ try {
     
 } catch (Exception $e) {
     // Rollback Transaction เมื่อเกิดข้อผิดพลาด
-    $conn->rollback();
+    $db->rollBack();
     
     echo json_encode([
         'success' => false,
         'message' => $e->getMessage()
     ]);
-} finally {
-    // ปิดการเชื่อมต่อฐานข้อมูล
-    $conn->close();
 }
-?>

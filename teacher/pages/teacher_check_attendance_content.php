@@ -1,4 +1,5 @@
 <?php
+
 /**
  * teacher/pages/teacher_check_attendance_content.php
  * 
@@ -197,9 +198,9 @@
                         </div>
                         <div class="check-info">
                             <div class="check-time"><?php echo $student['time_checked']; ?></div>
-                            <div class="check-method"><?php 
-                                echo $student['check_method'] === 'Manual' ? 'ครู' : $student['check_method']; 
-                            ?></div>
+                            <div class="check-method"><?php
+                                                        echo $student['check_method'] === 'Manual' ? 'ครู' : $student['check_method'];
+                                                        ?></div>
                         </div>
                     </div>
                 <?php endforeach; ?>
@@ -306,7 +307,7 @@
 
         <div class="modal-buttons">
             <button class="modal-button cancel" onclick="closeModal('save-modal')">ยกเลิก</button>
-            <button class="modal-button confirm" onclick="confirmSaveAttendance()">บันทึก</button>
+            <button class="modal-button confirm" onclick="closeModal('mark-attendance-modal'); alert('ฟังก์ชันนี้ยังไม่พร้อมใช้งาน กรุณาติดต่อผู้ดูแลระบบ');">บันทึก</button>
         </div>
     </div>
 </div>
@@ -373,12 +374,12 @@
     const checkDate = '<?php echo $check_date; ?>';
     const isRetroactive = <?php echo $is_retroactive ? 'true' : 'false'; ?>;
     const currentTeacherId = <?php echo $teacher_id; ?>;
-    
+
     // เพิ่มการแสดง/ซ่อนช่องหมายเหตุตามสถานะที่เลือก
     document.addEventListener('DOMContentLoaded', function() {
         const statusInputs = document.querySelectorAll('input[name="attendance-status"]');
         const reasonContainer = document.getElementById('reason-container');
-        
+
         function toggleReasonField() {
             const selectedStatus = document.querySelector('input[name="attendance-status"]:checked').value;
             if (selectedStatus === 'late' || selectedStatus === 'leave') {
@@ -387,16 +388,16 @@
                 reasonContainer.style.display = 'none';
             }
         }
-        
+
         // เรียกครั้งแรกเพื่อตั้งค่าเริ่มต้น
         toggleReasonField();
-        
+
         // เพิ่ม event listener สำหรับการเปลี่ยนสถานะ
         statusInputs.forEach(input => {
             input.addEventListener('change', toggleReasonField);
         });
     });
-    
+
     // ฟังก์ชันแสดง Modal การเช็คชื่อแบบมีตัวเลือกเพิ่มเติม (สาย/ลา)
     function showAttendanceModal(studentId, studentName) {
         document.getElementById('student-name-display').textContent = studentName;
@@ -404,11 +405,11 @@
         document.getElementById('is-edit-mode').value = '0';
         document.getElementById('status-present').checked = true;
         document.getElementById('status-reason').value = '';
-        
+
         if (document.getElementById('individual-note')) {
             document.getElementById('individual-note').value = '';
         }
-        
+
         // แสดง Modal
         const modal = document.getElementById('mark-attendance-modal');
         if (modal) {
@@ -416,23 +417,23 @@
             document.body.style.overflow = 'hidden';
         }
     }
-    
+
     // ฟังก์ชันแก้ไขการเช็คชื่อที่บันทึกไปแล้ว
     function editAttendance(studentId, studentName, status, remarks) {
         document.getElementById('student-name-display').textContent = studentName;
         document.getElementById('student-id-input').value = studentId;
         document.getElementById('is-edit-mode').value = '1';
-        
+
         // เลือกสถานะปัจจุบัน
         document.getElementById('status-' + status).checked = true;
-        
+
         // กรอกหมายเหตุที่มีอยู่เดิม
         document.getElementById('status-reason').value = remarks || '';
-        
+
         if (document.getElementById('individual-note')) {
             document.getElementById('individual-note').value = '';
         }
-        
+
         // แสดง/ซ่อนช่องหมายเหตุตามสถานะ
         const reasonContainer = document.getElementById('reason-container');
         if (status === 'late' || status === 'leave') {
@@ -440,7 +441,7 @@
         } else {
             reasonContainer.style.display = 'none';
         }
-        
+
         // แสดง Modal
         const modal = document.getElementById('mark-attendance-modal');
         if (modal) {
