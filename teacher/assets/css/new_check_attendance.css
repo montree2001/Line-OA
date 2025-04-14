@@ -424,6 +424,8 @@ body {
 
 .tab-pane {
     display: none;
+    margin-bottom: 120px;
+    padding-bottom: 60px;
 }
 
 .tab-pane.active {
@@ -462,7 +464,8 @@ body {
     display: flex;
     flex-direction: column;
     gap: 10px;
-    margin-bottom: 80px; /* space for floating button */
+    margin-bottom: 100px; /* เพิ่มจาก 80px เป็น 100px เพื่อให้มีพื้นที่ด้านล่างมากขึ้น */
+    padding-bottom: 60px; /* เพิ่ม padding-bottom เพื่อให้เนื้อหาไม่ถูกบังด้วย bottom navigation */
 }
 
 .student-card {
@@ -1264,3 +1267,4 @@ textarea:focus {
         height: -webkit-fill-available;
     }
 }
+

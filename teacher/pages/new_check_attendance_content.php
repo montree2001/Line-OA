@@ -308,10 +308,7 @@
         </div>
     </div>
 
-    <!-- ปุ่มลอยบันทึก -->
-    <button type="button" class="floating-button" id="saveAttendanceBtn" onclick="saveAttendance()">
-        <i class="fas fa-save"></i>
-    </button>
+
 </div>
 
 <!-- Modal สร้าง PIN -->
