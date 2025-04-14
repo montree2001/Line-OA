@@ -1,5 +1,4 @@
 <?php
-
 /**
  * new_check_attendance_content.php - เนื้อหาของหน้าเช็คชื่อนักเรียนรูปแบบใหม่
  * 
@@ -168,7 +167,7 @@
                         <div class="student-card" data-id="<?php echo $student['id']; ?>" data-name="<?php echo htmlspecialchars($student['name'], ENT_QUOTES, 'UTF-8'); ?>">
                             <div class="student-number"><?php echo $student['number']; ?></div>
 
-                            <div class="student-info" onclick="showDetailAttendance(<?php echo $student['id']; ?>, '<?php echo htmlspecialchars($student['name'], ENT_QUOTES, 'UTF-8'); ?>')">
+                            <div class="student-info" onclick="if (typeof showDetailAttendance === 'function') { showDetailAttendance(<?php echo $student['id']; ?>, '<?php echo htmlspecialchars($student['name'], ENT_QUOTES, 'UTF-8'); ?>'); } else { alert('ฟังก์ชันยังไม่พร้อมใช้งาน กรุณารีเฟรชหน้า'); }">
                                 <?php if ($student['profile_picture']): ?>
                                     <div class="student-avatar" style="background-image: url('<?php echo $student['profile_picture']; ?>')"></div>
                                 <?php else: ?>
@@ -185,26 +184,26 @@
                             <div class="student-actions">
                                 <button type="button" class="action-btn present" title="มาเรียน"
                                     onclick="if (typeof markAttendance === 'function') { 
-            markAttendance(this, 'present', <?php echo $student['id']; ?>); 
-        } else { 
-            alert('ฟังก์ชัน markAttendance ไม่พร้อมใช้งาน กรุณารีเฟรชหน้า'); 
-        }">
+                                        markAttendance(this, 'present', <?php echo $student['id']; ?>); 
+                                    } else { 
+                                        alert('ฟังก์ชันยังไม่พร้อมใช้งาน กรุณารีเฟรชหน้า'); 
+                                    }">
                                     <i class="fas fa-check"></i>
                                 </button>
                                 <button type="button" class="action-btn absent" title="ขาดเรียน"
                                     onclick="if (typeof markAttendance === 'function') { 
-            markAttendance(this, 'absent', <?php echo $student['id']; ?>); 
-        } else { 
-            alert('ฟังก์ชัน markAttendance ไม่พร้อมใช้งาน กรุณารีเฟรชหน้า'); 
-        }">
+                                        markAttendance(this, 'absent', <?php echo $student['id']; ?>); 
+                                    } else { 
+                                        alert('ฟังก์ชันยังไม่พร้อมใช้งาน กรุณารีเฟรชหน้า'); 
+                                    }">
                                     <i class="fas fa-times"></i>
                                 </button>
                                 <button type="button" class="action-btn more" title="เช็คแบบละเอียด"
                                     onclick="if (typeof showDetailAttendance === 'function') { 
-            showDetailAttendance(<?php echo $student['id']; ?>, '<?php echo htmlspecialchars($student['name'], ENT_QUOTES, 'UTF-8'); ?>'); 
-        } else { 
-            alert('ฟังก์ชัน showDetailAttendance ไม่พร้อมใช้งาน กรุณารีเฟรชหน้า'); 
-        }">
+                                        showDetailAttendance(<?php echo $student['id']; ?>, '<?php echo htmlspecialchars($student['name'], ENT_QUOTES, 'UTF-8'); ?>'); 
+                                    } else { 
+                                        alert('ฟังก์ชันยังไม่พร้อมใช้งาน กรุณารีเฟรชหน้า'); 
+                                    }">
                                     <i class="fas fa-ellipsis-h"></i>
                                 </button>
                             </div>
@@ -257,7 +256,7 @@
                         <div class="student-card <?php echo $status_class; ?>-card" data-id="<?php echo $student['id']; ?>" data-name="<?php echo htmlspecialchars($student['name'], ENT_QUOTES, 'UTF-8'); ?>" data-status="<?php echo $student['status']; ?>" data-attendance-id="<?php echo $student['attendance_id']; ?>">
                             <div class="student-number"><?php echo $student['number']; ?></div>
 
-                            <div class="student-info" onclick="editAttendance(<?php echo $student['id']; ?>, '<?php echo htmlspecialchars($student['name'], ENT_QUOTES, 'UTF-8'); ?>', '<?php echo $student['status']; ?>', '<?php echo htmlspecialchars($student['remarks'] ?? '', ENT_QUOTES, 'UTF-8'); ?>')">
+                            <div class="student-info" onclick="if (typeof editAttendance === 'function') { editAttendance(<?php echo $student['id']; ?>, '<?php echo htmlspecialchars($student['name'], ENT_QUOTES, 'UTF-8'); ?>', '<?php echo $student['status']; ?>', '<?php echo htmlspecialchars($student['remarks'] ?? '', ENT_QUOTES, 'UTF-8'); ?>'); } else { alert('ฟังก์ชันยังไม่พร้อมใช้งาน กรุณารีเฟรชหน้า'); }">
                                 <?php if ($student['profile_picture']): ?>
                                     <div class="student-avatar" style="background-image: url('<?php echo $student['profile_picture']; ?>')"></div>
                                 <?php else: ?>
@@ -308,7 +307,7 @@
         </div>
     </div>
 
-
+  
 </div>
 
 <!-- Modal สร้าง PIN -->
@@ -317,7 +316,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h3 class="modal-title">สร้างรหัส PIN สำหรับเช็คชื่อ</h3>
-                <button type="button" class="close-btn" onclick="closeModal('pinModal')">
+                <button type="button" class="close-btn" onclick="if (typeof closeModal === 'function') { closeModal('pinModal'); } else { document.getElementById('pinModal').classList.remove('active'); }">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
@@ -332,8 +331,8 @@
                 <p class="class-detail"><?php echo $current_class['name']; ?></p>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn secondary" onclick="closeModal('pinModal')">ปิด</button>
-                <button type="button" class="btn primary" onclick="generateNewPIN()">สร้างใหม่</button>
+                <button type="button" class="btn secondary" onclick="if (typeof closeModal === 'function') { closeModal('pinModal'); } else { document.getElementById('pinModal').classList.remove('active'); }">ปิด</button>
+                <button type="button" class="btn primary" onclick="if (typeof generateNewPIN === 'function') { generateNewPIN(); } else { alert('ฟังก์ชันยังไม่พร้อมใช้งาน กรุณารีเฟรชหน้า'); }">สร้างใหม่</button>
             </div>
         </div>
     </div>
@@ -345,7 +344,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h3 class="modal-title">สแกน QR Code นักเรียน</h3>
-                <button type="button" class="close-btn" onclick="closeModal('qrModal')">
+                <button type="button" class="close-btn" onclick="if (typeof closeModal === 'function') { closeModal('qrModal'); } else { document.getElementById('qrModal').classList.remove('active'); }">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
@@ -362,7 +361,7 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn secondary" onclick="closeModal('qrModal')">ยกเลิก</button>
+                <button type="button" class="btn secondary" onclick="if (typeof closeModal === 'function') { closeModal('qrModal'); } else { document.getElementById('qrModal').classList.remove('active'); }">ยกเลิก</button>
             </div>
         </div>
     </div>
@@ -374,7 +373,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h3 class="modal-title">เช็คชื่อนักเรียน</h3>
-                <button type="button" class="close-btn" onclick="closeModal('attendanceDetailModal')">
+                <button type="button" class="close-btn" onclick="if (typeof closeModal === 'function') { closeModal('attendanceDetailModal'); } else { document.getElementById('attendanceDetailModal').classList.remove('active'); }">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
@@ -428,20 +427,20 @@
                 <input type="hidden" id="isEditMode" value="0">
             </div>
             <div class="modal-footer">
-    <button type="button" class="btn secondary" 
-        onclick="if (typeof closeModal === 'function') { 
-            closeModal('attendanceDetailModal'); 
-        } else { 
-            document.getElementById('attendanceDetailModal').classList.remove('active'); 
-            document.body.style.overflow = ''; 
-        }">ยกเลิก</button>
-    <button type="button" class="btn primary" 
-        onclick="if (typeof confirmDetailAttendance === 'function') { 
-            confirmDetailAttendance(); 
-        } else { 
-            alert('ฟังก์ชัน confirmDetailAttendance ไม่พร้อมใช้งาน กรุณารีเฟรชหน้า'); 
-        }">บันทึก</button>
-</div>
+                <button type="button" class="btn secondary" 
+                    onclick="if (typeof closeModal === 'function') { 
+                        closeModal('attendanceDetailModal'); 
+                    } else { 
+                        document.getElementById('attendanceDetailModal').classList.remove('active'); 
+                        document.body.style.overflow = ''; 
+                    }">ยกเลิก</button>
+                <button type="button" class="btn primary" 
+                    onclick="if (typeof confirmDetailAttendance === 'function') { 
+                        confirmDetailAttendance(); 
+                    } else { 
+                        alert('ฟังก์ชันยังไม่พร้อมใช้งาน กรุณารีเฟรชหน้า'); 
+                    }">บันทึก</button>
+            </div>
         </div>
     </div>
 </div>
@@ -452,7 +451,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h3 class="modal-title">เช็คชื่อนักเรียนทั้งหมด</h3>
-                <button type="button" class="close-btn" onclick="closeModal('markAllModal')">
+                <button type="button" class="close-btn" onclick="if (typeof closeModal === 'function') { closeModal('markAllModal'); } else { document.getElementById('markAllModal').classList.remove('active'); }">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
@@ -497,8 +496,8 @@
                 <?php endif; ?>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn secondary" onclick="closeModal('markAllModal')">ยกเลิก</button>
-                <button type="button" class="btn primary" onclick="confirmMarkAll()">เช็คชื่อทั้งหมด</button>
+                <button type="button" class="btn secondary" onclick="if (typeof closeModal === 'function') { closeModal('markAllModal'); } else { document.getElementById('markAllModal').classList.remove('active'); }">ยกเลิก</button>
+                <button type="button" class="btn primary" onclick="if (typeof confirmMarkAll === 'function') { confirmMarkAll(); } else { alert('ฟังก์ชันยังไม่พร้อมใช้งาน กรุณารีเฟรชหน้า'); }">เช็คชื่อทั้งหมด</button>
             </div>
         </div>
     </div>
@@ -510,7 +509,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h3 class="modal-title">บันทึกการเช็คชื่อ</h3>
-                <button type="button" class="close-btn" onclick="closeModal('saveAttendanceModal')">
+                <button type="button" class="close-btn" onclick="if (typeof closeModal === 'function') { closeModal('saveAttendanceModal'); } else { document.getElementById('saveAttendanceModal').classList.remove('active'); }">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
@@ -554,8 +553,8 @@
                 <?php endif; ?>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn secondary" onclick="closeModal('saveAttendanceModal')">ยกเลิก</button>
-                <button type="button" class="btn primary" onclick="confirmSaveAttendance()">บันทึก</button>
+                <button type="button" class="btn secondary" onclick="if (typeof closeModal === 'function') { closeModal('saveAttendanceModal'); } else { document.getElementById('saveAttendanceModal').classList.remove('active'); }">ยกเลิก</button>
+                <button type="button" class="btn primary" onclick="if (typeof confirmSaveAttendance === 'function') { confirmSaveAttendance(); } else { alert('ฟังก์ชันยังไม่พร้อมใช้งาน กรุณารีเฟรชหน้า'); }">บันทึก</button>
             </div>
         </div>
     </div>
@@ -567,7 +566,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h3 class="modal-title">วิธีใช้งานระบบเช็คชื่อ</h3>
-                <button type="button" class="close-btn" onclick="closeModal('helpModal')">
+                <button type="button" class="close-btn" onclick="if (typeof closeModal === 'function') { closeModal('helpModal'); } else { document.getElementById('helpModal').classList.remove('active'); }">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
@@ -607,7 +606,7 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn primary" onclick="closeModal('helpModal')">เข้าใจแล้ว</button>
+                <button type="button" class="btn primary" onclick="if (typeof closeModal === 'function') { closeModal('helpModal'); } else { document.getElementById('helpModal').classList.remove('active'); }">เข้าใจแล้ว</button>
             </div>
         </div>
     </div>
@@ -663,11 +662,36 @@ document.addEventListener('DOMContentLoaded', function() {
         };
     }
     
-    // ตรวจสอบว่ามีการปิดการใช้งาน JavaScript หรือไม่
-    document.querySelectorAll('.action-btn').forEach(button => {
-        button.addEventListener('click', function(e) {
-            // ไม่ทำอะไรหากมีฟังก์ชันที่เกี่ยวข้องแล้ว
-        });
-    });
+    if (typeof editAttendance !== 'function') {
+        console.error('ไม่พบฟังก์ชัน editAttendance - สคริปต์อาจโหลดไม่สมบูรณ์');
+        
+        window.editAttendance = function(studentId, studentName, status, remarks) {
+            alert(`ข้อผิดพลาด: สคริปต์โหลดไม่สมบูรณ์ กรุณารีเฟรชหน้า (student: ${studentId}, ${studentName})`);
+        };
+    }
+    
+    if (typeof confirmMarkAll !== 'function') {
+        console.error('ไม่พบฟังก์ชัน confirmMarkAll - สคริปต์อาจโหลดไม่สมบูรณ์');
+        
+        window.confirmMarkAll = function() {
+            alert('ข้อผิดพลาด: สคริปต์โหลดไม่สมบูรณ์ กรุณารีเฟรชหน้า');
+        };
+    }
+    
+    if (typeof confirmSaveAttendance !== 'function') {
+        console.error('ไม่พบฟังก์ชัน confirmSaveAttendance - สคริปต์อาจโหลดไม่สมบูรณ์');
+        
+        window.confirmSaveAttendance = function() {
+            alert('ข้อผิดพลาด: สคริปต์โหลดไม่สมบูรณ์ กรุณารีเฟรชหน้า');
+        };
+    }
+
+    if (typeof saveAttendance !== 'function') {
+        console.error('ไม่พบฟังก์ชัน saveAttendance - สคริปต์อาจโหลดไม่สมบูรณ์');
+        
+        window.saveAttendance = function() {
+            alert('ข้อผิดพลาด: สคริปต์โหลดไม่สมบูรณ์ กรุณารีเฟรชหน้า');
+        };
+    }
 });
 </script>

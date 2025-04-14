@@ -307,7 +307,7 @@
 
         <div class="modal-buttons">
             <button class="modal-button cancel" onclick="closeModal('save-modal')">ยกเลิก</button>
-            <button class="modal-button confirm" onclick="closeModal('mark-attendance-modal'); alert('ฟังก์ชันนี้ยังไม่พร้อมใช้งาน กรุณาติดต่อผู้ดูแลระบบ');">บันทึก</button>
+            <button class="modal-button confirm" onclick="confirmSaveAttendance()">บันทึก</button>
         </div>
     </div>
 </div>

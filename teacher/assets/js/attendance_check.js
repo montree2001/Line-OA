@@ -1,59 +1,14 @@
 /**
- * new_check_attendance.js - สคริปต์สำหรับหน้าเช็คชื่อนักเรียนรูปแบบใหม่
+ * attendance_check.js - ระบบเช็คชื่อนักเรียนแบบใหม่
  * 
  * ฟังก์ชันหลัก:
- * - ระบบเช็คชื่อ 4 สถานะ: มา, ขาด, สาย, ลา
- * - สร้าง PIN สำหรับนักเรียนเช็คชื่อ
+ * - เช็คชื่อนักเรียนแบบ มา/ขาด/สาย/ลา
+ * - สร้าง PIN สำหรับเช็คชื่อ
  * - สแกน QR Code
- * - เช็คชื่อทั้งห้อง
- * - บันทึกข้อมูลลงฐานข้อมูล
+ * - แก้ไขการเช็คชื่อ
+ * - บันทึกข้อมูล
  * - UI/UX ที่ใช้งานง่าย
- * - แสดงปีเป็น พ.ศ.
  */
-
-// ตรวจสอบว่าทุกฟังก์ชันทำงานได้หรือไม่
-document.addEventListener('DOMContentLoaded', function() {
-    // ตรวจสอบว่าฟังก์ชันหลักพร้อมใช้งานหรือไม่
-    if (typeof markAttendance !== 'function') {
-        console.error('ไม่พบฟังก์ชัน markAttendance - สคริปต์อาจโหลดไม่สมบูรณ์');
-        
-        // สร้างฟังก์ชัน fallback ชั่วคราว
-        window.markAttendance = function(button, status, studentId) {
-            alert(`ข้อผิดพลาด: สคริปต์โหลดไม่สมบูรณ์ กรุณารีเฟรชหน้า (status: ${status}, student: ${studentId})`);
-        };
-    }
-    
-    if (typeof showDetailAttendance !== 'function') {
-        console.error('ไม่พบฟังก์ชัน showDetailAttendance - สคริปต์อาจโหลดไม่สมบูรณ์');
-        
-        window.showDetailAttendance = function(studentId, studentName) {
-            alert(`ข้อผิดพลาด: สคริปต์โหลดไม่สมบูรณ์ กรุณารีเฟรชหน้า (student: ${studentId}, ${studentName})`);
-        };
-    }
-    
-    if (typeof confirmDetailAttendance !== 'function') {
-        console.error('ไม่พบฟังก์ชัน confirmDetailAttendance - สคริปต์อาจโหลดไม่สมบูรณ์');
-        
-        window.confirmDetailAttendance = function() {
-            alert('ข้อผิดพลาด: สคริปต์โหลดไม่สมบูรณ์ กรุณารีเฟรชหน้า');
-        };
-    }
-    
-    if (typeof closeModal !== 'function') {
-        console.error('ไม่พบฟังก์ชัน closeModal - สคริปต์อาจโหลดไม่สมบูรณ์');
-        
-        window.closeModal = function(modalId) {
-            const modal = document.getElementById(modalId);
-            if (modal) {
-                modal.classList.remove('active');
-                document.body.style.overflow = '';
-            }
-        };
-    }
-    
-    // เริ่มต้นระบบเช็คชื่อ
-    initAttendanceSystem();
-});
 
 // ตัวแปรหลัก
 let attendanceData = {
@@ -67,6 +22,11 @@ let attendanceData = {
 
 // ตัวแปรเก็บสถานะว่ามีการเปลี่ยนแปลงข้อมูลหรือไม่
 let hasChanges = false;
+
+// เมื่อโหลดเอกสารเสร็จ
+document.addEventListener('DOMContentLoaded', function() {
+    initAttendanceSystem();
+});
 
 /**
  * เริ่มต้นระบบเช็คชื่อ
@@ -181,10 +141,10 @@ function toggleOptions() {
 function changeClass(classId) {
     if (hasChanges) {
         if (confirm('คุณมีข้อมูลที่ยังไม่ได้บันทึก ต้องการออกจากหน้านี้หรือไม่?')) {
-            window.location.href = `new_check_attendance.php?class_id=${classId}&date=${checkDate}`;
+            window.location.href = `attendance_check.php?class_id=${classId}&date=${checkDate}`;
         }
     } else {
-        window.location.href = `new_check_attendance.php?class_id=${classId}&date=${checkDate}`;
+        window.location.href = `attendance_check.php?class_id=${classId}&date=${checkDate}`;
     }
 }
 
@@ -195,10 +155,10 @@ function changeClass(classId) {
 function changeDate(date) {
     if (hasChanges) {
         if (confirm('คุณมีข้อมูลที่ยังไม่ได้บันทึก ต้องการออกจากหน้านี้หรือไม่?')) {
-            window.location.href = `new_check_attendance.php?class_id=${currentClassId}&date=${date}`;
+            window.location.href = `attendance_check.php?class_id=${currentClassId}&date=${date}`;
         }
     } else {
-        window.location.href = `new_check_attendance.php?class_id=${currentClassId}&date=${date}`;
+        window.location.href = `attendance_check.php?class_id=${currentClassId}&date=${date}`;
     }
 }
 
@@ -235,7 +195,7 @@ function searchInTab(tabId, searchTerm) {
 }
 
 /**
- * เช็คชื่อนักเรียนจากปุ่มทันที (มา/ขาด)
+ * เช็คชื่อนักเรียนแบบรวดเร็ว (มา/ขาด)
  * @param {HTMLElement} button - ปุ่มที่กด
  * @param {string} status - สถานะ (present/absent)
  * @param {number} studentId - รหัสนักเรียน
@@ -267,26 +227,29 @@ function markAttendance(button, status, studentId) {
         
         // กำหนดว่ามีการเปลี่ยนแปลงข้อมูล
         hasChanges = true;
+        
+        // แสดงข้อความแจ้งเตือน
+        showNotification(`บันทึกสถานะ "${getStatusText(status)}" สำหรับนักเรียนเรียบร้อย`, 'success');
     } catch (error) {
         console.error('เกิดข้อผิดพลาดในการเช็คชื่อ:', error);
-        showNotification('เกิดข้อผิดพลาดในการเช็คชื่อ: ' + error.message, 'error');
+        showNotification('เกิดข้อผิดพลาดในการเช็คชื่อ', 'error');
     }
 }
 
 /**
- * แสดงรายละเอียดการเช็คชื่อ
+ * แสดง Modal เช็คชื่อนักเรียน
  * @param {number} studentId - รหัสนักเรียน
  * @param {string} studentName - ชื่อนักเรียน
  */
-function showDetailAttendance(studentId, studentName) {
+function showAttendanceModal(studentId, studentName) {
     // แสดงชื่อนักเรียนใน Modal
-    const studentNameElement = document.getElementById('studentNameDetail');
+    const studentNameElement = document.getElementById('studentName');
     if (studentNameElement) {
         studentNameElement.textContent = studentName;
     }
     
     // กำหนดค่า ID นักเรียน
-    const studentIdInput = document.getElementById('studentIdDetail');
+    const studentIdInput = document.getElementById('studentId');
     if (studentIdInput) {
         studentIdInput.value = studentId;
     }
@@ -298,7 +261,7 @@ function showDetailAttendance(studentId, studentName) {
     }
     
     // รีเซ็ตค่า attendance_id
-    const attendanceIdInput = document.getElementById('attendanceIdDetail');
+    const attendanceIdInput = document.getElementById('attendanceId');
     if (attendanceIdInput) {
         attendanceIdInput.value = '';
     }
@@ -328,7 +291,7 @@ function showDetailAttendance(studentId, studentName) {
     }
     
     // แสดง Modal
-    showModal('attendanceDetailModal');
+    showModal('attendanceModal');
 }
 
 /**
@@ -337,16 +300,17 @@ function showDetailAttendance(studentId, studentName) {
  * @param {string} studentName - ชื่อนักเรียน
  * @param {string} status - สถานะปัจจุบัน
  * @param {string} remarks - หมายเหตุ
+ * @param {string} attendanceId - รหัสการเช็คชื่อ
  */
-function editAttendance(studentId, studentName, status, remarks) {
+function editAttendance(studentId, studentName, status, remarks, attendanceId) {
     // แสดงชื่อนักเรียนใน Modal
-    const studentNameElement = document.getElementById('studentNameDetail');
+    const studentNameElement = document.getElementById('studentName');
     if (studentNameElement) {
         studentNameElement.textContent = studentName;
     }
     
     // กำหนดค่า ID นักเรียน
-    const studentIdInput = document.getElementById('studentIdDetail');
+    const studentIdInput = document.getElementById('studentId');
     if (studentIdInput) {
         studentIdInput.value = studentId;
     }
@@ -357,14 +321,10 @@ function editAttendance(studentId, studentName, status, remarks) {
         isEditMode.value = '1';
     }
     
-    // ดึงและกำหนดค่า attendance_id
-    const studentCard = document.querySelector(`#checkedTab .student-card[data-id="${studentId}"]`);
-    if (studentCard) {
-        const attendanceId = studentCard.getAttribute('data-attendance-id');
-        const attendanceIdInput = document.getElementById('attendanceIdDetail');
-        if (attendanceIdInput && attendanceId) {
-            attendanceIdInput.value = attendanceId;
-        }
+    // กำหนดค่า attendance_id
+    const attendanceIdInput = document.getElementById('attendanceId');
+    if (attendanceIdInput && attendanceId) {
+        attendanceIdInput.value = attendanceId;
     }
     
     // เลือกสถานะปัจจุบัน
@@ -396,18 +356,18 @@ function editAttendance(studentId, studentName, status, remarks) {
     }
     
     // แสดง Modal
-    showModal('attendanceDetailModal');
+    showModal('attendanceModal');
 }
 
 /**
- * ยืนยันการเช็คชื่อจาก Modal รายละเอียด
+ * บันทึกการเช็คชื่อจาก Modal
  */
-function confirmDetailAttendance() {
+function submitAttendance() {
     try {
         // ดึงข้อมูลจาก Modal
-        const studentId = document.getElementById('studentIdDetail').value;
+        const studentId = document.getElementById('studentId').value;
         const isEditMode = document.getElementById('isEditMode').value === '1';
-        const attendanceId = document.getElementById('attendanceIdDetail')?.value || null;
+        const attendanceId = document.getElementById('attendanceId')?.value || null;
         
         // ดึงสถานะที่เลือก
         const status = document.querySelector('input[name="attendanceStatus"]:checked').value;
@@ -431,14 +391,8 @@ function confirmDetailAttendance() {
         // ถ้าเป็นการเช็คชื่อย้อนหลัง ให้ดึงหมายเหตุเพิ่มเติม
         if (isRetroactive) {
             const retroactiveNoteInput = document.getElementById('retroactiveNote');
-            if (retroactiveNoteInput) {
+            if (retroactiveNoteInput && retroactiveNoteInput.value.trim() !== '') {
                 const retroactiveNote = retroactiveNoteInput.value.trim();
-                
-                // ตรวจสอบว่ามีการระบุหมายเหตุหรือไม่
-                if (retroactiveNote === '') {
-                    showNotification('กรุณาระบุหมายเหตุสำหรับการเช็คชื่อย้อนหลัง', 'warning');
-                    return;
-                }
                 
                 // เพิ่มหมายเหตุย้อนหลัง
                 remarks = remarks ? `${remarks} (${retroactiveNote})` : retroactiveNote;
@@ -467,7 +421,7 @@ function confirmDetailAttendance() {
         updateAttendanceStats(status, isEditMode);
         
         // ปิด Modal
-        closeModal('attendanceDetailModal');
+        closeModal('attendanceModal');
         
         // แสดงตัวบอกการเช็คชื่อที่ยังไม่ได้บันทึก
         showSaveIndicator();
@@ -479,7 +433,7 @@ function confirmDetailAttendance() {
         showNotification(`บันทึกสถานะ "${getStatusText(status)}" สำหรับนักเรียนเรียบร้อย`, 'success');
     } catch (error) {
         console.error('เกิดข้อผิดพลาดในการยืนยันการเช็คชื่อ:', error);
-        showNotification('เกิดข้อผิดพลาดในการเช็คชื่อ: ' + error.message, 'error');
+        showNotification('เกิดข้อผิดพลาดในการเช็คชื่อ', 'error');
     }
 }
 
@@ -498,9 +452,9 @@ function markAllAttendance() {
 }
 
 /**
- * ยืนยันการเช็คชื่อทั้งหมด
+ * บันทึกการเช็คชื่อทั้งหมด
  */
-function confirmMarkAll() {
+function submitMarkAll() {
     try {
         // ดึงสถานะที่เลือก
         const status = document.querySelector('input[name="markAllStatus"]:checked').value;
@@ -567,7 +521,7 @@ function confirmMarkAll() {
         showNotification(`เช็คชื่อนักเรียนทั้งหมด ${studentCards.length} คน เป็น "${getStatusText(status)}" เรียบร้อย`, 'success');
     } catch (error) {
         console.error('เกิดข้อผิดพลาดในการเช็คชื่อทั้งหมด:', error);
-        showNotification('เกิดข้อผิดพลาดในการเช็คชื่อทั้งหมด: ' + error.message, 'error');
+        showNotification('เกิดข้อผิดพลาดในการเช็คชื่อทั้งหมด', 'error');
     }
 }
 
@@ -591,12 +545,7 @@ function createPIN() {
             class_id: currentClassId
         })
     })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error('Server response was not OK: ' + response.status);
-        }
-        return response.json();
-    })
+    .then(response => response.json())
     .then(data => {
         if (data.success) {
             // แสดง PIN ใน Modal
@@ -613,15 +562,11 @@ function createPIN() {
         } else {
             // แสดงข้อความเมื่อมีข้อผิดพลาด
             showNotification(data.message || 'เกิดข้อผิดพลาดในการสร้าง PIN', 'error');
-            // แสดง PIN ข้อผิดพลาด
-            displayPINCode('ERROR');
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        showNotification('เกิดข้อผิดพลาดในการเชื่อมต่อกับเซิร์ฟเวอร์: ' + error.message, 'error');
-        // แสดง PIN ข้อผิดพลาด
-        displayPINCode('ERROR');
+        showNotification('เกิดข้อผิดพลาดในการเชื่อมต่อกับเซิร์ฟเวอร์', 'error');
     });
 }
 
@@ -631,41 +576,15 @@ function createPIN() {
  */
 function displayPINCode(pinCode) {
     const digitElements = document.querySelectorAll('.pin-digit');
-    
-    if (pinCode === 'ERROR') {
-        // แสดงข้อผิดพลาด
-        digitElements.forEach(element => {
-            element.textContent = 'E';
-            element.style.color = 'red';
-        });
-        return;
-    }
-    
-    // แสดง PIN ปกติ
     const digits = pinCode.split('');
+    
     digitElements.forEach((element, index) => {
         if (index < digits.length) {
             element.textContent = digits[index];
-            element.style.color = '';
         } else {
             element.textContent = '-';
-            element.style.color = '';
         }
     });
-}
-
-/**
- * สร้างรหัส PIN ใหม่
- */
-function generateNewPIN() {
-    // ลบค่า PIN เดิม
-    const digitElements = document.querySelectorAll('.pin-digit');
-    digitElements.forEach(element => {
-        element.textContent = '-';
-    });
-    
-    // เรียกฟังก์ชันสร้าง PIN ใหม่
-    createPIN();
 }
 
 /**
@@ -675,10 +594,7 @@ function scanQR() {
     showModal('qrModal');
     
     // ในระบบจริงจะมีการเปิดกล้องและสแกน QR Code
-    showNotification('ระบบกำลังเรียกใช้กล้อง กรุณารอสักครู่...', 'info');
-    
-    // ตัวอย่างการจำลองการใช้กล้อง
-    // จะถูกแทนที่ด้วยการใช้ library ที่สามารถสแกน QR Code จริงๆ
+    // ตัวอย่างจำลองการใช้กล้อง
     setTimeout(() => {
         const qrPlaceholder = document.querySelector('.qr-placeholder');
         if (qrPlaceholder) {
@@ -688,16 +604,20 @@ function scanQR() {
             `;
         }
     }, 1000);
+    
+    // แสดงข้อความแจ้งเตือน
+    showNotification('ระบบกำลังเรียกใช้กล้อง กรุณารอสักครู่...', 'info');
 }
 
 /**
- * บันทึกการเช็คชื่อ
+ * เปิดหน้าต่างบันทึกการเช็คชื่อ
  */
 function saveAttendance() {
     // อัพเดทจำนวนในโมดัล
     const checkedCount = document.querySelectorAll('#checkedTab .student-card').length;
     const remainingCount = document.querySelectorAll('#waitingTab .student-card').length;
     
+    // อัพเดทตัวเลขในโมดัล
     const saveCheckedCount = document.getElementById('saveCheckedCount');
     const saveRemainingCount = document.getElementById('saveRemainingCount');
     
@@ -710,13 +630,13 @@ function saveAttendance() {
     }
     
     // แสดง Modal ยืนยันการบันทึก
-    showModal('saveAttendanceModal');
+    showModal('saveModal');
 }
 
 /**
- * ยืนยันการบันทึกการเช็คชื่อ
+ * บันทึกการเช็คชื่อลงฐานข้อมูล
  */
-function confirmSaveAttendance() {
+function submitSaveAttendance() {
     try {
         // ดึงหมายเหตุการเช็คย้อนหลัง (ถ้ามี)
         let retroactiveNote = '';
@@ -743,7 +663,7 @@ function confirmSaveAttendance() {
         });
         
         // ปิด Modal
-        closeModal('saveAttendanceModal');
+        closeModal('saveModal');
         
         // แสดงการโหลด
         const saveButton = document.getElementById('saveAttendanceBtn');
@@ -760,12 +680,7 @@ function confirmSaveAttendance() {
                 },
                 body: JSON.stringify(attendanceData)
             })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Server response was not OK: ' + response.status);
-                }
-                return response.json();
-            })
+            .then(response => response.json())
             .then(data => {
                 // คืนค่าปุ่ม
                 saveButton.innerHTML = originalHTML;
@@ -799,12 +714,12 @@ function confirmSaveAttendance() {
                 saveButton.disabled = false;
                 
                 console.error('Error:', error);
-                showNotification('เกิดข้อผิดพลาดในการเชื่อมต่อกับเซิร์ฟเวอร์: ' + error.message, 'error');
+                showNotification('เกิดข้อผิดพลาดในการเชื่อมต่อกับเซิร์ฟเวอร์', 'error');
             });
         }
     } catch (error) {
         console.error('เกิดข้อผิดพลาดในการบันทึกการเช็คชื่อ:', error);
-        showNotification('เกิดข้อผิดพลาดในการบันทึกการเช็คชื่อ: ' + error.message, 'error');
+        showNotification('เกิดข้อผิดพลาดในการบันทึกการเช็คชื่อ', 'error');
     }
 }
 
@@ -827,10 +742,10 @@ function downloadReport() {
 
 /**
  * บันทึกข้อมูลการเช็คชื่อในตัวแปร
- * @param {number} studentId - รหัสนักเรียน
+ * @param {number|string} studentId - รหัสนักเรียน
  * @param {string} status - สถานะการเช็คชื่อ
  * @param {string} remarks - หมายเหตุ
- * @param {number|null} attendanceId - รหัสการเช็คชื่อ (กรณีแก้ไข)
+ * @param {number|string|null} attendanceId - รหัสการเช็คชื่อ (กรณีแก้ไข)
  */
 function updateAttendanceData(studentId, status, remarks, attendanceId = null) {
     // แปลงเป็นตัวเลข
@@ -868,7 +783,7 @@ function updateAttendanceData(studentId, status, remarks, attendanceId = null) {
 /**
  * ย้ายการ์ดนักเรียนไปยังแท็บ "เช็คชื่อแล้ว"
  * @param {HTMLElement} studentCard - การ์ดนักเรียน
- * @param {number} studentId - รหัสนักเรียน
+ * @param {number|string} studentId - รหัสนักเรียน
  * @param {string} status - สถานะการเช็คชื่อ
  * @param {string} remarks - หมายเหตุ (ถ้ามี)
  */
@@ -898,13 +813,12 @@ function moveStudentToCheckedTab(studentCard, studentId, status, remarks = '') {
         createCheckedStudentCard(studentId, status, remarks);
     } catch (error) {
         console.error('เกิดข้อผิดพลาดในการย้ายการ์ดนักเรียน:', error);
-        showNotification('เกิดข้อผิดพลาดในการย้ายการ์ดนักเรียน: ' + error.message, 'error');
     }
 }
 
 /**
  * สร้างการ์ดนักเรียนในแท็บ "เช็คชื่อแล้ว"
- * @param {number} studentId - รหัสนักเรียน
+ * @param {number|string} studentId - รหัสนักเรียน
  * @param {string} status - สถานะการเช็คชื่อ
  * @param {string} remarks - หมายเหตุ (ถ้ามี)
  */
@@ -1004,7 +918,7 @@ function createCheckedStudentCard(studentId, status, remarks = '') {
         newCard.innerHTML = `
             <div class="student-number">${studentNumber}</div>
             
-            <div class="student-info" onclick="if (typeof editAttendance === 'function') { editAttendance(${studentId}, '${studentName.replace(/'/g, "\\'")}', '${status}', '${remarks.replace(/'/g, "\\'")}'); } else { alert('ฟังก์ชันยังไม่พร้อมใช้งาน กรุณารีเฟรชหน้า'); }">
+            <div class="student-info" onclick="editAttendance(${studentId}, '${studentName.replace(/'/g, "\\'")}', '${status}', '${remarks.replace(/'/g, "\\'")}')">
                 ${studentAvatar}
                 
                 <div class="student-details">
@@ -1029,16 +943,15 @@ function createCheckedStudentCard(studentId, status, remarks = '') {
         studentList.appendChild(newCard);
     } catch (error) {
         console.error('เกิดข้อผิดพลาดในการสร้างการ์ดนักเรียน:', error);
-        showNotification('เกิดข้อผิดพลาดในการสร้างการ์ดนักเรียน: ' + error.message, 'error');
     }
 }
 
 /**
  * อัพเดทการ์ดนักเรียนในแท็บ "เช็คชื่อแล้ว"
- * @param {number} studentId - รหัสนักเรียน
+ * @param {number|string} studentId - รหัสนักเรียน
  * @param {string} status - สถานะการเช็คชื่อ
  * @param {string} remarks - หมายเหตุ (ถ้ามี)
- * @param {number|null} attendanceId - รหัสการเช็คชื่อ (กรณีแก้ไข)
+ * @param {number|string|null} attendanceId - รหัสการเช็คชื่อ (กรณีแก้ไข)
  */
 function updateStudentCard(studentId, status, remarks = '', attendanceId = null) {
     try {
@@ -1100,7 +1013,7 @@ function updateStudentCard(studentId, status, remarks = '', attendanceId = null)
         
         // อัพเดท onclick handler
         if (studentInfo) {
-            studentInfo.setAttribute('onclick', `if (typeof editAttendance === 'function') { editAttendance(${studentId}, '${studentName.replace(/'/g, "\\'")}', '${status}', '${remarks.replace(/'/g, "\\'")}'); } else { alert('ฟังก์ชันยังไม่พร้อมใช้งาน กรุณารีเฟรชหน้า'); }`);
+            studentInfo.setAttribute('onclick', `editAttendance(${studentId}, '${studentName.replace(/'/g, "\\'")}', '${status}', '${remarks.replace(/'/g, "\\'")}', ${attendanceId || 'null'})`);
         }
         
         // อัพเดทหมายเหตุ
@@ -1165,7 +1078,6 @@ function updateStudentCard(studentId, status, remarks = '', attendanceId = null)
         }
     } catch (error) {
         console.error('เกิดข้อผิดพลาดในการอัพเดทการ์ดนักเรียน:', error);
-        showNotification('เกิดข้อผิดพลาดในการอัพเดทการ์ดนักเรียน: ' + error.message, 'error');
     }
 }
 
@@ -1242,7 +1154,6 @@ function updateAttendanceStats(status, isEdit = false) {
         }
     } catch (error) {
         console.error('เกิดข้อผิดพลาดในการอัพเดทสถิติการเช็คชื่อ:', error);
-        showNotification('เกิดข้อผิดพลาดในการอัพเดทสถิติ: ' + error.message, 'error');
     }
 }
 
@@ -1296,7 +1207,6 @@ function updateAttendanceStatsAll(status, count) {
         }
     } catch (error) {
         console.error('เกิดข้อผิดพลาดในการอัพเดทสถิติการเช็คชื่อทั้งหมด:', error);
-        showNotification('เกิดข้อผิดพลาดในการอัพเดทสถิติ: ' + error.message, 'error');
     }
 }
 
@@ -1361,7 +1271,7 @@ function showNotification(message, type = 'info') {
             case 'success': icon = 'check-circle'; break;
             case 'warning': icon = 'exclamation-triangle'; break;
             case 'error': icon = 'exclamation-circle'; break;
-            case 'info': default: icon = 'info-circle'; break;
+            default: icon = 'info-circle'; break;
         }
         
         notification.innerHTML = `

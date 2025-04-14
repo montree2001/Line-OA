@@ -4,7 +4,7 @@
         <span class="material-icons nav-icon">home</span>
         <span>หน้าหลัก</span>
     </a>
-    <a href="check-attendance.php" class="nav-item <?php echo ($current_page == 'check_attendance') ? 'active' : ''; ?>">
+    <a href="new_check_attendance.php" class="nav-item <?php echo ($current_page == 'check_attendance') ? 'active' : ''; ?>">
         <span class="material-icons nav-icon">groups</span>
         <span>เช็คชื่อ</span>
     </a>
