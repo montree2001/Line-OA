@@ -1,4 +1,5 @@
 <?php
+
 /**
  * new_check_attendance_content.php - เนื้อหาของหน้าเช็คชื่อนักเรียนรูปแบบใหม่
  * 
@@ -6,6 +7,7 @@
  * - ใช้งานง่าย ไม่ซับซ้อน
  * - แสดงสถานะ มา/ขาด/สาย/ลา ชัดเจน
  * - มีฟังก์ชันครบถ้วนตามความต้องการ
+ * - แสดงปีเป็น พ.ศ.
  */
 ?>
 <div class="header">
@@ -22,6 +24,9 @@
         </a>
         <a href="student_history.php?class_id=<?php echo $current_class_id; ?>">
             <span class="material-icons">history</span> ประวัติการเช็คชื่อ
+        </a>
+        <a href="class_parents.php?class_id=<?php echo $current_class_id; ?>">
+            <span class="material-icons">family_restroom</span> ข้อมูลผู้ปกครอง
         </a>
         <a href="javascript:void(0)" onclick="showHelp()">
             <span class="material-icons">help_outline</span> วิธีใช้งาน
@@ -42,11 +47,11 @@
                 <?php endforeach; ?>
             </select>
         </div>
-        
+
         <div class="date-selector">
             <label for="dateSelect">วันที่เช็คชื่อ:</label>
             <input type="date" id="dateSelect" value="<?php echo $check_date; ?>" max="<?php echo date('Y-m-d'); ?>" onchange="changeDate(this.value)">
-            
+
             <?php if ($is_retroactive): ?>
                 <div class="retroactive-badge">
                     <i class="fas fa-history"></i> เช็คชื่อย้อนหลัง
@@ -54,7 +59,7 @@
             <?php endif; ?>
         </div>
     </div>
-    
+
     <!-- สรุปข้อมูลการเช็คชื่อ -->
     <div class="attendance-summary">
         <div class="summary-item total">
@@ -66,7 +71,7 @@
                 <div class="summary-label">นักเรียนทั้งหมด</div>
             </div>
         </div>
-        
+
         <div class="summary-item present">
             <div class="summary-icon">
                 <i class="fas fa-check-circle"></i>
@@ -76,7 +81,7 @@
                 <div class="summary-label">มาเรียน</div>
             </div>
         </div>
-        
+
         <div class="summary-item late">
             <div class="summary-icon">
                 <i class="fas fa-clock"></i>
@@ -86,7 +91,7 @@
                 <div class="summary-label">มาสาย</div>
             </div>
         </div>
-        
+
         <div class="summary-item leave">
             <div class="summary-icon">
                 <i class="fas fa-clipboard"></i>
@@ -96,7 +101,7 @@
                 <div class="summary-label">ลา</div>
             </div>
         </div>
-        
+
         <div class="summary-item absent">
             <div class="summary-icon">
                 <i class="fas fa-times-circle"></i>
@@ -106,7 +111,7 @@
                 <div class="summary-label">ขาดเรียน</div>
             </div>
         </div>
-        
+
         <div class="summary-item not-checked">
             <div class="summary-icon">
                 <i class="fas fa-hourglass-half"></i>
@@ -117,7 +122,7 @@
             </div>
         </div>
     </div>
-    
+
     <!-- ปุ่มดำเนินการเช็คชื่อ -->
     <div class="action-buttons">
         <button type="button" class="btn primary" onclick="createPIN()">
@@ -130,13 +135,13 @@
             <i class="fas fa-check-double"></i> เช็คชื่อทั้งหมด
         </button>
     </div>
-    
+
     <!-- ช่องค้นหา -->
     <div class="search-container">
         <i class="fas fa-search search-icon"></i>
         <input type="text" id="searchInput" class="search-input" placeholder="ค้นหาชื่อนักเรียน..." oninput="searchStudents()">
     </div>
-    
+
     <!-- แท็บการเช็คชื่อ -->
     <div class="attendance-tabs">
         <button type="button" class="tab-button active" data-tab="waiting">
@@ -146,7 +151,7 @@
             <i class="fas fa-check-double"></i> เช็คชื่อแล้ว <span class="count"><?php echo count($checked_students); ?></span>
         </button>
     </div>
-    
+
     <!-- แท็บเนื้อหา -->
     <div class="tab-content">
         <!-- รายชื่อนักเรียนที่ยังไม่ได้เช็คชื่อ -->
@@ -160,30 +165,46 @@
             <?php else: ?>
                 <div class="student-list">
                     <?php foreach ($unchecked_students as $student): ?>
-                        <div class="student-card" data-id="<?php echo $student['id']; ?>" data-name="<?php echo $student['name']; ?>">
+                        <div class="student-card" data-id="<?php echo $student['id']; ?>" data-name="<?php echo htmlspecialchars($student['name'], ENT_QUOTES, 'UTF-8'); ?>">
                             <div class="student-number"><?php echo $student['number']; ?></div>
-                            
+
                             <div class="student-info" onclick="showDetailAttendance(<?php echo $student['id']; ?>, '<?php echo htmlspecialchars($student['name'], ENT_QUOTES, 'UTF-8'); ?>')">
                                 <?php if ($student['profile_picture']): ?>
                                     <div class="student-avatar" style="background-image: url('<?php echo $student['profile_picture']; ?>')"></div>
                                 <?php else: ?>
                                     <div class="student-avatar"><?php echo mb_substr(str_replace(['นาย', 'นางสาว', 'นาง', 'เด็กชาย', 'เด็กหญิง'], '', $student['name']), 0, 1, 'UTF-8'); ?></div>
                                 <?php endif; ?>
-                                
+
                                 <div class="student-details">
                                     <div class="student-name"><?php echo $student['name']; ?></div>
                                     <div class="student-code">รหัส: <?php echo $student['code']; ?></div>
                                 </div>
                             </div>
-                            
+
+                            <!-- ปุ่มเช็คชื่อในรายการนักเรียน -->
                             <div class="student-actions">
-                                <button type="button" class="action-btn present" title="มาเรียน" onclick="markAttendance(this, 'present', <?php echo $student['id']; ?>)">
+                                <button type="button" class="action-btn present" title="มาเรียน"
+                                    onclick="if (typeof markAttendance === 'function') { 
+            markAttendance(this, 'present', <?php echo $student['id']; ?>); 
+        } else { 
+            alert('ฟังก์ชัน markAttendance ไม่พร้อมใช้งาน กรุณารีเฟรชหน้า'); 
+        }">
                                     <i class="fas fa-check"></i>
                                 </button>
-                                <button type="button" class="action-btn absent" title="ขาดเรียน" onclick="markAttendance(this, 'absent', <?php echo $student['id']; ?>)">
+                                <button type="button" class="action-btn absent" title="ขาดเรียน"
+                                    onclick="if (typeof markAttendance === 'function') { 
+            markAttendance(this, 'absent', <?php echo $student['id']; ?>); 
+        } else { 
+            alert('ฟังก์ชัน markAttendance ไม่พร้อมใช้งาน กรุณารีเฟรชหน้า'); 
+        }">
                                     <i class="fas fa-times"></i>
                                 </button>
-                                <button type="button" class="action-btn more" title="เช็คแบบละเอียด" onclick="showDetailAttendance(<?php echo $student['id']; ?>, '<?php echo htmlspecialchars($student['name'], ENT_QUOTES, 'UTF-8'); ?>')">
+                                <button type="button" class="action-btn more" title="เช็คแบบละเอียด"
+                                    onclick="if (typeof showDetailAttendance === 'function') { 
+            showDetailAttendance(<?php echo $student['id']; ?>, '<?php echo htmlspecialchars($student['name'], ENT_QUOTES, 'UTF-8'); ?>'); 
+        } else { 
+            alert('ฟังก์ชัน showDetailAttendance ไม่พร้อมใช้งาน กรุณารีเฟรชหน้า'); 
+        }">
                                     <i class="fas fa-ellipsis-h"></i>
                                 </button>
                             </div>
@@ -192,7 +213,7 @@
                 </div>
             <?php endif; ?>
         </div>
-        
+
         <!-- รายชื่อนักเรียนที่เช็คชื่อแล้ว -->
         <div id="checkedTab" class="tab-pane">
             <?php if (empty($checked_students)): ?>
@@ -205,44 +226,44 @@
                 <div class="student-list">
                     <?php foreach ($checked_students as $student): ?>
                         <?php
-                            // กำหนดคลาสและไอคอนตามสถานะ
-                            $status_class = '';
-                            $status_icon = '';
-                            $status_text = '';
-                            
-                            switch ($student['status']) {
-                                case 'present':
-                                    $status_class = 'present';
-                                    $status_icon = 'fa-check-circle';
-                                    $status_text = 'มาเรียน';
-                                    break;
-                                case 'late':
-                                    $status_class = 'late';
-                                    $status_icon = 'fa-clock';
-                                    $status_text = 'มาสาย';
-                                    break;
-                                case 'leave':
-                                    $status_class = 'leave';
-                                    $status_icon = 'fa-clipboard';
-                                    $status_text = 'ลา';
-                                    break;
-                                case 'absent':
-                                    $status_class = 'absent';
-                                    $status_icon = 'fa-times-circle';
-                                    $status_text = 'ขาดเรียน';
-                                    break;
-                            }
+                        // กำหนดคลาสและไอคอนตามสถานะ
+                        $status_class = '';
+                        $status_icon = '';
+                        $status_text = '';
+
+                        switch ($student['status']) {
+                            case 'present':
+                                $status_class = 'present';
+                                $status_icon = 'fa-check-circle';
+                                $status_text = 'มาเรียน';
+                                break;
+                            case 'late':
+                                $status_class = 'late';
+                                $status_icon = 'fa-clock';
+                                $status_text = 'มาสาย';
+                                break;
+                            case 'leave':
+                                $status_class = 'leave';
+                                $status_icon = 'fa-clipboard';
+                                $status_text = 'ลา';
+                                break;
+                            case 'absent':
+                                $status_class = 'absent';
+                                $status_icon = 'fa-times-circle';
+                                $status_text = 'ขาดเรียน';
+                                break;
+                        }
                         ?>
-                        <div class="student-card <?php echo $status_class; ?>-card" data-id="<?php echo $student['id']; ?>" data-name="<?php echo $student['name']; ?>" data-status="<?php echo $student['status']; ?>">
+                        <div class="student-card <?php echo $status_class; ?>-card" data-id="<?php echo $student['id']; ?>" data-name="<?php echo htmlspecialchars($student['name'], ENT_QUOTES, 'UTF-8'); ?>" data-status="<?php echo $student['status']; ?>" data-attendance-id="<?php echo $student['attendance_id']; ?>">
                             <div class="student-number"><?php echo $student['number']; ?></div>
-                            
+
                             <div class="student-info" onclick="editAttendance(<?php echo $student['id']; ?>, '<?php echo htmlspecialchars($student['name'], ENT_QUOTES, 'UTF-8'); ?>', '<?php echo $student['status']; ?>', '<?php echo htmlspecialchars($student['remarks'] ?? '', ENT_QUOTES, 'UTF-8'); ?>')">
                                 <?php if ($student['profile_picture']): ?>
                                     <div class="student-avatar" style="background-image: url('<?php echo $student['profile_picture']; ?>')"></div>
                                 <?php else: ?>
                                     <div class="student-avatar"><?php echo mb_substr(str_replace(['นาย', 'นางสาว', 'นาง', 'เด็กชาย', 'เด็กหญิง'], '', $student['name']), 0, 1, 'UTF-8'); ?></div>
                                 <?php endif; ?>
-                                
+
                                 <div class="student-details">
                                     <div class="student-name"><?php echo $student['name']; ?></div>
                                     <?php if (!empty($student['remarks'])): ?>
@@ -252,23 +273,32 @@
                                     <?php endif; ?>
                                 </div>
                             </div>
-                            
+
                             <div class="student-status-info">
                                 <div class="status-badge <?php echo $status_class; ?>">
                                     <i class="fas <?php echo $status_icon; ?>"></i> <?php echo $status_text; ?>
                                 </div>
-                                
+
                                 <div class="check-details">
                                     <div class="check-time"><?php echo $student['time_checked']; ?></div>
-                                    <div class="check-method"><?php 
-                                        switch($student['check_method']) {
-                                            case 'Manual': echo 'ครู'; break;
-                                            case 'PIN': echo 'PIN'; break;
-                                            case 'QR_Code': echo 'QR'; break;
-                                            case 'GPS': echo 'GPS'; break;
-                                            default: echo $student['check_method'];
-                                        }
-                                    ?></div>
+                                    <div class="check-method"><?php
+                                                                switch ($student['check_method']) {
+                                                                    case 'Manual':
+                                                                        echo 'ครู';
+                                                                        break;
+                                                                    case 'PIN':
+                                                                        echo 'PIN';
+                                                                        break;
+                                                                    case 'QR_Code':
+                                                                        echo 'QR';
+                                                                        break;
+                                                                    case 'GPS':
+                                                                        echo 'GPS';
+                                                                        break;
+                                                                    default:
+                                                                        echo $student['check_method'];
+                                                                }
+                                                                ?></div>
                                 </div>
                             </div>
                         </div>
@@ -277,7 +307,7 @@
             <?php endif; ?>
         </div>
     </div>
-    
+
     <!-- ปุ่มลอยบันทึก -->
     <button type="button" class="floating-button" id="saveAttendanceBtn" onclick="saveAttendance()">
         <i class="fas fa-save"></i>
@@ -295,7 +325,7 @@
                 </button>
             </div>
             <div class="modal-body">
-                <div class="pin-display" id="pinCodeDisplay">
+                <div class="pin-display">
                     <span class="pin-digit">-</span>
                     <span class="pin-digit">-</span>
                     <span class="pin-digit">-</span>
@@ -353,7 +383,7 @@
             </div>
             <div class="modal-body">
                 <h4 id="studentNameDetail" class="student-detail-name"></h4>
-                
+
                 <div class="status-options">
                     <label class="status-option">
                         <input type="radio" name="attendanceStatus" value="present" checked>
@@ -361,21 +391,21 @@
                             <i class="fas fa-check-circle"></i> มาเรียน
                         </span>
                     </label>
-                    
+
                     <label class="status-option">
                         <input type="radio" name="attendanceStatus" value="late">
                         <span class="status-label late">
                             <i class="fas fa-clock"></i> มาสาย
                         </span>
                     </label>
-                    
+
                     <label class="status-option">
                         <input type="radio" name="attendanceStatus" value="leave">
                         <span class="status-label leave">
                             <i class="fas fa-clipboard"></i> ลา
                         </span>
                     </label>
-                    
+
                     <label class="status-option">
                         <input type="radio" name="attendanceStatus" value="absent">
                         <span class="status-label absent">
@@ -383,26 +413,38 @@
                         </span>
                     </label>
                 </div>
-                
+
                 <div class="remarks-container" id="remarksContainer">
                     <label for="attendanceRemarks">หมายเหตุ:</label>
                     <textarea id="attendanceRemarks" placeholder="ระบุหมายเหตุ เช่น สาเหตุการมาสาย, เหตุผลการลา ฯลฯ"></textarea>
                 </div>
-                
+
                 <?php if ($is_retroactive): ?>
-                <div class="retroactive-note">
-                    <label for="retroactiveNote">หมายเหตุการเช็คย้อนหลัง:</label>
-                    <textarea id="retroactiveNote" placeholder="ระบุหมายเหตุการเช็คย้อนหลัง เช่น ใบรับรองแพทย์, หนังสือลา ฯลฯ"></textarea>
-                </div>
+                    <div class="retroactive-note">
+                        <label for="retroactiveNote">หมายเหตุการเช็คย้อนหลัง:</label>
+                        <textarea id="retroactiveNote" placeholder="ระบุหมายเหตุการเช็คย้อนหลัง เช่น ใบรับรองแพทย์, หนังสือลา ฯลฯ"></textarea>
+                    </div>
                 <?php endif; ?>
-                
+
                 <input type="hidden" id="studentIdDetail" value="">
+                <input type="hidden" id="attendanceIdDetail" value="">
                 <input type="hidden" id="isEditMode" value="0">
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn secondary" onclick="closeModal('attendanceDetailModal')">ยกเลิก</button>
-                <button type="button" class="btn primary" onclick="confirmDetailAttendance()">บันทึก</button>
-            </div>
+    <button type="button" class="btn secondary" 
+        onclick="if (typeof closeModal === 'function') { 
+            closeModal('attendanceDetailModal'); 
+        } else { 
+            document.getElementById('attendanceDetailModal').classList.remove('active'); 
+            document.body.style.overflow = ''; 
+        }">ยกเลิก</button>
+    <button type="button" class="btn primary" 
+        onclick="if (typeof confirmDetailAttendance === 'function') { 
+            confirmDetailAttendance(); 
+        } else { 
+            alert('ฟังก์ชัน confirmDetailAttendance ไม่พร้อมใช้งาน กรุณารีเฟรชหน้า'); 
+        }">บันทึก</button>
+</div>
         </div>
     </div>
 </div>
@@ -419,7 +461,7 @@
             </div>
             <div class="modal-body">
                 <p class="mark-all-desc">เลือกสถานะสำหรับนักเรียนที่ยังไม่ได้เช็คชื่อทั้งหมด <?php echo $not_checked; ?> คน</p>
-                
+
                 <div class="status-options mark-all-options">
                     <label class="status-option">
                         <input type="radio" name="markAllStatus" value="present" checked>
@@ -427,21 +469,21 @@
                             <i class="fas fa-check-circle"></i> เช็คเป็น "มาเรียน" ทั้งหมด
                         </span>
                     </label>
-                    
+
                     <label class="status-option">
                         <input type="radio" name="markAllStatus" value="late">
                         <span class="status-label late">
                             <i class="fas fa-clock"></i> เช็คเป็น "มาสาย" ทั้งหมด
                         </span>
                     </label>
-                    
+
                     <label class="status-option">
                         <input type="radio" name="markAllStatus" value="leave">
                         <span class="status-label leave">
                             <i class="fas fa-clipboard"></i> เช็คเป็น "ลา" ทั้งหมด
                         </span>
                     </label>
-                    
+
                     <label class="status-option">
                         <input type="radio" name="markAllStatus" value="absent">
                         <span class="status-label absent">
@@ -449,12 +491,12 @@
                         </span>
                     </label>
                 </div>
-                
+
                 <?php if ($is_retroactive): ?>
-                <div class="retroactive-note">
-                    <label for="markAllRetroactiveNote">หมายเหตุการเช็คย้อนหลัง:</label>
-                    <textarea id="markAllRetroactiveNote" placeholder="ระบุหมายเหตุการเช็คย้อนหลัง เช่น ใบรับรองแพทย์, หนังสือลา ฯลฯ"></textarea>
-                </div>
+                    <div class="retroactive-note">
+                        <label for="markAllRetroactiveNote">หมายเหตุการเช็คย้อนหลัง:</label>
+                        <textarea id="markAllRetroactiveNote" placeholder="ระบุหมายเหตุการเช็คย้อนหลัง เช่น ใบรับรองแพทย์, หนังสือลา ฯลฯ"></textarea>
+                    </div>
                 <?php endif; ?>
             </div>
             <div class="modal-footer">
@@ -490,28 +532,28 @@
                         <span class="stat-label">คงเหลือ</span>
                     </div>
                 </div>
-                
+
                 <div class="confirmation-text">
                     <?php if ($not_checked > 0): ?>
-                    <p class="warning-text">
-                        <i class="fas fa-exclamation-triangle"></i> 
-                        ยังมีนักเรียนที่ยังไม่ได้เช็คชื่อ <?php echo $not_checked; ?> คน
-                    </p>
-                    <p>นักเรียนที่ยังไม่ได้เช็คชื่อจะถูกบันทึกเป็น "ขาด" โดยอัตโนมัติ</p>
+                        <p class="warning-text">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            ยังมีนักเรียนที่ยังไม่ได้เช็คชื่อ <?php echo $not_checked; ?> คน
+                        </p>
+                        <p>นักเรียนที่ยังไม่ได้เช็คชื่อจะถูกบันทึกเป็น "ขาด" โดยอัตโนมัติ</p>
                     <?php else: ?>
-                    <p class="success-text">
-                        <i class="fas fa-check-circle"></i>
-                        เช็คชื่อครบทุกคนแล้ว
-                    </p>
+                        <p class="success-text">
+                            <i class="fas fa-check-circle"></i>
+                            เช็คชื่อครบทุกคนแล้ว
+                        </p>
                     <?php endif; ?>
                     <p>คุณต้องการบันทึกการเช็คชื่อนี้หรือไม่?</p>
                 </div>
-                
+
                 <?php if ($is_retroactive): ?>
-                <div class="retroactive-note">
-                    <label for="saveRetroactiveNote">หมายเหตุการเช็คย้อนหลัง:</label>
-                    <textarea id="saveRetroactiveNote" placeholder="ระบุหมายเหตุการเช็คย้อนหลัง เช่น ใบรับรองแพทย์, หนังสือลา ฯลฯ"></textarea>
-                </div>
+                    <div class="retroactive-note">
+                        <label for="saveRetroactiveNote">หมายเหตุการเช็คย้อนหลัง:</label>
+                        <textarea id="saveRetroactiveNote" placeholder="ระบุหมายเหตุการเช็คย้อนหลัง เช่น ใบรับรองแพทย์, หนังสือลา ฯลฯ"></textarea>
+                    </div>
                 <?php endif; ?>
             </div>
             <div class="modal-footer">
@@ -538,29 +580,29 @@
                     <p>คลิกปุ่ม <i class="fas fa-check"></i> เพื่อเช็คว่านักเรียนมาเรียน หรือคลิกปุ่ม <i class="fas fa-times"></i> เพื่อเช็คว่านักเรียนขาดเรียน</p>
                     <p>สำหรับการเช็คชื่อแบบมาสายหรือลา ให้คลิกที่ <i class="fas fa-ellipsis-h"></i> หรือที่ชื่อนักเรียน</p>
                 </div>
-                
+
                 <div class="help-section">
                     <h4><i class="fas fa-users"></i> การเช็คชื่อทั้งห้อง</h4>
                     <p>คลิกปุ่ม "เช็คชื่อทั้งหมด" เพื่อกำหนดสถานะให้กับนักเรียนที่ยังไม่ได้เช็คชื่อทั้งหมดพร้อมกัน</p>
                 </div>
-                
+
                 <div class="help-section">
                     <h4><i class="fas fa-key"></i> การใช้รหัส PIN</h4>
                     <p>คลิกปุ่ม "สร้างรหัส PIN" เพื่อสร้างรหัส 4 หลักให้นักเรียนใช้เช็คชื่อผ่านแอปนักเรียน</p>
                     <p>PIN จะมีอายุการใช้งาน 10 นาที</p>
                 </div>
-                
+
                 <div class="help-section">
                     <h4><i class="fas fa-qrcode"></i> การสแกน QR Code</h4>
                     <p>คลิกปุ่ม "สแกน QR Code" เพื่อเปิดกล้องสำหรับสแกน QR Code ของนักเรียน</p>
                     <p>หลังจากสแกนสำเร็จ ระบบจะเช็คชื่อนักเรียนโดยอัตโนมัติ</p>
                 </div>
-                
+
                 <div class="help-section">
                     <h4><i class="fas fa-edit"></i> การแก้ไขการเช็คชื่อ</h4>
                     <p>คลิกที่ชื่อนักเรียนในแท็บ "เช็คชื่อแล้ว" เพื่อแก้ไขสถานะการเช็คชื่อ</p>
                 </div>
-                
+
                 <div class="help-section">
                     <h4><i class="fas fa-save"></i> การบันทึกข้อมูล</h4>
                     <p>คลิกปุ่มบันทึก (ไอคอนดิสก์) ที่ด้านล่างขวาของหน้าจอเพื่อบันทึกการเช็คชื่อทั้งหมด</p>
@@ -582,4 +624,53 @@
     const teacherId = <?php echo $teacher_id; ?>;
     const totalStudents = <?php echo $total_students; ?>;
     const notCheckedCount = <?php echo $not_checked; ?>;
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // ตรวจสอบว่าฟังก์ชันหลักพร้อมใช้งานหรือไม่
+    if (typeof markAttendance !== 'function') {
+        console.error('ไม่พบฟังก์ชัน markAttendance - สคริปต์อาจโหลดไม่สมบูรณ์');
+        
+        // สร้างฟังก์ชัน fallback ชั่วคราว
+        window.markAttendance = function(button, status, studentId) {
+            alert(`ข้อผิดพลาด: สคริปต์โหลดไม่สมบูรณ์ กรุณารีเฟรชหน้า (status: ${status}, student: ${studentId})`);
+        };
+    }
+    
+    if (typeof showDetailAttendance !== 'function') {
+        console.error('ไม่พบฟังก์ชัน showDetailAttendance - สคริปต์อาจโหลดไม่สมบูรณ์');
+        
+        window.showDetailAttendance = function(studentId, studentName) {
+            alert(`ข้อผิดพลาด: สคริปต์โหลดไม่สมบูรณ์ กรุณารีเฟรชหน้า (student: ${studentId}, ${studentName})`);
+        };
+    }
+    
+    if (typeof confirmDetailAttendance !== 'function') {
+        console.error('ไม่พบฟังก์ชัน confirmDetailAttendance - สคริปต์อาจโหลดไม่สมบูรณ์');
+        
+        window.confirmDetailAttendance = function() {
+            alert('ข้อผิดพลาด: สคริปต์โหลดไม่สมบูรณ์ กรุณารีเฟรชหน้า');
+        };
+    }
+    
+    if (typeof closeModal !== 'function') {
+        console.error('ไม่พบฟังก์ชัน closeModal - สคริปต์อาจโหลดไม่สมบูรณ์');
+        
+        window.closeModal = function(modalId) {
+            const modal = document.getElementById(modalId);
+            if (modal) {
+                modal.classList.remove('active');
+                document.body.style.overflow = '';
+            }
+        };
+    }
+    
+    // ตรวจสอบว่ามีการปิดการใช้งาน JavaScript หรือไม่
+    document.querySelectorAll('.action-btn').forEach(button => {
+        button.addEventListener('click', function(e) {
+            // ไม่ทำอะไรหากมีฟังก์ชันที่เกี่ยวข้องแล้ว
+        });
+    });
+});
 </script>

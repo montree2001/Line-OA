@@ -11,7 +11,8 @@
  *     {
  *       "student_id": int,       // รหัสนักเรียน
  *       "status": string,        // สถานะ (present/late/leave/absent)
- *       "remarks": string        // หมายเหตุ (ถ้ามี)
+ *       "remarks": string,       // หมายเหตุ (ถ้ามี)
+ *       "attendance_id": int     // รหัสการเช็คชื่อ (กรณีแก้ไข)
  *     },
  *     ...
  *   ],
@@ -140,6 +141,14 @@ try {
                                VALUES (:student_id, :academic_year_id, :check_date, :status, :check_method, 
                                :checker_user_id, NOW(), NOW(), NOW(), :remarks)");
     
+    $update_stmt = $db->prepare("UPDATE attendance 
+                               SET attendance_status = :status, 
+                                   check_method = :check_method,
+                                   checker_user_id = :checker_user_id, 
+                                   updated_at = NOW(),
+                                   remarks = :remarks
+                               WHERE attendance_id = :attendance_id");
+    
     // ดึง user_id ของครูที่เช็คชื่อ
     $user_id_query = "SELECT user_id FROM teachers WHERE teacher_id = :teacher_id";
     $stmt = $db->prepare($user_id_query);
@@ -166,6 +175,7 @@ try {
         $student_id = intval($student['student_id']);
         $status = $student['status']; // present, late, leave, absent
         $remarks = isset($student['remarks']) ? $student['remarks'] : ($is_retroactive ? 'เช็คชื่อย้อนหลังโดยครู' : '');
+        $attendance_id = isset($student['attendance_id']) ? intval($student['attendance_id']) : null;
         
         // ตรวจสอบว่าสถานะถูกต้อง
         if (!in_array($status, ['present', 'late', 'leave', 'absent'])) {
@@ -173,22 +183,36 @@ try {
             $status = 'absent';
         }
         
-        // ลบข้อมูลเดิม (ถ้ามี)
-        $delete_stmt->bindParam(':student_id', $student_id, PDO::PARAM_INT);
-        $delete_stmt->bindParam(':check_date', $check_date, PDO::PARAM_STR);
-        $delete_stmt->execute();
-        
-        // เพิ่มข้อมูลใหม่
-        $insert_stmt->bindParam(':student_id', $student_id, PDO::PARAM_INT);
-        $insert_stmt->bindParam(':academic_year_id', $academic_year_id, PDO::PARAM_INT);
-        $insert_stmt->bindParam(':check_date', $check_date, PDO::PARAM_STR);
-        $insert_stmt->bindParam(':status', $status, PDO::PARAM_STR);
-        $insert_stmt->bindParam(':check_method', $check_method, PDO::PARAM_STR);
-        $insert_stmt->bindParam(':checker_user_id', $checker_user_id, PDO::PARAM_INT);
-        $insert_stmt->bindParam(':remarks', $remarks, PDO::PARAM_STR);
-        
-        if ($insert_stmt->execute()) {
-            $success_count++;
+        // ตรวจสอบว่าเป็นการแก้ไขหรือเพิ่มใหม่
+        if ($attendance_id) {
+            // แก้ไขข้อมูลที่มีอยู่
+            $update_stmt->bindParam(':attendance_id', $attendance_id, PDO::PARAM_INT);
+            $update_stmt->bindParam(':status', $status, PDO::PARAM_STR);
+            $update_stmt->bindParam(':check_method', $check_method, PDO::PARAM_STR);
+            $update_stmt->bindParam(':checker_user_id', $checker_user_id, PDO::PARAM_INT);
+            $update_stmt->bindParam(':remarks', $remarks, PDO::PARAM_STR);
+            
+            if ($update_stmt->execute()) {
+                $success_count++;
+            }
+        } else {
+            // ลบข้อมูลเดิม (ถ้ามี)
+            $delete_stmt->bindParam(':student_id', $student_id, PDO::PARAM_INT);
+            $delete_stmt->bindParam(':check_date', $check_date, PDO::PARAM_STR);
+            $delete_stmt->execute();
+            
+            // เพิ่มข้อมูลใหม่
+            $insert_stmt->bindParam(':student_id', $student_id, PDO::PARAM_INT);
+            $insert_stmt->bindParam(':academic_year_id', $academic_year_id, PDO::PARAM_INT);
+            $insert_stmt->bindParam(':check_date', $check_date, PDO::PARAM_STR);
+            $insert_stmt->bindParam(':status', $status, PDO::PARAM_STR);
+            $insert_stmt->bindParam(':check_method', $check_method, PDO::PARAM_STR);
+            $insert_stmt->bindParam(':checker_user_id', $checker_user_id, PDO::PARAM_INT);
+            $insert_stmt->bindParam(':remarks', $remarks, PDO::PARAM_STR);
+            
+            if ($insert_stmt->execute()) {
+                $success_count++;
+            }
         }
     }
     

@@ -1,13 +1,14 @@
 /**
  * new_check_attendance.js - สคริปต์สำหรับหน้าเช็คชื่อนักเรียนรูปแบบใหม่
  * 
- * ฟังก์ชันสำคัญ:
+ * ฟังก์ชันหลัก:
  * - ระบบเช็คชื่อ 4 สถานะ: มา, ขาด, สาย, ลา
  * - สร้าง PIN สำหรับนักเรียนเช็คชื่อ
  * - สแกน QR Code
  * - เช็คชื่อทั้งห้อง
  * - บันทึกข้อมูลลงฐานข้อมูล
  * - UI/UX ที่ใช้งานง่าย
+ * - แสดงปีเป็น พ.ศ.
  */
 
 // ตัวแปรหลัก
@@ -141,10 +142,10 @@ function toggleOptions() {
 function changeClass(classId) {
     if (hasChanges) {
         if (confirm('คุณมีข้อมูลที่ยังไม่ได้บันทึก ต้องการออกจากหน้านี้หรือไม่?')) {
-            window.location.href = `check-attendance.php?class_id=${classId}&date=${checkDate}`;
+            window.location.href = `new_check_attendance.php?class_id=${classId}&date=${checkDate}`;
         }
     } else {
-        window.location.href = `check-attendance.php?class_id=${classId}&date=${checkDate}`;
+        window.location.href = `new_check_attendance.php?class_id=${classId}&date=${checkDate}`;
     }
 }
 
@@ -155,10 +156,10 @@ function changeClass(classId) {
 function changeDate(date) {
     if (hasChanges) {
         if (confirm('คุณมีข้อมูลที่ยังไม่ได้บันทึก ต้องการออกจากหน้านี้หรือไม่?')) {
-            window.location.href = `check-attendance.php?class_id=${currentClassId}&date=${date}`;
+            window.location.href = `new_check_attendance.php?class_id=${currentClassId}&date=${date}`;
         }
     } else {
-        window.location.href = `check-attendance.php?class_id=${currentClassId}&date=${date}`;
+        window.location.href = `new_check_attendance.php?class_id=${currentClassId}&date=${date}`;
     }
 }
 
@@ -257,6 +258,12 @@ function showDetailAttendance(studentId, studentName) {
         isEditMode.value = '0';
     }
     
+    // รีเซ็ตค่า attendance_id
+    const attendanceIdInput = document.getElementById('attendanceIdDetail');
+    if (attendanceIdInput) {
+        attendanceIdInput.value = '';
+    }
+    
     // รีเซ็ตค่าตัวเลือกเป็น "มาเรียน"
     const presentOption = document.querySelector('input[name="attendanceStatus"][value="present"]');
     if (presentOption) {
@@ -311,6 +318,16 @@ function editAttendance(studentId, studentName, status, remarks) {
         isEditMode.value = '1';
     }
     
+    // ดึงและกำหนดค่า attendance_id
+    const studentCard = document.querySelector(`#checkedTab .student-card[data-id="${studentId}"]`);
+    if (studentCard) {
+        const attendanceId = studentCard.getAttribute('data-attendance-id');
+        const attendanceIdInput = document.getElementById('attendanceIdDetail');
+        if (attendanceIdInput && attendanceId) {
+            attendanceIdInput.value = attendanceId;
+        }
+    }
+    
     // เลือกสถานะปัจจุบัน
     const statusOption = document.querySelector(`input[name="attendanceStatus"][value="${status}"]`);
     if (statusOption) {
@@ -351,6 +368,7 @@ function confirmDetailAttendance() {
         // ดึงข้อมูลจาก Modal
         const studentId = document.getElementById('studentIdDetail').value;
         const isEditMode = document.getElementById('isEditMode').value === '1';
+        const attendanceId = document.getElementById('attendanceIdDetail')?.value || null;
         
         // ดึงสถานะที่เลือก
         const status = document.querySelector('input[name="attendanceStatus"]:checked').value;
@@ -389,11 +407,11 @@ function confirmDetailAttendance() {
         }
         
         // บันทึกข้อมูลการเช็คชื่อในตัวแปร
-        updateAttendanceData(studentId, status, remarks);
+        updateAttendanceData(studentId, status, remarks, attendanceId);
         
         if (isEditMode) {
             // กรณีแก้ไข: อัพเดทการ์ดนักเรียนในแท็บ "เช็คชื่อแล้ว"
-            updateStudentCard(studentId, status, remarks);
+            updateStudentCard(studentId, status, remarks, attendanceId);
         } else {
             // กรณีเพิ่มใหม่: ย้ายการ์ดนักเรียนไปยังแท็บ "เช็คชื่อแล้ว"
             const studentCard = document.querySelector(`#waitingTab .student-card[data-id="${studentId}"]`);
@@ -464,6 +482,13 @@ function confirmMarkAll() {
             }
         }
         
+        // คำแนะนำเพิ่มเติมสำหรับสถานะมาสายและลา
+        if ((status === 'late' || status === 'leave') && !remarks && !isRetroactive) {
+            if (!confirm(`คุณกำลังจะเช็คชื่อนักเรียนทั้งหมดเป็น "${getStatusText(status)}" โดยไม่มีการระบุหมายเหตุ ต้องการดำเนินการต่อหรือไม่?`)) {
+                return;
+            }
+        }
+        
         // ดึงทุกการ์ดนักเรียนในแท็บที่ยังไม่ได้เช็ค
         const studentCards = document.querySelectorAll('#waitingTab .student-card');
         
@@ -471,13 +496,6 @@ function confirmMarkAll() {
             closeModal('markAllModal');
             showNotification('ไม่มีนักเรียนที่ต้องเช็คชื่อแล้ว', 'info');
             return;
-        }
-        
-        // คำแนะนำเพิ่มเติมสำหรับสถานะมาสายและลา
-        if ((status === 'late' || status === 'leave') && !remarks && !isRetroactive) {
-            if (!confirm(`คุณกำลังจะเช็คชื่อนักเรียนทั้งหมดเป็น "${getStatusText(status)}" โดยไม่มีการระบุหมายเหตุ ต้องการดำเนินการต่อหรือไม่?`)) {
-                return;
-            }
         }
         
         // เช็คชื่อทุกคน
@@ -641,36 +659,28 @@ function saveAttendance() {
 function confirmSaveAttendance() {
     try {
         // ดึงหมายเหตุการเช็คย้อนหลัง (ถ้ามี)
+        let retroactiveNote = '';
         if (isRetroactive) {
             const remarksInput = document.getElementById('saveRetroactiveNote');
             if (remarksInput) {
-                const remarks = remarksInput.value.trim();
+                retroactiveNote = remarksInput.value.trim();
                 
                 // ตรวจสอบว่ามีการระบุหมายเหตุหรือไม่
-                if (remarks === '') {
+                if (retroactiveNote === '') {
                     showNotification('กรุณาระบุหมายเหตุสำหรับการเช็คชื่อย้อนหลัง', 'warning');
                     return;
                 }
-                
-                // เพิ่มหมายเหตุให้กับนักเรียนที่ยังไม่ได้เช็คชื่อ
-                const uncheckedStudents = document.querySelectorAll('#waitingTab .student-card');
-                uncheckedStudents.forEach(card => {
-                    const studentId = card.getAttribute('data-id');
-                    
-                    // บันทึกข้อมูลการเช็คชื่อในตัวแปร (ขาดเรียน)
-                    updateAttendanceData(studentId, 'absent', remarks);
-                });
             }
-        } else {
-            // เพิ่มนักเรียนที่ยังไม่ได้เช็คชื่อเป็นขาดเรียน
-            const uncheckedStudents = document.querySelectorAll('#waitingTab .student-card');
-            uncheckedStudents.forEach(card => {
-                const studentId = card.getAttribute('data-id');
-                
-                // บันทึกข้อมูลการเช็คชื่อในตัวแปร (ขาดเรียน)
-                updateAttendanceData(studentId, 'absent', '');
-            });
         }
+        
+        // เพิ่มนักเรียนที่ยังไม่ได้เช็คชื่อเป็นขาดเรียน
+        const uncheckedStudents = document.querySelectorAll('#waitingTab .student-card');
+        uncheckedStudents.forEach(card => {
+            const studentId = card.getAttribute('data-id');
+            
+            // บันทึกข้อมูลการเช็คชื่อในตัวแปร (ขาดเรียน)
+            updateAttendanceData(studentId, 'absent', retroactiveNote || '');
+        });
         
         // ปิด Modal
         closeModal('saveAttendanceModal');
@@ -747,32 +757,7 @@ function downloadReport() {
     showNotification('กำลังเตรียมข้อมูลรายงาน...', 'info');
     
     // ส่งคำขอไปยัง API เพื่อดาวน์โหลดรายงาน
-    fetch(`api/download_report.php?class_id=${currentClassId}&date=${checkDate}`, {
-        method: 'GET'
-    })
-    .then(response => {
-        if (response.ok) {
-            return response.blob();
-        } else {
-            throw new Error('ไม่สามารถดาวน์โหลดรายงานได้');
-        }
-    })
-    .then(blob => {
-        // สร้าง URL สำหรับไฟล์ blob
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.style.display = 'none';
-        a.href = url;
-        a.download = `รายงานการเช็คชื่อ_${currentClassId}_${checkDate}.xlsx`;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        showNotification('ดาวน์โหลดรายงานเรียบร้อย', 'success');
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        showNotification('ไม่สามารถดาวน์โหลดรายงานได้: ' + error.message, 'error');
-    });
+    window.location.href = `api/download_report.php?class_id=${currentClassId}&date=${checkDate}`;
 }
 
 /**
@@ -780,8 +765,9 @@ function downloadReport() {
  * @param {number} studentId - รหัสนักเรียน
  * @param {string} status - สถานะการเช็คชื่อ
  * @param {string} remarks - หมายเหตุ
+ * @param {number|null} attendanceId - รหัสการเช็คชื่อ (กรณีแก้ไข)
  */
-function updateAttendanceData(studentId, status, remarks) {
+function updateAttendanceData(studentId, status, remarks, attendanceId = null) {
     // แปลงเป็นตัวเลข
     studentId = parseInt(studentId);
     
@@ -792,13 +778,25 @@ function updateAttendanceData(studentId, status, remarks) {
         // อัพเดทข้อมูลเดิม
         attendanceData.students[studentIndex].status = status;
         attendanceData.students[studentIndex].remarks = remarks;
+        
+        // อัพเดท attendance_id ถ้ามี
+        if (attendanceId) {
+            attendanceData.students[studentIndex].attendance_id = parseInt(attendanceId);
+        }
     } else {
         // เพิ่มข้อมูลใหม่
-        attendanceData.students.push({
+        const studentData = {
             student_id: studentId,
             status: status,
             remarks: remarks
-        });
+        };
+        
+        // เพิ่ม attendance_id ถ้ามี
+        if (attendanceId) {
+            studentData.attendance_id = parseInt(attendanceId);
+        }
+        
+        attendanceData.students.push(studentData);
     }
 }
 
@@ -893,7 +891,7 @@ function createCheckedStudentCard(studentId, status, remarks = '') {
         const avatarElement = originalCard.querySelector('.student-avatar');
         const studentAvatar = avatarElement ? avatarElement.outerHTML : '<div class="student-avatar">?</div>';
         const studentCodeElement = originalCard.querySelector('.student-code');
-        const studentCode = studentCodeElement ? studentCodeElement.textContent.replace('รหัส: ', '') : '';
+        const studentCode = studentCodeElement ? studentCodeElement.textContent : 'รหัส: -';
         
         // กำหนดสถานะและไอคอน
         let statusClass = '';
@@ -936,7 +934,7 @@ function createCheckedStudentCard(studentId, status, remarks = '') {
         newCard.setAttribute('data-name', studentName);
         newCard.setAttribute('data-status', status);
         
-        // กำหนด HTML ของการ์ด
+        // สร้าง HTML ของการ์ด
         newCard.innerHTML = `
             <div class="student-number">${studentNumber}</div>
             
@@ -945,7 +943,7 @@ function createCheckedStudentCard(studentId, status, remarks = '') {
                 
                 <div class="student-details">
                     <div class="student-name">${studentName}</div>
-                    ${remarks ? `<div class="student-remarks">${remarks}</div>` : `<div class="student-code">รหัส: ${studentCode}</div>`}
+                    ${remarks ? `<div class="student-remarks">${remarks}</div>` : `<div class="student-code">${studentCode}</div>`}
                 </div>
             </div>
             
@@ -973,8 +971,9 @@ function createCheckedStudentCard(studentId, status, remarks = '') {
  * @param {number} studentId - รหัสนักเรียน
  * @param {string} status - สถานะการเช็คชื่อ
  * @param {string} remarks - หมายเหตุ (ถ้ามี)
+ * @param {number|null} attendanceId - รหัสการเช็คชื่อ (กรณีแก้ไข)
  */
-function updateStudentCard(studentId, status, remarks = '') {
+function updateStudentCard(studentId, status, remarks = '', attendanceId = null) {
     try {
         // ดึงการ์ดที่ต้องการอัพเดท
         const card = document.querySelector(`#checkedTab .student-card[data-id="${studentId}"]`);
@@ -982,6 +981,11 @@ function updateStudentCard(studentId, status, remarks = '') {
         if (!card) {
             console.error('ไม่พบการ์ดนักเรียนที่ต้องการอัพเดท');
             return;
+        }
+        
+        // บันทึก attendance_id ถ้ามี
+        if (attendanceId) {
+            card.setAttribute('data-attendance-id', attendanceId);
         }
         
         // อัพเดทคลาสของการ์ด
@@ -1029,7 +1033,7 @@ function updateStudentCard(studentId, status, remarks = '') {
         
         // อัพเดท onclick handler
         if (studentInfo) {
-            studentInfo.setAttribute('onclick', `editAttendance(${studentId}, '${studentName.replace(/'/g, "\\'")}', '${status}', '${remarks.replace(/'/g, "\\'")}')`);
+            studentInfo.setAttribute('onclick', `editAttendance(${studentId}, '${studentName.replace(/'/g, "\\'")}', '${status}', '${remarks.replace(/'/g, "\\'")}', ${attendanceId || 'null'})`);
         }
         
         // อัพเดทหมายเหตุ
@@ -1298,88 +1302,6 @@ function showNotification(message, type = 'info') {
             <button class="notification-close"><i class="fas fa-times"></i></button>
         `;
         
-        // เพิ่มสไตล์
-        notification.style.position = 'fixed';
-        notification.style.top = '20px';
-        notification.style.right = '20px';
-        notification.style.backgroundColor = 'white';
-        notification.style.maxWidth = '350px';
-        notification.style.padding = '12px 16px';
-        notification.style.borderRadius = '8px';
-        notification.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.1)';
-        notification.style.display = 'flex';
-        notification.style.justifyContent = 'space-between';
-        notification.style.alignItems = 'center';
-        notification.style.zIndex = '9999';
-        notification.style.animation = 'slideIn 0.3s ease-out forwards';
-        
-        // กำหนดสีตามประเภท
-        let borderColor = '';
-        switch (type) {
-            case 'success': borderColor = '#4caf50'; break;
-            case 'warning': borderColor = '#ff9800'; break;
-            case 'error': borderColor = '#f44336'; break;
-            case 'info': default: borderColor = '#2196f3'; break;
-        }
-        notification.style.borderLeft = `4px solid ${borderColor}`;
-        
-        // สร้าง style สำหรับ animation ถ้ายังไม่มี
-        if (!document.getElementById('notification-style')) {
-            const style = document.createElement('style');
-            style.id = 'notification-style';
-            style.textContent = `
-                @keyframes slideIn {
-                    from { transform: translateX(100%); opacity: 0; }
-                    to { transform: translateX(0); opacity: 1; }
-                }
-                
-                @keyframes slideOut {
-                    from { transform: translateX(0); opacity: 1; }
-                    to { transform: translateX(100%); opacity: 0; }
-                }
-                
-                .notification-content {
-                    display: flex;
-                    align-items: center;
-                    gap: 12px;
-                }
-                
-                .notification-content i {
-                    font-size: 20px;
-                }
-                
-                .notification-close {
-                    background: none;
-                    border: none;
-                    cursor: pointer;
-                    font-size: 16px;
-                    color: #999;
-                    padding: 0;
-                }
-                
-                .notification-close:hover {
-                    color: #333;
-                }
-                
-                .notification.success .notification-content i {
-                    color: #4caf50;
-                }
-                
-                .notification.warning .notification-content i {
-                    color: #ff9800;
-                }
-                
-                .notification.error .notification-content i {
-                    color: #f44336;
-                }
-                
-                .notification.info .notification-content i {
-                    color: #2196f3;
-                }
-            `;
-            document.head.appendChild(style);
-        }
-        
         // เพิ่มไปยัง body
         document.body.appendChild(notification);
         
@@ -1387,22 +1309,14 @@ function showNotification(message, type = 'info') {
         const closeButton = notification.querySelector('.notification-close');
         if (closeButton) {
             closeButton.addEventListener('click', () => {
-                notification.style.animation = 'slideOut 0.3s ease-out forwards';
-                setTimeout(() => {
-                    notification.remove();
-                }, 300);
+                notification.remove();
             });
         }
         
         // กำหนดการปิดอัตโนมัติ
         setTimeout(() => {
             if (document.body.contains(notification)) {
-                notification.style.animation = 'slideOut 0.3s ease-out forwards';
-                setTimeout(() => {
-                    if (document.body.contains(notification)) {
-                        notification.remove();
-                    }
-                }, 300);
+                notification.remove();
             }
         }, 5000);
     } catch (error) {
@@ -1424,41 +1338,3 @@ function getStatusText(status) {
         default: return 'ไม่ระบุ';
     }
 }
-
-// เพิ่มโค้ดนี้เพื่อจัดการตำแหน่ง modal ให้อยู่ตรงกลางจอเสมอ
-$(document).ready(function() {
-    // จัดตำแหน่ง modal ทุกครั้งที่เปิด
-    $('.modal').on('show.bs.modal', function (e) {
-        setTimeout(function() {
-            centerModal();
-        }, 100);
-    });
-    
-    // จัดตำแหน่ง modal เมื่อมีการเปลี่ยนขนาดหน้าจอ
-    $(window).on('resize', function() {
-        centerModal();
-    });
-    
-    // ฟังก์ชันจัดตำแหน่ง modal ให้อยู่ตรงกลาง
-    function centerModal() {
-        $('.modal-dialog').each(function() {
-            let $this = $(this);
-            let windowHeight = $(window).height();
-            let modalHeight = $this.height();
-            let marginTop = (windowHeight - modalHeight) / 2;
-            
-            // กำหนดตำแหน่งเพื่อให้อยู่ตรงกลาง
-            if (marginTop > 0) {
-                $this.css({
-                    'margin-top': marginTop + 'px',
-                    'margin-bottom': marginTop + 'px'
-                });
-            } else {
-                $this.css({
-                    'margin-top': '10px',
-                    'margin-bottom': '10px'
-                });
-            }
-        });
-    }
-});

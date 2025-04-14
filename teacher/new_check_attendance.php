@@ -136,16 +136,16 @@ if ($_SESSION['role'] === 'teacher') {
     }
 } else {
     // กรณีเป็น admin สามารถเข้าถึงได้ทุกห้อง
-    // ดึงข้อมูลห้องเรียนปัจจุบัน
-    $class_query = "SELECT c.class_id, CONCAT(c.level, '/', d.department_code, '/', c.group_number) AS class_name, 
-                   c.level, d.department_name, c.group_number, ay.year, ay.semester,
-                   (SELECT COUNT(*) FROM students WHERE current_class_id = c.class_id AND status = 'กำลังศึกษา') as total_students
-                   FROM classes c 
-                   JOIN departments d ON c.department_id = d.department_id 
-                   JOIN academic_years ay ON c.academic_year_id = ay.academic_year_id
-                   WHERE c.class_id = :class_id AND c.is_active = 1 AND ay.is_active = 1";
-    
     try {
+        // ดึงข้อมูลห้องเรียนปัจจุบัน
+        $class_query = "SELECT c.class_id, CONCAT(c.level, '/', d.department_code, '/', c.group_number) AS class_name, 
+                       c.level, d.department_name, c.group_number, ay.year, ay.semester,
+                       (SELECT COUNT(*) FROM students WHERE current_class_id = c.class_id AND status = 'กำลังศึกษา') as total_students
+                       FROM classes c 
+                       JOIN departments d ON c.department_id = d.department_id 
+                       JOIN academic_years ay ON c.academic_year_id = ay.academic_year_id
+                       WHERE c.class_id = :class_id AND c.is_active = 1 AND ay.is_active = 1";
+        
         $stmt = $db->prepare($class_query);
         $stmt->bindParam(':class_id', $current_class_id, PDO::PARAM_INT);
         $stmt->execute();
@@ -208,7 +208,11 @@ if ($_SESSION['role'] === 'teacher') {
         $stmt = $db->query($all_classes_query);
         $all_classes_result = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
-        $teacher_classes = [];
+        if (!empty($teacher_classes)) {
+            // เคลียร์ข้อมูลเดิม และเพิ่มข้อมูลใหม่
+            $teacher_classes = [];
+        }
+        
         foreach ($all_classes_result as $class) {
             $teacher_classes[] = [
                 'id' => $class['class_id'],
@@ -283,7 +287,7 @@ $current_class['not_checked'] = $not_checked;
 // ดึงรายชื่อนักเรียนทั้งหมดพร้อมสถานะการเช็คชื่อ
 $students_query = "SELECT s.student_id, s.student_code, s.title, u.first_name, u.last_name, u.profile_picture,
                   (SELECT COUNT(*) + 1 FROM students WHERE current_class_id = s.current_class_id AND student_code < s.student_code) as number,
-                  a.attendance_status, TIME_FORMAT(a.check_time, '%H:%i') as check_time, a.check_method, a.remarks
+                  a.attendance_id, a.attendance_status, TIME_FORMAT(a.check_time, '%H:%i') as check_time, a.check_method, a.remarks
                  FROM students s
                  JOIN users u ON s.user_id = u.user_id
                  LEFT JOIN attendance a ON s.student_id = a.student_id AND a.date = :check_date
@@ -309,10 +313,11 @@ try {
             'code' => $student['student_code'],
             'name' => $student['title'] . $student['first_name'] . ' ' . $student['last_name'],
             'profile_picture' => $student['profile_picture'],
-            'status' => isset($student['attendance_status']) ? $student['attendance_status'] : 'not_checked',
+            'status' => $student['attendance_status'] ?? 'not_checked',
             'time_checked' => $student['check_time'] ?? '',
             'check_method' => $student['check_method'] ?? '',
-            'remarks' => $student['remarks'] ?? ''
+            'remarks' => $student['remarks'] ?? '',
+            'attendance_id' => $student['attendance_id'] ?? null
         ];
         
         // แยกตามสถานะ
@@ -342,6 +347,6 @@ $content_path = 'pages/new_check_attendance_content.php';
 
 // โหลดเทมเพลต
 require_once 'templates/header.php';
-require_once 'templates/main_content.php';
+require_once $content_path;
 require_once 'templates/footer.php';
 ?>
