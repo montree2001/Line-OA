@@ -6,9 +6,10 @@
  * - UI แบบใหม่ที่ใช้งานง่าย ไม่ซับซ้อน
  * - เช็คชื่อได้ 4 สถานะ: มา, ขาด, สาย, ลา
  * - เช็คชื่อผ่าน PIN, QR Code, และกรอกโดยครู
- * - สามารถเช็คชื่อย้อนหลังได้
+ * - สามารถเช็คชื่อย้อนหลังได้ (เก็บประวัติการเช็คย้อนหลัง)
  * - แก้ไขการเช็คชื่อที่บันทึกแล้วได้
  * - ดูข้อมูลสรุปการเช็คชื่อ
+ * - แสดงปีเป็น พ.ศ.
  */
 
 // เริ่มต้น session และตรวจสอบการล็อกอิน
@@ -327,7 +328,9 @@ try {
 
 // รวม CSS และ JS
 $extra_css = [
-    'assets/css/new_check_attendance.css'
+    'assets/css/new_check_attendance.css',
+    'https://fonts.googleapis.com/icon?family=Material+Icons',
+    'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css'
 ];
 
 $extra_js = [
