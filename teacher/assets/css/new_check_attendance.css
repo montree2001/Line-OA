@@ -644,23 +644,6 @@ body {
 
 
 
-/* สถานะที่มีการเปลี่ยนแปลงแต่ยังไม่ได้บันทึก */
-.save-indicator {
-    position: fixed;
-    bottom: 24px;
-    left: 24px;
-    padding: 8px 12px;
-    background-color: var(--late-color);
-    color: white;
-    border-radius: 8px;
-    font-size: 14px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-    z-index: 100;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    animation: pulse 2s infinite;
-}
 
 @keyframes pulse {
     0% { transform: scale(1); }

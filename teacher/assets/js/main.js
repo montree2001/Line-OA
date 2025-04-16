@@ -154,35 +154,7 @@ function showNotification(message, type = 'info') {
     }
 }
 
-/**
- * แสดงตัวบอกการเช็คชื่อที่ยังไม่ได้บันทึก
- */
-function showSaveIndicator() {
-    try {
-        // ตรวจสอบว่ามีตัวบอกอยู่แล้วหรือไม่
-        let indicator = document.querySelector('.save-indicator');
-        
-        // ถ้ายังไม่มี ให้สร้างใหม่
-        if (!indicator) {
-            indicator = document.createElement('div');
-            indicator.className = 'save-indicator';
-            indicator.innerHTML = `<i class="fas fa-exclamation-circle"></i> มีข้อมูลที่ยังไม่ได้บันทึก`;
-            document.body.appendChild(indicator);
-            
-            // เพิ่มปุ่มบันทึกใน indicator
-            const saveButton = document.createElement('button');
-            saveButton.className = 'btn primary btn-sm';
-            saveButton.innerHTML = 'บันทึกทั้งหมด';
-            saveButton.style.marginLeft = '10px';
-            saveButton.onclick = function() {
-                saveAttendance();
-            };
-            indicator.appendChild(saveButton);
-        }
-    } catch (error) {
-        console.error('เกิดข้อผิดพลาดในการแสดงตัวบอกการบันทึก:', error);
-    }
-}
+
 
 /**
  * ดึงข้อความสถานะ

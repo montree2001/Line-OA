@@ -156,6 +156,7 @@
         <div class="tab-content">
             <!-- รายชื่อนักเรียนที่ยังไม่ได้เช็คชื่อ -->
             <!-- รายชื่อนักเรียนที่ยังไม่ได้เช็คชื่อ -->
+<!-- รายชื่อนักเรียนที่ยังไม่ได้เช็คชื่อ -->
 <div id="waitingTab" class="tab-pane active">
     <?php if (empty($unchecked_students)): ?>
         <div class="empty-state">
@@ -182,7 +183,7 @@
                         </div>
                     </div>
 
-                    <!-- ปุ่มเช็คชื่อในรายการนักเรียน - ปรับปรุงใหม่ใช้ JavaScript แทนการส่งฟอร์ม -->
+                    <!-- ปุ่มเช็คชื่อในรายการนักเรียน - ปรับปรุงใหม่ใช้ AJAX เพื่อบันทึกทันที -->
                     <div class="student-actions">
                         <button type="button" class="action-btn present action-button" title="มาเรียน" 
                                 onclick="markAttendance(this, 'present', <?php echo $student['id']; ?>)">
@@ -204,7 +205,6 @@
         </div>
     <?php endif; ?>
 </div>
-
 
             <!-- รายชื่อนักเรียนที่เช็คชื่อแล้ว -->
             <div id="checkedTab" class="tab-pane">
@@ -366,7 +366,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h3 class="modal-title">เช็คชื่อนักเรียน</h3>
-                <button type="button" class="close-btn" onclick="if (typeof closeModal === 'function') { closeModal('attendanceDetailModal'); } else { document.getElementById('attendanceDetailModal').classList.remove('active'); }">
+                <button type="button" class="close-btn" onclick="closeModal('attendanceDetailModal')">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
@@ -420,19 +420,8 @@
                 <input type="hidden" id="isEditMode" value="0">
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn secondary"
-                    onclick="if (typeof closeModal === 'function') { 
-                        closeModal('attendanceDetailModal'); 
-                    } else { 
-                        document.getElementById('attendanceDetailModal').classList.remove('active'); 
-                        document.body.style.overflow = ''; 
-                    }">ยกเลิก</button>
-                <button type="button" class="btn primary"
-                    onclick="if (typeof confirmDetailAttendance === 'function') { 
-                        confirmDetailAttendance(); 
-                    } else { 
-                        alert('ฟังก์ชันยังไม่พร้อมใช้งาน กรุณารีเฟรชหน้า'); 
-                    }">บันทึก</button>
+                <button type="button" class="btn secondary" onclick="closeModal('attendanceDetailModal')">ยกเลิก</button>
+                <button type="button" class="btn primary" onclick="confirmDetailAttendance()">บันทึก</button>
             </div>
         </div>
     </div>
@@ -615,84 +604,8 @@
     const notCheckedCount = <?php echo $not_checked; ?>;
 </script>
 
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // ตรวจสอบว่าฟังก์ชันหลักพร้อมใช้งานหรือไม่
-        if (typeof markAttendance !== 'function') {
-            console.error('ไม่พบฟังก์ชัน markAttendance - สคริปต์อาจโหลดไม่สมบูรณ์');
 
-            // สร้างฟังก์ชัน fallback ชั่วคราว
-            window.markAttendance = function(button, status, studentId) {
-                alert(`ข้อผิดพลาด: สคริปต์โหลดไม่สมบูรณ์ กรุณารีเฟรชหน้า (status: ${status}, student: ${studentId})`);
-            };
-        }
-
-        if (typeof showDetailAttendance !== 'function') {
-            console.error('ไม่พบฟังก์ชัน showDetailAttendance - สคริปต์อาจโหลดไม่สมบูรณ์');
-
-            window.showDetailAttendance = function(studentId, studentName) {
-                alert(`ข้อผิดพลาด: สคริปต์โหลดไม่สมบูรณ์ กรุณารีเฟรชหน้า (student: ${studentId}, ${studentName})`);
-            };
-        }
-
-        if (typeof confirmDetailAttendance !== 'function') {
-            console.error('ไม่พบฟังก์ชัน confirmDetailAttendance - สคริปต์อาจโหลดไม่สมบูรณ์');
-
-            window.confirmDetailAttendance = function() {
-                alert('ข้อผิดพลาด: สคริปต์โหลดไม่สมบูรณ์ กรุณารีเฟรชหน้า');
-            };
-        }
-
-        if (typeof closeModal !== 'function') {
-            console.error('ไม่พบฟังก์ชัน closeModal - สคริปต์อาจโหลดไม่สมบูรณ์');
-
-            window.closeModal = function(modalId) {
-                const modal = document.getElementById(modalId);
-                if (modal) {
-                    modal.classList.remove('active');
-                    document.body.style.overflow = '';
-                }
-            };
-        }
-
-        if (typeof editAttendance !== 'function') {
-            console.error('ไม่พบฟังก์ชัน editAttendance - สคริปต์อาจโหลดไม่สมบูรณ์');
-
-            window.editAttendance = function(studentId, studentName, status, remarks) {
-                alert(`ข้อผิดพลาด: สคริปต์โหลดไม่สมบูรณ์ กรุณารีเฟรชหน้า (student: ${studentId}, ${studentName})`);
-            };
-        }
-
-        if (typeof confirmMarkAll !== 'function') {
-            console.error('ไม่พบฟังก์ชัน confirmMarkAll - สคริปต์อาจโหลดไม่สมบูรณ์');
-
-            window.confirmMarkAll = function() {
-                alert('ข้อผิดพลาด: สคริปต์โหลดไม่สมบูรณ์ กรุณารีเฟรชหน้า');
-            };
-        }
-
-        if (typeof confirmSaveAttendance !== 'function') {
-            console.error('ไม่พบฟังก์ชัน confirmSaveAttendance - สคริปต์อาจโหลดไม่สมบูรณ์');
-
-            window.confirmSaveAttendance = function() {
-                alert('ข้อผิดพลาด: สคริปต์โหลดไม่สมบูรณ์ กรุณารีเฟรชหน้า');
-            };
-        }
-
-        if (typeof saveAttendance !== 'function') {
-            console.error('ไม่พบฟังก์ชัน saveAttendance - สคริปต์อาจโหลดไม่สมบูรณ์');
-
-            window.saveAttendance = function() {
-                alert('ข้อผิดพลาด: สคริปต์โหลดไม่สมบูรณ์ กรุณารีเฟรชหน้า');
-            };
-        }
-    });
-</script>
-
-
-
-
-<!-- เพิ่มโค้ด JavaScript เพื่อรองรับการเช็คชื่อแบบ AJAX -->
+<!-- เพิ่มในส่วนท้ายของไฟล์ -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // นับจำนวนนักเรียนที่ยังไม่ได้เช็คชื่อและที่เช็คแล้ว
@@ -700,13 +613,10 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // จัดการแท็บ
     setupTabSystem();
-    
-    // เพิ่ม event listener สำหรับปุ่มเช็คชื่อที่ใช้ Ajax
-    setupAttendanceButtons();
 });
 
 /**
- * จัดการแท็บ
+ * จัดการระบบแท็บ
  */
 function setupTabSystem() {
     const tabButtons = document.querySelectorAll('.tab-button');
@@ -734,55 +644,58 @@ function setupTabSystem() {
 }
 
 /**
- * ตั้งค่าปุ่มเช็คชื่อให้ใช้ AJAX
+ * แสดงรายละเอียดการเช็คชื่อ (Modal)
+ * @param {number} studentId รหัสนักเรียน
+ * @param {string} studentName ชื่อนักเรียน
  */
-function setupAttendanceButtons() {
-    // กำหนด handler สำหรับปุ่มเช็คชื่อ
-    const attendanceButtons = document.querySelectorAll('.action-btn.present, .action-btn.absent');
-    
-    attendanceButtons.forEach(button => {
-        // เพิ่ม event listener แบบ JavaScript
-        button.addEventListener('click', function(e) {
-            // ป้องกันการส่งฟอร์ม
-            e.preventDefault();
-            // ดึงข้อมูลที่ต้องการจากแอตทริบิวต์ของปุ่ม
-            const status = this.classList.contains('present') ? 'present' : 'absent';
-            const studentCard = this.closest('.student-card');
-            const studentId = studentCard ? studentCard.getAttribute('data-id') : null;
-            
-            if (studentId) {
-                // เรียกใช้ฟังก์ชัน markAttendance จาก main.js
-                if (typeof markAttendance === 'function') {
-                    markAttendance(this, status, studentId);
-                } else {
-                    console.error('ฟังก์ชัน markAttendance ไม่พร้อมใช้งาน');
-                    alert('เกิดข้อผิดพลาด: กรุณารีเฟรชหน้าและลองใหม่อีกครั้ง');
-                }
-            } else {
-                console.error('ไม่พบ studentId');
-                alert('เกิดข้อผิดพลาด: ไม่พบรหัสนักเรียน');
-            }
-        });
-    });
-}
-
-/**
- * อัพเดทจำนวนนักเรียนในแต่ละแท็บ
- */
-function updateStudentCounts() {
-    const waitingCount = document.querySelectorAll('#waitingTab .student-card').length;
-    const checkedCount = document.querySelectorAll('#checkedTab .student-card').length;
-    
-    // อัพเดทจำนวนในปุ่มแท็บ
-    const waitingCountElement = document.querySelector('button[data-tab="waiting"] .count');
-    const checkedCountElement = document.querySelector('button[data-tab="checked"] .count');
-    
-    if (waitingCountElement) {
-        waitingCountElement.textContent = waitingCount;
+function showDetailAttendanceModal(studentId, studentName) {
+    // แสดงชื่อนักเรียนใน Modal
+    const studentNameElement = document.getElementById('studentNameDetail');
+    if (studentNameElement) {
+        studentNameElement.textContent = studentName;
     }
     
-    if (checkedCountElement) {
-        checkedCountElement.textContent = checkedCount;
+    // กำหนดค่า ID นักเรียน
+    const studentIdInput = document.getElementById('studentIdDetail');
+    if (studentIdInput) {
+        studentIdInput.value = studentId;
     }
+    
+    // ระบุว่าเป็นการเพิ่มใหม่ ไม่ใช่การแก้ไข
+    const isEditMode = document.getElementById('isEditMode');
+    if (isEditMode) {
+        isEditMode.value = '0';
+    }
+    
+    // รีเซ็ตค่า attendance_id
+    const attendanceIdInput = document.getElementById('attendanceIdDetail');
+    if (attendanceIdInput) {
+        attendanceIdInput.value = '';
+    }
+    
+    // รีเซ็ตค่าตัวเลือกเป็น "มาเรียน"
+    const presentOption = document.querySelector('input[name="attendanceStatus"][value="present"]');
+    if (presentOption) {
+        presentOption.checked = true;
+    }
+    
+    // รีเซ็ตค่าหมายเหตุ
+    const remarksInput = document.getElementById('attendanceRemarks');
+    if (remarksInput) {
+        remarksInput.value = '';
+    }
+    
+    // แสดง/ซ่อนช่องหมายเหตุตามสถานะ
+    const remarksContainer = document.getElementById('remarksContainer');
+    if (remarksContainer) {
+        remarksContainer.style.display = 'none';
+    }
+    
+    // แสดง Modal
+    document.getElementById('attendanceDetailModal').classList.add('active');
+    document.body.style.overflow = 'hidden';
 }
 </script>
+
+
+

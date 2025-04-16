@@ -238,8 +238,7 @@ function markAttendance(button, status, studentId) {
         // อัพเดทสถิติการเช็คชื่อ
         updateAttendanceStats(status);
         
-        // แสดงตัวบอกการเช็คชื่อที่ยังไม่ได้บันทึก
-        showSaveIndicator();
+     
         
         // กำหนดว่ามีการเปลี่ยนแปลงข้อมูล
         hasChanges = true;
@@ -453,8 +452,7 @@ function confirmDetailAttendance() {
         // ปิด Modal
         closeModal('attendanceDetailModal');
         
-        // แสดงตัวบอกการเช็คชื่อที่ยังไม่ได้บันทึก
-        showSaveIndicator();
+     
         
         // กำหนดว่ามีการเปลี่ยนแปลงข้อมูล
         hasChanges = true;
@@ -546,8 +544,7 @@ function confirmMarkAll() {
         // ปิด Modal
         closeModal('markAllModal');
         
-        // แสดงตัวบอกการเช็คชื่อที่ยังไม่ได้บันทึก
-        showSaveIndicator();
+    
         
         // กำหนดว่ามีการเปลี่ยนแปลงข้อมูล
         hasChanges = true;
@@ -764,11 +761,7 @@ function confirmSaveAttendance() {
                     // แสดงข้อความแจ้งเตือน
                     showNotification('บันทึกการเช็คชื่อเรียบร้อย', 'success');
                     
-                    // ล้างตัวบอกการบันทึก
-                    const saveIndicator = document.querySelector('.save-indicator');
-                    if (saveIndicator) {
-                        saveIndicator.remove();
-                    }
+               
                     
                     // ตั้งค่าว่าไม่มีการเปลี่ยนแปลงข้อมูลแล้ว
                     hasChanges = false;
@@ -1423,35 +1416,7 @@ function updateAttendanceStatsAll(status, count) {
     }
 }
 
-/**
- * แสดงตัวบอกการเช็คชื่อที่ยังไม่ได้บันทึก
- */
-function showSaveIndicator() {
-    try {
-        // ตรวจสอบว่ามีตัวบอกอยู่แล้วหรือไม่
-        let indicator = document.querySelector('.save-indicator');
-        
-        // ถ้ายังไม่มี ให้สร้างใหม่
-        if (!indicator) {
-            indicator = document.createElement('div');
-            indicator.className = 'save-indicator';
-            indicator.innerHTML = `<i class="fas fa-exclamation-circle"></i> มีข้อมูลที่ยังไม่ได้บันทึก`;
-            document.body.appendChild(indicator);
-            
-            // เพิ่มปุ่มบันทึกใน indicator
-            const saveButton = document.createElement('button');
-            saveButton.className = 'btn primary btn-sm';
-            saveButton.innerHTML = 'บันทึก';
-            saveButton.style.marginLeft = '10px';
-            saveButton.onclick = function() {
-                saveAttendance();
-            };
-            indicator.appendChild(saveButton);
-        }
-    } catch (error) {
-        console.error('เกิดข้อผิดพลาดในการแสดงตัวบอกการบันทึก:', error);
-    }
-}
+
 
 /**
  * แสดง Modal
