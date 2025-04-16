@@ -119,15 +119,23 @@ try {
     
     // บันทึกการเช็คชื่อ
     $stmt = $conn->prepare("
-        INSERT INTO attendance (student_id, academic_year_id, date, is_present, check_method, 
-                               location_lat, location_lng, check_time, created_at)
-        VALUES (?, ?, ?, 1, ?, ?, ?, NOW(), NOW())
+        INSERT INTO attendance (
+            student_id, 
+            academic_year_id, 
+            date, 
+            attendance_status,
+            check_method, 
+            location_lat, 
+            location_lng, 
+            check_time, 
+            created_at
+        )
+        VALUES (?, ?, ?, 'present', 'GPS', ?, ?, NOW(), NOW())
     ");
     $stmt->execute([
         $student_id,
         $current_academic_year_id,
         $today,
-        $method,
         $lat,
         $lng
     ]);

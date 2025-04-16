@@ -1201,13 +1201,7 @@ textarea:focus {
     .student-card {
         padding: 10px;
     }
-    
-    .floating-button {
-        width: 48px;
-        height: 48px;
-        right: 16px;
-        bottom: 16px;
-    }
+  
     
     .modal-dialog {
         width: 92% !important;

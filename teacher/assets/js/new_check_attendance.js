@@ -29,8 +29,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // เริ่มต้นระบบเช็คชื่อ
     initAttendanceSystem();
 
-    // เพิ่มปุ่มบันทึกลอยที่มุมขวาล่าง
-    addFloatingButton();
+
 
     // แสดงตัวอย่างการ Debug
     console.log("ระบบเช็คชื่อพร้อมใช้งาน", {
@@ -41,50 +40,6 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
-/**
- * เพิ่มปุ่มบันทึกลอยที่มุมขวาล่าง
- */
-function addFloatingButton() {
-    const floatingButton = document.createElement('button');
-    floatingButton.className = 'floating-button';
-    floatingButton.innerHTML = '<i class="fas fa-save"></i>';
-    floatingButton.title = 'บันทึกการเช็คชื่อ';
-    floatingButton.onclick = function() {
-        saveAttendance();
-    };
-    document.body.appendChild(floatingButton);
-
-    // เพิ่ม style สำหรับปุ่ม
-    const style = document.createElement('style');
-    style.textContent = `
-        .floating-button {
-            position: fixed;
-            bottom: 24px;
-            right: 24px;
-            width: 56px;
-            height: 56px;
-            border-radius: 50%;
-            background-color: var(--primary-color);
-            color: white;
-            border: none;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 24px;
-            z-index: 1000;
-            transition: all 0.3s ease;
-        }
-        
-        .floating-button:hover {
-            background-color: var(--primary-dark);
-            transform: translateY(-3px);
-            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
-        }
-    `;
-    document.head.appendChild(style);
-}
 
 /**
  * เริ่มต้นระบบเช็คชื่อ
