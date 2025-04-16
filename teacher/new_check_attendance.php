@@ -19,6 +19,18 @@ if (!isset($_SESSION['user_id']) || ($_SESSION['role'] !== 'teacher' && $_SESSIO
     exit;
 }
 
+// เรียกใช้ไฟล์การเชื่อมต่อฐานข้อมูล - ย้ายมาไว้ตรงนี้
+require_once '../config/db_config.php';
+require_once '../db_connect.php';
+require_once '../lib/functions.php';
+
+// เชื่อมต่อฐานข้อมูล - ย้ายมาไว้ตรงนี้
+try {
+    $db = getDB();
+} catch (Exception $e) {
+    die("การเชื่อมต่อฐานข้อมูลล้มเหลว: " . $e->getMessage());
+}
+
 // ดึงข้อมูลครูที่ปรึกษาจากฐานข้อมูล
 $user_id = $_SESSION['user_id'];
 $teacher_query = "SELECT t.teacher_id, u.first_name, u.last_name, t.title, u.profile_picture, d.department_name 
@@ -336,18 +348,6 @@ $current_page = 'check_attendance';
 $page_title = 'ระบบเช็คชื่อ - เช็คชื่อนักเรียน';
 $page_header = 'เช็คชื่อนักเรียน';
 
-// เรียกใช้ไฟล์การเชื่อมต่อฐานข้อมูล
-require_once '../config/db_config.php';
-require_once '../db_connect.php';
-require_once '../lib/functions.php';
-
-// เชื่อมต่อฐานข้อมูล
-try {
-    $db = getDB();
-} catch (Exception $e) {
-    die("การเชื่อมต่อฐานข้อมูลล้มเหลว: " . $e->getMessage());
-}
-
 // ประมวลผล POST request สำหรับการเช็คชื่อ
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['action'])) {
@@ -495,7 +495,7 @@ function handleSingleAttendance($db) {
             $stmt->execute();
         }
 
-        // อัพเดตสถิติการเข้าแถวในตาราง student_academic_records
+        // อัพเดทสถิติการเข้าแถวในตาราง student_academic_records
         updateStudentAttendanceStats($db, $student_id, $academic_year_id);
 
         // ตรวจสอบนักเรียนที่เสี่ยงตกกิจกรรม
