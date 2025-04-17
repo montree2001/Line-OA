@@ -8,51 +8,49 @@ function markAttendance(button, status, studentId) {
     try {
         // ดึงข้อมูลการ์ดนักเรียน
         const studentCard = button.closest('.student-card');
-        
+
         if (!studentCard) {
             console.error('ไม่พบข้อมูล .student-card สำหรับปุ่มนี้:', button);
             showNotification('เกิดข้อผิดพลาด: กรุณารีเฟรชหน้าและลองใหม่อีกครั้ง', 'error');
             return;
         }
-        
+
         // ค้นหาปุ่มสถานะทั้งหมด
         const presentButton = studentCard.querySelector('.action-button.present');
         const absentButton = studentCard.querySelector('.action-button.absent');
-        
+
         if (!presentButton || !absentButton) {
             console.error('ไม่พบปุ่มสถานะในการ์ดนักเรียน');
             showNotification('เกิดข้อผิดพลาด: กรุณารีเฟรชหน้าและลองใหม่อีกครั้ง', 'error');
             return;
         }
-        
+
         // ลบคลาส active จากปุ่มทั้งหมด
         presentButton.classList.remove('active');
         absentButton.classList.remove('active');
-        
+
         // เพิ่มคลาส active ให้ปุ่มที่กด
         button.classList.add('active');
-        
+
         // อัพเดทจำนวนการเข้าแถว
         updateAttendanceCounters();
-        
+
         // บันทึกข้อมูลการเช็คชื่อ (หากใช้ JavaScript แทนการส่งฟอร์ม)
         updateAttendanceData(studentId, status, '');
-        
-        // แสดงตัวบอกการเช็คชื่อที่ยังไม่ได้บันทึก
-        showSaveIndicator();
-        
+
+
         // กำหนดว่ามีการเปลี่ยนแปลงข้อมูล
         hasChanges = true;
-        
+
         // ย้ายการ์ดไปยังแท็บที่เช็คชื่อแล้ว
         moveStudentToCheckedTab(studentCard, studentId, status);
-        
+
         // บันทึกลงเซิร์ฟเวอร์ (แบบ AJAX)
         saveAttendanceToServer(studentId, status);
-        
+
         // แสดงข้อความแจ้งเตือน
         showNotification(`เช็คชื่อนักเรียนเป็น "${getStatusText(status)}" เรียบร้อย`, 'success');
-        
+
         // Log สำหรับดีบัก
         console.log(`นักเรียน ID: ${studentId} สถานะ: ${status}`);
     } catch (error) {
@@ -78,27 +76,27 @@ function saveAttendanceToServer(studentId, status) {
             teacher_id: teacherId,
             is_retroactive: isRetroactive
         };
-        
+
         // ส่งข้อมูลไปบันทึกแบบ AJAX
         fetch(window.location.href, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: new URLSearchParams(data)
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('การบันทึกข้อมูลล้มเหลว');
-            }
-            return response.text();
-        })
-        .then(text => {
-            console.log('บันทึกข้อมูลสำเร็จ');
-        })
-        .catch(error => {
-            console.error('เกิดข้อผิดพลาดในการบันทึกข้อมูล:', error);
-        });
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: new URLSearchParams(data)
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('การบันทึกข้อมูลล้มเหลว');
+                }
+                return response.text();
+            })
+            .then(text => {
+                console.log('บันทึกข้อมูลสำเร็จ');
+            })
+            .catch(error => {
+                console.error('เกิดข้อผิดพลาดในการบันทึกข้อมูล:', error);
+            });
     } catch (error) {
         console.error('เกิดข้อผิดพลาดในการส่งข้อมูล:', error);
     }
@@ -114,16 +112,25 @@ function showNotification(message, type = 'info') {
         // สร้างแถบแจ้งเตือน
         const notification = document.createElement('div');
         notification.className = `notification ${type}`;
-        
+
         // กำหนดไอคอนตามประเภท
         let icon = '';
         switch (type) {
-            case 'success': icon = 'check-circle'; break;
-            case 'warning': icon = 'exclamation-triangle'; break;
-            case 'error': icon = 'exclamation-circle'; break;
-            case 'info': default: icon = 'info-circle'; break;
+            case 'success':
+                icon = 'check-circle';
+                break;
+            case 'warning':
+                icon = 'exclamation-triangle';
+                break;
+            case 'error':
+                icon = 'exclamation-circle';
+                break;
+            case 'info':
+            default:
+                icon = 'info-circle';
+                break;
         }
-        
+
         notification.innerHTML = `
             <div class="notification-content">
                 <i class="fas fa-${icon}"></i>
@@ -131,10 +138,10 @@ function showNotification(message, type = 'info') {
             </div>
             <button class="notification-close"><i class="fas fa-times"></i></button>
         `;
-        
+
         // เพิ่มไปยัง body
         document.body.appendChild(notification);
-        
+
         // กำหนดการปิดเมื่อคลิก
         const closeButton = notification.querySelector('.notification-close');
         if (closeButton) {
@@ -142,7 +149,7 @@ function showNotification(message, type = 'info') {
                 notification.remove();
             });
         }
-        
+
         // กำหนดการปิดอัตโนมัติ
         setTimeout(() => {
             if (document.body.contains(notification)) {
@@ -163,10 +170,15 @@ function showNotification(message, type = 'info') {
  */
 function getStatusText(status) {
     switch (status) {
-        case 'present': return 'มาเรียน';
-        case 'late': return 'มาสาย';
-        case 'leave': return 'ลา';
-        case 'absent': return 'ขาดเรียน';
-        default: return 'ไม่ระบุ';
+        case 'present':
+            return 'มาเรียน';
+        case 'late':
+            return 'มาสาย';
+        case 'leave':
+            return 'ลา';
+        case 'absent':
+            return 'ขาดเรียน';
+        default:
+            return 'ไม่ระบุ';
     }
 }

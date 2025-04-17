@@ -81,8 +81,8 @@ while ($class = $classes_result->fetch_assoc()) {
     // หาสถิติการเข้าแถววันนี้
     $today = date('Y-m-d');
     $attendance_query = "SELECT 
-                          SUM(CASE WHEN a.is_present = 1 THEN 1 ELSE 0 END) as present_count,
-                          SUM(CASE WHEN a.is_present = 0 THEN 1 ELSE 0 END) as absent_count,
+                          SUM(CASE WHEN a.attendance_status IN ('present', 'late', 'leave') THEN 1 ELSE 0 END) as present_count,
+                          SUM(CASE WHEN a.attendance_status = 'absent' THEN 1 ELSE 0 END) as absent_count,
                           COUNT(*) as checked_count
                          FROM attendance a 
                          JOIN students s ON a.student_id = s.student_id 
@@ -103,7 +103,7 @@ while ($class = $classes_result->fetch_assoc()) {
     
     // คำนวณอัตราการเข้าแถวเฉลี่ย
     $attendance_rate_query = "SELECT 
-                              (SUM(CASE WHEN a.is_present = 1 THEN 1 ELSE 0 END) * 100.0 / COUNT(*)) as rate
+                              (SUM(CASE WHEN a.attendance_status IN ('present', 'late', 'leave') THEN 1 ELSE 0 END) * 100.0 / COUNT(*)) as rate
                              FROM attendance a 
                              JOIN students s ON a.student_id = s.student_id 
                              WHERE s.current_class_id = $class_id AND a.date BETWEEN DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY) AND CURRENT_DATE()";
@@ -194,7 +194,7 @@ $students_summary = [];
 if ($current_class !== null) {
     $today = date('Y-m-d');
     $student_summary_query = "SELECT s.student_id, s.student_code, s.title, u.first_name, u.last_name, 
-                             a.is_present, TIME_FORMAT(a.check_time, '%H:%i') as check_time, 
+                             a.attendance_status, TIME_FORMAT(a.check_time, '%H:%i') as check_time, 
                              (SELECT COUNT(*) + 1 FROM students WHERE current_class_id = s.current_class_id AND student_code < s.student_code) as number
                             FROM attendance a
                             JOIN students s ON a.student_id = s.student_id
@@ -210,7 +210,7 @@ if ($current_class !== null) {
                 'number' => $student['number'],
                 'student_code' => $student['student_code'],
                 'name' => $student['title'] . $student['first_name'] . ' ' . $student['last_name'],
-                'status' => $student['is_present'] ? 'present' : 'absent',
+                'status' => ($student['attendance_status'] === 'absent') ? 'absent' : 'present',
                 'time' => $student['check_time']
             ];
         }
@@ -226,7 +226,7 @@ if ($current_class !== null) {
                                WHEN (sar.total_attendance_days + sar.total_absence_days) = 0 THEN 0 
                                ELSE (sar.total_attendance_days * 100.0 / (sar.total_attendance_days + sar.total_absence_days)) 
                            END as attendance_rate,
-                           (SELECT DATE_FORMAT(MAX(a.date), '%d/%m/%Y') FROM attendance a WHERE a.student_id = s.student_id AND a.is_present = 0) as last_absent,
+                           (SELECT DATE_FORMAT(MAX(a.date), '%d/%m/%Y') FROM attendance a WHERE a.student_id = s.student_id AND a.attendance_status = 'absent') as last_absent,
                            (SELECT COUNT(*) + 1 FROM students WHERE current_class_id = s.current_class_id AND student_code < s.student_code) as number
                           FROM students s
                           JOIN users u ON s.user_id = u.user_id

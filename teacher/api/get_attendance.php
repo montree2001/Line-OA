@@ -69,8 +69,8 @@ if ($_SESSION['role'] === 'teacher') {
 $today = date('Y-m-d');
 $attendance_stats_query = "SELECT 
                            COUNT(DISTINCT s.student_id) as total_students,
-                           SUM(CASE WHEN a.is_present = 1 THEN 1 ELSE 0 END) as present_count,
-                           SUM(CASE WHEN a.is_present = 0 THEN 1 ELSE 0 END) as absent_count,
+                           SUM(CASE WHEN a.attendance_status IN ('present', 'late', 'leave') THEN 1 ELSE 0 END) as present_count,
+                           SUM(CASE WHEN a.attendance_status = 'absent' THEN 1 ELSE 0 END) as absent_count,
                            COUNT(a.attendance_id) as checked_count
                           FROM students s
                           LEFT JOIN attendance a ON s.student_id = a.student_id AND a.date = ?
@@ -90,7 +90,7 @@ $not_checked = $total_students - $checked_count;
 
 // ดึงข้อมูลนักเรียน 5 คนล่าสุดที่เช็คชื่อ
 $students_query = "SELECT s.student_id, s.student_code, s.title, u.first_name, u.last_name, 
-                  a.is_present, TIME_FORMAT(a.check_time, '%H:%i') as check_time,
+                  a.attendance_status, TIME_FORMAT(a.check_time, '%H:%i') as check_time,
                   (SELECT COUNT(*) + 1 FROM students WHERE current_class_id = s.current_class_id AND student_code < s.student_code) as number
                  FROM attendance a
                  JOIN students s ON a.student_id = s.student_id
@@ -111,7 +111,7 @@ while ($student = $students_result->fetch_assoc()) {
         'number' => $student['number'],
         'student_code' => $student['student_code'],
         'name' => $student['title'] . $student['first_name'] . ' ' . $student['last_name'],
-        'status' => $student['is_present'] ? 'present' : 'absent',
+        'status' => ($student['attendance_status'] === 'absent') ? 'absent' : 'present',
         'time' => $student['check_time']
     ];
 }
