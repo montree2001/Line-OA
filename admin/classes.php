@@ -55,20 +55,42 @@ try {
     // ตรวจสอบการเชื่อมต่อฐานข้อมูล
     $conn = getDB();
     if (!$conn) {
+        error_log("Database connection failed in classes.php");
         throw new Exception("ไม่สามารถเชื่อมต่อฐานข้อมูลได้");
     }
 
-    // ดึงข้อมูลทั้งหมด
-    $classes = getClassesFromDB();
+        // ดึงข้อมูลทั้งหมดพร้อมบันทึก log
+    error_log("Starting to fetch departments");
     $departments = getDepartmentsFromDB();
+    if ($departments === false) {
+        error_log("Failed to fetch departments");
+    }
+    
+    error_log("Starting to fetch classes");
+    $classes = getClassesFromDB();
+    if ($classes === false) {
+        error_log("Failed to fetch classes");
+    }
+    
+    error_log("Starting to fetch academic years");
     $academicYearData = getAcademicYearsFromDB();
+    if ($academicYearData === false) {
+        error_log("Failed to fetch academic years");
+    }
+    
+    error_log("Starting to fetch teachers");
     $teachers = getTeachersFromDB();
+    if ($teachers === false) {
+        error_log("Failed to fetch teachers");
+    }
 
-    // ตรวจสอบว่าดึงข้อมูลสำเร็จหรือไม่
+      // ตรวจสอบว่าดึงข้อมูลสำเร็จหรือไม่
     if ($classes === false || $departments === false || $academicYearData === false || $teachers === false) {
+        error_log("One or more data fetch operations failed");
         throw new Exception("ไม่สามารถดึงข้อมูลจากฐานข้อมูลได้");
     }
 
+   
     // ใช้ข้อมูลตัวอย่างหากดึงข้อมูลไม่สำเร็จ
     $classes = $classes ?: getSampleClasses();
     $departments = $departments ?: getSampleDepartments();
@@ -99,8 +121,21 @@ try {
 
 } catch (Exception $e) {
     // จัดการข้อผิดพลาดที่เกิดขึ้น
-    error_log('เกิดข้อผิดพลาดในการดึงข้อมูล: ' . $e->getMessage());
+    error_log('classes.php error: ' . $e->getMessage() . ' at line ' . $e->getLine() . ' in ' . $e->getFile());
+    $isDebug = true; // ตั้งค่าเป็น false เมื่อใช้งานจริง
     
+    if ($isDebug) {
+        echo '<div class="alert alert-danger" role="alert">
+                <strong>เกิดข้อผิดพลาด:</strong> ' . $e->getMessage() . '
+                <br>File: ' . basename($e->getFile()) . ' (line ' . $e->getLine() . ')
+                <br>ดูรายละเอียดเพิ่มเติมได้ที่ error log
+              </div>';
+    } else {
+        echo '<div class="alert alert-warning" role="alert">
+                <i class="material-icons">warning</i>
+                เกิดข้อผิดพลาดในการดึงข้อมูล กรุณาติดต่อผู้ดูแลระบบ1
+              </div>';
+    }
     // ใช้ข้อมูลตัวอย่างเมื่อเกิดข้อผิดพลาด
     $data = [
         'classes' => getSampleClasses(),
@@ -115,7 +150,7 @@ try {
     // แสดงข้อความแจ้งเตือน
     echo '<div class="alert alert-warning" role="alert">
             <i class="material-icons">warning</i>
-            เกิดข้อผิดพลาดในการดึงข้อมูล กรุณาติดต่อผู้ดูแลระบบ
+            เกิดข้อผิดพลาดในการดึงข้อมูล กรุณาติดต่อผู้ดูแลระบบ2
           </div>';
 }
 

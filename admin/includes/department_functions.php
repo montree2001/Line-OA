@@ -343,45 +343,124 @@ function generateDepartmentCode($department_name) {
     }
 }
 
-/**
- * ดึงข้อมูลแผนกวิชาทั้งหมดสำหรับแสดงในหน้าจัดการชั้นเรียน
- * 
- * @return array ข้อมูลแผนกวิชาทั้งหมด
- */
 function getDepartmentsFromDB() {
-    $conn = getDB();
-    if ($conn === null) {
-        error_log('Database connection is not established.');
-        return [];
-    }
-    
     try {
-        $stmt = $conn->prepare("
-            SELECT 
+        $conn = getDB();
+        if ($conn === null) {
+            error_log('Database connection is not established.');
+            return false;
+        }
+        
+        // บันทึก log การเริ่มดึงข้อมูล
+        error_log('Starting to fetch departments data');
+        
+        $query = "SELECT 
                 d.department_id, 
                 d.department_code, 
                 d.department_name,
+                d.is_active,
                 (SELECT COUNT(*) FROM classes c WHERE c.department_id = d.department_id) as class_count,
                 (SELECT COUNT(*) FROM students s 
                  JOIN classes c ON s.current_class_id = c.class_id 
-                 WHERE c.department_id = d.department_id AND s.status = 'กำลังศึกษา') as student_count
-            FROM departments d
-        ");
-        $stmt->execute();
+                 WHERE c.department_id = d.department_id AND s.status = 'กำลังศึกษา') as student_count,
+                (SELECT COUNT(*) FROM teachers t WHERE t.department_id = d.department_id) as teacher_count
+                FROM departments d
+                ORDER BY d.department_name";
+                
+        $stmt = $conn->query($query);
         $departments = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
-        // เพิ่มค่า default หากไม่มีข้อมูล
-        foreach ($departments as &$dept) {
-            $dept['department_code'] = $dept['department_code'] ?? 'N/A';
-            $dept['department_name'] = $dept['department_name'] ?? 'ไม่ระบุ';
-            $dept['class_count'] = $dept['class_count'] ?? 0;
-            $dept['student_count'] = $dept['student_count'] ?? 0;
-        }
-        
+        error_log('Successfully fetched ' . count($departments) . ' departments');
         return $departments;
     } catch (PDOException $e) {
-        error_log('Database error: ' . $e->getMessage());
-        return [];
+        error_log('Error fetching departments: ' . $e->getMessage());
+        error_log('SQL Query: ' . $query ?? 'No query available');
+        return false;
     }
 }
+
+
+
+
+
+/**
+ * สำหรับตัวอย่างการทดสอบ
+ * @return array ข้อมูลแผนกวิชาตัวอย่าง
+ */
+function getSampleDepartments() {
+    return [
+        [
+            'department_id' => '1',
+            'department_code' => 'IT',
+            'department_name' => 'เทคโนโลยีสารสนเทศ',
+            'is_active' => 1,
+            'class_count' => 3,
+            'student_count' => 80,
+            'teacher_count' => 5
+        ],
+        [
+            'department_id' => '2',
+            'department_code' => 'ACC',
+            'department_name' => 'การบัญชี',
+            'is_active' => 1,
+            'class_count' => 2,
+            'student_count' => 60,
+            'teacher_count' => 4
+        ],
+        [
+            'department_id' => '3',
+            'department_code' => 'AUTO',
+            'department_name' => 'ช่างยนต์',
+            'is_active' => 1,
+            'class_count' => 3,
+            'student_count' => 90,
+            'teacher_count' => 6
+        ],
+        [
+            'department_id' => '4',
+            'department_code' => 'ELEC',
+            'department_name' => 'ช่างไฟฟ้ากำลัง',
+            'is_active' => 1,
+            'class_count' => 2,
+            'student_count' => 70,
+            'teacher_count' => 4
+        ],
+        [
+            'department_id' => '5',
+            'department_code' => 'MECH',
+            'department_name' => 'ช่างกลโรงงาน',
+            'is_active' => 1,
+            'class_count' => 2,
+            'student_count' => 65,
+            'teacher_count' => 3
+        ],
+        [
+            'department_id' => '6',
+            'department_code' => 'HOTEL',
+            'department_name' => 'การโรงแรม',
+            'is_active' => 1,
+            'class_count' => 1,
+            'student_count' => 45,
+            'teacher_count' => 2
+        ],
+        [
+            'department_id' => '7',
+            'department_code' => 'GEN',
+            'department_name' => 'สามัญ',
+            'is_active' => 1,
+            'class_count' => 0,
+            'student_count' => 0,
+            'teacher_count' => 8
+        ]
+    ];
+}
+
+
+
+
+
+
+
+
+
 ?>

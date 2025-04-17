@@ -8,13 +8,23 @@
  * - class_id: รหัสห้องเรียน
  * - date: วันที่เช็คชื่อ
  * - is_retroactive: เป็นการเช็คชื่อย้อนหลังหรือไม่
+ * - remarks: หมายเหตุ (ถ้ามี)
  */
+
+// เปิด error reporting เพื่อช่วยในการดีบัก
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
 
 session_start();
 header('Content-Type: application/json');
 
+// บันทึก log ไว้ตรวจสอบ (ลบออกเมื่อใช้งานจริง)
+$logFile = __DIR__ . '/ajax_attendance_log.txt';
+file_put_contents($logFile, date('Y-m-d H:i:s') . " - Request started\n", FILE_APPEND);
+
 // ตรวจสอบการล็อกอิน
 if (!isset($_SESSION['user_id']) || ($_SESSION['role'] !== 'teacher' && $_SESSION['role'] !== 'admin')) {
+    file_put_contents($logFile, "Auth failed: " . json_encode($_SESSION) . "\n", FILE_APPEND);
     echo json_encode([
         'success' => false,
         'message' => 'ไม่มีสิทธิ์ในการเช็คชื่อ'
@@ -24,6 +34,7 @@ if (!isset($_SESSION['user_id']) || ($_SESSION['role'] !== 'teacher' && $_SESSIO
 
 // ตรวจสอบว่ารับข้อมูลแบบ POST
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    file_put_contents($logFile, "Method not POST\n", FILE_APPEND);
     echo json_encode([
         'success' => false,
         'message' => 'ต้องใช้วิธี POST เท่านั้น'
@@ -32,11 +43,24 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 // รับและแปลงข้อมูล JSON
-$input_data = json_decode(file_get_contents('php://input'), true);
+$input_json = file_get_contents('php://input');
+file_put_contents($logFile, "Received data: " . $input_json . "\n", FILE_APPEND);
+$input_data = json_decode($input_json, true);
+
+// ตรวจสอบการแปลง JSON
+if (json_last_error() !== JSON_ERROR_NONE) {
+    file_put_contents($logFile, "JSON error: " . json_last_error_msg() . "\n", FILE_APPEND);
+    echo json_encode([
+        'success' => false,
+        'message' => 'ข้อมูล JSON ไม่ถูกต้อง: ' . json_last_error_msg()
+    ]);
+    exit;
+}
 
 // ตรวจสอบข้อมูลที่จำเป็น
 if (!isset($input_data['student_id']) || !isset($input_data['status']) || 
     !isset($input_data['class_id']) || !isset($input_data['date'])) {
+    file_put_contents($logFile, "Missing required fields\n", FILE_APPEND);
     echo json_encode([
         'success' => false,
         'message' => 'ข้อมูลไม่ครบถ้วน'
@@ -51,7 +75,9 @@ require_once '../../db_connect.php';
 // เชื่อมต่อฐานข้อมูล
 try {
     $db = getDB();
+    file_put_contents($logFile, "Database connected\n", FILE_APPEND);
 } catch (Exception $e) {
+    file_put_contents($logFile, "DB connection error: " . $e->getMessage() . "\n", FILE_APPEND);
     echo json_encode([
         'success' => false,
         'message' => 'การเชื่อมต่อฐานข้อมูลล้มเหลว: ' . $e->getMessage()
@@ -68,6 +94,13 @@ try {
     $is_retroactive = isset($input_data['is_retroactive']) ? (bool)$input_data['is_retroactive'] : false;
     $remarks = isset($input_data['remarks']) ? $input_data['remarks'] : '';
     
+    // เพิ่มหมายเหตุกรณีเช็คย้อนหลัง
+    if ($is_retroactive && empty($remarks)) {
+        $remarks = 'เช็คชื่อย้อนหลังโดยครู';
+    }
+    
+    file_put_contents($logFile, "Parsed data: student_id=$student_id, status=$status, class_id=$class_id, date=$check_date\n", FILE_APPEND);
+    
     // ตรวจสอบความถูกต้องของสถานะ
     if (!in_array($status, ['present', 'absent', 'late', 'leave'])) {
         throw new Exception('สถานะไม่ถูกต้อง');
@@ -75,6 +108,7 @@ try {
     
     // เริ่ม Transaction
     $db->beginTransaction();
+    file_put_contents($logFile, "Transaction started\n", FILE_APPEND);
     
     // ดึงปีการศึกษาปัจจุบัน
     $academic_year_query = "SELECT academic_year_id FROM academic_years WHERE is_active = 1";
@@ -86,6 +120,7 @@ try {
     }
     
     $academic_year_id = $academic_year_data['academic_year_id'];
+    file_put_contents($logFile, "Academic year: $academic_year_id\n", FILE_APPEND);
     
     // ตรวจสอบว่ามีการเช็คชื่อนักเรียนคนนี้ในวันนี้แล้วหรือไม่
     $check_query = "SELECT attendance_id FROM attendance 
@@ -98,6 +133,7 @@ try {
     
     $existing_attendance = $stmt->fetch(PDO::FETCH_ASSOC);
     $user_id = $_SESSION['user_id'];
+    file_put_contents($logFile, "Checking existing attendance: " . ($existing_attendance ? "found" : "not found") . "\n", FILE_APPEND);
     
     if ($existing_attendance) {
         // อัพเดตการเช็คชื่อที่มีอยู่แล้ว
@@ -114,7 +150,13 @@ try {
         $stmt->bindParam(':user_id', $user_id, PDO::PARAM_INT);
         $stmt->bindParam(':remarks', $remarks, PDO::PARAM_STR);
         $stmt->bindParam(':attendance_id', $existing_attendance['attendance_id'], PDO::PARAM_INT);
-        $stmt->execute();
+        $result = $stmt->execute();
+        file_put_contents($logFile, "Update execution: " . ($result ? "success" : "failed") . "\n", FILE_APPEND);
+        
+        if (!$result) {
+            file_put_contents($logFile, "Update error: " . json_encode($stmt->errorInfo()) . "\n", FILE_APPEND);
+            throw new Exception('อัพเดตข้อมูลล้มเหลว: ' . implode(', ', $stmt->errorInfo()));
+        }
         
         $attendance_id = $existing_attendance['attendance_id'];
     } else {
@@ -132,7 +174,13 @@ try {
         $stmt->bindParam(':status', $status, PDO::PARAM_STR);
         $stmt->bindParam(':user_id', $user_id, PDO::PARAM_INT);
         $stmt->bindParam(':remarks', $remarks, PDO::PARAM_STR);
-        $stmt->execute();
+        $result = $stmt->execute();
+        file_put_contents($logFile, "Insert execution: " . ($result ? "success" : "failed") . "\n", FILE_APPEND);
+        
+        if (!$result) {
+            file_put_contents($logFile, "Insert error: " . json_encode($stmt->errorInfo()) . "\n", FILE_APPEND);
+            throw new Exception('เพิ่มข้อมูลล้มเหลว: ' . implode(', ', $stmt->errorInfo()));
+        }
         
         $attendance_id = $db->lastInsertId();
     }
@@ -159,7 +207,12 @@ try {
     $stmt = $db->prepare($update_stats_query);
     $stmt->bindParam(':student_id', $student_id, PDO::PARAM_INT);
     $stmt->bindParam(':academic_year_id', $academic_year_id, PDO::PARAM_INT);
-    $stmt->execute();
+    $result = $stmt->execute();
+    file_put_contents($logFile, "Statistics update: " . ($result ? "success" : "failed") . "\n", FILE_APPEND);
+    
+    if (!$result) {
+        file_put_contents($logFile, "Stats update error: " . json_encode($stmt->errorInfo()) . "\n", FILE_APPEND);
+    }
     
     // ดึงข้อมูลนักเรียนเพื่อส่งกลับ
     $student_query = "SELECT s.student_code, s.title, u.first_name, u.last_name, u.profile_picture
@@ -174,9 +227,10 @@ try {
     
     // Commit Transaction
     $db->commit();
+    file_put_contents($logFile, "Transaction committed\n", FILE_APPEND);
     
     // ส่งข้อมูลกลับ
-    echo json_encode([
+    $response = [
         'success' => true,
         'message' => 'บันทึกการเช็คชื่อเรียบร้อย',
         'attendance_id' => $attendance_id,
@@ -188,14 +242,19 @@ try {
             'status' => $status,
             'time_checked' => date('H:i')
         ]
-    ]);
+    ];
+    
+    file_put_contents($logFile, "Response: " . json_encode($response) . "\n", FILE_APPEND);
+    echo json_encode($response);
     
 } catch (Exception $e) {
     // Rollback Transaction เมื่อเกิดข้อผิดพลาด
     if (isset($db) && $db->inTransaction()) {
         $db->rollBack();
+        file_put_contents($logFile, "Transaction rolled back\n", FILE_APPEND);
     }
     
+    file_put_contents($logFile, "Error: " . $e->getMessage() . "\n", FILE_APPEND);
     echo json_encode([
         'success' => false,
         'message' => $e->getMessage()
