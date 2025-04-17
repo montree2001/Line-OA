@@ -408,7 +408,7 @@
                     <textarea id="attendanceRemarks" placeholder="ระบุหมายเหตุ เช่น สาเหตุการมาสาย, เหตุผลการลา ฯลฯ"></textarea>
                 </div>
 
-                <?php if ($is_retroactive): ?>
+                <?php if (isset($is_retroactive) && $is_retroactive): ?>
                     <div class="retroactive-note">
                         <label for="retroactiveNote">หมายเหตุการเช็คย้อนหลัง:</label>
                         <textarea id="retroactiveNote" placeholder="ระบุหมายเหตุการเช็คย้อนหลัง เช่น ใบรับรองแพทย์, หนังสือลา ฯลฯ"></textarea>
@@ -426,6 +426,7 @@
         </div>
     </div>
 </div>
+
 
 <!-- Modal เช็คชื่อทั้งหมด -->
 <div class="modal" id="markAllModal">
@@ -608,6 +609,25 @@
 <!-- เพิ่มในส่วนท้ายของไฟล์ -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+
+     // แสดง/ซ่อนช่องหมายเหตุตามสถานะที่เลือก
+     const statusInputs = document.querySelectorAll('input[name="attendanceStatus"]');
+    const remarksContainer = document.getElementById('remarksContainer');
+    
+    if (statusInputs.length > 0 && remarksContainer) {
+        statusInputs.forEach(input => {
+            input.addEventListener('change', function() {
+                const status = this.value;
+                
+                // แสดงช่องหมายเหตุเฉพาะเมื่อเลือกสถานะมาสายหรือลา
+                if (status === 'late' || status === 'leave') {
+                    remarksContainer.style.display = 'block';
+                } else {
+                    remarksContainer.style.display = 'none';
+                }
+            });
+        });
+    }
     // นับจำนวนนักเรียนที่ยังไม่ได้เช็คชื่อและที่เช็คแล้ว
     updateStudentCounts();
     
@@ -643,11 +663,6 @@ function setupTabSystem() {
     });
 }
 
-/**
- * แสดงรายละเอียดการเช็คชื่อ (Modal)
- * @param {number} studentId รหัสนักเรียน
- * @param {string} studentName ชื่อนักเรียน
- */
 function showDetailAttendanceModal(studentId, studentName) {
     // แสดงชื่อนักเรียนใน Modal
     const studentNameElement = document.getElementById('studentNameDetail');
@@ -685,6 +700,12 @@ function showDetailAttendanceModal(studentId, studentName) {
         remarksInput.value = '';
     }
     
+    // รีเซ็ตค่าหมายเหตุการเช็คย้อนหลัง (ถ้ามี)
+    const retroactiveNoteInput = document.getElementById('retroactiveNote');
+    if (retroactiveNoteInput) {
+        retroactiveNoteInput.value = '';
+    }
+    
     // แสดง/ซ่อนช่องหมายเหตุตามสถานะ
     const remarksContainer = document.getElementById('remarksContainer');
     if (remarksContainer) {
@@ -692,8 +713,7 @@ function showDetailAttendanceModal(studentId, studentName) {
     }
     
     // แสดง Modal
-    document.getElementById('attendanceDetailModal').classList.add('active');
-    document.body.style.overflow = 'hidden';
+    showModal('attendanceDetailModal');
 }
 </script>
 
