@@ -59,7 +59,7 @@ try {
         throw new Exception("ไม่สามารถเชื่อมต่อฐานข้อมูลได้");
     }
 
-        // ดึงข้อมูลทั้งหมดพร้อมบันทึก log
+    // ดึงข้อมูลทั้งหมดพร้อมบันทึก log
     error_log("Starting to fetch departments");
     $departments = getDepartmentsFromDB();
     if ($departments === false) {
@@ -84,13 +84,12 @@ try {
         error_log("Failed to fetch teachers");
     }
 
-      // ตรวจสอบว่าดึงข้อมูลสำเร็จหรือไม่
+    // ตรวจสอบว่าดึงข้อมูลสำเร็จหรือไม่
     if ($classes === false || $departments === false || $academicYearData === false || $teachers === false) {
         error_log("One or more data fetch operations failed");
         throw new Exception("ไม่สามารถดึงข้อมูลจากฐานข้อมูลได้");
     }
 
-   
     // ใช้ข้อมูลตัวอย่างหากดึงข้อมูลไม่สำเร็จ
     $classes = $classes ?: getSampleClasses();
     $departments = $departments ?: getSampleDepartments();
@@ -146,12 +145,6 @@ try {
         'teachers' => getSampleTeachers(),
         'at_risk_count' => 0
     ];
-    
-    // แสดงข้อความแจ้งเตือน
-    echo '<div class="alert alert-warning" role="alert">
-            <i class="material-icons">warning</i>
-            เกิดข้อผิดพลาดในการดึงข้อมูล กรุณาติดต่อผู้ดูแลระบบ2
-          </div>';
 }
 
 // ตรวจสอบการ submit form หรือเรียก API

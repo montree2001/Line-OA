@@ -342,7 +342,6 @@ function generateDepartmentCode($department_name) {
         return 'DEPT' . rand(100, 999);
     }
 }
-
 function getDepartmentsFromDB() {
     try {
         $conn = getDB();
@@ -378,8 +377,6 @@ function getDepartmentsFromDB() {
         return false;
     }
 }
-
-
 
 
 

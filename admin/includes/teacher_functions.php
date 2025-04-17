@@ -12,6 +12,8 @@ function getTeachersFromDB() {
     }
     
     try {
+        error_log('Starting to fetch teachers data');
+        
         $stmt = $conn->prepare("
             SELECT 
                 t.teacher_id, t.title, t.first_name, t.last_name, t.position,
@@ -21,9 +23,12 @@ function getTeachersFromDB() {
             ORDER BY t.first_name, t.last_name
         ");
         $stmt->execute();
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $teachers = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        error_log('Successfully fetched ' . count($teachers) . ' teachers');
+        return $teachers;
     } catch (PDOException $e) {
-        error_log('Database error: ' . $e->getMessage());
+        error_log('Database error in getTeachersFromDB: ' . $e->getMessage());
         return false;
     }
 }

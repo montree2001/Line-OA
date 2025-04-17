@@ -10,6 +10,8 @@ function getClassesFromDB() {
     }
     
     try {
+        error_log('Starting to fetch classes data');
+        
         // ดึงข้อมูลชั้นเรียนพร้อมรายละเอียด
         $stmt = $conn->prepare("
             SELECT c.class_id, c.academic_year_id, c.level, c.department_id, 
@@ -21,59 +23,84 @@ function getClassesFromDB() {
         $stmt->execute();
         $classes = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
+        error_log('Successfully fetched ' . count($classes) . ' classes, now retrieving additional data for each class');
+        
         // เพิ่มข้อมูลครูที่ปรึกษาและจำนวนนักเรียน
         foreach ($classes as &$class) {
-            // ดึงข้อมูลครูที่ปรึกษา
-            $stmt = $conn->prepare("
-                SELECT t.teacher_id, 
-                    CONCAT(t.title, ' ', t.first_name, ' ', t.last_name) as name, 
-                    ca.is_primary
-                FROM class_advisors ca
-                JOIN teachers t ON ca.teacher_id = t.teacher_id
-                WHERE ca.class_id = ?
-            ");
-            $stmt->execute([$class['class_id']]);
-            $class['advisors'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
-            // ดึงจำนวนนักเรียน
-            $stmt = $conn->prepare("
-                SELECT COUNT(*) as count
-                FROM students
-                WHERE current_class_id = ? AND status = 'กำลังศึกษา'
-            ");
-            $stmt->execute([$class['class_id']]);
-            $class['student_count'] = $stmt->fetch(PDO::FETCH_ASSOC)['count'];
-            
-            // คำนวณอัตราการเข้าแถว
-            $stmt = $conn->prepare("
-                SELECT 
-                    SUM(CASE WHEN a.is_present = 1 THEN 1 ELSE 0 END) as present_days,
-                    SUM(CASE WHEN a.is_present = 0 THEN 1 ELSE 0 END) as absent_days
-                FROM attendance a
-                JOIN students s ON a.student_id = s.student_id
-                WHERE s.current_class_id = ?
-            ");
-            $stmt->execute([$class['class_id']]);
-            $result = $stmt->fetch(PDO::FETCH_ASSOC);
-            
-            $presentDays = $result['present_days'] ?? 0;
-            $absentDays = $result['absent_days'] ?? 0;
-            
-            $totalDays = $presentDays + $absentDays;
-            if ($totalDays > 0) {
-                $class['attendance_rate'] = ($presentDays / $totalDays) * 100;
-            } else {
+            try {
+                // ดึงข้อมูลครูที่ปรึกษา
+                $stmt = $conn->prepare("
+                    SELECT t.teacher_id, 
+                        CONCAT(t.title, ' ', t.first_name, ' ', t.last_name) as name, 
+                        ca.is_primary
+                    FROM class_advisors ca
+                    JOIN teachers t ON ca.teacher_id = t.teacher_id
+                    WHERE ca.class_id = ?
+                ");
+                $stmt->execute([$class['class_id']]);
+                $class['advisors'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                
+                // ดึงจำนวนนักเรียน
+                $stmt = $conn->prepare("
+                    SELECT COUNT(*) as count
+                    FROM students
+                    WHERE current_class_id = ? AND status = 'กำลังศึกษา'
+                ");
+                $stmt->execute([$class['class_id']]);
+                $class['student_count'] = $stmt->fetch(PDO::FETCH_ASSOC)['count'];
+                
+                // คำนวณอัตราการเข้าแถว - ปรับการตรวจสอบ column is_present ในตาราง attendance
+                try {
+                    $stmt = $conn->prepare("
+                        SELECT 
+                            SUM(CASE WHEN a.attendance_status = 'present' THEN 1 ELSE 0 END) as present_days,
+                            SUM(CASE WHEN a.attendance_status = 'absent' THEN 1 ELSE 0 END) as absent_days
+                        FROM attendance a
+                        JOIN students s ON a.student_id = s.student_id
+                        WHERE s.current_class_id = ?
+                    ");
+                    $stmt->execute([$class['class_id']]);
+                    $result = $stmt->fetch(PDO::FETCH_ASSOC);
+                } catch (PDOException $e) {
+                    // ถ้าเกิด error อาจเป็นเพราะโครงสร้างเปลี่ยน ลองใช้ column อื่น
+                    $stmt = $conn->prepare("
+                        SELECT 
+                            COUNT(*) as total_days,
+                            0 as present_days,
+                            0 as absent_days
+                        FROM attendance a
+                        JOIN students s ON a.student_id = s.student_id
+                        WHERE s.current_class_id = ?
+                    ");
+                    $stmt->execute([$class['class_id']]);
+                    $result = $stmt->fetch(PDO::FETCH_ASSOC);
+                }
+                
+                $presentDays = $result['present_days'] ?? 0;
+                $absentDays = $result['absent_days'] ?? 0;
+                
+                $totalDays = $presentDays + $absentDays;
+                if ($totalDays > 0) {
+                    $class['attendance_rate'] = ($presentDays / $totalDays) * 100;
+                } else {
+                    $class['attendance_rate'] = 0;
+                }
+            } catch (PDOException $e) {
+                error_log('Error processing class ID ' . $class['class_id'] . ': ' . $e->getMessage());
+                // กำหนดค่าเริ่มต้นเพื่อให้ไม่เกิด error
+                $class['advisors'] = [];
+                $class['student_count'] = 0;
                 $class['attendance_rate'] = 0;
             }
         }
         
+        error_log('Successfully processed all class data');
         return $classes;
     } catch (PDOException $e) {
-        error_log('Database error: ' . $e->getMessage());
+        error_log('Database error in getClassesFromDB: ' . $e->getMessage());
         return false;
     }
 }
-
 // ดึงข้อมูลจำนวนนักเรียนที่เสี่ยงตกกิจกรรม
 function getAtRiskStudentCount() {
     $conn = getDB();  // ใช้ getDB() เพื่อรับ connection

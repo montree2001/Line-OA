@@ -12,6 +12,8 @@ function getAcademicYearsFromDB() {
     }
     
     try {
+        error_log('Starting to fetch academic years data');
+        
         $stmt = $conn->prepare("
             SELECT academic_year_id, year, semester, start_date, end_date, 
                    required_attendance_days, is_active
@@ -20,6 +22,8 @@ function getAcademicYearsFromDB() {
         ");
         $stmt->execute();
         $academicYears = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        error_log('Successfully fetched ' . count($academicYears) . ' academic years');
         
         // หาปีการศึกษาปัจจุบันและปีการศึกษาถัดไป
         $currentAcademicYear = null;
@@ -57,6 +61,8 @@ function getAcademicYearsFromDB() {
             }
         }
         
+        error_log('Successfully processed academic years data');
+        
         return [
             'academic_years' => $academicYears,
             'current_academic_year' => $currentAcademicYear,
@@ -65,7 +71,7 @@ function getAcademicYearsFromDB() {
             'active_year_id' => $activeYearId
         ];
     } catch (PDOException $e) {
-        error_log('Database error: ' . $e->getMessage());
+        error_log('Database error in getAcademicYearsFromDB: ' . $e->getMessage());
         return false;
     }
 }
