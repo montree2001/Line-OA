@@ -69,7 +69,7 @@ if ($_SESSION['role'] === 'teacher') {
 $today = date('Y-m-d');
 $attendance_stats_query = "SELECT 
                            COUNT(DISTINCT s.student_id) as total_students,
-                           SUM(CASE WHEN a.attendance_status IN ('present', 'late', 'leave') THEN 1 ELSE 0 END) as present_count,
+                           SUM(CASE WHEN a.attendance_status = 'present' THEN 1 ELSE 0 END) as present_count,
                            SUM(CASE WHEN a.attendance_status = 'absent' THEN 1 ELSE 0 END) as absent_count,
                            COUNT(a.attendance_id) as checked_count
                           FROM students s
@@ -106,12 +106,13 @@ $students_result = $students_stmt->get_result();
 
 $students = [];
 while ($student = $students_result->fetch_assoc()) {
+    $status = $student['attendance_status'];
     $students[] = [
         'id' => $student['student_id'],
         'number' => $student['number'],
         'student_code' => $student['student_code'],
         'name' => $student['title'] . $student['first_name'] . ' ' . $student['last_name'],
-        'status' => ($student['attendance_status'] === 'absent') ? 'absent' : 'present',
+        'status' => $status,
         'time' => $student['check_time']
     ];
 }

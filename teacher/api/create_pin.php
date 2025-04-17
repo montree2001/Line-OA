@@ -125,8 +125,8 @@ try {
     $stmt->execute();
     
     // บันทึก PIN ใหม่
-    $insert_query = "INSERT INTO pins (pin_code, creator_user_id, academic_year_id, valid_from, valid_until, is_active, class_id, created_at, updated_at) 
-                    VALUES (:pin_code, :user_id, :academic_year_id, :valid_from, :valid_until, 1, :class_id, NOW(), NOW())";
+    $insert_query = "INSERT INTO pins (pin_code, creator_user_id, academic_year_id, valid_from, valid_until, is_active, class_id, created_at) 
+                    VALUES (:pin_code, :user_id, :academic_year_id, :valid_from, :valid_until, 1, :class_id, NOW())";
     
     $stmt = $db->prepare($insert_query);
     $stmt->bindParam(':pin_code', $pin_code, PDO::PARAM_STR);
@@ -134,17 +134,6 @@ try {
     $stmt->bindParam(':academic_year_id', $academic_year_id, PDO::PARAM_INT);
     $stmt->bindParam(':valid_from', $valid_from, PDO::PARAM_STR);
     $stmt->bindParam(':valid_until', $valid_until, PDO::PARAM_STR);
-    $stmt->bindParam(':class_id', $class_id, PDO::PARAM_INT);
-    $stmt->execute();
-    
-    // บันทึกการสร้าง PIN ในประวัติ
-    $log_query = "INSERT INTO pin_logs (pin_code, creator_user_id, academic_year_id, class_id, created_at, action_type) 
-                 VALUES (:pin_code, :user_id, :academic_year_id, :class_id, NOW(), 'create')";
-    
-    $stmt = $db->prepare($log_query);
-    $stmt->bindParam(':pin_code', $pin_code, PDO::PARAM_STR);
-    $stmt->bindParam(':user_id', $user_id, PDO::PARAM_INT);
-    $stmt->bindParam(':academic_year_id', $academic_year_id, PDO::PARAM_INT);
     $stmt->bindParam(':class_id', $class_id, PDO::PARAM_INT);
     $stmt->execute();
     

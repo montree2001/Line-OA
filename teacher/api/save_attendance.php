@@ -137,15 +137,14 @@ try {
     $delete_stmt = $db->prepare("DELETE FROM attendance WHERE student_id = :student_id AND date = :check_date");
     $insert_stmt = $db->prepare("INSERT INTO attendance 
                                (student_id, academic_year_id, date, attendance_status, check_method, 
-                               checker_user_id, check_time, created_at, updated_at, remarks) 
+                               checker_user_id, check_time, created_at, remarks) 
                                VALUES (:student_id, :academic_year_id, :check_date, :status, :check_method, 
-                               :checker_user_id, NOW(), NOW(), NOW(), :remarks)");
+                               :checker_user_id, NOW(), NOW(), :remarks)");
     
     $update_stmt = $db->prepare("UPDATE attendance 
                                SET attendance_status = :status, 
                                    check_method = :check_method,
                                    checker_user_id = :checker_user_id, 
-                                   updated_at = NOW(),
                                    remarks = :remarks
                                WHERE attendance_id = :attendance_id");
     
@@ -277,30 +276,6 @@ try {
     $stmt = $db->prepare($update_risk_query);
     $stmt->bindParam(':academic_year_id', $academic_year_id, PDO::PARAM_INT);
     $stmt->execute();
-    
-    // บันทึกประวัติการเช็คชื่อย้อนหลัง
-    if ($is_retroactive) {
-        $log_retroactive_query = "
-            INSERT INTO attendance_logs 
-                (user_id, academic_year_id, class_id, action_type, action_date, action_details, created_at)
-            VALUES 
-                (:user_id, :academic_year_id, :class_id, 'retroactive_check', :check_date, :action_details, NOW())
-        ";
-        
-        $action_details = json_encode([
-            'teacher_id' => $teacher_id,
-            'students_count' => count($students),
-            'check_method' => $check_method
-        ], JSON_UNESCAPED_UNICODE);
-        
-        $stmt = $db->prepare($log_retroactive_query);
-        $stmt->bindParam(':user_id', $checker_user_id, PDO::PARAM_INT);
-        $stmt->bindParam(':academic_year_id', $academic_year_id, PDO::PARAM_INT);
-        $stmt->bindParam(':class_id', $class_id, PDO::PARAM_INT);
-        $stmt->bindParam(':check_date', $check_date, PDO::PARAM_STR);
-        $stmt->bindParam(':action_details', $action_details, PDO::PARAM_STR);
-        $stmt->execute();
-    }
     
     // Commit Transaction
     $db->commit();

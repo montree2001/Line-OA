@@ -106,7 +106,6 @@ try {
                             check_method = 'Manual',
                             checker_user_id = :user_id, 
                             check_time = NOW(),
-                            updated_at = NOW(),
                             remarks = :remarks
                         WHERE attendance_id = :attendance_id";
         
@@ -122,9 +121,9 @@ try {
         // เพิ่มการเช็คชื่อใหม่
         $insert_query = "INSERT INTO attendance 
                         (student_id, academic_year_id, date, attendance_status, check_method, 
-                        checker_user_id, check_time, created_at, updated_at, remarks) 
+                        checker_user_id, check_time, created_at, remarks) 
                         VALUES (:student_id, :academic_year_id, :check_date, :status, 'Manual', 
-                        :user_id, NOW(), NOW(), NOW(), :remarks)";
+                        :user_id, NOW(), NOW(), :remarks)";
         
         $stmt = $db->prepare($insert_query);
         $stmt->bindParam(':student_id', $student_id, PDO::PARAM_INT);
@@ -136,28 +135,6 @@ try {
         $stmt->execute();
         
         $attendance_id = $db->lastInsertId();
-    }
-    
-    // ถ้าเป็นการเช็คชื่อย้อนหลัง ให้บันทึกประวัติ
-    if ($is_retroactive) {
-        $log_query = "INSERT INTO attendance_logs 
-                     (user_id, academic_year_id, class_id, action_type, action_date, action_details, created_at)
-                     VALUES 
-                     (:user_id, :academic_year_id, :class_id, 'retroactive_check', :check_date, :action_details, NOW())";
-        
-        $action_details = json_encode([
-            'student_id' => $student_id,
-            'status' => $status,
-            'remarks' => $remarks
-        ], JSON_UNESCAPED_UNICODE);
-        
-        $stmt = $db->prepare($log_query);
-        $stmt->bindParam(':user_id', $user_id, PDO::PARAM_INT);
-        $stmt->bindParam(':academic_year_id', $academic_year_id, PDO::PARAM_INT);
-        $stmt->bindParam(':class_id', $class_id, PDO::PARAM_INT);
-        $stmt->bindParam(':check_date', $check_date, PDO::PARAM_STR);
-        $stmt->bindParam(':action_details', $action_details, PDO::PARAM_STR);
-        $stmt->execute();
     }
     
     // อัพเดทสถิติการเข้าแถวของนักเรียน
