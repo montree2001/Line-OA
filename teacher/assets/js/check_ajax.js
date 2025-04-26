@@ -1,7 +1,12 @@
 /**
+ * check_ajax.js - AJAX functions for attendance checking
+ * Handles real-time attendance updates without page reloads
+ */
+
+/**
  * เช็คชื่อนักเรียนและบันทึกทันที (AJAX)
  * @param {HTMLElement} button - ปุ่มที่ถูกคลิก
- * @param {string} status - สถานะการเช็คชื่อ (present/absent)
+ * @param {string} status - สถานะการเช็คชื่อ (present/absent/late/leave)
  * @param {number} studentId - รหัสนักเรียน
  */
 function markAttendance(button, status, studentId) {
@@ -94,12 +99,17 @@ function markAttendance(button, status, studentId) {
 
 /**
  * ย้ายการ์ดนักเรียนไปยังแท็บ "เช็คชื่อแล้ว"
+ * @param {HTMLElement} studentCard - การ์ดนักเรียน
+ * @param {number} studentId - รหัสนักเรียน
+ * @param {string} status - สถานะการเช็คชื่อ
+ * @param {string} timeChecked - เวลาที่เช็ค
+ * @param {number} attendanceId - ID การเช็คชื่อ
  */
 function moveToCheckedTab(studentCard, studentId, status, timeChecked, attendanceId) {
     try {
         // ลบการ์ดจากแท็บเดิม
         studentCard.remove();
-        
+
         // ตรวจสอบว่ามีรายการในแท็บเดิมเหลืออยู่หรือไม่
         const waitingTab = document.getElementById('waitingTab');
         if (!waitingTab) {
@@ -172,17 +182,27 @@ function moveToCheckedTab(studentCard, studentId, status, timeChecked, attendanc
 
 /**
  * สร้างการ์ดนักเรียนในแท็บ "เช็คชื่อแล้ว"
+ * @param {HTMLElement} originalCard - การ์ดต้นฉบับ
+ * @param {number} studentId - รหัสนักเรียน
+ * @param {string} status - สถานะการเช็คชื่อ
+ * @param {string} timeChecked - เวลาที่เช็ค
+ * @param {number} attendanceId - ID การเช็คชื่อ
+ * @returns {HTMLElement} - การ์ดใหม่
  */
 function createCheckedCard(originalCard, studentId, status, timeChecked, attendanceId) {
-    // ดึงข้อมูลจากการ์ดเดิม
+    // ดึงข้อมูลจาก originalCard
     const studentName = originalCard.getAttribute('data-name') || '';
     const studentNumber = originalCard.querySelector('.student-number')?.textContent || '';
-    const studentAvatar = originalCard.querySelector('.student-avatar')?.outerHTML || '';
-    const studentCode = originalCard.querySelector('.student-code')?.textContent || '';
-    
+    const avatarElement = originalCard.querySelector('.student-avatar');
+    const studentAvatar = avatarElement ? avatarElement.outerHTML : '<div class="student-avatar">?</div>';
+    const studentCodeElement = originalCard.querySelector('.student-code');
+    const studentCode = studentCodeElement ? studentCodeElement.textContent : 'รหัส: -';
+
     // กำหนดคลาสและไอคอนตามสถานะ
-    let statusClass = '', statusIcon = '', statusText = '';
-    
+    let statusClass = '';
+    let statusIcon = '';
+    let statusText = '';
+
     switch (status) {
         case 'present':
             statusClass = 'present';
@@ -205,7 +225,7 @@ function createCheckedCard(originalCard, studentId, status, timeChecked, attenda
             statusText = 'ขาดเรียน';
             break;
     }
-    
+
     // สร้างการ์ดใหม่
     const newCard = document.createElement('div');
     newCard.className = `student-card ${statusClass}-card`;
@@ -215,7 +235,7 @@ function createCheckedCard(originalCard, studentId, status, timeChecked, attenda
     if (attendanceId) {
         newCard.setAttribute('data-attendance-id', attendanceId);
     }
-    
+
     // กำหนด HTML ของการ์ด
     newCard.innerHTML = `
         <div class="student-number">${studentNumber}</div>
@@ -246,11 +266,17 @@ function createCheckedCard(originalCard, studentId, status, timeChecked, attenda
 
 /**
  * อัพเดทการ์ดที่มีอยู่แล้ว
+ * @param {HTMLElement} card - การ์ดที่ต้องการอัพเดท
+ * @param {string} status - สถานะการเช็คชื่อ
+ * @param {string} timeChecked - เวลาที่เช็ค
+ * @param {number} attendanceId - ID การเช็คชื่อ
  */
 function updateExistingCard(card, status, timeChecked, attendanceId) {
     // กำหนดคลาสและไอคอนตามสถานะ
-    let statusClass = '', statusIcon = '', statusText = '';
-    
+    let statusClass = '';
+    let statusIcon = '';
+    let statusText = '';
+
     switch (status) {
         case 'present':
             statusClass = 'present';
@@ -273,21 +299,21 @@ function updateExistingCard(card, status, timeChecked, attendanceId) {
             statusText = 'ขาดเรียน';
             break;
     }
-    
+
     // อัพเดทคลาสการ์ด
     card.className = `student-card ${statusClass}-card`;
     card.setAttribute('data-status', status);
     if (attendanceId) {
         card.setAttribute('data-attendance-id', attendanceId);
     }
-    
+
     // อัพเดทสถานะ
     const statusBadge = card.querySelector('.status-badge');
     if (statusBadge) {
         statusBadge.className = `status-badge ${statusClass}`;
         statusBadge.innerHTML = `<i class="fas ${statusIcon}"></i> ${statusText}`;
     }
-    
+
     // อัพเดทเวลา
     const checkTime = card.querySelector('.check-time');
     if (checkTime) {
@@ -317,6 +343,7 @@ function updateStudentCounts() {
 
 /**
  * อัพเดทสถิติการเช็คชื่อ
+ * @param {string} status - สถานะที่เปลี่ยน
  */
 function updateAttendanceStats(status) {
     // นับจำนวนนักเรียนตามสถานะ
@@ -342,6 +369,8 @@ function updateAttendanceStats(status) {
 
 /**
  * ดึงข้อความสถานะ
+ * @param {string} status - สถานะการเช็คชื่อ
+ * @returns {string} - ข้อความสถานะ
  */
 function getStatusText(status) {
     switch (status) {
@@ -355,6 +384,8 @@ function getStatusText(status) {
 
 /**
  * แสดงข้อความแจ้งเตือน
+ * @param {string} message - ข้อความ
+ * @param {string} type - ประเภท (success, warning, error, info)
  */
 function showNotification(message, type = 'info') {
     try {
@@ -403,7 +434,6 @@ function showNotification(message, type = 'info') {
 
 /**
  * ฟังก์ชันที่ขาดหายไป - สำหรับความเข้ากันได้กับ main.js เดิม
- * เรียกใช้ updateStudentCounts() เพื่ออัพเดทจำนวนนักเรียน
  */
 function updateAttendanceCounters() {
     updateStudentCounts();
@@ -411,7 +441,7 @@ function updateAttendanceCounters() {
 
 // เริ่มทำงานเมื่อโหลดหน้าเสร็จ
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('ระบบเช็คชื่อแบบ AJAX พร้อมใช้งาน');
+    console.log("ระบบเช็คชื่อแบบ AJAX พร้อมใช้งาน");
     
     // จัดการกับการเปลี่ยนแท็บ
     setupTabSystem();
