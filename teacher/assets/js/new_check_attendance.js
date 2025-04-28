@@ -227,7 +227,7 @@ function markAttendance(button, status, studentId) {
         }
 
         // บันทึกข้อมูลการเช็คชื่อในตัวแปร
-        updateAttendanceData(studentId, status, '');
+       // updateAttendanceData(studentId, status, '');
 
         // ย้ายการ์ดนักเรียนไปยังแท็บ "เช็คชื่อแล้ว"
         moveStudentToCheckedTab(studentCard, studentId, status);
@@ -378,136 +378,6 @@ function editAttendance(studentId, studentName, status, remarks) {
 }
 
 
-/**
- * ยืนยันการเช็คชื่อจาก Modal รายละเอียด
- */
-function confirmDetailAttendance() {
-    try {
-        // ดึงข้อมูลจาก Modal
-        const studentId = document.getElementById('studentIdDetail').value;
-        const isEditMode = document.getElementById('isEditMode').value === '1';
-        const attendanceId = document.getElementById('attendanceIdDetail') ? .value || null;
-
-        // ดึงสถานะที่เลือก
-        const statusElement = document.querySelector('input[name="attendanceStatus"]:checked');
-        if (!statusElement) {
-            showNotification('กรุณาเลือกสถานะการเช็คชื่อ', 'warning');
-            return;
-        }
-        const status = statusElement.value;
-
-        // ดึงหมายเหตุ
-        let remarks = '';
-
-        if (status === 'late' || status === 'leave') {
-            const remarksInput = document.getElementById('attendanceRemarks');
-            if (remarksInput) {
-                remarks = remarksInput.value.trim();
-
-                // ตรวจสอบว่ามีการระบุหมายเหตุหรือไม่
-                if (remarks === '') {
-                    showNotification('กรุณาระบุหมายเหตุสำหรับการมาสาย/ลา', 'warning');
-                    return;
-                }
-            }
-        }
-
-        // ถ้าเป็นการเช็คชื่อย้อนหลัง ให้ดึงหมายเหตุเพิ่มเติม
-        if (isRetroactive) {
-            const retroactiveNoteInput = document.getElementById('retroactiveNote');
-            if (retroactiveNoteInput) {
-                const retroactiveNote = retroactiveNoteInput.value.trim();
-
-                // ตรวจสอบว่ามีการระบุหมายเหตุหรือไม่
-                if (retroactiveNote === '') {
-                    showNotification('กรุณาระบุหมายเหตุสำหรับการเช็คชื่อย้อนหลัง', 'warning');
-                    return;
-                }
-
-                // เพิ่มหมายเหตุย้อนหลัง
-                remarks = remarks ? `${remarks} (${retroactiveNote})` : retroactiveNote;
-            }
-        }
-
-        // สร้างข้อมูลที่จะส่ง
-        const data = {
-            student_id: studentId,
-            status: status,
-            class_id: currentClassId,
-            date: checkDate,
-            is_retroactive: isRetroactive,
-            remarks: remarks
-        };
-
-        // แสดงสถานะกำลังโหลด
-        const saveButton = document.querySelector('#attendanceDetailModal .btn.primary');
-        if (saveButton) {
-            const originalText = saveButton.textContent;
-            saveButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> กำลังบันทึก...';
-            saveButton.disabled = true;
-
-            // ส่งข้อมูลไปบันทึก AJAX
-            fetch('api/ajax_attendance.php', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(data)
-                })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Server response was not OK: ' + response.status);
-                    }
-                    return response.json();
-                })
-                .then(responseData => {
-                    // คืนค่าปุ่มเดิม
-                    saveButton.innerHTML = originalText;
-                    saveButton.disabled = false;
-
-                    if (responseData.success) {
-                        // ปิด Modal
-                        closeModal('attendanceDetailModal');
-
-                        if (isEditMode) {
-                            // กรณีแก้ไข: อัพเดทการ์ดนักเรียนในแท็บ "เช็คชื่อแล้ว"
-                            updateStudentCard(studentId, status, remarks, responseData.attendance_id);
-                        } else {
-                            // กรณีเพิ่มใหม่: ย้ายการ์ดนักเรียนไปยังแท็บ "เช็คชื่อแล้ว"
-                            const studentCard = document.querySelector(`#waitingTab .student-card[data-id="${studentId}"]`);
-
-                            if (studentCard) {
-                                moveStudentToCheckedTab(studentCard, studentId, status, remarks);
-                            }
-                        }
-
-                        // อัพเดทจำนวนนักเรียนในแต่ละแท็บ
-                        updateStudentCounts();
-
-                        // อัพเดทสถิติการเช็คชื่อ
-                        updateAttendanceStats();
-
-                        // แสดงข้อความแจ้งเตือน
-                        showNotification(`บันทึกสถานะ "${getStatusText(status)}" สำหรับนักเรียนเรียบร้อย`, 'success');
-                    } else {
-                        // แสดงข้อความเมื่อมีข้อผิดพลาด
-                        showNotification('เกิดข้อผิดพลาด: ' + responseData.message, 'error');
-                    }
-                })
-                .catch(error => {
-                    // คืนค่าปุ่มเดิม
-                    saveButton.innerHTML = originalText;
-                    saveButton.disabled = false;
-
-                    console.error('Error:', error);
-                    showNotification('เกิดข้อผิดพลาดในการเชื่อมต่อกับเซิร์ฟเวอร์: ' + error.message, 'error');
-                });
-        }
-    } catch (error) {
-        console.error('เกิดข้อผิดพลาดในการยืนยันการเช็คชื่อ:', error);
-        showNotification('เกิดข้อผิดพลาดในการเช็คชื่อ: ' + error.message, 'error');
-    }
-}
 
 /**
  * แสดง Modal เช็คชื่อทั้งหมด
