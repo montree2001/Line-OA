@@ -1,0 +1,574 @@
+{
+    "name": "LINE Chatbot with Ollama and Organization Data",
+    "nodes": [{
+            "parameters": {
+                "assignments": {
+                    "assignments": [{
+                            "id": "cb0f97e1-c568-4e11-9900-9a568410a7eb",
+                            "name": "",
+                            "value": "",
+                            "type": "string"
+                        },
+                        {
+                            "id": "f12a1f42-aeae-4a4f-8daf-4e4b813fa141",
+                            "name": "body.events[0].message",
+                            "value": "={{ $json.body.events[0].message }}",
+                            "type": "object"
+                        },
+                        {
+                            "id": "7895157b-ae0d-44fa-acee-47e5c2203f43",
+                            "name": "body.events[0].replyToken",
+                            "value": "={{ $json.body.events[0].replyToken }}",
+                            "type": "string"
+                        },
+                        {
+                            "id": "new-message-text-id",
+                            "name": "message_text",
+                            "value": "={{ $json.body.events[0].message.text }}",
+                            "type": "string"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "type": "n8n-nodes-base.set",
+            "typeVersion": 3.4,
+            "position": [
+                500, -140
+            ],
+            "id": "dbf577c3-9ee8-418e-b820-6de6c04783bf",
+            "name": "Edit Fields"
+        },
+        {
+            "parameters": {
+                "promptType": "define",
+                "text": "={{ $('Edit Fields').item.json.message_text }}\nให้ตอบกลับด้วยภาษาไทยเท่านั้น โดยใช้ข้อมูลองค์กรที่มีอยู่ใน documents tool เป็นหลัก",
+                "options": {
+                    "systemMessage": "คุณเป็นผู้ช่วยที่มีความรู้เกี่ยวกับองค์กรของเรา ใช้ข้อมูลที่มีในการตอบคำถาม ตอบด้วยภาษาไทยเท่านั้น"
+                }
+            },
+            "type": "@n8n/n8n-nodes-langchain.agent",
+            "typeVersion": 1.8,
+            "position": [
+                740, -140
+            ],
+            "id": "1bbccffb-c6e6-4bc0-8743-2e0d11175a9e",
+            "name": "AI Agent",
+            "alwaysOutputData": false
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "https://api.line.me/v2/bot/message/reply",
+                "authentication": "genericCredentialType",
+                "genericAuthType": "httpHeaderAuth",
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={\n  \"replyToken\": \"{{ $('Edit Fields').item.json.body.events[0].replyToken}}\",\n  \"messages\": [\n    {\n      \"type\": \"text\",\n      \"text\": \"{{ $json.output }}\"\n    }\n  ]\n}",
+                "options": {}
+            },
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                1320, -140
+            ],
+            "id": "e6fcbf93-e281-458f-a9d1-87776fa30e6f",
+            "name": "HTTP Request",
+            "alwaysOutputData": false,
+            "credentials": {
+                "httpHeaderAuth": {
+                    "id": "negVEjNnLWsuV5kC",
+                    "name": "Header Auth account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "assignments": {
+                    "assignments": [{
+                        "id": "fb3220e5-cb0f-4aa4-a811-3e542579164a",
+                        "name": "output",
+                        "value": "={{ $json.output.split('\\n').join('') }}",
+                        "type": "string"
+                    }]
+                },
+                "options": {}
+            },
+            "type": "n8n-nodes-base.set",
+            "typeVersion": 3.4,
+            "position": [
+                1120, -140
+            ],
+            "id": "9ae2bb12-b398-4b71-839b-df62d588a4c2",
+            "name": "Edit Fields1"
+        },
+        {
+            "parameters": {
+                "httpMethod": "POST",
+                "path": "9dc18c2f-a750-4781-acb6-8406a488be02",
+                "options": {}
+            },
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 2,
+            "position": [
+                260, -140
+            ],
+            "id": "3e47aeaf-4ac5-4d6f-9140-ebc6188ef1b8",
+            "name": "Webhook",
+            "webhookId": "9dc18c2f-a750-4781-acb6-8406a488be02"
+        },
+        {
+            "parameters": {
+                "sessionIdType": "customKey",
+                "sessionKey": "={{ $('Edit Fields').item.json.body.events[0].replyToken }}",
+                "tableName": "=n8n_chat_histories"
+            },
+            "type": "@n8n/n8n-nodes-langchain.memoryPostgresChat",
+            "typeVersion": 1.3,
+            "position": [
+                740,
+                200
+            ],
+            "id": "c860ac25-f629-4bd1-9815-70bc4fa40826",
+            "name": "Postgres Chat Memory",
+            "credentials": {
+                "postgres": {
+                    "id": "Bnq6gimgAhCrUA9t",
+                    "name": "Postgres account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "mode": "retrieve-as-tool",
+                "toolName": "documents",
+                "toolDescription": "ใช้ข้อมูลนี้สำหรับค้นหาข้อมูลองค์กร ข้อมูลพนักงาน นโยบาย และเอกสารทั่วไปขององค์กร",
+                "tableName": {
+                    "__rl": true,
+                    "value": "documents",
+                    "mode": "list",
+                    "cachedResultName": "documents"
+                },
+                "options": {
+                    "queryName": "match_documents",
+                    "filter": {
+                        "metadata": {
+                            "source": "organization_data"
+                        }
+                    },
+                    "similarity": 0.7
+                }
+            },
+            "type": "@n8n/n8n-nodes-langchain.vectorStoreSupabase",
+            "typeVersion": 1,
+            "position": [
+                940,
+                180
+            ],
+            "id": "26b9b4a5-891e-4c0f-9f19-2012210d36f5",
+            "name": "Supabase Vector Store",
+            "credentials": {
+                "supabaseApi": {
+                    "id": "M0rikKt9GsyF12Uw",
+                    "name": "Supabase account line-bot2"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "options": {}
+            },
+            "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+            "typeVersion": 1,
+            "position": [
+                220,
+                900
+            ],
+            "id": "b20ae762-4291-4ed6-8336-309b493e121b",
+            "name": "OpenRouter Chat Model",
+            "disabled": true
+        },
+        {
+            "parameters": {
+                "mode": "insert",
+                "tableName": {
+                    "__rl": true,
+                    "value": "documents",
+                    "mode": "list",
+                    "cachedResultName": "documents"
+                },
+                "options": {
+                    "namespace": "organization_data"
+                }
+            },
+            "type": "@n8n/n8n-nodes-langchain.vectorStoreSupabase",
+            "typeVersion": 1,
+            "position": [
+                1060,
+                500
+            ],
+            "id": "c8fa93ec-afa0-4589-92d1-2eee54ae44f5",
+            "name": "Store Organization Data",
+            "credentials": {
+                "supabaseApi": {
+                    "id": "M0rikKt9GsyF12Uw",
+                    "name": "Supabase account line-bot2"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "model": "text-embedding-ada-002",
+                "options": {}
+            },
+            "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+            "typeVersion": 1.2,
+            "position": [
+                220,
+                1120
+            ],
+            "id": "ba153528-7fbe-48c5-9b47-1ffc848e40af",
+            "name": "Embeddings OpenAI",
+            "credentials": {
+                "openAiApi": {
+                    "id": "myH3wegpr3h5fmeg",
+                    "name": "OpenAi account"
+                }
+            },
+            "disabled": true
+        },
+        {
+            "parameters": {
+                "options": {}
+            },
+            "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+            "typeVersion": 1,
+            "position": [
+                900,
+                500
+            ],
+            "id": "d643f340-6dfd-49ee-980d-921b91f08272",
+            "name": "Default Data Loader"
+        },
+        {
+            "parameters": {
+                "chunkSize": 1000,
+                "chunkOverlap": 200,
+                "options": {}
+            },
+            "type": "@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter",
+            "typeVersion": 1,
+            "position": [
+                740,
+                500
+            ],
+            "id": "7a7fe14f-7efd-4a46-96f4-947ea5515d4e",
+            "name": "Split Documents"
+        },
+        {
+            "parameters": {
+                "options": {}
+            },
+            "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+            "typeVersion": 1.1,
+            "position": [
+                560,
+                640
+            ],
+            "id": "517aaf6e-0ec8-4b94-80c1-78fb570ebecc",
+            "name": "When chat message received",
+            "webhookId": "d4eef4d9-2314-4f4c-a5ae-82d5ea3bc1e8"
+        },
+        {
+            "parameters": {
+                "model": "mxbai-embed-large:latest"
+            },
+            "type": "@n8n/n8n-nodes-langchain.embeddingsOllama",
+            "typeVersion": 1,
+            "position": [
+                980,
+                600
+            ],
+            "id": "2083471b-c782-4c57-b7ec-fa48e92216c5",
+            "name": "Embeddings Ollama",
+            "credentials": {
+                "ollamaApi": {
+                    "id": "5RUfTiPWzGcqwMo2",
+                    "name": "Ollama Server-local-GPU"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "model": "mxbai-embed-large:latest"
+            },
+            "type": "@n8n/n8n-nodes-langchain.embeddingsOllama",
+            "typeVersion": 1,
+            "position": [
+                960,
+                320
+            ],
+            "id": "6f52dd18-b7a1-43a5-a32f-1549f6a3faa6",
+            "name": "Embeddings Ollama1",
+            "credentials": {
+                "ollamaApi": {
+                    "id": "5RUfTiPWzGcqwMo2",
+                    "name": "Ollama Server-local-GPU"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "model": "mistral:latest",
+                "options": {
+                    "temperature": 0.7
+                }
+            },
+            "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+            "typeVersion": 1,
+            "position": [
+                580,
+                80
+            ],
+            "id": "5f77ad8e-04c8-4c97-95cb-98cc462ff036",
+            "name": "Ollama Chat Model",
+            "credentials": {
+                "ollamaApi": {
+                    "id": "5RUfTiPWzGcqwMo2",
+                    "name": "Ollama Server-local-GPU"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "rule": {
+                    "interval": [{
+                        "field": "minutes",
+                        "minutesInterval": 30
+                    }]
+                }
+            },
+            "type": "n8n-nodes-base.scheduleTrigger",
+            "typeVersion": 1.1,
+            "position": [
+                100,
+                500
+            ],
+            "name": "Schedule Data Update"
+        },
+        {
+            "parameters": {
+                "resource": "spreadsheet",
+                "operation": "read",
+                "documentId": "YOUR_GOOGLE_SHEET_ID",
+                "range": "Sheet1!A:Z",
+                "options": {
+                    "valueRenderMode": "FORMATTED_VALUE"
+                }
+            },
+            "type": "n8n-nodes-base.googleSheets",
+            "typeVersion": 3,
+            "position": [
+                260,
+                500
+            ],
+            "name": "Fetch Organization Data"
+        },
+        {
+            "parameters": {
+                "functionCode": "const items = $input.all();\nconst documents = [];\n\nfor (const item of items) {\n  const row = item.json;\n  let content = '';\n  \n  for (const [key, value] of Object.entries(row)) {\n    if (value && key !== '__metadata') {\n      content += `${key}: ${value}\\n`;\n    }\n  }\n  \n  if (content.trim() !== '') {\n    documents.push({\n      pageContent: content,\n      metadata: {\n        source: 'organization_data',\n        row_id: item.json.id || items.indexOf(item).toString()\n      }\n    });\n  }\n}\n\nreturn [{ json: { documents } }];"
+            },
+            "type": "n8n-nodes-base.function",
+            "typeVersion": 1,
+            "position": [
+                420,
+                500
+            ],
+            "name": "Create Documents from Sheets"
+        },
+        {
+            "parameters": {
+                "keepOnlySet": true,
+                "values": {
+                    "string": [{
+                        "name": "documents",
+                        "value": "={{ $json.documents }}"
+                    }]
+                },
+                "options": {}
+            },
+            "type": "n8n-nodes-base.set",
+            "typeVersion": 2,
+            "position": [
+                580,
+                500
+            ],
+            "name": "Format for Data Loader"
+        }
+    ],
+    "connections": {
+        "Edit Fields": {
+            "main": [
+                [{
+                    "node": "AI Agent",
+                    "type": "main",
+                    "index": 0
+                }]
+            ]
+        },
+        "AI Agent": {
+            "main": [
+                [{
+                    "node": "Edit Fields1",
+                    "type": "main",
+                    "index": 0
+                }]
+            ]
+        },
+        "Edit Fields1": {
+            "main": [
+                [{
+                    "node": "HTTP Request",
+                    "type": "main",
+                    "index": 0
+                }]
+            ]
+        },
+        "Webhook": {
+            "main": [
+                [{
+                    "node": "Edit Fields",
+                    "type": "main",
+                    "index": 0
+                }]
+            ]
+        },
+        "Postgres Chat Memory": {
+            "ai_memory": [
+                [{
+                    "node": "AI Agent",
+                    "type": "ai_memory",
+                    "index": 0
+                }]
+            ]
+        },
+        "Supabase Vector Store": {
+            "ai_tool": [
+                [{
+                    "node": "AI Agent",
+                    "type": "ai_tool",
+                    "index": 0
+                }]
+            ]
+        },
+        "Default Data Loader": {
+            "ai_document": [
+                [{
+                    "node": "Store Organization Data",
+                    "type": "ai_document",
+                    "index": 0
+                }]
+            ]
+        },
+        "Split Documents": {
+            "ai_textSplitter": [
+                [{
+                    "node": "Default Data Loader",
+                    "type": "ai_textSplitter",
+                    "index": 0
+                }]
+            ]
+        },
+        "When chat message received": {
+            "main": [
+                [{
+                    "node": "Store Organization Data",
+                    "type": "main",
+                    "index": 0
+                }]
+            ]
+        },
+        "Embeddings Ollama1": {
+            "ai_embedding": [
+                [{
+                    "node": "Supabase Vector Store",
+                    "type": "ai_embedding",
+                    "index": 0
+                }]
+            ]
+        },
+        "Embeddings Ollama": {
+            "ai_embedding": [
+                [{
+                    "node": "Store Organization Data",
+                    "type": "ai_embedding",
+                    "index": 0
+                }]
+            ]
+        },
+        "Ollama Chat Model": {
+            "ai_languageModel": [
+                [{
+                    "node": "AI Agent",
+                    "type": "ai_languageModel",
+                    "index": 0
+                }]
+            ]
+        },
+        "Schedule Data Update": {
+            "main": [
+                [{
+                    "node": "Fetch Organization Data",
+                    "type": "main",
+                    "index": 0
+                }]
+            ]
+        },
+        "Fetch Organization Data": {
+            "main": [
+                [{
+                    "node": "Create Documents from Sheets",
+                    "type": "main",
+                    "index": 0
+                }]
+            ]
+        },
+        "Create Documents from Sheets": {
+            "main": [
+                [{
+                    "node": "Format for Data Loader",
+                    "type": "main",
+                    "index": 0
+                }]
+            ]
+        },
+        "Format for Data Loader": {
+            "main": [
+                [{
+                    "node": "Split Documents",
+                    "type": "main",
+                    "index": 0
+                }]
+            ]
+        }
+    },
+    "pinData": {
+        "Supabase Vector Store": [{
+                "json": {
+                    "name": "First item",
+                    "code": 1
+                }
+            },
+            {
+                "json": {
+                    "name": "Second item",
+                    "code": 2
+                }
+            }
+        ]
+    },
+    "settings": {
+        "executionOrder": "v1"
+    },
+    "active": false
+}

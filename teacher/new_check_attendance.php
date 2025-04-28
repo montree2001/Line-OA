@@ -351,3 +351,27 @@ require_once 'templates/header.php';
 require_once $content_path;
 require_once 'templates/footer.php';
 ?>
+
+<!-- แก้ไขปัญหา JavaScript -->
+<script src="assets/js/fix_attendance.js"></script>
+
+<!-- เพิ่มสคริปต์สำหรับการเริ่มต้นระบบ -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // ตรวจสอบว่ามีการโหลดไฟล์แก้ไขหรือไม่
+    if (typeof updateStudentCounts === 'function') {
+        console.log('โหลดไฟล์แก้ไขสำเร็จ');
+        
+        // จัดการระบบแท็บ
+        setupTabSystem();
+        
+        // แสดง/ซ่อนช่องหมายเหตุตามสถานะ
+        setupRemarkField();
+        
+        // อัพเดทจำนวนนักเรียนในแต่ละแท็บ
+        updateStudentCounts();
+    } else {
+        console.error('ไม่สามารถโหลดไฟล์แก้ไขได้');
+    }
+});
+</script>
