@@ -33,29 +33,40 @@ function markAttendance(button, status, studentId) {
         button.classList.add('active');
 
         // อัพเดทจำนวนการเข้าแถว
-        updateAttendanceCounters();
+        if (typeof updateStudentCounts === 'function') {
+            updateStudentCounts();
+        }
 
         // บันทึกข้อมูลการเช็คชื่อ (หากใช้ JavaScript แทนการส่งฟอร์ม)
-        updateAttendanceData(studentId, status, '');
-
+        // updateAttendanceData(studentId, status, ''); - ไม่ใช้แล้ว
 
         // กำหนดว่ามีการเปลี่ยนแปลงข้อมูล
-        hasChanges = true;
+        if (typeof hasChanges !== 'undefined') {
+            hasChanges = true;
+        }
 
         // ย้ายการ์ดไปยังแท็บที่เช็คชื่อแล้ว
-        moveStudentToCheckedTab(studentCard, studentId, status);
+        if (typeof moveStudentToCheckedTab === 'function') {
+            moveStudentToCheckedTab(studentCard, studentId, status);
+        }
 
         // บันทึกลงเซิร์ฟเวอร์ (แบบ AJAX)
-        saveAttendanceToServer(studentId, status);
+        if (typeof saveAttendanceToServer === 'function') {
+            saveAttendanceToServer(studentId, status);
+        }
 
         // แสดงข้อความแจ้งเตือน
-        showNotification(`เช็คชื่อนักเรียนเป็น "${getStatusText(status)}" เรียบร้อย`, 'success');
+        if (typeof showNotification === 'function') {
+            showNotification(`เช็คชื่อนักเรียนเป็น "${getStatusText(status)}" เรียบร้อย`, 'success');
+        }
 
         // Log สำหรับดีบัก
         console.log(`นักเรียน ID: ${studentId} สถานะ: ${status}`);
     } catch (error) {
         console.error('เกิดข้อผิดพลาดในการเช็คชื่อ:', error);
-        showNotification('เกิดข้อผิดพลาดในการเช็คชื่อ กรุณาลองใหม่อีกครั้ง', 'error');
+        if (typeof showNotification === 'function') {
+            showNotification('เกิดข้อผิดพลาดในการเช็คชื่อ กรุณาลองใหม่อีกครั้ง', 'error');
+        }
     }
 }
 
@@ -78,21 +89,26 @@ function saveAttendanceToServer(studentId, status) {
         };
 
         // ส่งข้อมูลไปบันทึกแบบ AJAX
-        fetch(window.location.href, {
+        fetch('api/ajax_attendance.php', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'Content-Type': 'application/json',
                 },
-                body: new URLSearchParams(data)
+                body: JSON.stringify(data)
             })
             .then(response => {
                 if (!response.ok) {
                     throw new Error('การบันทึกข้อมูลล้มเหลว');
                 }
-                return response.text();
+                return response.json();
             })
-            .then(text => {
-                console.log('บันทึกข้อมูลสำเร็จ');
+            .then(data => {
+                console.log('บันทึกข้อมูลสำเร็จ:', data);
+
+                // อัพเดทสถิติการเช็คชื่อ (ถ้ามีฟังก์ชัน)
+                if (typeof updateAttendanceStats === 'function') {
+                    updateAttendanceStats(status);
+                }
             })
             .catch(error => {
                 console.error('เกิดข้อผิดพลาดในการบันทึกข้อมูล:', error);
@@ -161,8 +177,6 @@ function showNotification(message, type = 'info') {
     }
 }
 
-
-
 /**
  * ดึงข้อความสถานะ
  * @param {string} status - สถานะการเช็คชื่อ
@@ -181,4 +195,34 @@ function getStatusText(status) {
         default:
             return 'ไม่ระบุ';
     }
+}
+
+// เพิ่มฟังก์ชัน updateStudentCounts สำหรับความเข้ากันได้กับโค้ดที่เคยใช้ updateAttendanceCounters
+function updateStudentCounts() {
+    // ถ้ามีการนิยามฟังก์ชัน updateStudentCounts ในที่อื่นแล้ว จะเรียกใช้ฟังก์ชันนั้น
+    if (window.updateStudentCounts && this !== window) {
+        window.updateStudentCounts();
+        return;
+    }
+
+    // หากไม่มี จะนับจำนวนนักเรียนในแต่ละแท็บและอัพเดท UI
+    const waitingCount = document.querySelectorAll('#waitingTab .student-card').length;
+    const checkedCount = document.querySelectorAll('#checkedTab .student-card').length;
+
+    // อัพเดทจำนวนในปุ่มแท็บ
+    const waitingCountElement = document.querySelector('button[data-tab="waiting"] .count');
+    const checkedCountElement = document.querySelector('button[data-tab="checked"] .count');
+
+    if (waitingCountElement) {
+        waitingCountElement.textContent = waitingCount;
+    }
+
+    if (checkedCountElement) {
+        checkedCountElement.textContent = checkedCount;
+    }
+}
+
+// สร้างฟังก์ชัน alias เพื่อให้โค้ดเดิมทำงานได้
+function updateAttendanceCounters() {
+    updateStudentCounts();
 }

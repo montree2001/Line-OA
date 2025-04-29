@@ -227,7 +227,7 @@ function markAttendance(button, status, studentId) {
         }
 
         // บันทึกข้อมูลการเช็คชื่อในตัวแปร
-       // updateAttendanceData(studentId, status, '');
+        // updateAttendanceData(studentId, status, '');
 
         // ย้ายการ์ดนักเรียนไปยังแท็บ "เช็คชื่อแล้ว"
         moveStudentToCheckedTab(studentCard, studentId, status);

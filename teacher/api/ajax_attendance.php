@@ -1,6 +1,6 @@
 <?php
 /**
- * api/ajax_attendance.php - API สำหรับการเช็คชื่อแบบ AJAX
+ * ajax_attendance.php - API สำหรับการเช็คชื่อแบบ AJAX
  * 
  * รับข้อมูล POST:
  * - student_id: รหัสนักเรียน
