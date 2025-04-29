@@ -131,9 +131,7 @@
             <button type="button" class="btn secondary" onclick="scanQR()">
                 <i class="fas fa-qrcode"></i> สแกน QR Code
             </button>
-            <button type="button" class="btn success" onclick="markAllAttendance()">
-                <i class="fas fa-check-double"></i> เช็คชื่อทั้งหมด
-            </button>
+         
         </div>
 
         <!-- ช่องค้นหา -->
@@ -156,55 +154,55 @@
         <div class="tab-content">
             <!-- รายชื่อนักเรียนที่ยังไม่ได้เช็คชื่อ -->
             <!-- รายชื่อนักเรียนที่ยังไม่ได้เช็คชื่อ -->
-<!-- รายชื่อนักเรียนที่ยังไม่ได้เช็คชื่อ -->
-<div id="waitingTab" class="tab-pane active">
-    <?php if (empty($unchecked_students)): ?>
-        <div class="empty-state">
-            <div class="empty-icon"><i class="fas fa-check-circle"></i></div>
-            <h3>เช็คชื่อครบทุกคนแล้ว!</h3>
-            <p>ทุกคนได้รับการเช็คชื่อเรียบร้อยแล้ว</p>
-        </div>
-    <?php else: ?>
-        <div class="student-list">
-            <?php foreach ($unchecked_students as $student): ?>
-                <div class="student-card" data-id="<?php echo $student['id']; ?>" data-name="<?php echo htmlspecialchars($student['name'], ENT_QUOTES, 'UTF-8'); ?>">
-                    <div class="student-number"><?php echo $student['number']; ?></div>
-
-                    <div class="student-info" onclick="showDetailAttendanceModal(<?php echo $student['id']; ?>, '<?php echo htmlspecialchars($student['name'], ENT_QUOTES, 'UTF-8'); ?>')">
-                        <?php if ($student['profile_picture']): ?>
-                            <div class="student-avatar" style="background-image: url('<?php echo $student['profile_picture']; ?>')"></div>
-                        <?php else: ?>
-                            <div class="student-avatar"><?php echo mb_substr(str_replace(['นาย', 'นางสาว', 'นาง', 'เด็กชาย', 'เด็กหญิง'], '', $student['name']), 0, 1, 'UTF-8'); ?></div>
-                        <?php endif; ?>
-
-                        <div class="student-details">
-                            <div class="student-name"><?php echo $student['name']; ?></div>
-                            <div class="student-code">รหัส: <?php echo $student['code']; ?></div>
-                        </div>
+            <!-- รายชื่อนักเรียนที่ยังไม่ได้เช็คชื่อ -->
+            <div id="waitingTab" class="tab-pane active">
+                <?php if (empty($unchecked_students)): ?>
+                    <div class="empty-state">
+                        <div class="empty-icon"><i class="fas fa-check-circle"></i></div>
+                        <h3>เช็คชื่อครบทุกคนแล้ว!</h3>
+                        <p>ทุกคนได้รับการเช็คชื่อเรียบร้อยแล้ว</p>
                     </div>
+                <?php else: ?>
+                    <div class="student-list">
+                        <?php foreach ($unchecked_students as $student): ?>
+                            <div class="student-card" data-id="<?php echo $student['id']; ?>" data-name="<?php echo htmlspecialchars($student['name'], ENT_QUOTES, 'UTF-8'); ?>">
+                                <div class="student-number"><?php echo $student['number']; ?></div>
 
-                    <!-- ปุ่มเช็คชื่อในรายการนักเรียน - ปรับปรุงใหม่ใช้ AJAX เพื่อบันทึกทันที -->
-                    <div class="student-actions">
-                        <button type="button" class="action-btn present action-button" title="มาเรียน" 
-                                onclick="markAttendance(this, 'present', <?php echo $student['id']; ?>)">
-                            <i class="fas fa-check"></i>
-                        </button>
-                        
-                        <button type="button" class="action-btn absent action-button" title="ขาดเรียน"
-                                onclick="markAttendance(this, 'absent', <?php echo $student['id']; ?>)">
-                            <i class="fas fa-times"></i>
-                        </button>
-                        
-                        <button type="button" class="action-btn more" title="เช็คแบบละเอียด" 
-                                onclick="showDetailAttendanceModal(<?php echo $student['id']; ?>, '<?php echo htmlspecialchars($student['name'], ENT_QUOTES, 'UTF-8'); ?>')">
-                            <i class="fas fa-ellipsis-h"></i>
-                        </button>
+                                <div class="student-info" onclick="showDetailAttendanceModal(<?php echo $student['id']; ?>, '<?php echo htmlspecialchars($student['name'], ENT_QUOTES, 'UTF-8'); ?>')">
+                                    <?php if ($student['profile_picture']): ?>
+                                        <div class="student-avatar" style="background-image: url('<?php echo $student['profile_picture']; ?>')"></div>
+                                    <?php else: ?>
+                                        <div class="student-avatar"><?php echo mb_substr(str_replace(['นาย', 'นางสาว', 'นาง', 'เด็กชาย', 'เด็กหญิง'], '', $student['name']), 0, 1, 'UTF-8'); ?></div>
+                                    <?php endif; ?>
+
+                                    <div class="student-details">
+                                        <div class="student-name"><?php echo $student['name']; ?></div>
+                                        <div class="student-code">รหัส: <?php echo $student['code']; ?></div>
+                                    </div>
+                                </div>
+
+                                <!-- ปุ่มเช็คชื่อในรายการนักเรียน - ปรับปรุงใหม่ใช้ AJAX เพื่อบันทึกทันที -->
+                                <div class="student-actions">
+                                    <button type="button" class="action-btn present action-button" title="มาเรียน"
+                                        onclick="markAttendance(this, 'present', <?php echo $student['id']; ?>)">
+                                        <i class="fas fa-check"></i>
+                                    </button>
+
+                                    <button type="button" class="action-btn absent action-button" title="ขาดเรียน"
+                                        onclick="markAttendance(this, 'absent', <?php echo $student['id']; ?>)">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+
+                                    <button type="button" class="action-btn more" title="เช็คแบบละเอียด"
+                                        onclick="showDetailAttendanceModal(<?php echo $student['id']; ?>, '<?php echo htmlspecialchars($student['name'], ENT_QUOTES, 'UTF-8'); ?>')">
+                                        <i class="fas fa-ellipsis-h"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
                     </div>
-                </div>
-            <?php endforeach; ?>
-        </div>
-    <?php endif; ?>
-</div>
+                <?php endif; ?>
+            </div>
 
             <!-- รายชื่อนักเรียนที่เช็คชื่อแล้ว -->
             <div id="checkedTab" class="tab-pane">
@@ -608,114 +606,111 @@
 
 <!-- เพิ่มในส่วนท้ายของไฟล์ -->
 <script>
-document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', function() {
 
-     // แสดง/ซ่อนช่องหมายเหตุตามสถานะที่เลือก
-     const statusInputs = document.querySelectorAll('input[name="attendanceStatus"]');
-    const remarksContainer = document.getElementById('remarksContainer');
-    
-    if (statusInputs.length > 0 && remarksContainer) {
-        statusInputs.forEach(input => {
-            input.addEventListener('change', function() {
-                const status = this.value;
-                
-                // แสดงช่องหมายเหตุเฉพาะเมื่อเลือกสถานะมาสายหรือลา
-                if (status === 'late' || status === 'leave') {
-                    remarksContainer.style.display = 'block';
-                } else {
-                    remarksContainer.style.display = 'none';
+        // แสดง/ซ่อนช่องหมายเหตุตามสถานะที่เลือก
+        const statusInputs = document.querySelectorAll('input[name="attendanceStatus"]');
+        const remarksContainer = document.getElementById('remarksContainer');
+
+        if (statusInputs.length > 0 && remarksContainer) {
+            statusInputs.forEach(input => {
+                input.addEventListener('change', function() {
+                    const status = this.value;
+
+                    // แสดงช่องหมายเหตุเฉพาะเมื่อเลือกสถานะมาสายหรือลา
+                    if (status === 'late' || status === 'leave') {
+                        remarksContainer.style.display = 'block';
+                    } else {
+                        remarksContainer.style.display = 'none';
+                    }
+                });
+            });
+        }
+        // นับจำนวนนักเรียนที่ยังไม่ได้เช็คชื่อและที่เช็คแล้ว
+        updateStudentCounts();
+
+        // จัดการแท็บ
+        setupTabSystem();
+    });
+
+    /**
+     * จัดการระบบแท็บ
+     */
+    function setupTabSystem() {
+        const tabButtons = document.querySelectorAll('.tab-button');
+
+        tabButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                // ลบคลาส active จากทุกปุ่มและแท็บ
+                document.querySelectorAll('.tab-button').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                document.querySelectorAll('.tab-pane').forEach(pane => {
+                    pane.classList.remove('active');
+                });
+
+                // เพิ่มคลาส active ให้ปุ่มที่คลิกและแท็บที่เกี่ยวข้อง
+                this.classList.add('active');
+
+                const tabId = this.getAttribute('data-tab');
+                const tabPane = document.getElementById(tabId + 'Tab');
+                if (tabPane) {
+                    tabPane.classList.add('active');
                 }
             });
         });
     }
-    // นับจำนวนนักเรียนที่ยังไม่ได้เช็คชื่อและที่เช็คแล้ว
-    updateStudentCounts();
-    
-    // จัดการแท็บ
-    setupTabSystem();
-});
 
-/**
- * จัดการระบบแท็บ
- */
-function setupTabSystem() {
-    const tabButtons = document.querySelectorAll('.tab-button');
-    
-    tabButtons.forEach(button => {
-        button.addEventListener('click', function() {
-            // ลบคลาส active จากทุกปุ่มและแท็บ
-            document.querySelectorAll('.tab-button').forEach(btn => {
-                btn.classList.remove('active');
-            });
-            document.querySelectorAll('.tab-pane').forEach(pane => {
-                pane.classList.remove('active');
-            });
-            
-            // เพิ่มคลาส active ให้ปุ่มที่คลิกและแท็บที่เกี่ยวข้อง
-            this.classList.add('active');
-            
-            const tabId = this.getAttribute('data-tab');
-            const tabPane = document.getElementById(tabId + 'Tab');
-            if (tabPane) {
-                tabPane.classList.add('active');
-            }
-        });
-    });
-}
+    function showDetailAttendanceModal(studentId, studentName) {
+        // แสดงชื่อนักเรียนใน Modal
+        const studentNameElement = document.getElementById('studentNameDetail');
+        if (studentNameElement) {
+            studentNameElement.textContent = studentName;
+        }
 
-function showDetailAttendanceModal(studentId, studentName) {
-    // แสดงชื่อนักเรียนใน Modal
-    const studentNameElement = document.getElementById('studentNameDetail');
-    if (studentNameElement) {
-        studentNameElement.textContent = studentName;
+        // กำหนดค่า ID นักเรียน
+        const studentIdInput = document.getElementById('studentIdDetail');
+        if (studentIdInput) {
+            studentIdInput.value = studentId;
+        }
+
+        // ระบุว่าเป็นการเพิ่มใหม่ ไม่ใช่การแก้ไข
+        const isEditMode = document.getElementById('isEditMode');
+        if (isEditMode) {
+            isEditMode.value = '0';
+        }
+
+        // รีเซ็ตค่า attendance_id
+        const attendanceIdInput = document.getElementById('attendanceIdDetail');
+        if (attendanceIdInput) {
+            attendanceIdInput.value = '';
+        }
+
+        // รีเซ็ตค่าตัวเลือกเป็น "มาเรียน"
+        const presentOption = document.querySelector('input[name="attendanceStatus"][value="present"]');
+        if (presentOption) {
+            presentOption.checked = true;
+        }
+
+        // รีเซ็ตค่าหมายเหตุ
+        const remarksInput = document.getElementById('attendanceRemarks');
+        if (remarksInput) {
+            remarksInput.value = '';
+        }
+
+        // รีเซ็ตค่าหมายเหตุการเช็คย้อนหลัง (ถ้ามี)
+        const retroactiveNoteInput = document.getElementById('retroactiveNote');
+        if (retroactiveNoteInput) {
+            retroactiveNoteInput.value = '';
+        }
+
+        // แสดง/ซ่อนช่องหมายเหตุตามสถานะ
+        const remarksContainer = document.getElementById('remarksContainer');
+        if (remarksContainer) {
+            remarksContainer.style.display = 'none';
+        }
+
+        // แสดง Modal
+        showModal('attendanceDetailModal');
     }
-    
-    // กำหนดค่า ID นักเรียน
-    const studentIdInput = document.getElementById('studentIdDetail');
-    if (studentIdInput) {
-        studentIdInput.value = studentId;
-    }
-    
-    // ระบุว่าเป็นการเพิ่มใหม่ ไม่ใช่การแก้ไข
-    const isEditMode = document.getElementById('isEditMode');
-    if (isEditMode) {
-        isEditMode.value = '0';
-    }
-    
-    // รีเซ็ตค่า attendance_id
-    const attendanceIdInput = document.getElementById('attendanceIdDetail');
-    if (attendanceIdInput) {
-        attendanceIdInput.value = '';
-    }
-    
-    // รีเซ็ตค่าตัวเลือกเป็น "มาเรียน"
-    const presentOption = document.querySelector('input[name="attendanceStatus"][value="present"]');
-    if (presentOption) {
-        presentOption.checked = true;
-    }
-    
-    // รีเซ็ตค่าหมายเหตุ
-    const remarksInput = document.getElementById('attendanceRemarks');
-    if (remarksInput) {
-        remarksInput.value = '';
-    }
-    
-    // รีเซ็ตค่าหมายเหตุการเช็คย้อนหลัง (ถ้ามี)
-    const retroactiveNoteInput = document.getElementById('retroactiveNote');
-    if (retroactiveNoteInput) {
-        retroactiveNoteInput.value = '';
-    }
-    
-    // แสดง/ซ่อนช่องหมายเหตุตามสถานะ
-    const remarksContainer = document.getElementById('remarksContainer');
-    if (remarksContainer) {
-        remarksContainer.style.display = 'none';
-    }
-    
-    // แสดง Modal
-    showModal('attendanceDetailModal');
-}
 </script>
-
-
-

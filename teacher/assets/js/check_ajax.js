@@ -643,74 +643,6 @@ function showDetailAttendanceModal(studentId, studentName) {
 
 
 /**
- * แก้ไขการเช็คชื่อ
- * @param {number} studentId - รหัสนักเรียน
- * @param {string} studentName - ชื่อนักเรียน
- * @param {string} status - สถานะปัจจุบัน
- * @param {string} remarks - หมายเหตุ
- */
-function editAttendance(studentId, studentName, status, remarks) {
-    // แสดงชื่อนักเรียนใน Modal
-    const studentNameElement = document.getElementById('studentNameDetail');
-    if (studentNameElement) {
-        studentNameElement.textContent = studentName;
-    }
-
-    // กำหนดค่า ID นักเรียน
-    const studentIdInput = document.getElementById('studentIdDetail');
-    if (studentIdInput) {
-        studentIdInput.value = studentId;
-    }
-
-    // ระบุว่าเป็นการแก้ไข ไม่ใช่การเพิ่มใหม่
-    const isEditMode = document.getElementById('isEditMode');
-    if (isEditMode) {
-        isEditMode.value = '1';
-    }
-
-    // ดึงและกำหนดค่า attendance_id
-    const studentCard = document.querySelector(`#checkedTab .student-card[data-id="${studentId}"]`);
-    if (studentCard) {
-        const attendanceId = studentCard.getAttribute('data-attendance-id');
-        const attendanceIdInput = document.getElementById('attendanceIdDetail');
-        if (attendanceIdInput && attendanceId) {
-            attendanceIdInput.value = attendanceId;
-        }
-    }
-
-    // เลือกสถานะปัจจุบัน
-    const statusOption = document.querySelector(`input[name="attendanceStatus"][value="${status}"]`);
-    if (statusOption) {
-        statusOption.checked = true;
-    }
-
-    // ใส่ค่าหมายเหตุ
-    const remarksInput = document.getElementById('attendanceRemarks');
-    if (remarksInput) {
-        remarksInput.value = remarks || '';
-    }
-
-    // รีเซ็ตค่าหมายเหตุการเช็คย้อนหลัง (ถ้ามี)
-    const retroactiveNoteInput = document.getElementById('retroactiveNote');
-    if (retroactiveNoteInput) {
-        retroactiveNoteInput.value = '';
-    }
-
-    // แสดง/ซ่อนช่องหมายเหตุตามสถานะ
-    const remarksContainer = document.getElementById('remarksContainer');
-    if (remarksContainer) {
-        if (status === 'late' || status === 'leave') {
-            remarksContainer.style.display = 'block';
-        } else {
-            remarksContainer.style.display = 'none';
-        }
-    }
-
-    // แสดง Modal
-    showModal('attendanceDetailModal');
-}
-
-/**
  * ยืนยันการเช็คชื่อรายละเอียด
  */
 function confirmDetailAttendance() {
@@ -795,19 +727,7 @@ document.addEventListener('DOMContentLoaded', function() {
     updateStudentCounts();
 });
 
-/**
- * แสดง Modal เช็คชื่อทั้งหมด
- */
-function markAllAttendance() {
-    const uncheckedCount = document.querySelectorAll('#waitingTab .student-card').length;
 
-    if (uncheckedCount === 0) {
-        showNotification('ไม่มีนักเรียนที่ต้องเช็คชื่อแล้ว', 'info');
-        return;
-    }
-
-    showModal('markAllModal');
-}
 
 /**
  * ยืนยันการเช็คชื่อทั้งหมด
