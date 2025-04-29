@@ -339,8 +339,7 @@ $extra_css = [
 ];
 
 $extra_js = [
-    'assets/js/new_check_attendance.js',
-    'assets/js/check_ajax.js'
+    'assets/js/check_ajax.js',
 ];
 
 // กำหนดเส้นทางเนื้อหา
