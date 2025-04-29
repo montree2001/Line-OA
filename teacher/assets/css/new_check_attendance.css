@@ -5,7 +5,6 @@
     --primary-color: #1976d2;
     --primary-light: #e3f2fd;
     --primary-dark: #1565c0;
-    
     /* สีสถานะการเช็คชื่อ */
     --present-color: #4caf50;
     --present-light: #e8f5e9;
@@ -17,13 +16,11 @@
     --absent-light: #ffebee;
     --not-checked-color: #757575;
     --not-checked-light: #f5f5f5;
-    
     /* สีทั่วไป */
     --text-primary: #212121;
     --text-secondary: #757575;
     --background-color: #f5f5f5;
     --card-background: #ffffff;
-    
     /* ขนาดและระยะห่าง */
     --border-radius: 12px;
     --card-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
@@ -38,7 +35,9 @@ body {
     padding: 0;
 }
 
+
 /* ส่วนหัวของหน้า */
+
 .header {
     background-color: var(--primary-color);
     color: white;
@@ -98,19 +97,24 @@ body {
     background-color: #f5f5f5;
 }
 
-.dropdown-menu a i, .dropdown-menu a span.material-icons {
+.dropdown-menu a i,
+.dropdown-menu a span.material-icons {
     margin-right: 10px;
     color: var(--primary-color);
 }
 
+
 /* คอนเทนเนอร์หลัก */
+
 .attendance-container {
     padding: 16px;
     max-width: 1200px;
     margin: 0 auto;
 }
 
+
 /* การ์ดข้อมูลคลาส */
+
 .class-info-card {
     background-color: var(--card-background);
     border-radius: var(--border-radius);
@@ -124,21 +128,24 @@ body {
     gap: 16px;
 }
 
-.class-selector, .date-selector {
+.class-selector,
+.date-selector {
     display: flex;
     align-items: center;
     flex-grow: 1;
     gap: 10px;
 }
 
-.class-selector label, .date-selector label {
+.class-selector label,
+.date-selector label {
     font-weight: 500;
     min-width: 90px;
     white-space: nowrap;
     color: var(--text-secondary);
 }
 
-.class-selector select, .date-selector input {
+.class-selector select,
+.date-selector input {
     flex-grow: 1;
     padding: 10px 12px;
     border: 1px solid #e0e0e0;
@@ -149,7 +156,8 @@ body {
     max-width: 300px;
 }
 
-.class-selector select:focus, .date-selector input:focus {
+.class-selector select:focus,
+.date-selector input:focus {
     outline: none;
     border-color: var(--primary-color);
     box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.2);
@@ -170,7 +178,9 @@ body {
     margin-right: 4px;
 }
 
+
 /* สรุปข้อมูลการเช็คชื่อ */
+
 .attendance-summary {
     display: grid;
     grid-template-columns: repeat(6, 1fr);
@@ -219,14 +229,18 @@ body {
     color: var(--text-secondary);
 }
 
+
 /* กำหนดสีแต่ละสถานะ */
+
 .summary-item.total {
     border-left: 4px solid var(--primary-color);
 }
+
 .summary-item.total .summary-icon {
     background-color: var(--primary-light);
     color: var(--primary-color);
 }
+
 .summary-item.total .summary-value {
     color: var(--primary-color);
 }
@@ -234,10 +248,12 @@ body {
 .summary-item.present {
     border-left: 4px solid var(--present-color);
 }
+
 .summary-item.present .summary-icon {
     background-color: var(--present-light);
     color: var(--present-color);
 }
+
 .summary-item.present .summary-value {
     color: var(--present-color);
 }
@@ -245,10 +261,12 @@ body {
 .summary-item.late {
     border-left: 4px solid var(--late-color);
 }
+
 .summary-item.late .summary-icon {
     background-color: var(--late-light);
     color: var(--late-color);
 }
+
 .summary-item.late .summary-value {
     color: var(--late-color);
 }
@@ -256,10 +274,12 @@ body {
 .summary-item.leave {
     border-left: 4px solid var(--leave-color);
 }
+
 .summary-item.leave .summary-icon {
     background-color: var(--leave-light);
     color: var(--leave-color);
 }
+
 .summary-item.leave .summary-value {
     color: var(--leave-color);
 }
@@ -267,10 +287,12 @@ body {
 .summary-item.absent {
     border-left: 4px solid var(--absent-color);
 }
+
 .summary-item.absent .summary-icon {
     background-color: var(--absent-light);
     color: var(--absent-color);
 }
+
 .summary-item.absent .summary-value {
     color: var(--absent-color);
 }
@@ -278,15 +300,19 @@ body {
 .summary-item.not-checked {
     border-left: 4px solid var(--not-checked-color);
 }
+
 .summary-item.not-checked .summary-icon {
     background-color: var(--not-checked-light);
     color: var(--not-checked-color);
 }
+
 .summary-item.not-checked .summary-value {
     color: var(--not-checked-color);
 }
 
+
 /* ปุ่มดำเนินการเช็คชื่อ */
+
 .action-buttons {
     display: flex;
     gap: 12px;
@@ -319,6 +345,7 @@ body {
     background-color: var(--primary-color);
     color: white;
 }
+
 .btn.primary:hover {
     background-color: var(--primary-dark);
 }
@@ -327,6 +354,7 @@ body {
     background-color: #f5f5f5;
     color: var(--text-primary);
 }
+
 .btn.secondary:hover {
     background-color: #e0e0e0;
 }
@@ -335,11 +363,14 @@ body {
     background-color: var(--present-color);
     color: white;
 }
+
 .btn.success:hover {
     background-color: #388e3c;
 }
 
+
 /* ช่องค้นหา */
+
 .search-container {
     position: relative;
     margin-bottom: 16px;
@@ -370,7 +401,9 @@ body {
     color: #9e9e9e;
 }
 
+
 /* แท็บเช็คชื่อ */
+
 .attendance-tabs {
     display: flex;
     border-radius: 8px;
@@ -430,7 +463,9 @@ body {
     display: block;
 }
 
+
 /* สถานะว่าง */
+
 .empty-state {
     background-color: white;
     border-radius: var(--border-radius);
@@ -457,13 +492,17 @@ body {
     margin-bottom: 0;
 }
 
+
 /* รายการนักเรียน */
+
 .student-list {
     display: flex;
     flex-direction: column;
     gap: 10px;
-    margin-bottom: 100px; /* เพิ่มจาก 80px เป็น 100px เพื่อให้มีพื้นที่ด้านล่างมากขึ้น */
-    padding-bottom: 60px; /* เพิ่ม padding-bottom เพื่อให้เนื้อหาไม่ถูกบังด้วย bottom navigation */
+    margin-bottom: 100px;
+    /* เพิ่มจาก 80px เป็น 100px เพื่อให้มีพื้นที่ด้านล่างมากขึ้น */
+    padding-bottom: 60px;
+    /* เพิ่ม padding-bottom เพื่อให้เนื้อหาไม่ถูกบังด้วย bottom navigation */
 }
 
 .student-card {
@@ -527,7 +566,8 @@ body {
     margin-bottom: 2px;
 }
 
-.student-code, .student-remarks {
+.student-code,
+.student-remarks {
     font-size: 12px;
     color: var(--text-secondary);
 }
@@ -557,6 +597,7 @@ body {
     background-color: var(--present-light);
     color: var(--present-color);
 }
+
 .action-btn.present:hover {
     background-color: var(--present-color);
     color: white;
@@ -566,6 +607,7 @@ body {
     background-color: var(--absent-light);
     color: var(--absent-color);
 }
+
 .action-btn.absent:hover {
     background-color: var(--absent-color);
     color: white;
@@ -575,11 +617,14 @@ body {
     background-color: #f0f0f0;
     color: var(--text-secondary);
 }
+
 .action-btn.more:hover {
     background-color: #e0e0e0;
 }
 
+
 /* แสดงสถานะนักเรียนที่เช็คชื่อแล้ว */
+
 .student-status-info {
     display: flex;
     flex-direction: column;
@@ -625,7 +670,9 @@ body {
     gap: 8px;
 }
 
+
 /* สีพื้นหลังการ์ดตามสถานะ */
+
 .present-card {
     border-left: 4px solid var(--present-color);
 }
@@ -642,16 +689,21 @@ body {
     border-left: 4px solid var(--absent-color);
 }
 
-
-
-
 @keyframes pulse {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.05); }
-    100% { transform: scale(1); }
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.05);
+    }
+    100% {
+        transform: scale(1);
+    }
 }
 
+
 /* Modal Styles */
+
 .modal {
     padding: 0 !important;
 }
@@ -715,7 +767,9 @@ body {
     gap: 10px;
 }
 
+
 /* PIN Modal Styles */
+
 .pin-display {
     display: flex;
     justify-content: center;
@@ -736,7 +790,8 @@ body {
     color: var(--primary-color);
 }
 
-.pin-expire, .class-detail {
+.pin-expire,
+.class-detail {
     text-align: center;
     color: var(--text-secondary);
 }
@@ -746,7 +801,9 @@ body {
     color: var(--late-color);
 }
 
+
 /* QR Scanner Styles */
+
 .qr-scanner-container {
     height: 300px;
     background-color: #f5f5f5;
@@ -777,7 +834,9 @@ body {
     margin-bottom: 16px;
 }
 
+
 /* Detail Attendance Modal */
+
 .student-detail-name {
     text-align: center;
     margin-top: 0;
@@ -821,7 +880,8 @@ body {
     background-color: var(--present-light);
     color: var(--present-color);
 }
-.status-option input[type="radio"]:checked + .status-label.present {
+
+.status-option input[type="radio"]:checked+.status-label.present {
     background-color: var(--present-color);
     color: white;
 }
@@ -830,7 +890,8 @@ body {
     background-color: var(--late-light);
     color: var(--late-color);
 }
-.status-option input[type="radio"]:checked + .status-label.late {
+
+.status-option input[type="radio"]:checked+.status-label.late {
     background-color: var(--late-color);
     color: white;
 }
@@ -839,7 +900,8 @@ body {
     background-color: var(--leave-light);
     color: var(--leave-color);
 }
-.status-option input[type="radio"]:checked + .status-label.leave {
+
+.status-option input[type="radio"]:checked+.status-label.leave {
     background-color: var(--leave-color);
     color: white;
 }
@@ -848,16 +910,19 @@ body {
     background-color: var(--absent-light);
     color: var(--absent-color);
 }
-.status-option input[type="radio"]:checked + .status-label.absent {
+
+.status-option input[type="radio"]:checked+.status-label.absent {
     background-color: var(--absent-color);
     color: white;
 }
 
-.remarks-container, .retroactive-note {
+.remarks-container,
+.retroactive-note {
     margin-bottom: 16px;
 }
 
-.remarks-container label, .retroactive-note label {
+.remarks-container label,
+.retroactive-note label {
     display: block;
     margin-bottom: 8px;
     font-weight: 500;
@@ -880,7 +945,9 @@ textarea:focus {
     border-color: var(--primary-color);
 }
 
+
 /* Mark All Modal */
+
 .mark-all-desc {
     text-align: center;
     margin-bottom: 20px;
@@ -891,7 +958,9 @@ textarea:focus {
     font-weight: 500;
 }
 
+
 /* Save Attendance Modal */
+
 .save-summary {
     display: flex;
     justify-content: center;
@@ -958,7 +1027,9 @@ textarea:focus {
     font-weight: 500;
 }
 
+
 /* วิธีใช้งาน Modal */
+
 .help-content {
     max-height: 60vh;
     overflow-y: auto;
@@ -981,7 +1052,9 @@ textarea:focus {
     color: var(--text-secondary);
 }
 
+
 /* ไอคอนหมุน */
+
 @keyframes rotating {
     from {
         transform: rotate(0deg);
@@ -995,7 +1068,9 @@ textarea:focus {
     animation: rotating 1.5s linear infinite;
 }
 
+
 /* Notification styles */
+
 .notification {
     position: fixed;
     top: 20px;
@@ -1038,6 +1113,7 @@ textarea:focus {
 .notification.success {
     border-left: 4px solid var(--present-color);
 }
+
 .notification.success .notification-content i {
     color: var(--present-color);
 }
@@ -1045,6 +1121,7 @@ textarea:focus {
 .notification.warning {
     border-left: 4px solid var(--late-color);
 }
+
 .notification.warning .notification-content i {
     color: var(--late-color);
 }
@@ -1052,6 +1129,7 @@ textarea:focus {
 .notification.error {
     border-left: 4px solid var(--absent-color);
 }
+
 .notification.error .notification-content i {
     color: var(--absent-color);
 }
@@ -1059,16 +1137,18 @@ textarea:focus {
 .notification.info {
     border-left: 4px solid var(--primary-color);
 }
+
 .notification.info .notification-content i {
     color: var(--primary-color);
 }
 
+
 /* Responsive Styles - ปรับปรุงใหม่ */
+
 @media (max-width: 960px) {
     .attendance-summary {
         grid-template-columns: repeat(3, 1fr);
     }
-    
     .modal-dialog {
         width: 95%;
         max-width: 500px;
@@ -1079,29 +1159,23 @@ textarea:focus {
     .attendance-container {
         padding: 12px 8px;
     }
-    
     .action-buttons {
         flex-direction: column;
     }
-    
     .student-card {
         flex-wrap: wrap;
     }
-    
     .student-number {
         margin-right: 8px;
     }
-    
     .student-info {
         width: calc(100% - 38px);
         margin-bottom: 8px;
     }
-    
     .student-actions {
         width: 100%;
         justify-content: flex-end;
     }
-    
     .student-status-info {
         width: 100%;
         flex-direction: row;
@@ -1118,85 +1192,70 @@ textarea:focus {
         width: 100%;
         overflow-x: hidden;
     }
-    
     .header {
         width: 100%;
         box-sizing: border-box;
     }
-    
     .attendance-container {
         padding: 8px;
         width: 100%;
         box-sizing: border-box;
         margin: 0;
     }
-    
     .attendance-summary {
         grid-template-columns: repeat(2, 1fr);
         gap: 8px;
     }
-    
     .summary-item {
         padding: 8px;
     }
-    
     .summary-icon {
         width: 32px;
         height: 32px;
         font-size: 16px;
     }
-    
     .summary-value {
         font-size: 20px;
     }
-    
     .class-info-card {
         flex-direction: column;
         align-items: stretch;
         padding: 12px;
         margin-bottom: 12px;
     }
-    
-    .class-selector, .date-selector {
+    .class-selector,
+    .date-selector {
         flex-direction: column;
         align-items: flex-start;
         gap: 6px;
     }
-    
-    .class-selector select, .date-selector input {
+    .class-selector select,
+    .date-selector input {
         width: 100%;
         max-width: none;
         padding: 8px;
     }
-    
     .action-buttons {
         gap: 8px;
     }
-    
     .btn {
         padding: 10px;
     }
-    
     .student-list {
         gap: 8px;
     }
-    
     .student-card {
         padding: 10px;
     }
-  
-    
     .modal-dialog {
         width: 92% !important;
         max-width: 92% !important;
         margin: 0 auto !important;
     }
-    
     .modal-content {
         margin: 0 auto !important;
         width: 100% !important;
     }
-    
     /* แก้ไขปัญหาเฉพาะสำหรับจอมือถือบางรุ่น */
     body.modal-open {
         position: fixed;
@@ -1204,18 +1263,356 @@ textarea:focus {
     }
 }
 
+
 /* Fix Mobile Safari Issues */
+
 @supports (-webkit-touch-callout: none) {
-    body, html {
+    body,
+    html {
         height: -webkit-fill-available;
     }
-    
     body {
         min-height: -webkit-fill-available;
     }
-    
     .modal {
         height: -webkit-fill-available;
     }
 }
 
+
+/* CSS เพิ่มเติมสำหรับระบบค้นหาและเช็คชื่อย้อนหลัง */
+
+
+/* ปรับปรุงช่องค้นหา */
+
+.search-container {
+    position: relative;
+    margin-bottom: 16px;
+    transition: all 0.3s ease;
+}
+
+.search-input {
+    width: 100%;
+    padding: 12px 16px 12px 40px;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    font-family: 'Prompt', sans-serif;
+    background-color: white;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+}
+
+.search-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+}
+
+.search-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #9e9e9e;
+    transition: color 0.3s ease;
+}
+
+.search-input:focus+.search-icon {
+    color: var(--primary-color);
+}
+
+.search-clear {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #9e9e9e;
+    cursor: pointer;
+    font-size: 16px;
+    opacity: 0;
+    transition: all 0.3s ease;
+}
+
+.search-input:not(:placeholder-shown)~.search-clear {
+    opacity: 1;
+}
+
+.search-clear:hover {
+    color: var(--primary-color);
+}
+
+
+/* ผลลัพธ์ว่างจากการค้นหา */
+
+.empty-search-result {
+    background-color: white;
+    border-radius: var(--border-radius);
+    padding: 30px 20px;
+    text-align: center;
+    box-shadow: var(--card-shadow);
+    margin-bottom: 16px;
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.empty-search-result .empty-icon {
+    font-size: 48px;
+    color: #9e9e9e;
+    margin-bottom: 16px;
+}
+
+.empty-search-result h3 {
+    font-size: 18px;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+}
+
+.empty-search-result p {
+    color: var(--text-secondary);
+    margin-bottom: 0;
+}
+
+.empty-search-result .search-term {
+    font-weight: 500;
+    color: var(--primary-color);
+}
+
+
+/* เพิ่มส่วนแสดงการเช็คชื่อย้อนหลัง */
+
+.retroactive-badge {
+    display: inline-flex;
+    align-items: center;
+    background-color: var(--late-light);
+    color: var(--late-color);
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(255, 152, 0, 0.4);
+    }
+    70% {
+        box-shadow: 0 0 0 6px rgba(255, 152, 0, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(255, 152, 0, 0);
+    }
+}
+
+.retroactive-badge i {
+    margin-right: 4px;
+}
+
+.retroactive-note {
+    background-color: #FFF3E0;
+    border-left: 4px solid #FF9800;
+    padding: 12px;
+    margin-bottom: 16px;
+    border-radius: 4px;
+}
+
+.retroactive-note label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: #E65100;
+}
+
+.retroactive-warning {
+    color: #FF9800;
+    font-size: 13px;
+    margin-top: 5px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+
+/* ปรับแต่งให้รองรับโทรศัพท์มือถือ */
+
+@media (max-width: 576px) {
+    .search-container {
+        margin-bottom: 12px;
+    }
+    .search-input {
+        padding: 10px 12px 10px 36px;
+        font-size: 14px;
+    }
+    .search-icon {
+        left: 10px;
+        font-size: 14px;
+    }
+    .search-clear {
+        right: 10px;
+        font-size: 14px;
+    }
+    .retroactive-badge {
+        font-size: 12px;
+        padding: 3px 6px;
+    }
+    .empty-search-result {
+        padding: 20px 15px;
+    }
+    .empty-search-result .empty-icon {
+        font-size: 36px;
+        margin-bottom: 12px;
+    }
+    .empty-search-result h3 {
+        font-size: 16px;
+    }
+    .empty-search-result p {
+        font-size: 14px;
+    }
+}
+
+
+/* เพิ่มสไตล์เพื่อแสดงผลสถานะการเช็คชื่อที่ชัดเจนขึ้น */
+
+.student-card {
+    position: relative;
+    overflow: hidden;
+}
+
+.student-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+    transition: all 0.3s ease;
+}
+
+.student-card.present-card::before {
+    background-color: var(--present-color);
+}
+
+.student-card.late-card::before {
+    background-color: var(--late-color);
+}
+
+.student-card.leave-card::before {
+    background-color: var(--leave-color);
+}
+
+.student-card.absent-card::before {
+    background-color: var(--absent-color);
+}
+
+
+/* เพิ่มตัวบอกการเช็คชื่อย้อนหลัง */
+
+.retro-indicator {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background-color: var(--late-light);
+    color: var(--late-color);
+    font-size: 12px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    z-index: 10;
+}
+
+
+/* ปรับแต่ง Modal */
+
+.modal-retroactive-warning {
+    background-color: #FFF3E0;
+    padding: 10px;
+    border-radius: 4px;
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.modal-retroactive-warning i {
+    color: #FF9800;
+    font-size: 18px;
+}
+
+.modal-retroactive-text {
+    color: #E65100;
+    font-size: 14px;
+}
+
+
+/* ปรับแต่งรูปแบบการแจ้งเตือน */
+
+.notification-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+    max-width: 350px;
+    width: calc(100% - 40px);
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateX(50px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes slideOut {
+    from {
+        opacity: 1;
+        transform: translateX(0);
+    }
+    to {
+        opacity: 0;
+        transform: translateX(50px);
+    }
+}
+
+.notification {
+    margin-bottom: 10px;
+    border-radius: 8px;
+    overflow: hidden;
+    background-color: white;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    animation: slideIn 0.3s ease-out;
+    transition: opacity 0.3s, transform 0.3s;
+}
+
+.notification.removing {
+    animation: slideOut 0.3s ease-in forwards;
+}
+
+.notification.success {
+    border-left: 4px solid var(--present-color);
+}
+
+.notification.info {
+    border-left: 4px solid var(--primary-color);
+}
+
+.notification.warning {
+    border-left: 4px solid var(--late-color);
+}
+
+.notification.error {
+    border-left: 4px solid var(--absent-color);
+}

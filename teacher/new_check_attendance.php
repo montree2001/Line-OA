@@ -340,6 +340,7 @@ $extra_css = [
 
 $extra_js = [
     'assets/js/check_ajax.js',
+    'assets/js/enhance-search.js'
 ];
 
 // กำหนดเส้นทางเนื้อหา
