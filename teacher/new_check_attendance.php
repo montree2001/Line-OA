@@ -331,9 +331,10 @@ try {
     die("เกิดข้อผิดพลาดในการดึงข้อมูลนักเรียน: " . $e->getMessage());
 }
 
-// รวม CSS และ JS
 $extra_css = [
     'assets/css/new_check_attendance.css',
+    'assets/css/modal.css',
+    'assets/css/retroactive-check.css', // เพิ่มบรรทัดนี้
     'https://fonts.googleapis.com/icon?family=Material+Icons',
     'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css'
 ];
@@ -341,7 +342,8 @@ $extra_css = [
 $extra_js = [
     'assets/js/check_ajax.js',
     'assets/js/enhance-search.js',
-    'assets/js/attendance-fix.js'
+    'assets/js/attendance-fix.js',
+    'assets/js/retroactive-check.js' // เพิ่มบรรทัดนี้
 ];
 
 // กำหนดเส้นทางเนื้อหา
@@ -375,11 +377,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 </script>
-
-/**
- * โค้ดแก้ไขสำหรับใส่ในส่วนท้ายของไฟล์ new_check_attendance.php
- * ให้ใส่โค้ดนี้ก่อนแท็ก </body> ปิด
- */
 
 <script>
 // นิยามฟังก์ชัน showModal และ closeModal ให้พร้อมใช้งานทันที

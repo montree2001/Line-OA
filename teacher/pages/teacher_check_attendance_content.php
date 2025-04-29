@@ -368,6 +368,172 @@
     </div>
 </div>
 
+
+
+
+<!-- Modal เช็คชื่อย้อนหลัง -->
+<div class="modal" id="retroactiveModal">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">ยืนยันการเช็คชื่อย้อนหลัง</h3>
+                <button type="button" class="close-btn" onclick="closeModal('retroactiveModal')">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="modal-retroactive-warning">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <div class="modal-retroactive-text">
+                        <strong>คุณกำลังทำการเช็คชื่อย้อนหลัง</strong>
+                        สำหรับวันที่ <span id="retroactiveDisplayDate"><?php echo $display_date; ?></span>
+                        <p>การเช็คชื่อย้อนหลังจำเป็นต้องระบุเหตุผลที่ชัดเจน และจะถูกบันทึกประวัติการเช็ค</p>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="retroactiveReason">
+                        <strong>เหตุผลการเช็คชื่อย้อนหลัง</strong>
+                        <span class="required-mark">*</span>
+                    </label>
+                    <textarea id="retroactiveReason" class="form-control" rows="3" 
+                        placeholder="เช่น ใบรับรองแพทย์, หนังสือลาที่ได้รับล่าช้า, การแก้ไขข้อมูลผิดพลาด ฯลฯ" required></textarea>
+                    <div class="form-hint">เหตุผลจะถูกบันทึกในประวัติระบบ</div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="retroactiveStatus">
+                        <strong>สถานะการเช็คชื่อ</strong>
+                    </label>
+                    <div class="status-options">
+                        <label class="status-option">
+                            <input type="radio" name="retroactiveStatus" value="present" checked>
+                            <span class="status-label present">
+                                <i class="fas fa-check-circle"></i> มาเรียน
+                            </span>
+                        </label>
+                        
+                        <label class="status-option">
+                            <input type="radio" name="retroactiveStatus" value="late">
+                            <span class="status-label late">
+                                <i class="fas fa-clock"></i> มาสาย
+                            </span>
+                        </label>
+                        
+                        <label class="status-option">
+                            <input type="radio" name="retroactiveStatus" value="leave">
+                            <span class="status-label leave">
+                                <i class="fas fa-clipboard"></i> ลา
+                            </span>
+                        </label>
+                        
+                        <label class="status-option">
+                            <input type="radio" name="retroactiveStatus" value="absent">
+                            <span class="status-label absent">
+                                <i class="fas fa-times-circle"></i> ขาดเรียน
+                            </span>
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="form-group" id="retroactiveRemarksContainer">
+                    <label for="retroactiveRemarks">
+                        <strong>หมายเหตุเพิ่มเติม</strong>
+                    </label>
+                    <textarea id="retroactiveRemarks" class="form-control" rows="2" 
+                        placeholder="หมายเหตุเพิ่มเติม (ถ้ามี)"></textarea>
+                </div>
+                
+                <input type="hidden" id="retroactiveStudentId" value="">
+                <input type="hidden" id="retroactiveStudentName" value="">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn secondary" onclick="closeModal('retroactiveModal')">ยกเลิก</button>
+                <button type="button" class="btn primary" onclick="confirmRetroactiveAttendance()">บันทึก</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- คำแนะนำการเช็คชื่อย้อนหลัง -->
+<?php if ($is_retroactive): ?>
+<div class="retroactive-reminder">
+    <div class="reminder-icon"><i class="fas fa-exclamation-circle"></i></div>
+    <div class="reminder-text">
+        <strong>คุณกำลังเช็คชื่อย้อนหลังสำหรับวันที่ <?php echo $display_date; ?></strong>
+        กรุณาระบุเหตุผลการเช็คชื่อย้อนหลังทุกครั้ง เช่น ใบรับรองแพทย์, หนังสือลา, การแก้ไขข้อมูลผิดพลาด ฯลฯ
+    </div>
+</div>
+<?php endif; ?>
+
+<!-- ประวัติการเช็คชื่อย้อนหลัง (ถ้ามี) -->
+<?php if ($is_retroactive && !empty($retroactive_histories)): ?>
+<div class="retroactive-history-section">
+    <h3>
+        <i class="fas fa-history"></i> 
+        ประวัติการเช็คชื่อย้อนหลัง
+        <span class="history-count"><?php echo count($retroactive_histories); ?> รายการ</span>
+    </h3>
+    
+    <div class="retroactive-history-list">
+        <?php foreach ($retroactive_histories as $history): ?>
+            <div class="history-item">
+                <div class="history-header">
+                    <div class="history-user">
+                        <i class="fas fa-user-edit"></i>
+                        <?php 
+                            echo $history['first_name'] . ' ' . $history['last_name'];
+                            echo ' (' . ($history['role'] === 'teacher' ? 'ครู' : ($history['role'] === 'admin' ? 'แอดมิน' : $history['role'])) . ')';
+                        ?>
+                    </div>
+                    <div class="history-time">
+                        <?php echo date('d/m/Y H:i', strtotime($history['created_at'])); ?>
+                    </div>
+                </div>
+                <div class="history-content">
+                    <div class="history-status">
+                        <?php
+                            $status_class = '';
+                            $status_text = '';
+                            switch ($history['retroactive_status']) {
+                                case 'present':
+                                    $status_class = 'present';
+                                    $status_text = 'มาเรียน';
+                                    break;
+                                case 'late':
+                                    $status_class = 'late';
+                                    $status_text = 'มาสาย';
+                                    break;
+                                case 'leave':
+                                    $status_class = 'leave';
+                                    $status_text = 'ลา';
+                                    break;
+                                case 'absent':
+                                    $status_class = 'absent';
+                                    $status_text = 'ขาดเรียน';
+                                    break;
+                            }
+                        ?>
+                        <span class="status-badge <?php echo $status_class; ?>">
+                            <?php echo $status_text; ?>
+                        </span>
+                    </div>
+                    <div class="history-reason">
+                        <strong>เหตุผล:</strong> <?php echo htmlspecialchars($history['retroactive_reason']); ?>
+                    </div>
+                </div>
+            </div>
+        <?php endforeach; ?>
+    </div>
+</div>
+<?php endif; ?>
+
+
+
+
+
+
+
 <script>
     // สร้างตัวแปรที่ส่งค่าไปยัง JavaScript
     const currentClassId = <?php echo $current_class_id; ?>;
