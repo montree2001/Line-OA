@@ -81,6 +81,7 @@ function setupTabSystem() {
     });
 }
 
+
 /**
  * แสดง/ซ่อนช่องหมายเหตุตามสถานะ
  */
@@ -206,6 +207,8 @@ function searchInTab(tabId, searchTerm) {
         }
     });
 }
+// ตัวแปรสถานะการเปลี่ยนแปลง
+let hasChanges = false;
 
 /**
  * เช็คชื่อนักเรียนและบันทึกทันที (AJAX)
@@ -233,6 +236,9 @@ function markAttendance(button, status, studentId) {
             return;
         }
 
+        // ดึงข้อมูลนักเรียน
+        const studentName = studentCard.getAttribute('data-name');
+
         // สร้างข้อมูลที่จะส่ง
         const data = {
             student_id: studentId,
@@ -241,6 +247,8 @@ function markAttendance(button, status, studentId) {
             date: checkDate,
             is_retroactive: isRetroactive
         };
+
+        console.log('ส่งข้อมูล:', data);
 
         // ส่งข้อมูลไปบันทึก AJAX
         fetch('api/ajax_attendance.php', {
@@ -257,6 +265,8 @@ function markAttendance(button, status, studentId) {
                 return response.json();
             })
             .then(responseData => {
+                console.log('ได้รับข้อมูลตอบกลับ:', responseData);
+
                 // คืนค่าปุ่มเดิม
                 button.innerHTML = originalContent;
                 button.disabled = false;
@@ -268,11 +278,8 @@ function markAttendance(button, status, studentId) {
                     const timeChecked = responseData.student.time_checked || new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
                     const attendanceId = responseData.attendance_id;
 
-                    // บันทึกข้อมูลการเช็คชื่อในตัวแปร
-                    updateAttendanceData(studentId, status, '', attendanceId);
-
                     // ย้ายการ์ดนักเรียนไปยังแท็บ "เช็คชื่อแล้ว"
-                    moveStudentToCheckedTab(studentCard, studentId, status, '', timeChecked, attendanceId);
+                    moveToCheckedTab(studentCard, studentId, status, timeChecked, attendanceId);
 
                     // อัพเดทจำนวนนักเรียนในแต่ละแท็บ
                     updateStudentCounts();
@@ -303,6 +310,278 @@ function markAttendance(button, status, studentId) {
         showNotification('เกิดข้อผิดพลาดในการเช็คชื่อ กรุณาลองใหม่อีกครั้ง', 'error');
     }
 }
+
+
+/**
+ * อัพเดทสถิติการเช็คชื่อ
+ * @param {string} status - สถานะที่เปลี่ยน
+ */
+function updateAttendanceStats(status) {
+    // นับจำนวนนักเรียนตามสถานะ
+    const presentCount = document.querySelectorAll('#checkedTab .student-card[data-status="present"]').length;
+    const lateCount = document.querySelectorAll('#checkedTab .student-card[data-status="late"]').length;
+    const leaveCount = document.querySelectorAll('#checkedTab .student-card[data-status="leave"]').length;
+    const absentCount = document.querySelectorAll('#checkedTab .student-card[data-status="absent"]').length;
+    const notCheckedCount = document.querySelectorAll('#waitingTab .student-card').length;
+
+    // อัพเดทตัวเลขในสรุป
+    const presentElement = document.querySelector('.summary-item.present .summary-value');
+    const lateElement = document.querySelector('.summary-item.late .summary-value');
+    const leaveElement = document.querySelector('.summary-item.leave .summary-value');
+    const absentElement = document.querySelector('.summary-item.absent .summary-value');
+    const notCheckedElement = document.querySelector('.summary-item.not-checked .summary-value');
+
+    if (presentElement) presentElement.textContent = presentCount;
+    if (lateElement) lateElement.textContent = lateCount;
+    if (leaveElement) leaveElement.textContent = leaveCount;
+    if (absentElement) absentElement.textContent = absentCount;
+    if (notCheckedElement) notCheckedElement.textContent = notCheckedCount;
+}
+
+
+
+
+
+/**
+ * ย้ายการ์ดนักเรียนไปยังแท็บ "เช็คชื่อแล้ว"
+ * @param {HTMLElement} studentCard - การ์ดนักเรียน
+ * @param {number} studentId - รหัสนักเรียน
+ * @param {string} status - สถานะการเช็คชื่อ
+ * @param {string} timeChecked - เวลาที่เช็คชื่อ
+ * @param {number} attendanceId - ID ของการเช็คชื่อ
+ */
+function moveToCheckedTab(studentCard, studentId, status, timeChecked, attendanceId) {
+    try {
+        // ลบการ์ดจากแท็บเดิม
+        studentCard.remove();
+
+        // ตรวจสอบว่ามีรายการในแท็บเดิมเหลืออยู่หรือไม่
+        const waitingTab = document.getElementById('waitingTab');
+        if (!waitingTab) {
+            console.error('ไม่พบ element waitingTab');
+            return;
+        }
+
+        const waitingStudents = waitingTab.querySelectorAll('.student-card');
+
+        if (waitingStudents.length === 0) {
+            // ถ้าไม่มีรายการเหลือ ให้แสดงข้อความว่าง
+            const emptyState = document.createElement('div');
+            emptyState.className = 'empty-state';
+            emptyState.innerHTML = `
+                <div class="empty-icon"><i class="fas fa-check-circle"></i></div>
+                <h3>เช็คชื่อครบทุกคนแล้ว!</h3>
+                <p>ทุกคนได้รับการเช็คชื่อเรียบร้อยแล้ว</p>
+            `;
+            waitingTab.innerHTML = '';
+            waitingTab.appendChild(emptyState);
+        }
+
+        // สร้างการ์ดใหม่ในแท็บ "เช็คชื่อแล้ว"
+        const checkedTab = document.getElementById('checkedTab');
+        if (!checkedTab) {
+            console.error('ไม่พบ element checkedTab');
+            return;
+        }
+
+        // ทำความสะอาดแท็บเป้าหมายหากมีข้อความว่าง
+        const emptyState = checkedTab.querySelector('.empty-state');
+        if (emptyState) {
+            emptyState.remove();
+        }
+
+        // ตรวจสอบหรือสร้าง student-list
+        let studentList = checkedTab.querySelector('.student-list');
+        if (!studentList) {
+            studentList = document.createElement('div');
+            studentList.className = 'student-list';
+            checkedTab.appendChild(studentList);
+        }
+
+        // หาข้อมูลจากแท็บที่เช็คแล้ว (กรณีแก้ไข)
+        const existingCard = document.querySelector(`#checkedTab .student-card[data-id="${studentId}"]`);
+        if (existingCard) {
+            // อัพเดทการ์ดที่มีอยู่แล้ว
+            updateExistingCard(existingCard, status, timeChecked, attendanceId);
+            return;
+        }
+
+        // สร้างการ์ดใหม่จากข้อมูลใน studentCard
+        const newCard = createCheckedCard(studentCard, studentId, status, timeChecked, attendanceId);
+
+        // เพิ่มการ์ดใหม่ลงในรายการ
+        studentList.appendChild(newCard);
+    } catch (error) {
+        console.error('เกิดข้อผิดพลาดในการย้ายการ์ดนักเรียน:', error);
+        showNotification('เกิดข้อผิดพลาดในการย้ายการ์ดนักเรียน', 'error');
+    }
+}
+
+/**
+ * อัพเดทการ์ดที่มีอยู่แล้ว
+ * @param {HTMLElement} card - การ์ดนักเรียนที่ต้องการอัพเดท
+ * @param {string} status - สถานะการเช็คชื่อ
+ * @param {string} timeChecked - เวลาที่เช็คชื่อ
+ * @param {number} attendanceId - ID ของการเช็คชื่อ
+ */
+function updateExistingCard(card, status, timeChecked, attendanceId) {
+    // กำหนดคลาสและไอคอนตามสถานะ
+    let statusClass = '';
+    let statusIcon = '';
+    let statusText = '';
+
+    switch (status) {
+        case 'present':
+            statusClass = 'present';
+            statusIcon = 'fa-check-circle';
+            statusText = 'มาเรียน';
+            break;
+        case 'late':
+            statusClass = 'late';
+            statusIcon = 'fa-clock';
+            statusText = 'มาสาย';
+            break;
+        case 'leave':
+            statusClass = 'leave';
+            statusIcon = 'fa-clipboard';
+            statusText = 'ลา';
+            break;
+        case 'absent':
+            statusClass = 'absent';
+            statusIcon = 'fa-times-circle';
+            statusText = 'ขาดเรียน';
+            break;
+    }
+
+    // อัพเดทคลาสการ์ด
+    card.className = `student-card ${statusClass}-card`;
+    card.setAttribute('data-status', status);
+    if (attendanceId) {
+        card.setAttribute('data-attendance-id', attendanceId);
+    }
+
+    // อัพเดทสถานะ
+    const statusBadge = card.querySelector('.status-badge');
+    if (statusBadge) {
+        statusBadge.className = `status-badge ${statusClass}`;
+        statusBadge.innerHTML = `<i class="fas ${statusIcon}"></i> ${statusText}`;
+    }
+
+    // อัพเดทเวลา
+    const checkTime = card.querySelector('.check-time');
+    if (checkTime) {
+        checkTime.textContent = timeChecked;
+    }
+}
+
+/**
+ * อัพเดทจำนวนนักเรียนในแต่ละแท็บ
+ */
+function updateStudentCounts() {
+    const waitingCount = document.querySelectorAll('#waitingTab .student-card').length;
+    const checkedCount = document.querySelectorAll('#checkedTab .student-card').length;
+
+    // อัพเดทจำนวนในปุ่มแท็บ
+    const waitingCountElement = document.querySelector('button[data-tab="waiting"] .count');
+    const checkedCountElement = document.querySelector('button[data-tab="checked"] .count');
+
+    if (waitingCountElement) {
+        waitingCountElement.textContent = waitingCount;
+    }
+
+    if (checkedCountElement) {
+        checkedCountElement.textContent = checkedCount;
+    }
+}
+
+
+
+
+
+/**
+ * สร้างการ์ดนักเรียนในแท็บ "เช็คชื่อแล้ว"
+ * @param {HTMLElement} originalCard - การ์ดนักเรียนต้นฉบับ
+ * @param {number} studentId - รหัสนักเรียน
+ * @param {string} status - สถานะการเช็คชื่อ
+ * @param {string} timeChecked - เวลาที่เช็คชื่อ
+ * @param {number} attendanceId - ID ของการเช็คชื่อ
+ * @returns {HTMLElement} - การ์ดใหม่
+ */
+function createCheckedCard(originalCard, studentId, status, timeChecked, attendanceId) {
+    // ดึงข้อมูลจาก originalCard
+    const studentName = originalCard.getAttribute('data-name') || '';
+    const studentNumber = originalCard.querySelector('.student-number') ? .textContent || '';
+    const avatarElement = originalCard.querySelector('.student-avatar');
+    const studentAvatar = avatarElement ? avatarElement.outerHTML : '<div class="student-avatar">?</div>';
+    const studentCodeElement = originalCard.querySelector('.student-code');
+    const studentCode = studentCodeElement ? studentCodeElement.textContent : 'รหัส: -';
+
+    // กำหนดคลาสและไอคอนตามสถานะ
+    let statusClass = '';
+    let statusIcon = '';
+    let statusText = '';
+
+    switch (status) {
+        case 'present':
+            statusClass = 'present';
+            statusIcon = 'fa-check-circle';
+            statusText = 'มาเรียน';
+            break;
+        case 'late':
+            statusClass = 'late';
+            statusIcon = 'fa-clock';
+            statusText = 'มาสาย';
+            break;
+        case 'leave':
+            statusClass = 'leave';
+            statusIcon = 'fa-clipboard';
+            statusText = 'ลา';
+            break;
+        case 'absent':
+            statusClass = 'absent';
+            statusIcon = 'fa-times-circle';
+            statusText = 'ขาดเรียน';
+            break;
+    }
+
+    // สร้างการ์ดใหม่
+    const newCard = document.createElement('div');
+    newCard.className = `student-card ${statusClass}-card`;
+    newCard.setAttribute('data-id', studentId);
+    newCard.setAttribute('data-name', studentName);
+    newCard.setAttribute('data-status', status);
+    if (attendanceId) {
+        newCard.setAttribute('data-attendance-id', attendanceId);
+    }
+
+    // กำหนด HTML ของการ์ด
+    newCard.innerHTML = `
+        <div class="student-number">${studentNumber}</div>
+        
+        <div class="student-info" onclick="if (typeof editAttendance === 'function') { editAttendance(${studentId}, '${studentName.replace(/'/g, "\\'")}', '${status}', ''); } else { alert('ฟังก์ชันยังไม่พร้อมใช้งาน กรุณารีเฟรชหน้า'); }">
+            ${studentAvatar}
+            
+            <div class="student-details">
+                <div class="student-name">${studentName}</div>
+                <div class="student-code">${studentCode}</div>
+            </div>
+        </div>
+        
+        <div class="student-status-info">
+            <div class="status-badge ${statusClass}">
+                <i class="fas ${statusIcon}"></i> ${statusText}
+            </div>
+            
+            <div class="check-details">
+                <div class="check-time">${timeChecked}</div>
+                <div class="check-method">ครู</div>
+            </div>
+        </div>
+    `;
+
+    return newCard;
+}
+
 
 /**
  * แสดงรายละเอียดการเช็คชื่อ
@@ -361,6 +640,7 @@ function showDetailAttendanceModal(studentId, studentName) {
     // แสดง Modal
     showModal('attendanceDetailModal');
 }
+
 
 /**
  * แก้ไขการเช็คชื่อ
@@ -431,131 +711,89 @@ function editAttendance(studentId, studentName, status, remarks) {
 }
 
 /**
- * ยืนยันการเช็คชื่อจาก Modal รายละเอียด
+ * ยืนยันการเช็คชื่อรายละเอียด
  */
 function confirmDetailAttendance() {
-    try {
-        // ดึงข้อมูลจาก Modal
-        const studentId = document.getElementById('studentIdDetail').value;
-        const isEditMode = document.getElementById('isEditMode').value === '1';
-        const attendanceId = document.getElementById('attendanceIdDetail').value;
+    const studentId = document.getElementById('studentIdDetail').value;
+    const status = document.querySelector('input[name="attendanceStatus"]:checked').value;
+    const remarks = document.getElementById('attendanceRemarks').value;
+    const retroactiveNote = document.getElementById('retroactiveNote') ? .value || '';
 
-        // ดึงสถานะที่เลือก
-        const statusElement = document.querySelector('input[name="attendanceStatus"]:checked');
-        if (!statusElement) {
-            showNotification('กรุณาเลือกสถานะการเช็คชื่อ', 'warning');
-            return;
-        }
-        const status = statusElement.value;
-
-        // ดึงหมายเหตุ
-        const remarksInput = document.getElementById('attendanceRemarks');
-        let remarks = remarksInput ? remarksInput.value.trim() : '';
-
-        // ถ้าเป็นการเช็คย้อนหลัง ให้ดึงหมายเหตุการเช็คย้อนหลังด้วย
-        if (isRetroactive) {
-            const retroactiveNoteInput = document.getElementById('retroactiveNote');
-            const retroactiveNote = retroactiveNoteInput ? retroactiveNoteInput.value.trim() : '';
-
-            // ตรวจสอบว่ามีการระบุหมายเหตุการเช็คย้อนหลังหรือไม่
-            if (retroactiveNote === '') {
-                showNotification('กรุณาระบุหมายเหตุสำหรับการเช็คชื่อย้อนหลัง', 'warning');
-                return;
-            }
-
-            // ถ้ามีหมายเหตุอื่นด้วย ให้เพิ่มต่อท้าย
-            if (remarks) {
-                remarks += ` (${retroactiveNote})`;
-            } else {
-                remarks = retroactiveNote;
-            }
-        }
-
-        // คำแนะนำเพิ่มเติมสำหรับสถานะมาสายและลา
-        if ((status === 'late' || status === 'leave') && !remarks) {
-            if (!confirm(`คุณกำลังจะบันทึกสถานะ "${getStatusText(status)}" โดยไม่มีการระบุหมายเหตุ ต้องการดำเนินการต่อหรือไม่?`)) {
-                return;
-            }
-        }
-
-        // สร้างข้อมูลที่จะส่ง
-        const data = {
-            student_id: parseInt(studentId),
-            status: status,
-            class_id: currentClassId,
-            date: checkDate,
-            is_retroactive: isRetroactive,
-            remarks: remarks
-        };
-
-        // ถ้าเป็นการแก้ไข ให้เพิ่ม attendance_id
-        if (isEditMode && attendanceId) {
-            data.attendance_id = parseInt(attendanceId);
-        }
-
-        // ปิด Modal
-        closeModal('attendanceDetailModal');
-
-        // ส่งข้อมูลไปบันทึก AJAX
-        fetch('api/ajax_attendance.php', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(data)
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Server response was not OK: ' + response.status);
-                }
-                return response.json();
-            })
-            .then(responseData => {
-                if (responseData.success) {
-                    // บันทึกสำเร็จ
-                    const timeChecked = responseData.student.time_checked || new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
-                    const newAttendanceId = responseData.attendance_id;
-
-                    // บันทึกข้อมูลการเช็คชื่อในตัวแปร
-                    updateAttendanceData(parseInt(studentId), status, remarks, newAttendanceId);
-
-                    if (isEditMode) {
-                        // อัพเดทการ์ดที่มีอยู่แล้ว
-                        updateStudentCard(parseInt(studentId), status, remarks, newAttendanceId);
-                    } else {
-                        // ย้ายการ์ดนักเรียนไปยังแท็บ "เช็คชื่อแล้ว"
-                        const studentCard = document.querySelector(`#waitingTab .student-card[data-id="${studentId}"]`);
-                        if (studentCard) {
-                            moveStudentToCheckedTab(studentCard, parseInt(studentId), status, remarks, timeChecked, newAttendanceId);
-                        } else {
-                            // กรณีไม่พบการ์ดในแท็บรอเช็คชื่อ (อาจเกิดจากการค้นหา)
-                            createCheckedStudentCard(parseInt(studentId), status, remarks, timeChecked, newAttendanceId);
-                        }
-                    }
-
-                    // อัพเดทจำนวนนักเรียนและสถิติ
-                    updateStudentCounts();
-                    updateAttendanceStats(status, isEditMode);
-
-                    // กำหนดว่ามีการเปลี่ยนแปลงข้อมูล
-                    hasChanges = true;
-
-                    // แสดงข้อความแจ้งเตือน
-                    showNotification(`บันทึกสถานะ "${getStatusText(status)}" สำหรับนักเรียนเรียบร้อย`, 'success');
-                } else {
-                    // บันทึกไม่สำเร็จ
-                    showNotification('เกิดข้อผิดพลาด: ' + responseData.message, 'error');
-                }
-            })
-            .catch(error => {
-                console.error('เกิดข้อผิดพลาดในการส่งข้อมูล:', error);
-                showNotification('เกิดข้อผิดพลาดในการเชื่อมต่อกับเซิร์ฟเวอร์', 'error');
-            });
-    } catch (error) {
-        console.error('เกิดข้อผิดพลาดในการบันทึกการเช็คชื่อ:', error);
-        showNotification('เกิดข้อผิดพลาดในการบันทึกการเช็คชื่อ: ' + error.message, 'error');
+    // รวมหมายเหตุ
+    let finalRemarks = remarks;
+    if (retroactiveNote) {
+        finalRemarks = finalRemarks ? `${finalRemarks} (${retroactiveNote})` : retroactiveNote;
     }
+
+    // ส่งข้อมูลไปยัง API
+    const data = {
+        student_id: studentId,
+        status: status,
+        class_id: currentClassId,
+        date: checkDate,
+        is_retroactive: isRetroactive,
+        remarks: finalRemarks
+    };
+
+    // ปิด Modal
+    closeModal('attendanceDetailModal');
+
+    // ส่งข้อมูลไปยัง API
+    fetch('api/ajax_attendance.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => response.json())
+        .then(responseData => {
+            if (responseData.success) {
+                // ดึงการ์ดนักเรียน
+                const studentCard = document.querySelector(`#waitingTab .student-card[data-id="${studentId}"]`);
+                if (studentCard) {
+                    // ย้ายการ์ดไปยังแท็บเช็คชื่อแล้ว
+                    moveToCheckedTab(studentCard, studentId, status, responseData.student.time_checked, responseData.attendance_id);
+
+                    // อัพเดทจำนวนนักเรียน
+                    updateStudentCounts();
+
+                    // อัพเดทสถิติ
+                    updateAttendanceStats(status);
+                } else {
+                    // กรณีแก้ไขข้อมูลในแท็บเช็คชื่อแล้ว
+                    const existingCard = document.querySelector(`#checkedTab .student-card[data-id="${studentId}"]`);
+                    if (existingCard) {
+                        updateExistingCard(existingCard, status, responseData.student.time_checked, responseData.attendance_id);
+                        updateAttendanceStats(status);
+                    }
+                }
+
+                // แสดงการแจ้งเตือน
+                showNotification(`บันทึกสถานะ "${getStatusText(status)}" สำหรับนักเรียนเรียบร้อย`, 'success');
+            } else {
+                showNotification('เกิดข้อผิดพลาด: ' + responseData.message, 'error');
+            }
+        })
+        .catch(error => {
+            showNotification('เกิดข้อผิดพลาดในการเชื่อมต่อกับเซิร์ฟเวอร์', 'error');
+            console.error('Error:', error);
+        });
 }
+
+// เมื่อโหลดเอกสารเสร็จ
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('โหลดไฟล์แก้ไขสำเร็จ - fix_attendance.js');
+
+    // จัดการระบบแท็บ
+    setupTabSystem();
+
+    // แสดง/ซ่อนช่องหมายเหตุตามสถานะ
+    setupRemarkField();
+
+    // อัพเดทจำนวนนักเรียนในแต่ละแท็บ
+    updateStudentCounts();
+});
 
 /**
  * แสดง Modal เช็คชื่อทั้งหมด
@@ -1473,6 +1711,7 @@ function closeModal(modalId) {
     }
 }
 
+
 /**
  * แสดงข้อความแจ้งเตือน
  * @param {string} message - ข้อความ
@@ -1483,7 +1722,7 @@ function showNotification(message, type = 'info') {
         // สร้างแถบแจ้งเตือน
         const notification = document.createElement('div');
         notification.className = `notification ${type}`;
-        
+
         // กำหนดไอคอนตามประเภท
         let icon = '';
         switch (type) {
@@ -1492,7 +1731,7 @@ function showNotification(message, type = 'info') {
             case 'error': icon = 'exclamation-circle'; break;
             case 'info': default: icon = 'info-circle'; break;
         }
-        
+
         notification.innerHTML = `
             <div class="notification-content">
                 <i class="fas fa-${icon}"></i>
@@ -1500,10 +1739,10 @@ function showNotification(message, type = 'info') {
             </div>
             <button class="notification-close"><i class="fas fa-times"></i></button>
         `;
-        
+
         // เพิ่มไปยัง body
         document.body.appendChild(notification);
-        
+
         // กำหนดการปิดเมื่อคลิก
         const closeButton = notification.querySelector('.notification-close');
         if (closeButton) {
@@ -1511,7 +1750,7 @@ function showNotification(message, type = 'info') {
                 notification.remove();
             });
         }
-        
+
         // กำหนดการปิดอัตโนมัติ
         setTimeout(() => {
             if (document.body.contains(notification)) {
@@ -1537,7 +1776,6 @@ function getStatusText(status) {
         default: return 'ไม่ระบุ';
     }
 }
-
 /**
  * แสดงคำแนะนำการใช้งาน
  */
