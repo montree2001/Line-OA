@@ -340,7 +340,8 @@ $extra_css = [
 
 $extra_js = [
     'assets/js/check_ajax.js',
-    'assets/js/enhance-search.js'
+    'assets/js/enhance-search.js',
+    'assets/js/attendance-fix.js'
 ];
 
 // กำหนดเส้นทางเนื้อหา
@@ -1033,3 +1034,4 @@ document.addEventListener('DOMContentLoaded', function() {
     updateStudentCounts();
 });
 </script>
+

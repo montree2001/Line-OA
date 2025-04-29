@@ -131,7 +131,7 @@
             <button type="button" class="btn secondary" onclick="scanQR()">
                 <i class="fas fa-qrcode"></i> สแกน QR Code
             </button>
-         
+
         </div>
 
         <!-- ช่องค้นหา -->
@@ -714,3 +714,289 @@
         showModal('attendanceDetailModal');
     }
 </script>
+
+<!-- เพิ่มการแก้ไขสำหรับระบบเช็คชื่อย้อนหลัง -->
+<script>
+// นิยามฟังก์ชัน showModal และ closeModal ให้พร้อมใช้งานทันที
+function showModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.classList.add('active');
+        document.body.style.overflow = 'hidden'; // ป้องกันการเลื่อนพื้นหลัง
+    }
+}
+
+function closeModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.classList.remove('active');
+        document.body.style.overflow = ''; // คืนค่าการเลื่อน
+    }
+}
+
+// แสดงข้อความแจ้งเตือน
+function showNotification(message, type = 'info') {
+    // ตรวจสอบว่ามี notification container หรือไม่
+    let container = document.querySelector('.notification-container');
+    if (!container) {
+        // สร้าง container ใหม่
+        container = document.createElement('div');
+        container.className = 'notification-container';
+        container.style.position = 'fixed';
+        container.style.top = '20px';
+        container.style.right = '20px';
+        container.style.zIndex = '9999';
+        container.style.maxWidth = '350px';
+        container.style.width = 'calc(100% - 40px)';
+        document.body.appendChild(container);
+    }
+    
+    // สร้างแถบแจ้งเตือน
+    const notification = document.createElement('div');
+    notification.className = `notification ${type}`;
+    
+    // กำหนดไอคอนตามประเภท
+    let icon = '';
+    switch (type) {
+        case 'success': icon = 'check-circle'; break;
+        case 'warning': icon = 'exclamation-triangle'; break;
+        case 'error': icon = 'exclamation-circle'; break;
+        case 'info': default: icon = 'info-circle'; break;
+    }
+    
+    notification.innerHTML = `
+        <div class="notification-content">
+            <i class="fas fa-${icon}"></i>
+            <span>${message}</span>
+        </div>
+        <button class="notification-close"><i class="fas fa-times"></i></button>
+    `;
+    
+    // เพิ่มไปยัง container
+    container.appendChild(notification);
+    
+    // กำหนดการปิดเมื่อคลิก
+    const closeButton = notification.querySelector('.notification-close');
+    if (closeButton) {
+        closeButton.addEventListener('click', () => {
+            notification.remove();
+        });
+    }
+    
+    // กำหนดการปิดอัตโนมัติ
+    setTimeout(() => {
+        if (container.contains(notification)) {
+            notification.remove();
+        }
+    }, 5000);
+}
+
+// ดึงข้อความสถานะ
+function getStatusText(status) {
+    switch (status) {
+        case 'present': return 'มาเรียน';
+        case 'late': return 'มาสาย';
+        case 'leave': return 'ลา';
+        case 'absent': return 'ขาดเรียน';
+        default: return 'ไม่ระบุ';
+    }
+}
+
+// เมื่อโหลดเอกสารเสร็จ
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('โหลดระบบเช็คชื่อและเช็คชื่อย้อนหลังสำเร็จ');
+    
+    // ตรวจสอบการเช็คชื่อย้อนหลัง
+    setupRetroactiveChecking();
+    
+    // ปรับปรุงการค้นหา
+    enhanceSearchInput();
+});
+
+// ตรวจสอบการเช็คชื่อย้อนหลัง
+function setupRetroactiveChecking() {
+    const dateSelector = document.getElementById('dateSelect');
+    if (!dateSelector) return;
+    
+    const today = new Date().toISOString().split('T')[0];
+    const isRetroactive = dateSelector.value !== today;
+    
+    if (isRetroactive) {
+        // เพิ่มป้ายแจ้งเตือนการเช็คชื่อย้อนหลัง
+        let retroactiveBadge = document.querySelector('.retroactive-badge');
+        if (!retroactiveBadge) {
+            const dateContainer = document.querySelector('.date-selector');
+            if (dateContainer) {
+                retroactiveBadge = document.createElement('div');
+                retroactiveBadge.className = 'retroactive-badge';
+                retroactiveBadge.innerHTML = '<i class="fas fa-history"></i> เช็คชื่อย้อนหลัง';
+                dateContainer.appendChild(retroactiveBadge);
+            }
+        }
+    }
+}
+
+// ปรับปรุงช่องค้นหา
+function enhanceSearchInput() {
+    const searchContainer = document.querySelector('.search-container');
+    const searchInput = document.getElementById('searchInput');
+    if (!searchContainer || !searchInput) return;
+    
+    // ตรวจสอบว่ามีปุ่มล้างการค้นหาหรือไม่
+    let clearButton = searchContainer.querySelector('.search-clear');
+    if (!clearButton) {
+        // เพิ่มปุ่มล้างการค้นหา
+        clearButton = document.createElement('span');
+        clearButton.className = 'search-clear';
+        clearButton.innerHTML = '<i class="fas fa-times"></i>';
+        clearButton.style.display = 'none';
+        searchContainer.appendChild(clearButton);
+        
+        // แสดง/ซ่อนปุ่มล้างการค้นหา
+        searchInput.addEventListener('input', function() {
+            clearButton.style.display = this.value ? 'block' : 'none';
+        });
+        
+        // เพิ่มฟังก์ชันล้างการค้นหา
+        clearButton.addEventListener('click', function() {
+            searchInput.value = '';
+            clearButton.style.display = 'none';
+            searchStudents();
+            searchInput.focus();
+        });
+    }
+}
+</script>
+
+<style>
+/* ปรับปรุงแสดงผลป้ายเช็คชื่อย้อนหลัง */
+.retroactive-badge {
+    display: inline-flex;
+    align-items: center;
+    background-color: #fff3e0;
+    color: #e65100;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: 500;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(255, 152, 0, 0.4); }
+    70% { box-shadow: 0 0 0 6px rgba(255, 152, 0, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(255, 152, 0, 0); }
+}
+
+/* สไตล์สำหรับช่อง search ที่ปรับปรุงแล้ว */
+.search-container {
+    position: relative;
+    margin-bottom: 16px;
+}
+
+.search-clear {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #9e9e9e;
+    cursor: pointer;
+    z-index: 10;
+    font-size: 16px;
+    display: none;
+}
+
+.search-clear:hover {
+    color: #f44336;
+}
+
+/* สไตล์สำหรับการแจ้งเตือน */
+.notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background-color: white;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    border-radius: 8px;
+    padding: 12px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 2000;
+    min-width: 250px;
+    max-width: 350px;
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from { opacity: 0; transform: translateX(50px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+</style>
+
+<!-- เพิ่ม Modal การเช็คชื่อย้อนหลัง -->
+<div class="modal" id="retroactiveModal">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">ยืนยันการเช็คชื่อย้อนหลัง</h3>
+                <button type="button" class="close-btn" onclick="closeModal('retroactiveModal')">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="warning-message" style="background-color: #fff3e0; padding: 10px; border-radius: 5px; border-left: 4px solid #ff9800; margin-bottom: 15px; display: flex; align-items: center;">
+                    <i class="fas fa-exclamation-triangle" style="color: #ff9800; margin-right: 10px; font-size: 20px;"></i>
+                    <div>
+                        <p style="margin: 0; color: #e65100; font-weight: 500;">คุณกำลังทำการเช็คชื่อย้อนหลังสำหรับวันที่ <span id="retroactiveDate"></span></p>
+                        <p style="margin: 5px 0 0 0; color: #795548; font-size: 14px;">การเช็คชื่อย้อนหลังจำเป็นต้องระบุเหตุผลที่ชัดเจน และจะถูกบันทึกประวัติการเช็ค</p>
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 15px;">
+                    <label for="retroactiveReason" style="display: block; margin-bottom: 8px; font-weight: 500;">เหตุผลการเช็คชื่อย้อนหลัง:</label>
+                    <textarea id="retroactiveReason" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; resize: vertical; min-height: 80px;" placeholder="ระบุเหตุผลการเช็คชื่อย้อนหลัง เช่น การแก้ไขข้อมูลผิดพลาด, ใบรับรองแพทย์ของนักเรียน, หนังสือลาที่ได้รับล่าช้า, ฯลฯ"></textarea>
+                </div>
+                
+                <div class="form-group" style="margin-bottom: 15px;">
+                    <label for="retroactiveStatus" style="display: block; margin-bottom: 8px; font-weight: 500;">สถานะการเช็คชื่อ:</label>
+                    <div class="status-options">
+                        <label class="status-option">
+                            <input type="radio" name="retroactiveStatus" value="present" checked>
+                            <span class="status-label present">
+                                <i class="fas fa-check-circle"></i> มาเรียน
+                            </span>
+                        </label>
+                        
+                        <label class="status-option">
+                            <input type="radio" name="retroactiveStatus" value="late">
+                            <span class="status-label late">
+                                <i class="fas fa-clock"></i> มาสาย
+                            </span>
+                        </label>
+                        
+                        <label class="status-option">
+                            <input type="radio" name="retroactiveStatus" value="leave">
+                            <span class="status-label leave">
+                                <i class="fas fa-clipboard"></i> ลา
+                            </span>
+                        </label>
+                        
+                        <label class="status-option">
+                            <input type="radio" name="retroactiveStatus" value="absent">
+                            <span class="status-label absent">
+                                <i class="fas fa-times-circle"></i> ขาดเรียน
+                            </span>
+                        </label>
+                    </div>
+                </div>
+                
+                <input type="hidden" id="retroactiveStudentId" value="">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn secondary" onclick="closeModal('retroactiveModal')">ยกเลิก</button>
+                <button type="button" class="btn primary" onclick="confirmRetroactiveAttendance()">บันทึก</button>
+            </div>
+        </div>
+    </div>
+</div>
