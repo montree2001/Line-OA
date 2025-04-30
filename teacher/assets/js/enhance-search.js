@@ -299,6 +299,7 @@ if (typeof window.confirmDetailAttendance !== 'function') {
         let retroactiveNote = '';
         if (isRetroactive) {
             const retroactiveNoteInput = document.getElementById('retroactiveNote');
+            const retroactiveNote = retroactiveNoteInput ? retroactiveNoteInput.value : '';
             if (retroactiveNoteInput) {
                 retroactiveNote = retroactiveNoteInput.value.trim();
 

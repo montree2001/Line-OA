@@ -160,19 +160,7 @@ function changeClass(classId) {
     }
 }
 
-/**
- * เปลี่ยนวันที่เช็คชื่อ
- * @param {string} date - วันที่ต้องการเช็คชื่อ
- */
-function changeDate(date) {
-    if (hasChanges) {
-        if (confirm('คุณมีข้อมูลที่ยังไม่ได้บันทึก ต้องการออกจากหน้านี้หรือไม่?')) {
-            window.location.href = `new_check_attendance.php?class_id=${currentClassId}&date=${date}`;
-        }
-    } else {
-        window.location.href = `new_check_attendance.php?class_id=${currentClassId}&date=${date}`;
-    }
-}
+
 
 /**
  * ค้นหานักเรียน
@@ -237,7 +225,7 @@ function markAttendance(button, status, studentId) {
         }
 
         // ดึงข้อมูลนักเรียน
-        const studentName = studentCard.getAttribute('data-name');
+        const studentName = studentCard.getAttribute('data-name') || '';
 
         // สร้างข้อมูลที่จะส่ง
         const data = {

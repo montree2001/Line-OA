@@ -257,6 +257,19 @@ function extendAttendanceFunctions() {
         };
     }
 }
+/**
+ * เปลี่ยนวันที่เช็คชื่อ
+ * @param {string} date - วันที่ต้องการเช็คชื่อ
+ */
+function changeDate(date) {
+    if (hasChanges) {
+        if (confirm('คุณมีข้อมูลที่ยังไม่ได้บันทึก ต้องการออกจากหน้านี้หรือไม่?')) {
+            window.location.href = `new_check_attendance.php?class_id=${currentClassId}&date=${date}`;
+        }
+    } else {
+        window.location.href = `new_check_attendance.php?class_id=${currentClassId}&date=${date}`;
+    }
+}
 
 /**
  * แสดง Modal เช็คชื่อย้อนหลัง
