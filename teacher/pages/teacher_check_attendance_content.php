@@ -528,11 +528,8 @@
 </div>
 <?php endif; ?>
 
-
-
-
-
-
+<!-- Include enhanced student search functionality -->
+<script src="assets/js/student-search.js"></script>
 
 <script>
     // สร้างตัวแปรที่ส่งค่าไปยัง JavaScript

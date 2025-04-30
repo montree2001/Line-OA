@@ -179,7 +179,9 @@ function changeDate(date) {
  */
 function searchStudents() {
     const searchInput = document.getElementById('searchInput');
-    const searchTerm = searchInput.value.toLowerCase();
+    if (!searchInput) return;
+    
+    const searchTerm = searchInput.value.toLowerCase().trim();
 
     // ค้นหาในทั้งสองแท็บ
     searchInTab('waitingTab', searchTerm);
@@ -198,119 +200,68 @@ function searchInTab(tabId, searchTerm) {
     const studentCards = tab.querySelectorAll('.student-card');
 
     studentCards.forEach(card => {
-        const name = card.getAttribute('data-name') ? .toLowerCase() || '';
+        // ค้นหาจากหลายแหล่งข้อมูล
+        const name = card.getAttribute('data-name') || '';
+        
+        // ค้นหาจากชื่อใน .student-name (กรณีที่ data-name ไม่มี)
+        const nameElement = card.querySelector('.student-name');
+        const nameText = nameElement ? nameElement.textContent.toLowerCase() : '';
+        
+        // ค้นหาจากรหัสนักเรียน
+        const codeElement = card.querySelector('.student-code');
+        const codeText = codeElement ? codeElement.textContent.toLowerCase() : '';
+        
+        // ค้นหาจากเลขที่นักเรียน
+        const numberElement = card.querySelector('.student-number');
+        const numberText = numberElement ? numberElement.textContent.toLowerCase() : '';
 
-        if (name.includes(searchTerm)) {
+        if (searchTerm === '' || 
+            name.toLowerCase().includes(searchTerm) ||
+            nameText.includes(searchTerm) ||
+            codeText.includes(searchTerm) ||
+            numberText.includes(searchTerm)) {
             card.style.display = '';
         } else {
             card.style.display = 'none';
         }
     });
 }
-// ตัวแปรสถานะการเปลี่ยนแปลง
-let hasChanges = false;
 
 /**
- * เช็คชื่อนักเรียนและบันทึกทันที (AJAX)
- * @param {HTMLElement} button - ปุ่มที่ถูกคลิก
- * @param {string} status - สถานะการเช็คชื่อ (present/absent/late/leave)
- * @param {number} studentId - รหัสนักเรียน
+ * แสดงข้อความเมื่อไม่พบผลการค้นหา
+ * @param {string} tabId - ID ของแท็บ
+ * @param {string} searchTerm - คำค้นหา
  */
-function markAttendance(button, status, studentId) {
-    try {
-        // แสดงสถานะกำลังโหลด
-        const originalContent = button.innerHTML;
-        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-        button.disabled = true;
-
-        // ดึงข้อมูลการ์ดนักเรียน
-        const studentCard = button.closest('.student-card');
-
-        if (!studentCard) {
-            console.error('ไม่พบข้อมูล .student-card สำหรับปุ่มนี้:', button);
-            showNotification('เกิดข้อผิดพลาด: กรุณารีเฟรชหน้าและลองใหม่อีกครั้ง', 'error');
-
-            // คืนค่าปุ่มเดิม
-            button.innerHTML = originalContent;
-            button.disabled = false;
-            return;
+function showEmptyMessage(tabId, searchTerm) {
+    const tab = document.getElementById(tabId);
+    if (!tab || tab.style.display === 'none') return;
+    
+    // นับจำนวนการ์ดที่แสดงอยู่
+    const visibleCards = Array.from(tab.querySelectorAll('.student-card')).filter(
+        card => card.style.display !== 'none'
+    );
+    
+    // ถ้าไม่พบการ์ดใดๆ ที่ตรงกับการค้นหา
+    if (visibleCards.length === 0) {
+        // ซ่อน student-list (ถ้ามี)
+        const studentList = tab.querySelector('.student-list');
+        if (studentList) {
+            studentList.style.display = 'none';
         }
-
-        // ดึงข้อมูลนักเรียน
-        const studentName = studentCard.getAttribute('data-name');
-
-        // สร้างข้อมูลที่จะส่ง
-        const data = {
-            student_id: studentId,
-            status: status,
-            class_id: currentClassId,
-            date: checkDate,
-            is_retroactive: isRetroactive
-        };
-
-        console.log('ส่งข้อมูล:', data);
-
-        // ส่งข้อมูลไปบันทึก AJAX
-        fetch('api/ajax_attendance.php', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(data)
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Server response was not OK: ' + response.status);
-                }
-                return response.json();
-            })
-            .then(responseData => {
-                console.log('ได้รับข้อมูลตอบกลับ:', responseData);
-
-                // คืนค่าปุ่มเดิม
-                button.innerHTML = originalContent;
-                button.disabled = false;
-
-                if (responseData.success) {
-                    // บันทึกสำเร็จ
-
-                    // สร้างสถานะเช็คชื่อและเวลา
-                    const timeChecked = responseData.student.time_checked || new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
-                    const attendanceId = responseData.attendance_id;
-
-                    // ย้ายการ์ดนักเรียนไปยังแท็บ "เช็คชื่อแล้ว"
-                    moveToCheckedTab(studentCard, studentId, status, timeChecked, attendanceId);
-
-                    // อัพเดทจำนวนนักเรียนในแต่ละแท็บ
-                    updateStudentCounts();
-
-                    // อัพเดทสถิติการเช็คชื่อ
-                    updateAttendanceStats(status);
-
-                    // กำหนดว่ามีการเปลี่ยนแปลงข้อมูล
-                    hasChanges = true;
-
-                    // แสดงข้อความแจ้งเตือน
-                    showNotification(`บันทึกสถานะ "${getStatusText(status)}" สำหรับนักเรียนเรียบร้อย`, 'success');
-                } else {
-                    // บันทึกไม่สำเร็จ
-                    showNotification('เกิดข้อผิดพลาด: ' + responseData.message, 'error');
-                }
-            })
-            .catch(error => {
-                // คืนค่าปุ่มเดิม
-                button.innerHTML = originalContent;
-                button.disabled = false;
-
-                console.error('เกิดข้อผิดพลาดในการส่งข้อมูล:', error);
-                showNotification('เกิดข้อผิดพลาดในการเชื่อมต่อกับเซิร์ฟเวอร์', 'error');
-            });
-    } catch (error) {
-        console.error('เกิดข้อผิดพลาดในการเช็คชื่อ:', error);
-        showNotification('เกิดข้อผิดพลาดในการเช็คชื่อ กรุณาลองใหม่อีกครั้ง', 'error');
+        
+        // สร้างข้อความว่าง
+        const emptyMessage = document.createElement('div');
+        emptyMessage.className = 'empty-state empty-search-result';
+        emptyMessage.innerHTML = `
+            <div class="empty-icon"><i class="fas fa-search"></i></div>
+            <h3>ไม่พบนักเรียนที่ค้นหา</h3>
+            <p>ไม่พบข้อมูลที่ตรงกับ "<span class="search-term">${searchTerm}</span>"</p>
+        `;
+        
+        // เพิ่มข้อความว่างเข้าไปในแท็บ
+        tab.appendChild(emptyMessage);
     }
 }
-
 
 /**
  * อัพเดทสถิติการเช็คชื่อ

@@ -1054,3 +1054,16 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 
+<script>
+// Define global variables needed for the retroactive check
+window.currentClassId = <?php echo $current_class_id; ?>;
+window.checkDate = '<?php echo $check_date; ?>';
+window.isRetroactive = <?php echo $is_retroactive ? 'true' : 'false'; ?>;
+
+console.log('Global variables set:', {
+    currentClassId: window.currentClassId,
+    checkDate: window.checkDate,
+    isRetroactive: window.isRetroactive
+});
+</script>
+

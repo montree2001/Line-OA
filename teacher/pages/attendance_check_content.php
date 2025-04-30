@@ -732,6 +732,9 @@
     </div>
 </div>
 
+<!-- Include enhanced student search functionality -->
+<script src="assets/js/student-search.js"></script>
+
 <script>
 // ตัวแปรกลาง
 const currentClassId = <?php echo $current_class_id; ?>;

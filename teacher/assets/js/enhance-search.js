@@ -142,18 +142,25 @@ function improveSearchFunction() {
     if (typeof window.searchStudents !== 'function') {
         // ถ้าไม่มี ให้สร้างฟังก์ชันใหม่
         window.searchStudents = function() {
-            const searchInput = document.getElementById('searchInput');
+            // ค้นหาอินพุตจากทั้ง id="searchInput" และ id="search-input"
+            const searchInput = document.getElementById('searchInput') || document.getElementById('search-input');
             if (!searchInput) return;
 
-            const searchTerm = searchInput.value.toLowerCase();
+            const searchTerm = searchInput.value.toLowerCase().trim();
 
             // ค้นหาในทั้งสองแท็บ
             searchInTab('waitingTab', searchTerm);
             searchInTab('checkedTab', searchTerm);
+            
+            // ลองค้นหาในแท็บที่อาจมีชื่ออื่น
+            searchInTab('unchecked-tab', searchTerm);
+            searchInTab('checked-tab', searchTerm);
 
             // แสดงข้อความเมื่อไม่พบผลการค้นหา
             showSearchResultEmpty('waitingTab', searchTerm);
             showSearchResultEmpty('checkedTab', searchTerm);
+            showSearchResultEmpty('unchecked-tab', searchTerm);
+            showSearchResultEmpty('checked-tab', searchTerm);
         };
     }
 }
@@ -178,18 +185,29 @@ function searchInTab(tabId, searchTerm) {
     }
 
     // ค้นหาทุกการ์ดนักเรียน
-    const studentCards = tab.querySelectorAll('.student-card');
+    const studentCards = tab.querySelectorAll('.student-card, .student-item');
     let found = false;
 
     studentCards.forEach(card => {
-        const name = card.getAttribute('data-name') || '';
-        const studentCode = card.querySelector('.student-code') ?
-            card.querySelector('.student-code').textContent : '';
+        // ค้นหาข้อมูลจากหลายแหล่ง
+        const nameAttr = card.getAttribute('data-name');
+        const name = nameAttr ? nameAttr : '';
+        
+        const studentCodeElement = card.querySelector('.student-code');
+        const studentCode = studentCodeElement ? studentCodeElement.textContent : '';
+        
+        const studentNumberElement = card.querySelector('.student-number');
+        const studentNumber = studentNumberElement ? studentNumberElement.textContent : '';
+        
+        const studentNameElement = card.querySelector('.student-name');
+        const nameFromElement = studentNameElement ? studentNameElement.textContent.toLowerCase() : '';
 
-        // ค้นหาทั้งชื่อและรหัสนักเรียน
+        // ค้นหาทั้งชื่อ, รหัสนักเรียน และเลขที่
         if (searchTerm === '' ||
             name.toLowerCase().includes(searchTerm) ||
-            studentCode.toLowerCase().includes(searchTerm)) {
+            studentCode.toLowerCase().includes(searchTerm) ||
+            studentNumber.toLowerCase().includes(searchTerm) ||
+            nameFromElement.includes(searchTerm)) {
             card.style.display = '';
             found = true;
         } else {
@@ -210,12 +228,12 @@ function showSearchResultEmpty(tabId, searchTerm) {
     if (!tab) return;
 
     // นับจำนวนการ์ดที่แสดงอยู่
-    const visibleCards = Array.from(tab.querySelectorAll('.student-card')).filter(
+    const visibleCards = Array.from(tab.querySelectorAll('.student-card, .student-item')).filter(
         card => card.style.display !== 'none'
     );
 
-    // ถ้าไม่พบการ์ดใดๆ ที่ตรงกับการค้นหา
-    if (visibleCards.length === 0) {
+    // ถ้าไม่พบการ์ดใดๆ ที่ตรงกับการค้นหา และแท็บกำลังแสดงผลอยู่
+    if (visibleCards.length === 0 && tab.classList.contains('active')) {
         // ซ่อน student-list (ถ้ามี)
         const studentList = tab.querySelector('.student-list');
         if (studentList) {
@@ -293,13 +311,13 @@ if (typeof window.confirmDetailAttendance !== 'function') {
 
         // ตรวจสอบการเช็คชื่อย้อนหลัง
         const today = new Date().toISOString().split('T')[0];
-        const currentDate = document.getElementById('dateSelect') ? .value || today;
+        const dateSelect = document.getElementById('dateSelect');
+        const currentDate = dateSelect ? dateSelect.value : today;
         const isRetroactive = currentDate !== today;
 
         let retroactiveNote = '';
         if (isRetroactive) {
             const retroactiveNoteInput = document.getElementById('retroactiveNote');
-            const retroactiveNote = retroactiveNoteInput ? retroactiveNoteInput.value : '';
             if (retroactiveNoteInput) {
                 retroactiveNote = retroactiveNoteInput.value.trim();
 

@@ -41,7 +41,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // แทนที่ปุ่มการเช็คชื่อถ้าเป็นการเช็คชื่อย้อนหลัง
+    // แทนที่ปุ่มการเช็คชื่อเพื่อให้รองรับการเช็คชื่อย้อนหลัง
     if (isRetroactive) {
         setupRetroactiveButtons();
     }
@@ -271,8 +271,28 @@ function showRetroactiveModal(button, status, studentId) {
     if (!retroModal) {
         // สร้าง Modal เช็คชื่อย้อนหลัง
         retroModal = createRetroactiveModal();
+        
+        // ให้เวลา DOM อัพเดทก่อนดำเนินการต่อ
+        setTimeout(() => {
+            // ตั้งค่าข้อมูลในโมดัลหลังจากที่มั่นใจว่าสร้างเสร็จแล้ว
+            setRetroactiveModalData(button, status, studentId);
+        }, 100);
+    } else {
+        // ถ้ามีโมดัลอยู่แล้ว ตั้งค่าข้อมูลได้ทันที
+        setRetroactiveModalData(button, status, studentId);
     }
 
+    // แสดง Modal
+    showModal('retroactiveModal');
+}
+
+/**
+ * ตั้งค่าข้อมูลในโมดัลเช็คชื่อย้อนหลัง
+ * @param {HTMLElement} button - ปุ่มที่กดเพื่อเปิด Modal
+ * @param {string} status - สถานะการเช็คชื่อ
+ * @param {number} studentId - รหัสนักเรียน
+ */
+function setRetroactiveModalData(button, status, studentId) {
     // ดึงชื่อนักเรียน
     const studentCard = button.closest('.student-card');
     let studentName = 'นักเรียน';
@@ -281,10 +301,25 @@ function showRetroactiveModal(button, status, studentId) {
         studentName = studentCard.getAttribute('data-name') || 'นักเรียน';
     }
 
-    // กำหนดค่าใน Modal
-    document.getElementById('retroactiveStudentId').value = studentId;
-    document.getElementById('retroactiveStudentName').value = studentName;
-    document.getElementById('retroactiveModalTitle').textContent = 'เช็คชื่อย้อนหลัง: ' + studentName;
+    // ตรวจสอบว่าโมดัลถูกสร้างแล้วหรือยัง
+    const titleElement = document.getElementById('retroactiveModalTitle');
+    const studentIdElement = document.getElementById('retroactiveStudentId');
+    const studentNameElement = document.getElementById('retroactiveStudentName');
+    const reasonElement = document.getElementById('retroactiveReason');
+    const remarksElement = document.getElementById('retroactiveRemarks');
+
+    // ตั้งค่าเฉพาะส่วนที่มีอยู่
+    if (titleElement) {
+        titleElement.textContent = 'เช็คชื่อย้อนหลัง: ' + studentName;
+    }
+    
+    if (studentIdElement) {
+        studentIdElement.value = studentId;
+    }
+    
+    if (studentNameElement) {
+        studentNameElement.value = studentName;
+    }
 
     // กำหนดสถานะเริ่มต้น
     const statusRadio = document.querySelector(`input[name="retroactiveStatus"][value="${status}"]`);
@@ -293,110 +328,13 @@ function showRetroactiveModal(button, status, studentId) {
     }
 
     // ล้างค่าเดิม
-    document.getElementById('retroactiveReason').value = '';
-    document.getElementById('retroactiveRemarks').value = '';
-
-    // แสดง Modal
-    showModal('retroactiveModal');
-}
-
-/**
- * สร้าง Modal สำหรับเช็คชื่อย้อนหลัง
- * @returns {HTMLElement} - Modal ที่สร้าง
- */
-function createRetroactiveModal() {
-    // สร้าง Modal
-    const retroModal = document.createElement('div');
-    retroModal.id = 'retroactiveModal';
-    retroModal.className = 'modal';
-
-    // HTML สำหรับ Modal
-    retroModal.innerHTML = `
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h3 class="modal-title" id="retroactiveModalTitle">เช็คชื่อย้อนหลัง</h3>
-                    <button type="button" class="close-btn" onclick="closeModal('retroactiveModal')">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-                <div class="modal-body">
-                    <div style="background-color: #fff3e0; border-left: 4px solid #ff9800; padding: 10px; margin-bottom: 15px; display: flex; align-items: center;">
-                        <i class="fas fa-exclamation-triangle" style="color: #ff9800; margin-right: 10px; font-size: 20px;"></i>
-                        <div>
-                            <p style="margin: 0; color: #e65100; font-weight: 500;">คุณกำลังทำการเช็คชื่อย้อนหลังสำหรับวันที่ <span id="retroactiveDateDisplay">${displayDate || checkDate}</span></p>
-                            <p style="margin: 5px 0 0 0; color: #795548; font-size: 14px;">การเช็คชื่อย้อนหลังจำเป็นต้องระบุเหตุผลที่ชัดเจน และจะถูกบันทึกประวัติการเช็ค</p>
-                        </div>
-                    </div>
-
-                    <div style="margin-bottom: 15px;">
-                        <label for="retroactiveReason" style="display: block; margin-bottom: 8px; font-weight: 500;">
-                            <strong>เหตุผลการเช็คชื่อย้อนหลัง</strong>
-                            <span style="color: #f44336;">*</span>
-                        </label>
-                        <textarea id="retroactiveReason" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; resize: vertical; min-height: 80px;" 
-                            placeholder="เช่น ใบรับรองแพทย์, หนังสือลาที่ได้รับล่าช้า, การแก้ไขข้อมูลผิดพลาด ฯลฯ" required></textarea>
-                        <div style="color: #757575; font-size: 12px; margin-top: 4px;">เหตุผลจะถูกบันทึกในประวัติระบบ</div>
-                    </div>
-                    
-                    <div style="margin-bottom: 15px;">
-                        <label for="retroactiveStatus" style="display: block; margin-bottom: 8px; font-weight: 500;">
-                            <strong>สถานะการเช็คชื่อ</strong>
-                        </label>
-                        <div class="status-options">
-                            <label class="status-option">
-                                <input type="radio" name="retroactiveStatus" value="present" checked>
-                                <span class="status-label present">
-                                    <i class="fas fa-check-circle"></i> มาเรียน
-                                </span>
-                            </label>
-                            
-                            <label class="status-option">
-                                <input type="radio" name="retroactiveStatus" value="late">
-                                <span class="status-label late">
-                                    <i class="fas fa-clock"></i> มาสาย
-                                </span>
-                            </label>
-                            
-                            <label class="status-option">
-                                <input type="radio" name="retroactiveStatus" value="leave">
-                                <span class="status-label leave">
-                                    <i class="fas fa-clipboard"></i> ลา
-                                </span>
-                            </label>
-                            
-                            <label class="status-option">
-                                <input type="radio" name="retroactiveStatus" value="absent">
-                                <span class="status-label absent">
-                                    <i class="fas fa-times-circle"></i> ขาดเรียน
-                                </span>
-                            </label>
-                        </div>
-                    </div>
-                    
-                    <div style="margin-bottom: 15px;" id="retroactiveRemarksContainer">
-                        <label for="retroactiveRemarks" style="display: block; margin-bottom: 8px; font-weight: 500;">
-                            <strong>หมายเหตุเพิ่มเติม</strong>
-                        </label>
-                        <textarea id="retroactiveRemarks" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; resize: vertical; min-height: 60px;" 
-                            placeholder="หมายเหตุเพิ่มเติม (ถ้ามี)"></textarea>
-                    </div>
-                    
-                    <input type="hidden" id="retroactiveStudentId" value="">
-                    <input type="hidden" id="retroactiveStudentName" value="">
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn secondary" onclick="closeModal('retroactiveModal')">ยกเลิก</button>
-                    <button type="button" class="btn primary" onclick="confirmRetroactiveAttendance()">บันทึก</button>
-                </div>
-            </div>
-        </div>
-    `;
-
-    // เพิ่ม Modal เข้าไปในหน้า
-    document.body.appendChild(retroModal);
-
-    return retroModal;
+    if (reasonElement) {
+        reasonElement.value = '';
+    }
+    
+    if (remarksElement) {
+        remarksElement.value = '';
+    }
 }
 
 /**
@@ -411,12 +349,46 @@ function openRetroactiveDetailModal(studentId, studentName) {
     if (!retroModal) {
         // สร้าง Modal
         retroModal = createRetroactiveModal();
+        
+        // ให้เวลา DOM อัพเดทก่อนดำเนินการต่อ
+        setTimeout(() => {
+            // ตั้งค่าข้อมูลในโมดัลหลังจากที่มั่นใจว่าสร้างเสร็จแล้ว
+            setRetroactiveDetailModalData(studentId, studentName);
+        }, 100);
+    } else {
+        // ถ้ามีโมดัลอยู่แล้ว ตั้งค่าข้อมูลได้ทันที
+        setRetroactiveDetailModalData(studentId, studentName);
     }
 
-    // กำหนดค่าใน Modal
-    document.getElementById('retroactiveStudentId').value = studentId;
-    document.getElementById('retroactiveStudentName').value = studentName;
-    document.getElementById('retroactiveModalTitle').textContent = 'เช็คชื่อย้อนหลัง: ' + studentName;
+    // แสดง Modal
+    showModal('retroactiveModal');
+}
+
+/**
+ * ตั้งค่าข้อมูลในโมดัลเช็คชื่อย้อนหลัง (กรณีเปิดจากปุ่มละเอียด)
+ * @param {number} studentId - รหัสนักเรียน
+ * @param {string} studentName - ชื่อนักเรียน
+ */
+function setRetroactiveDetailModalData(studentId, studentName) {
+    // ตรวจสอบว่าโมดัลถูกสร้างแล้วหรือยัง
+    const titleElement = document.getElementById('retroactiveModalTitle');
+    const studentIdElement = document.getElementById('retroactiveStudentId');
+    const studentNameElement = document.getElementById('retroactiveStudentName');
+    const reasonElement = document.getElementById('retroactiveReason');
+    const remarksElement = document.getElementById('retroactiveRemarks');
+
+    // ตั้งค่าเฉพาะส่วนที่มีอยู่
+    if (titleElement) {
+        titleElement.textContent = 'เช็คชื่อย้อนหลัง: ' + studentName;
+    }
+    
+    if (studentIdElement) {
+        studentIdElement.value = studentId;
+    }
+    
+    if (studentNameElement) {
+        studentNameElement.value = studentName;
+    }
 
     // กำหนดสถานะเริ่มต้น
     const statusRadio = document.querySelector('input[name="retroactiveStatus"][value="present"]');
@@ -425,183 +397,195 @@ function openRetroactiveDetailModal(studentId, studentName) {
     }
 
     // ล้างค่าเดิม
-    document.getElementById('retroactiveReason').value = '';
-    document.getElementById('retroactiveRemarks').value = '';
-
-    // แสดง Modal
-    showModal('retroactiveModal');
+    if (reasonElement) {
+        reasonElement.value = '';
+    }
+    
+    if (remarksElement) {
+        remarksElement.value = '';
+    }
 }
 
 /**
  * ยืนยันการเช็คชื่อย้อนหลัง
  */
 function confirmRetroactiveAttendance() {
-    // ดึงข้อมูลจาก Modal
-    const studentId = document.getElementById('retroactiveStudentId').value;
-    const studentName = document.getElementById('retroactiveStudentName').value;
-    const reason = document.getElementById('retroactiveReason').value.trim();
-    const remarks = document.getElementById('retroactiveRemarks').value.trim();
-    const status = document.querySelector('input[name="retroactiveStatus"]:checked').value;
+    try {
+        // ดึงข้อมูลจาก Modal และเพิ่มการตรวจสอบตัวแปรเป็น null
+        const studentIdElement = document.getElementById('retroactiveStudentId');
+        const studentNameElement = document.getElementById('retroactiveStudentName');
+        const reasonElement = document.getElementById('retroactiveReason');
+        const remarksElement = document.getElementById('retroactiveRemarks');
+        const statusElement = document.querySelector('input[name="retroactiveStatus"]:checked');
 
-    // ตรวจสอบว่ามีเหตุผลหรือไม่
-    if (!reason) {
-        alert('กรุณาระบุเหตุผลการเช็คชื่อย้อนหลัง');
-        document.getElementById('retroactiveReason').focus();
-        return;
-    }
+        // ตรวจสอบว่า elements มีอยู่จริง
+        if (!studentIdElement || !reasonElement || !statusElement) {
+            console.error('ไม่พบอิลิเมนต์ที่จำเป็นในฟอร์ม retroactive');
+            alert('เกิดข้อผิดพลาด: ไม่พบข้อมูลที่จำเป็น กรุณารีเฟรชหน้าและลองใหม่');
+            return;
+        }
 
-    // ปิด Modal
-    closeModal('retroactiveModal');
+        const studentId = studentIdElement.value;
+        const studentName = studentNameElement ? studentNameElement.value : 'นักเรียน';
+        const reason = reasonElement.value.trim();
+        const remarks = remarksElement ? remarksElement.value.trim() : '';
+        const status = statusElement.value;
 
-    // แสดงข้อความกำลังดำเนินการ
-    showNotification('กำลังบันทึกการเช็คชื่อย้อนหลัง...', 'info');
+        // ตรวจสอบว่ามีเหตุผลหรือไม่
+        if (!reason) {
+            alert('กรุณาระบุเหตุผลการเช็คชื่อย้อนหลัง');
+            reasonElement.focus();
+            return;
+        }
 
-    // ส่งข้อมูลไปยัง API สำหรับเช็คชื่อย้อนหลัง
-    fetch('api/retroactive_attendance.php', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                student_id: studentId,
-                status: status,
-                class_id: currentClassId,
-                date: checkDate,
-                retroactive_reason: reason,
-                remarks: remarks
+        // ปิด Modal
+        closeModal('retroactiveModal');
+
+        // แสดงข้อความกำลังดำเนินการ
+        showNotification('กำลังบันทึกการเช็คชื่อย้อนหลัง...', 'info');
+
+        // เตรียมข้อมูลสำหรับส่ง API
+        const classId = window.currentClassId || document.getElementById('classSelect')?.value;
+        const date = window.checkDate || document.getElementById('dateSelect')?.value;
+
+        if (!classId || !date) {
+            console.error('ไม่พบค่า classId หรือ date');
+            showNotification('เกิดข้อผิดพลาด: ไม่พบข้อมูลชั้นเรียนหรือวันที่', 'error');
+            return;
+        }
+
+        // ส่งข้อมูลไปยัง API สำหรับเช็คชื่อย้อนหลัง
+        fetch('api/retroactive_attendance.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    student_id: studentId,
+                    status: status,
+                    class_id: classId,
+                    date: date,
+                    retroactive_reason: reason,
+                    remarks: remarks
+                })
             })
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('เซิร์ฟเวอร์ตอบกลับผิดพลาด: ' + response.status);
-            }
-            return response.json();
-        })
-        .then(data => {
-            if (data.success) {
-                // ดึงการ์ดนักเรียน
-                const studentCard = document.querySelector(`#waitingTab .student-card[data-id="${studentId}"]`);
-
-                if (studentCard) {
-                    // ย้ายการ์ดไปยังแท็บเช็คชื่อแล้ว
-                    if (typeof moveToCheckedTab === 'function') {
-                        moveToCheckedTab(studentCard, studentId, status, data.student.time_checked, data.attendance_id);
-                    } else {
-                        // ถ้าไม่มีฟังก์ชัน moveToCheckedTab
-                        handleMoveStudentCard(studentCard, studentId, status, data.student);
-                    }
-
-                    // อัพเดทจำนวนนักเรียน
-                    if (typeof updateStudentCounts === 'function') {
-                        updateStudentCounts();
-                    }
-
-                    // อัพเดทสถิติ
-                    if (typeof updateAttendanceStats === 'function') {
-                        updateAttendanceStats(status);
-                    }
-                } else {
-                    // กรณีแก้ไขข้อมูลในแท็บเช็คชื่อแล้ว
-                    const existingCard = document.querySelector(`#checkedTab .student-card[data-id="${studentId}"]`);
-
-                    if (existingCard) {
-                        // อัพเดทการ์ดที่มีอยู่
-                        if (typeof updateExistingCard === 'function') {
-                            updateExistingCard(existingCard, status, data.student.time_checked, data.attendance_id);
-                        } else {
-                            // ถ้าไม่มีฟังก์ชัน updateExistingCard
-                            handleUpdateExistingCard(existingCard, status, data.student);
-                        }
-
-                        // อัพเดทสถิติ
-                        if (typeof updateAttendanceStats === 'function') {
-                            updateAttendanceStats(status);
-                        }
-                    }
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('เซิร์ฟเวอร์ตอบกลับผิดพลาด: ' + response.status);
                 }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    // แสดงข้อความสำเร็จ
+                    showNotification(`บันทึกการเช็คชื่อย้อนหลัง "${getStatusText(status)}" สำเร็จ`, 'success');
 
-                // แสดงข้อความสำเร็จ
-                showNotification(`บันทึกการเช็คชื่อย้อนหลัง "${getStatusText(status)}" สำหรับ ${studentName} สำเร็จ`, 'success');
-
-                // รีเฟรชหน้าเว็บหลังจาก 1.5 วินาที (ให้ผู้ใช้เห็นการเปลี่ยนแปลงบน UI ก่อน)
-                setTimeout(() => {
-                    location.reload();
-                }, 1500);
-            } else {
-                showNotification('เกิดข้อผิดพลาด: ' + data.message, 'error');
-            }
-        })
-        .catch(error => {
-            console.error('เกิดข้อผิดพลาด:', error);
-            showNotification('เกิดข้อผิดพลาดในการเชื่อมต่อกับเซิร์ฟเวอร์', 'error');
-        });
+                    // รีเฟรชหน้าเว็บหลังจาก 1.5 วินาที
+                    setTimeout(() => {
+                        location.reload();
+                    }, 1500);
+                } else {
+                    showNotification('เกิดข้อผิดพลาด: ' + data.message, 'error');
+                }
+            })
+            .catch(error => {
+                console.error('เกิดข้อผิดพลาด:', error);
+                showNotification('เกิดข้อผิดพลาดในการเชื่อมต่อกับเซิร์ฟเวอร์', 'error');
+            });
+    } catch (error) {
+        console.error('เกิดข้อผิดพลาดในฟังก์ชัน confirmRetroactiveAttendance:', error);
+        showNotification('เกิดข้อผิดพลาดในระบบ กรุณารีเฟรชหน้าและลองใหม่', 'error');
+    }
 }
 
 /**
  * ยืนยันการเช็คชื่อย้อนหลังในรายละเอียด
  */
 function confirmRetroactiveDetailAttendance() {
-    // ตรวจสอบหมายเหตุย้อนหลัง
-    const retroactiveNoteInput = document.getElementById('retroactiveNote');
-    if (!retroactiveNoteInput || retroactiveNoteInput.value.trim() === '') {
-        alert('กรุณาระบุเหตุผลการเช็คชื่อย้อนหลัง');
-        retroactiveNoteInput.focus();
-        return;
-    }
+    try {
+        // ตรวจสอบหมายเหตุย้อนหลัง
+        const retroactiveNoteInput = document.getElementById('retroactiveNote');
+        if (!retroactiveNoteInput || retroactiveNoteInput.value.trim() === '') {
+            alert('กรุณาระบุเหตุผลการเช็คชื่อย้อนหลัง');
+            if (retroactiveNoteInput) retroactiveNoteInput.focus();
+            return;
+        }
 
-    // ดึงข้อมูลจาก Modal
-    const studentId = document.getElementById('studentIdDetail').value;
-    const status = document.querySelector('input[name="attendanceStatus"]:checked').value;
-    const remarks = document.getElementById('attendanceRemarks').value.trim();
-    const reason = retroactiveNoteInput.value.trim();
+        // ดึงข้อมูลจาก Modal และตรวจสอบ null
+        const studentIdElement = document.getElementById('studentIdDetail');
+        const statusElement = document.querySelector('input[name="attendanceStatus"]:checked');
+        const remarksElement = document.getElementById('attendanceRemarks');
 
-    // ปิด Modal
-    closeModal('attendanceDetailModal');
+        // ตรวจสอบว่า elements มีอยู่จริง
+        if (!studentIdElement || !statusElement) {
+            console.error('ไม่พบอิลิเมนต์ที่จำเป็นในฟอร์ม retroactive detail');
+            alert('เกิดข้อผิดพลาด: ไม่พบข้อมูลที่จำเป็น กรุณารีเฟรชหน้าและลองใหม่');
+            return;
+        }
 
-    // แสดงข้อความกำลังดำเนินการ
-    showNotification('กำลังบันทึกการเช็คชื่อย้อนหลัง...', 'info');
+        const studentId = studentIdElement.value;
+        const status = statusElement.value;
+        const remarks = remarksElement ? remarksElement.value.trim() : '';
+        const reason = retroactiveNoteInput.value.trim();
 
-    // ส่งข้อมูลไปยัง API สำหรับเช็คชื่อย้อนหลัง
-    fetch('api/retroactive_attendance.php', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                student_id: studentId,
-                status: status,
-                class_id: currentClassId,
-                date: checkDate,
-                retroactive_reason: reason,
-                remarks: remarks
+        // ปิด Modal
+        closeModal('attendanceDetailModal');
+
+        // แสดงข้อความกำลังดำเนินการ
+        showNotification('กำลังบันทึกการเช็คชื่อย้อนหลัง...', 'info');
+
+        // เตรียมข้อมูลสำหรับส่ง API
+        const classId = window.currentClassId || document.getElementById('classSelect')?.value;
+        const date = window.checkDate || document.getElementById('dateSelect')?.value;
+
+        if (!classId || !date) {
+            console.error('ไม่พบค่า classId หรือ date');
+            showNotification('เกิดข้อผิดพลาด: ไม่พบข้อมูลชั้นเรียนหรือวันที่', 'error');
+            return;
+        }
+
+        // ส่งข้อมูลไปยัง API สำหรับเช็คชื่อย้อนหลัง
+        fetch('api/retroactive_attendance.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    student_id: studentId,
+                    status: status,
+                    class_id: classId,
+                    date: date,
+                    retroactive_reason: reason,
+                    remarks: remarks
+                })
             })
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('เซิร์ฟเวอร์ตอบกลับผิดพลาด: ' + response.status);
-            }
-            return response.json();
-        })
-        .then(data => {
-            // จัดการผลลัพธ์เช่นเดียวกับ confirmRetroactiveAttendance
-            // (ตัดส่วนนี้ให้สั้นลง เพราะมีโค้ดซ้ำกัน)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('เซิร์ฟเวอร์ตอบกลับผิดพลาด: ' + response.status);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    // แสดงข้อความสำเร็จ
+                    showNotification(`บันทึกการเช็คชื่อย้อนหลัง "${getStatusText(status)}" สำเร็จ`, 'success');
 
-            if (data.success) {
-                // แสดงข้อความสำเร็จ
-                showNotification(`บันทึกการเช็คชื่อย้อนหลัง "${getStatusText(status)}" สำเร็จ`, 'success');
-
-                // รีเฟรชหน้าเว็บหลังจาก 1.5 วินาที
-                setTimeout(() => {
-                    location.reload();
-                }, 1500);
-            } else {
-                showNotification('เกิดข้อผิดพลาด: ' + data.message, 'error');
-            }
-        })
-        .catch(error => {
-            console.error('เกิดข้อผิดพลาด:', error);
-            showNotification('เกิดข้อผิดพลาดในการเชื่อมต่อกับเซิร์ฟเวอร์', 'error');
-        });
+                    // รีเฟรชหน้าเว็บหลังจาก 1.5 วินาที
+                    setTimeout(() => {
+                        location.reload();
+                    }, 1500);
+                } else {
+                    showNotification('เกิดข้อผิดพลาด: ' + data.message, 'error');
+                }
+            })
+            .catch(error => {
+                console.error('เกิดข้อผิดพลาด:', error);
+                showNotification('เกิดข้อผิดพลาดในการเชื่อมต่อกับเซิร์ฟเวอร์', 'error');
+            });
+    } catch (error) {
+        console.error('เกิดข้อผิดพลาดในฟังก์ชัน confirmRetroactiveDetailAttendance:', error);
+        showNotification('เกิดข้อผิดพลาดในระบบ กรุณารีเฟรชหน้าและลองใหม่', 'error');
+    }
 }
 
 /**
@@ -928,4 +912,128 @@ function getStatusIcon(status) {
         default:
             return 'fa-question-circle';
     }
+}
+
+/**
+ * สร้าง Modal สำหรับเช็คชื่อย้อนหลัง
+ * @returns {HTMLElement} - Modal ที่สร้าง
+ */
+function createRetroactiveModal() {
+    // สร้าง Modal
+    const retroModal = document.createElement('div');
+    retroModal.id = 'retroactiveModal';
+    retroModal.className = 'modal';
+
+    // หาวันที่เช็คชื่อย้อนหลัง
+    const dateSelect = document.getElementById('dateSelect');
+    const retroactiveDate = dateSelect ? dateSelect.value : new Date().toISOString().split('T')[0];
+    
+    // แปลงให้เป็นรูปแบบแสดงผล (DD/MM/YYYY)
+    const displayDate = formatDateThai(retroactiveDate);
+
+    // HTML สำหรับ Modal
+    retroModal.innerHTML = `
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 class="modal-title" id="retroactiveModalTitle">เช็คชื่อย้อนหลัง</h3>
+                    <button type="button" class="close-btn" onclick="closeModal('retroactiveModal')">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div style="background-color: #fff3e0; border-left: 4px solid #ff9800; padding: 10px; margin-bottom: 15px; display: flex; align-items: center;">
+                        <i class="fas fa-exclamation-triangle" style="color: #ff9800; margin-right: 10px; font-size: 20px;"></i>
+                        <div>
+                            <p style="margin: 0; color: #e65100; font-weight: 500;">คุณกำลังทำการเช็คชื่อย้อนหลังสำหรับวันที่ <span id="retroactiveDateDisplay">${displayDate}</span></p>
+                            <p style="margin: 5px 0 0 0; color: #795548; font-size: 14px;">การเช็คชื่อย้อนหลังจำเป็นต้องระบุเหตุผลที่ชัดเจน และจะถูกบันทึกประวัติการเช็ค</p>
+                        </div>
+                    </div>
+
+                    <div style="margin-bottom: 15px;">
+                        <label for="retroactiveReason" style="display: block; margin-bottom: 8px; font-weight: 500;">
+                            <strong>เหตุผลการเช็คชื่อย้อนหลัง</strong>
+                            <span style="color: #f44336;">*</span>
+                        </label>
+                        <textarea id="retroactiveReason" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; resize: vertical; min-height: 80px;" 
+                            placeholder="เช่น ใบรับรองแพทย์, หนังสือลาที่ได้รับล่าช้า, การแก้ไขข้อมูลผิดพลาด ฯลฯ" required></textarea>
+                        <div style="color: #757575; font-size: 12px; margin-top: 4px;">เหตุผลจะถูกบันทึกในประวัติระบบ</div>
+                    </div>
+                    
+                    <div style="margin-bottom: 15px;">
+                        <label for="retroactiveStatus" style="display: block; margin-bottom: 8px; font-weight: 500;">
+                            <strong>สถานะการเช็คชื่อ</strong>
+                        </label>
+                        <div class="status-options">
+                            <label class="status-option">
+                                <input type="radio" name="retroactiveStatus" value="present" checked>
+                                <span class="status-label present">
+                                    <i class="fas fa-check-circle"></i> มาเรียน
+                                </span>
+                            </label>
+                            
+                            <label class="status-option">
+                                <input type="radio" name="retroactiveStatus" value="late">
+                                <span class="status-label late">
+                                    <i class="fas fa-clock"></i> มาสาย
+                                </span>
+                            </label>
+                            
+                            <label class="status-option">
+                                <input type="radio" name="retroactiveStatus" value="leave">
+                                <span class="status-label leave">
+                                    <i class="fas fa-clipboard"></i> ลา
+                                </span>
+                            </label>
+                            
+                            <label class="status-option">
+                                <input type="radio" name="retroactiveStatus" value="absent">
+                                <span class="status-label absent">
+                                    <i class="fas fa-times-circle"></i> ขาดเรียน
+                                </span>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-bottom: 15px;" id="retroactiveRemarksContainer">
+                        <label for="retroactiveRemarks" style="display: block; margin-bottom: 8px; font-weight: 500;">
+                            <strong>หมายเหตุเพิ่มเติม</strong>
+                        </label>
+                        <textarea id="retroactiveRemarks" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; resize: vertical; min-height: 60px;" 
+                            placeholder="หมายเหตุเพิ่มเติม (ถ้ามี)"></textarea>
+                    </div>
+                    
+                    <input type="hidden" id="retroactiveStudentId" value="">
+                    <input type="hidden" id="retroactiveStudentName" value="">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn secondary" onclick="closeModal('retroactiveModal')">ยกเลิก</button>
+                    <button type="button" class="btn primary" onclick="confirmRetroactiveAttendance()">บันทึก</button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // เพิ่ม Modal เข้าไปในหน้า
+    document.body.appendChild(retroModal);
+
+    return retroModal;
+}
+
+/**
+ * แปลงรูปแบบวันที่เป็นรูปแบบไทย (วัน/เดือน/ปี)
+ * @param {string} dateString - วันที่ในรูปแบบ YYYY-MM-DD
+ * @returns {string} - วันที่ในรูปแบบ DD/MM/YYYY
+ */
+function formatDateThai(dateString) {
+    if (!dateString) return '';
+    
+    const parts = dateString.split('-');
+    if (parts.length !== 3) return dateString;
+    
+    // แปลงปีให้เป็น พ.ศ.
+    const year = parseInt(parts[0]) + 543;
+    
+    // คืนค่าในรูปแบบ DD/MM/YYYY
+    return `${parts[2]}/${parts[1]}/${year}`;
 }

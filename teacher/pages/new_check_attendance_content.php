@@ -1000,3 +1000,6 @@ function enhanceSearchInput() {
         </div>
     </div>
 </div>
+
+<!-- Include enhanced student search functionality -->
+<script src="assets/js/student-search.js"></script>
