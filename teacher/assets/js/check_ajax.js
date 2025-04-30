@@ -804,59 +804,7 @@ function confirmMarkAll() {
     }
 }
 
-/**
- * สร้าง PIN สำหรับการเช็คชื่อ
- */
-function createPIN() {
-    // แสดงข้อความกำลังดำเนินการ
-    showNotification('กำลังสร้างรหัส PIN...', 'info');
 
-    // แสดง Modal สร้าง PIN ก่อน
-    showModal('pinModal');
-
-    // ส่งคำขอสร้าง PIN ใหม่ไปยัง API
-    fetch('api/create_pin.php', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                class_id: currentClassId
-            })
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Server response was not OK: ' + response.status);
-            }
-            return response.json();
-        })
-        .then(data => {
-            if (data.success) {
-                // แสดง PIN ใน Modal
-                displayPINCode(data.pin_code);
-
-                // อัพเดทเวลาหมดอายุ
-                const expireTimeElement = document.getElementById('expireTime');
-                if (expireTimeElement) {
-                    expireTimeElement.textContent = data.expire_minutes;
-                }
-
-                // แสดงข้อความแจ้งเตือนสำเร็จ
-                showNotification('สร้างรหัส PIN ใหม่เรียบร้อย', 'success');
-            } else {
-                // แสดงข้อความเมื่อมีข้อผิดพลาด
-                showNotification(data.message || 'เกิดข้อผิดพลาดในการสร้าง PIN', 'error');
-                // แสดง PIN ข้อผิดพลาด
-                displayPINCode('ERROR');
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            showNotification('เกิดข้อผิดพลาดในการเชื่อมต่อกับเซิร์ฟเวอร์: ' + error.message, 'error');
-            // แสดง PIN ข้อผิดพลาด
-            displayPINCode('ERROR');
-        });
-}
 
 /**
  * แสดงรหัส PIN ใน Modal
@@ -886,21 +834,6 @@ function displayPINCode(pinCode) {
         }
     });
 }
-
-/**
- * สร้างรหัส PIN ใหม่
- */
-function generateNewPIN() {
-    // ลบค่า PIN เดิม
-    const digitElements = document.querySelectorAll('.pin-digit');
-    digitElements.forEach(element => {
-        element.textContent = '-';
-    });
-
-    // เรียกฟังก์ชันสร้าง PIN ใหม่
-    createPIN();
-}
-
 /**
  * เปิดกล้องเพื่อสแกน QR Code
  */

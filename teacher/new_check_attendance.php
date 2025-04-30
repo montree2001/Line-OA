@@ -419,6 +419,108 @@ function closeModal(modalId) {
         document.body.style.overflow = ''; // คืนค่าการเลื่อน
     }
 }
+
+
+
+
+
+
+// เพิ่มโค้ดต่อไปนี้ไว้ในส่วนท้ายของ new_check_attendance.php ก่อนปิด tag </body>
+// หรือเพิ่มไว้ในไฟล์ check_ajax.js ถ้าไฟล์นี้โหลดอย่างถูกต้อง
+
+/**
+ * สร้างรหัส PIN ใหม่
+ */
+function generateNewPIN() {
+    // ลบค่า PIN เดิม
+    const digitElements = document.querySelectorAll('.pin-digit');
+    digitElements.forEach(element => {
+        element.textContent = '-';
+    });
+
+    // แสดงข้อความกำลังดำเนินการ
+    showNotification('กำลังสร้างรหัส PIN ใหม่...', 'info');
+
+    // เรียกฟังก์ชันสร้าง PIN
+    createPIN();
+}
+
+/**
+ * แสดง Modal และสร้าง PIN
+ */
+function createPIN() {
+    // แสดง Modal สร้าง PIN
+    showModal('pinModal');
+
+    // ส่งคำขอสร้าง PIN ใหม่ไปยัง API
+    fetch('api/create_pin.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                class_id: currentClassId
+            })
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Server response was not OK: ' + response.status);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                // แสดง PIN ใน Modal
+                const pinDigits = document.querySelectorAll('.pin-digit');
+                const pin = data.pin_code.split('');
+                
+                pinDigits.forEach((digit, index) => {
+                    if (index < pin.length) {
+                        digit.textContent = pin[index];
+                    } else {
+                        digit.textContent = '-';
+                    }
+                });
+                
+                // อัพเดทเวลาหมดอายุ
+                const expireTimeElement = document.getElementById('expireTime');
+                if (expireTimeElement) {
+                    expireTimeElement.textContent = data.expire_minutes;
+                }
+                
+                showNotification('สร้างรหัส PIN สำเร็จ', 'success');
+            } else {
+                // แสดงข้อความเมื่อมีข้อผิดพลาด
+                showNotification(data.message || 'เกิดข้อผิดพลาดในการสร้าง PIN', 'error');
+                
+                // แสดง PIN ข้อผิดพลาด
+                const pinDigits = document.querySelectorAll('.pin-digit');
+                pinDigits.forEach(digit => {
+                    digit.textContent = 'E';
+                    digit.style.color = 'red';
+                });
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showNotification('เกิดข้อผิดพลาดในการเชื่อมต่อกับเซิร์ฟเวอร์: ' + error.message, 'error');
+            
+            // แสดง PIN ข้อผิดพลาด
+            const pinDigits = document.querySelectorAll('.pin-digit');
+            pinDigits.forEach(digit => {
+                digit.textContent = 'E';
+                digit.style.color = 'red';
+            });
+        });
+}
+
+
+
+
+
+
+
+
 /**
  * เพิ่มฟังก์ชัน editAttendance ลงในโค้ดแก้ไข
  * ให้ใส่โค้ดนี้เพิ่มเติม ก่อนบรรทัด document.addEventListener('DOMContentLoaded',...) 
