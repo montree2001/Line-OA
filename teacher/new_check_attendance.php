@@ -284,6 +284,7 @@ $current_class['leave_count'] = $leave_count;
 $current_class['absent_count'] = $absent_count;
 $current_class['not_checked'] = $not_checked;
 
+
 // ดึงรายชื่อนักเรียนทั้งหมดพร้อมสถานะการเช็คชื่อ
 $students_query = "SELECT s.student_id, s.student_code, s.title, u.first_name, u.last_name, u.profile_picture,
                   (SELECT COUNT(*) + 1 FROM students WHERE current_class_id = s.current_class_id AND student_code < s.student_code) as number,
@@ -306,6 +307,10 @@ try {
     $checked_students = [];
     
     foreach ($students_result as $student) {
+        // ตรวจสอบว่ามีการเช็คชื่อแล้วหรือไม่โดยดูจาก attendance_id
+        $has_attendance = isset($student['attendance_id']) && $student['attendance_id'] !== null;
+        // แยกตามว่าเช็คชื่อแล้วหรือไม่
+
         // สร้างข้อมูลนักเรียน
         $student_data = [
             'id' => $student['student_id'],
@@ -313,15 +318,15 @@ try {
             'code' => $student['student_code'],
             'name' => $student['title'] . $student['first_name'] . ' ' . $student['last_name'],
             'profile_picture' => $student['profile_picture'],
-            'status' => $student['attendance_status'] ?? 'not_checked',
-            'time_checked' => $student['check_time'] ?? '',
-            'check_method' => $student['check_method'] ?? '',
-            'remarks' => $student['remarks'] ?? '',
+            'status' => $has_attendance ? ($student['attendance_status'] ?? 'not_checked') : 'not_checked',
+            'time_checked' => $has_attendance ? ($student['check_time'] ?? '') : '',
+            'check_method' => $has_attendance ? ($student['check_method'] ?? '') : '',
+            'remarks' => $has_attendance ? ($student['remarks'] ?? '') : '',
             'attendance_id' => $student['attendance_id'] ?? null
         ];
         
-        // แยกตามสถานะ
-        if ($student_data['status'] === 'not_checked') {
+        // แยกตามว่าเช็คชื่อแล้วหรือไม่
+        if (!$has_attendance) {
             $unchecked_students[] = $student_data;
         } else {
             $checked_students[] = $student_data;
@@ -342,7 +347,6 @@ $extra_css = [
 $extra_js = [
     'assets/js/check_ajax.js',
     'assets/js/enhance-search.js',
-    'assets/js/attendance-fix.js',
     'assets/js/retroactive-check.js' // เพิ่มบรรทัดนี้
 ];
 
@@ -376,6 +380,26 @@ document.addEventListener('DOMContentLoaded', function() {
         console.error('ไม่สามารถโหลดไฟล์แก้ไขได้');
     }
 });
+</script>
+
+<script>
+// นิยามฟังก์ชัน changeDate ให้พร้อมใช้งานทันที
+function changeDate(date) {
+    // ใช้ URLSearchParams เพื่อรักษาพารามิเตอร์ URL อื่นๆ
+    const urlParams = new URLSearchParams(window.location.search);
+    urlParams.set('date', date);
+    
+    // รักษาค่า class_id จาก URL ปัจจุบัน (ถ้ามี)
+    const classIdParam = urlParams.get('class_id');
+    const classId = classIdParam || (typeof currentClassId !== 'undefined' ? currentClassId : '');
+    
+    if (classId) {
+        urlParams.set('class_id', classId);
+    }
+    
+    // นำทางไปยัง URL ใหม่
+    window.location.href = `new_check_attendance.php?${urlParams.toString()}`;
+}
 </script>
 
 <script>
@@ -990,8 +1014,6 @@ function createPIN() {
             showNotification('เกิดข้อผิดพลาดในการเชื่อมต่อกับเซิร์ฟเวอร์', 'error');
         });
 }
-
-
 
 // เมื่อโหลดเอกสารเสร็จ
 document.addEventListener('DOMContentLoaded', function() {
