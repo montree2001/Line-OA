@@ -4,46 +4,176 @@ $current_page = 'reports';
 $page_title = 'Teacher-Prasat - รายงานการเข้าแถว';
 $page_header = 'รายงานการเข้าแถว';
 
-// ข้อมูลครูที่ปรึกษา
-$teacher_info = [
-    'name' => 'อาจารย์ใจดี มากเมตตา',
-    'avatar' => 'ค',
-    'role' => 'ครูที่ปรึกษา'
-];
+// เริ่มต้น session และตรวจสอบการล็อกอิน
+session_start();
+if (!isset($_SESSION['user_id']) || ($_SESSION['role'] !== 'teacher' && $_SESSION['role'] !== 'admin')) {
+    header('Location: ../login.php');
+    exit;
+}
 
-// ข้อมูลห้องเรียนที่ครูรับผิดชอบ
-$teacher_classes = [
-    [
-        'id' => 1,
-        'name' => 'ม.6/1',
-        'total_students' => 35,
-        'present_count' => 33,
-        'absent_count' => 2,
-        'attendance_rate' => 94.3,
-        'at_risk_count' => 2
-    ],
-    [
-        'id' => 2,
-        'name' => 'ม.6/2',
-        'total_students' => 32,
-        'present_count' => 30,
-        'absent_count' => 2,
-        'attendance_rate' => 93.8,
-        'at_risk_count' => 3
-    ],
-    [
-        'id' => 3,
-        'name' => 'ม.6/3',
-        'total_students' => 30,
-        'present_count' => 28,
-        'absent_count' => 2,
-        'attendance_rate' => 93.3,
-        'at_risk_count' => 1
-    ]
-];
+// เรียกใช้ไฟล์การเชื่อมต่อฐานข้อมูล
+require_once '../db_connect.php';
+require_once '../lib/functions.php';
+
+// เชื่อมต่อฐานข้อมูล
+try {
+    $db = getDB();
+} catch (Exception $e) {
+    die("การเชื่อมต่อฐานข้อมูลล้มเหลว: " . $e->getMessage());
+}
+
+// ดึงข้อมูลครูที่ปรึกษาจากฐานข้อมูล
+$user_id = $_SESSION['user_id'];
+$teacher_query = "SELECT t.teacher_id, u.first_name, u.last_name, t.title, u.profile_picture, d.department_name 
+                 FROM teachers t 
+                 JOIN users u ON t.user_id = u.user_id 
+                 LEFT JOIN departments d ON t.department_id = d.department_id 
+                 WHERE t.user_id = :user_id";
+
+try {
+    $stmt = $db->prepare($teacher_query);
+    $stmt->bindParam(':user_id', $user_id, PDO::PARAM_INT);
+    $stmt->execute();
+    $teacher_data = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    if (!$teacher_data && $_SESSION['role'] === 'teacher') {
+        die("ไม่พบข้อมูลครู");
+    }
+    
+    // สร้างข้อมูลครูที่ปรึกษา
+    if ($teacher_data) {
+        $teacher_id = $teacher_data['teacher_id'];
+        $teacher_name = $teacher_data['title'] . ' ' . $teacher_data['first_name'] . ' ' . $teacher_data['last_name'];
+        $teacher_info = [
+            'name' => $teacher_name,
+            'avatar' => mb_substr($teacher_data['first_name'], 0, 1, 'UTF-8'),
+            'role' => 'ครูที่ปรึกษา' . ($teacher_data['department_name'] ? ' ' . $teacher_data['department_name'] : ''),
+            'profile_picture' => $teacher_data['profile_picture']
+        ];
+    } else {
+        // กรณีเป็น admin และไม่พบข้อมูลครู ให้ใช้ข้อมูลจากผู้ใช้
+        $user_query = "SELECT first_name, last_name, profile_picture FROM users WHERE user_id = :user_id";
+        $stmt = $db->prepare($user_query);
+        $stmt->bindParam(':user_id', $user_id, PDO::PARAM_INT);
+        $stmt->execute();
+        $user_data = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        $teacher_id = 0; // ใช้ 0 แทนเมื่อเป็น admin
+        $teacher_info = [
+            'name' => $user_data['first_name'] . ' ' . $user_data['last_name'],
+            'avatar' => 'A',
+            'role' => 'ผู้ดูแลระบบ',
+            'profile_picture' => $user_data['profile_picture']
+        ];
+    }
+} catch (Exception $e) {
+    die("เกิดข้อผิดพลาดในการดึงข้อมูลครู: " . $e->getMessage());
+}
+
+// ดึงข้อมูลปีการศึกษาปัจจุบัน
+try {
+    $current_academic_query = "SELECT academic_year_id, year, semester 
+                              FROM academic_years 
+                              WHERE is_active = 1 
+                              LIMIT 1";
+    $stmt = $db->query($current_academic_query);
+    $academic_year = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    if (!$academic_year) {
+        die("ไม่พบข้อมูลปีการศึกษาที่เปิดใช้งาน");
+    }
+    
+    $academic_year_id = $academic_year['academic_year_id'];
+    
+} catch (Exception $e) {
+    die("เกิดข้อผิดพลาดในการดึงข้อมูลปีการศึกษา: " . $e->getMessage());
+}
+
+// ดึงห้องเรียนที่ครูเป็นที่ปรึกษา
+if ($_SESSION['role'] === 'teacher') {
+    $classes_query = "SELECT c.class_id, CONCAT(c.level, '/', d.department_code, '/', c.group_number) AS name, 
+                    c.level, d.department_name, c.group_number,
+                    (SELECT COUNT(*) FROM students WHERE current_class_id = c.class_id AND status = 'กำลังศึกษา') as total_students,
+                    (SELECT COUNT(DISTINCT a.student_id) FROM attendance a 
+                     JOIN students s ON a.student_id = s.student_id 
+                     WHERE s.current_class_id = c.class_id AND a.attendance_status = 'present' 
+                     AND DATE(a.date) = CURDATE()) as present_count,
+                    (SELECT COUNT(DISTINCT a.student_id) FROM attendance a 
+                     JOIN students s ON a.student_id = s.student_id 
+                     WHERE s.current_class_id = c.class_id AND a.attendance_status = 'absent' 
+                     AND DATE(a.date) = CURDATE()) as absent_count,
+                    (SELECT ROUND(COUNT(CASE WHEN a.attendance_status = 'present' THEN 1 END) * 100.0 / 
+                            NULLIF(COUNT(*), 0), 1) 
+                     FROM attendance a 
+                     JOIN students s ON a.student_id = s.student_id 
+                     WHERE s.current_class_id = c.class_id 
+                     AND a.date BETWEEN DATE_SUB(CURDATE(), INTERVAL 30 DAY) AND CURDATE()) as attendance_rate,
+                    (SELECT COUNT(*) FROM students s 
+                     WHERE s.current_class_id = c.class_id AND s.status = 'กำลังศึกษา'
+                     AND (SELECT COUNT(*) FROM attendance a 
+                          WHERE a.student_id = s.student_id AND a.attendance_status = 'absent') >= 5) as at_risk_count
+                    FROM classes c 
+                    JOIN departments d ON c.department_id = d.department_id 
+                    JOIN academic_years ay ON c.academic_year_id = ay.academic_year_id
+                    JOIN class_advisors ca ON c.class_id = ca.class_id
+                    WHERE ca.teacher_id = :teacher_id AND c.is_active = 1 AND ay.is_active = 1
+                    ORDER BY ca.is_primary DESC, c.level, c.group_number";
+
+    try {
+        $stmt = $db->prepare($classes_query);
+        $stmt->bindParam(':teacher_id', $teacher_id, PDO::PARAM_INT);
+        $stmt->execute();
+        $teacher_classes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        if (empty($teacher_classes)) {
+            die("คุณยังไม่ได้รับมอบหมายให้เป็นครูที่ปรึกษาห้องใด");
+        }
+    } catch (Exception $e) {
+        die("เกิดข้อผิดพลาดในการดึงข้อมูลห้องเรียน: " . $e->getMessage());
+    }
+} else {
+    // กรณีเป็น admin ให้ดึงทุกห้องเรียน
+    $classes_query = "SELECT c.class_id, CONCAT(c.level, '/', d.department_code, '/', c.group_number) AS name, 
+                    c.level, d.department_name, c.group_number,
+                    (SELECT COUNT(*) FROM students WHERE current_class_id = c.class_id AND status = 'กำลังศึกษา') as total_students,
+                    (SELECT COUNT(DISTINCT a.student_id) FROM attendance a 
+                     JOIN students s ON a.student_id = s.student_id 
+                     WHERE s.current_class_id = c.class_id AND a.attendance_status = 'present' 
+                     AND DATE(a.date) = CURDATE()) as present_count,
+                    (SELECT COUNT(DISTINCT a.student_id) FROM attendance a 
+                     JOIN students s ON a.student_id = s.student_id 
+                     WHERE s.current_class_id = c.class_id AND a.attendance_status = 'absent' 
+                     AND DATE(a.date) = CURDATE()) as absent_count,
+                    (SELECT ROUND(COUNT(CASE WHEN a.attendance_status = 'present' THEN 1 END) * 100.0 / 
+                            NULLIF(COUNT(*), 0), 1) 
+                     FROM attendance a 
+                     JOIN students s ON a.student_id = s.student_id 
+                     WHERE s.current_class_id = c.class_id 
+                     AND a.date BETWEEN DATE_SUB(CURDATE(), INTERVAL 30 DAY) AND CURDATE()) as attendance_rate,
+                    (SELECT COUNT(*) FROM students s 
+                     WHERE s.current_class_id = c.class_id AND s.status = 'กำลังศึกษา'
+                     AND (SELECT COUNT(*) FROM attendance a 
+                          WHERE a.student_id = s.student_id AND a.attendance_status = 'absent') >= 5) as at_risk_count
+                    FROM classes c 
+                    JOIN departments d ON c.department_id = d.department_id 
+                    JOIN academic_years ay ON c.academic_year_id = ay.academic_year_id
+                    WHERE c.is_active = 1 AND ay.is_active = 1
+                    ORDER BY c.level, d.department_name, c.group_number";
+
+    try {
+        $stmt = $db->query($classes_query);
+        $teacher_classes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        if (empty($teacher_classes)) {
+            die("ไม่พบข้อมูลห้องเรียนในระบบ");
+        }
+    } catch (Exception $e) {
+        die("เกิดข้อผิดพลาดในการดึงข้อมูลห้องเรียน: " . $e->getMessage());
+    }
+}
 
 // ดึงห้องเรียนที่กำลังดูข้อมูล (จาก URL หรือค่าเริ่มต้น)
-$current_class_id = isset($_GET['class_id']) ? intval($_GET['class_id']) : 1;
+$current_class_id = isset($_GET['class_id']) ? intval($_GET['class_id']) : ($teacher_classes[0]['class_id'] ?? 0);
 
 // ดึงข้อมูลเดือนที่กำลังดู (จาก URL หรือค่าเริ่มต้น = เดือนปัจจุบัน)
 $current_month = isset($_GET['month']) ? intval($_GET['month']) : date('n');
@@ -52,136 +182,260 @@ $current_year = isset($_GET['year']) ? intval($_GET['year']) : date('Y');
 // ดึงข้อมูลห้องเรียนปัจจุบัน
 $current_class = null;
 foreach ($teacher_classes as $class) {
-    if ($class['id'] == $current_class_id) {
+    if ($class['class_id'] == $current_class_id) {
         $current_class = $class;
         break;
     }
 }
 
 // ถ้าไม่พบห้องเรียน ให้ใช้ห้องแรก
-if ($current_class === null) {
+if ($current_class === null && !empty($teacher_classes)) {
     $current_class = $teacher_classes[0];
+    $current_class_id = $current_class['class_id'];
 }
 
 // สถิติการเข้าแถว
-$attendance_stats = [
-    'average_rate' => $current_class['attendance_rate'],
-    'problem_count' => $current_class['at_risk_count'],
-    'school_days' => 23
-];
+try {
+    $stats_query = "SELECT 
+                   COALESCE(ROUND(AVG(CASE WHEN a.attendance_status = 'present' THEN 100 ELSE 0 END), 1), 0) as average_rate,
+                   (SELECT COUNT(*) FROM students s 
+                    WHERE s.current_class_id = :class_id AND s.status = 'กำลังศึกษา'
+                    AND (SELECT COUNT(*) FROM attendance a 
+                         WHERE a.student_id = s.student_id AND a.attendance_status = 'absent') >= 5) as problem_count,
+                   (SELECT COUNT(DISTINCT date) FROM attendance 
+                    WHERE MONTH(date) = :month AND YEAR(date) = :year) as school_days
+                   FROM attendance a
+                   JOIN students s ON a.student_id = s.student_id
+                   WHERE s.current_class_id = :class_id
+                   AND MONTH(a.date) = :month AND YEAR(a.date) = :year";
+    
+    $stmt = $db->prepare($stats_query);
+    $stmt->bindParam(':class_id', $current_class_id, PDO::PARAM_INT);
+    $stmt->bindParam(':month', $current_month, PDO::PARAM_INT);
+    $stmt->bindParam(':year', $current_year, PDO::PARAM_INT);
+    $stmt->execute();
+    $attendance_stats = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    // ถ้าไม่มีข้อมูล ให้ใช้ค่าเริ่มต้น
+    if (!$attendance_stats) {
+        $attendance_stats = [
+            'average_rate' => $current_class['attendance_rate'] ?? 0,
+            'problem_count' => $current_class['at_risk_count'] ?? 0,
+            'school_days' => 0
+        ];
+    }
+} catch (Exception $e) {
+    // กรณีเกิดข้อผิดพลาด ให้ใช้ค่าเริ่มต้น
+    $attendance_stats = [
+        'average_rate' => $current_class['attendance_rate'] ?? 0,
+        'problem_count' => $current_class['at_risk_count'] ?? 0,
+        'school_days' => 0
+    ];
+    error_log("Error fetching attendance stats: " . $e->getMessage());
+}
 
-// ข้อมูลการเข้าแถวรายวัน (ตัวอย่าง 7 วันล่าสุด)
-$daily_attendance = [
-    ['day' => 'จันทร์', 'date' => '16 มี.ค.', 'percentage' => 95.2],
-    ['day' => 'อังคาร', 'date' => '17 มี.ค.', 'percentage' => 96.1],
-    ['day' => 'พุธ', 'date' => '18 มี.ค.', 'percentage' => 93.8],
-    ['day' => 'พฤหัสบดี', 'date' => '19 มี.ค.', 'percentage' => 92.7],
-    ['day' => 'ศุกร์', 'date' => '20 มี.ค.', 'percentage' => 91.5],
-    ['day' => 'จันทร์', 'date' => '23 มี.ค.', 'percentage' => 98.1],
-    ['day' => 'อังคาร', 'date' => '24 มี.ค.', 'percentage' => 95.0]
-];
+// ข้อมูลการเข้าแถวรายวัน (7 วันล่าสุด)
+try {
+    $daily_query = "SELECT 
+                   DATE_FORMAT(a.date, '%a') as day,
+                   DATE_FORMAT(a.date, '%d %b') as date,
+                   ROUND(SUM(CASE WHEN a.attendance_status = 'present' THEN 1 ELSE 0 END) * 100.0 / 
+                         COUNT(DISTINCT a.student_id), 1) as percentage
+                   FROM attendance a
+                   JOIN students s ON a.student_id = s.student_id
+                   WHERE s.current_class_id = :class_id
+                   AND a.date BETWEEN DATE_SUB(CURDATE(), INTERVAL 6 DAY) AND CURDATE()
+                   GROUP BY a.date
+                   ORDER BY a.date DESC
+                   LIMIT 7";
+    
+    $stmt = $db->prepare($daily_query);
+    $stmt->bindParam(':class_id', $current_class_id, PDO::PARAM_INT);
+    $stmt->execute();
+    $daily_attendance = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    // แปลงชื่อวันเป็นภาษาไทย
+    $day_map = [
+        'Mon' => 'จันทร์',
+        'Tue' => 'อังคาร',
+        'Wed' => 'พุธ',
+        'Thu' => 'พฤหัสบดี',
+        'Fri' => 'ศุกร์',
+        'Sat' => 'เสาร์',
+        'Sun' => 'อาทิตย์',
+    ];
+    
+    foreach ($daily_attendance as &$day) {
+        $day['day'] = $day_map[$day['day']] ?? $day['day'];
+    }
+    
+    // ถ้าไม่มีข้อมูล ให้สร้างข้อมูลจำลอง
+    if (empty($daily_attendance)) {
+        $daily_attendance = [];
+        for ($i = 0; $i < 7; $i++) {
+            $date = date('Y-m-d', strtotime("-$i days"));
+            $day_name = date('D', strtotime($date));
+            $daily_attendance[] = [
+                'day' => $day_map[$day_name] ?? $day_name,
+                'date' => date('d M', strtotime($date)),
+                'percentage' => 0
+            ];
+        }
+    }
+} catch (Exception $e) {
+    // กรณีเกิดข้อผิดพลาด ให้สร้างข้อมูลจำลอง
+    $daily_attendance = [];
+    for ($i = 0; $i < 7; $i++) {
+        $date = date('Y-m-d', strtotime("-$i days"));
+        $day_name = date('D', strtotime($date));
+        $daily_attendance[] = [
+            'day' => $day_map[$day_name] ?? $day_name,
+            'date' => date('d M', strtotime($date)),
+            'percentage' => 0
+        ];
+    }
+    error_log("Error fetching daily attendance: " . $e->getMessage());
+}
 
 // ข้อมูลการเข้าแถวรายเดือน
-$monthly_attendance = [
-    ['month' => 'มกราคม', 'value' => 1, 'percentage' => 93.5],
-    ['month' => 'กุมภาพันธ์', 'value' => 2, 'percentage' => 94.2],
-    ['month' => 'มีนาคม', 'value' => 3, 'percentage' => 95.0],
-    ['month' => 'เมษายน', 'value' => 4, 'percentage' => 0], // ยังไม่มีข้อมูล
-    ['month' => 'พฤษภาคม', 'value' => 5, 'percentage' => 0], // ยังไม่มีข้อมูล
-    ['month' => 'มิถุนายน', 'value' => 6, 'percentage' => 0], // ยังไม่มีข้อมูล
-    ['month' => 'กรกฎาคม', 'value' => 7, 'percentage' => 0], // ยังไม่มีข้อมูล
-    ['month' => 'สิงหาคม', 'value' => 8, 'percentage' => 0], // ยังไม่มีข้อมูล
-    ['month' => 'กันยายน', 'value' => 9, 'percentage' => 0], // ยังไม่มีข้อมูล
-    ['month' => 'ตุลาคม', 'value' => 10, 'percentage' => 0], // ยังไม่มีข้อมูล
-    ['month' => 'พฤศจิกายน', 'value' => 11, 'percentage' => 0], // ยังไม่มีข้อมูล
-    ['month' => 'ธันวาคม', 'value' => 12, 'percentage' => 92.8]
-];
+try {
+    // สร้างตารางชื่อเดือนภาษาไทย
+    $months_query = "SELECT 1 as `value`, 'มกราคม' as month 
+                    UNION SELECT 2, 'กุมภาพันธ์' 
+                    UNION SELECT 3, 'มีนาคม' 
+                    UNION SELECT 4, 'เมษายน' 
+                    UNION SELECT 5, 'พฤษภาคม' 
+                    UNION SELECT 6, 'มิถุนายน' 
+                    UNION SELECT 7, 'กรกฎาคม' 
+                    UNION SELECT 8, 'สิงหาคม' 
+                    UNION SELECT 9, 'กันยายน' 
+                    UNION SELECT 10, 'ตุลาคม' 
+                    UNION SELECT 11, 'พฤศจิกายน' 
+                    UNION SELECT 12, 'ธันวาคม'";
+    
+    $stmt = $db->query($months_query);
+    $months = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    // ดึงข้อมูลการเข้าแถวรายเดือน
+    $monthly_query = "SELECT 
+                     MONTH(a.date) as `value`,
+                     ROUND(SUM(CASE WHEN a.attendance_status = 'present' THEN 1 ELSE 0 END) * 100.0 / 
+                           COUNT(DISTINCT a.student_id), 1) as percentage
+                     FROM attendance a
+                     JOIN students s ON a.student_id = s.student_id
+                     WHERE s.current_class_id = :class_id
+                     AND YEAR(a.date) = :year
+                     GROUP BY MONTH(a.date)";
+    
+    $stmt = $db->prepare($monthly_query);
+    $stmt->bindParam(':class_id', $current_class_id, PDO::PARAM_INT);
+    $stmt->bindParam(':year', $current_year, PDO::PARAM_INT);
+    $stmt->execute();
+    $monthly_data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    // รวมข้อมูลเดือนและสถิติ
+    $monthly_attendance = [];
+    foreach ($months as $month) {
+        $month_value = $month['value'];
+        $percentage = 0;
+        
+        // หาข้อมูลเดือนที่ตรงกัน
+        foreach ($monthly_data as $data) {
+            if ($data['value'] == $month_value) {
+                $percentage = $data['percentage'];
+                break;
+            }
+        }
+        
+        $monthly_attendance[] = [
+            'month' => $month['month'],
+            'value' => $month_value,
+            'percentage' => $percentage
+        ];
+    }
+} catch (Exception $e) {
+    // กรณีเกิดข้อผิดพลาด ให้สร้างข้อมูลจำลอง
+    $monthly_attendance = [
+        ['month' => 'มกราคม', 'value' => 1, 'percentage' => 0],
+        ['month' => 'กุมภาพันธ์', 'value' => 2, 'percentage' => 0],
+        ['month' => 'มีนาคม', 'value' => 3, 'percentage' => 0],
+        ['month' => 'เมษายน', 'value' => 4, 'percentage' => 0],
+        ['month' => 'พฤษภาคม', 'value' => 5, 'percentage' => 0],
+        ['month' => 'มิถุนายน', 'value' => 6, 'percentage' => 0],
+        ['month' => 'กรกฎาคม', 'value' => 7, 'percentage' => 0],
+        ['month' => 'สิงหาคม', 'value' => 8, 'percentage' => 0],
+        ['month' => 'กันยายน', 'value' => 9, 'percentage' => 0],
+        ['month' => 'ตุลาคม', 'value' => 10, 'percentage' => 0],
+        ['month' => 'พฤศจิกายน', 'value' => 11, 'percentage' => 0],
+        ['month' => 'ธันวาคม', 'value' => 12, 'percentage' => 0]
+    ];
+    error_log("Error fetching monthly attendance: " . $e->getMessage());
+}
 
 // ข้อมูลนักเรียนในห้องเรียนที่เลือก
-$students = [
-    [
-        'id' => 1,
-        'number' => 1,
-        'name' => 'นายเอกชัย รักเรียน',
-        'attendance_days' => '23/23',
-        'percentage' => 100,
-        'status' => 'good'
-    ],
-    [
-        'id' => 2,
-        'number' => 2,
-        'name' => 'นางสาวสมศรี ใจดี',
-        'attendance_days' => '23/23',
-        'percentage' => 100,
-        'status' => 'good'
-    ],
-    [
-        'id' => 3,
-        'number' => 3,
-        'name' => 'นายสมชาย เรียนดี',
-        'attendance_days' => '21/23',
-        'percentage' => 91.3,
-        'status' => 'good'
-    ],
-    [
-        'id' => 4,
-        'number' => 4,
-        'name' => 'นางสาวพิมพ์ใจ ร่าเริง',
-        'attendance_days' => '18/23',
-        'percentage' => 78.3,
-        'status' => 'warning'
-    ],
-    [
-        'id' => 5,
-        'number' => 5,
-        'name' => 'นายสุชาติ รักษาสัตย์',
-        'attendance_days' => '22/23',
-        'percentage' => 95.7,
-        'status' => 'good'
-    ],
-    [
-        'id' => 6,
-        'number' => 6,
-        'name' => 'นางสาววันเพ็ญ แสนสุข',
-        'attendance_days' => '23/23',
-        'percentage' => 100,
-        'status' => 'good'
-    ],
-    [
-        'id' => 7,
-        'number' => 7,
-        'name' => 'นายธันวา มั่นคง',
-        'attendance_days' => '20/23',
-        'percentage' => 87.0,
-        'status' => 'good'
-    ],
-    [
-        'id' => 8,
-        'number' => 8,
-        'name' => 'นายขวัญใจ นารี',
-        'attendance_days' => '16/23',
-        'percentage' => 69.6,
-        'status' => 'danger'
-    ],
-    [
-        'id' => 9,
-        'number' => 9,
-        'name' => 'นางสาวน้ำใส ไหลเย็น',
-        'attendance_days' => '22/23',
-        'percentage' => 95.7,
-        'status' => 'good'
-    ],
-    [
-        'id' => 10,
-        'number' => 10,
-        'name' => 'นายรุ่งโรจน์ สดใส',
-        'attendance_days' => '21/23',
-        'percentage' => 91.3,
-        'status' => 'good'
-    ],
-];
+try {
+    $students_query = "SELECT 
+                      s.student_id,
+                      (SELECT COUNT(*) + 1 
+                       FROM students 
+                       WHERE current_class_id = s.current_class_id AND student_code < s.student_code) as number,
+                      CONCAT(COALESCE(s.title, ''), u.first_name, ' ', u.last_name) as name,
+                      s.student_code, u.profile_picture,
+                      (SELECT CONCAT(SUM(CASE WHEN a.attendance_status IN ('present', 'late') THEN 1 ELSE 0 END), '/', 
+                                    COUNT(DISTINCT a.date))
+                       FROM attendance a 
+                       WHERE a.student_id = s.student_id 
+                       AND MONTH(a.date) = :month 
+                       AND YEAR(a.date) = :year) as attendance_days,
+                      (SELECT ROUND(SUM(CASE WHEN a.attendance_status IN ('present', 'late') THEN 1 ELSE 0 END) * 100.0 / 
+                                  NULLIF(COUNT(DISTINCT a.date), 0), 1)
+                       FROM attendance a 
+                       WHERE a.student_id = s.student_id 
+                       AND MONTH(a.date) = :month 
+                       AND YEAR(a.date) = :year) as percentage
+                      FROM students s
+                      JOIN users u ON s.user_id = u.user_id
+                      WHERE s.current_class_id = :class_id
+                      AND s.status = 'กำลังศึกษา'
+                      ORDER BY s.student_code";
+    
+    $stmt = $db->prepare($students_query);
+    $stmt->bindParam(':class_id', $current_class_id, PDO::PARAM_INT);
+    $stmt->bindParam(':month', $current_month, PDO::PARAM_INT);
+    $stmt->bindParam(':year', $current_year, PDO::PARAM_INT);
+    $stmt->execute();
+    $students_data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    // แปลงข้อมูลให้อยู่ในรูปแบบที่ต้องการ
+    $students = [];
+    foreach ($students_data as $student) {
+        $percentage = $student['percentage'] ?? 0;
+        
+        // กำหนดสถานะตามเปอร์เซ็นต์
+        if ($percentage >= 80) {
+            $status = 'good';
+        } elseif ($percentage >= 70) {
+            $status = 'warning';
+        } else {
+            $status = 'danger';
+        }
+        
+        $students[] = [
+            'id' => $student['student_id'],
+            'number' => $student['number'],
+            'name' => $student['name'],
+            'attendance_days' => $student['attendance_days'] ?? '0/0',
+            'percentage' => $percentage,
+            'status' => $status
+        ];
+    }
+} catch (Exception $e) {
+    // กรณีเกิดข้อผิดพลาด ให้สร้างข้อมูลจำลอง
+    $students = [];
+    error_log("Error fetching students: " . $e->getMessage());
+}
 
-// ข้อมูลปฏิทินการเข้าแถว (สมมติ มีนาคม 2025)
+// ข้อมูลปฏิทินการเข้าแถว
 $calendar_data = [];
 $days_in_month = cal_days_in_month(CAL_GREGORIAN, $current_month, $current_year);
 $first_day = date('N', strtotime("$current_year-$current_month-01"));
@@ -196,6 +450,44 @@ if ($prev_month < 1) {
 $days_in_prev_month = cal_days_in_month(CAL_GREGORIAN, $prev_month, $prev_year);
 $start_day = $days_in_prev_month - $first_day + 2;
 
+// ดึงข้อมูลการเข้าแถวในเดือนที่เลือก
+try {
+    $calendar_query = "SELECT 
+                      a.date,
+                      COUNT(CASE WHEN a.attendance_status = 'present' THEN 1 END) as present_count,
+                      COUNT(CASE WHEN a.attendance_status = 'absent' THEN 1 END) as absent_count,
+                      COUNT(DISTINCT a.student_id) as total_count
+                      FROM attendance a
+                      JOIN students s ON a.student_id = s.student_id
+                      WHERE s.current_class_id = :class_id
+                      AND MONTH(a.date) = :month
+                      AND YEAR(a.date) = :year
+                      GROUP BY a.date";
+    
+    $stmt = $db->prepare($calendar_query);
+    $stmt->bindParam(':class_id', $current_class_id, PDO::PARAM_INT);
+    $stmt->bindParam(':month', $current_month, PDO::PARAM_INT);
+    $stmt->bindParam(':year', $current_year, PDO::PARAM_INT);
+    $stmt->execute();
+    $calendar_data_db = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    // สร้างตัวแปรสำหรับเก็บข้อมูลแยกตามวันที่
+    $attendance_by_date = [];
+    foreach ($calendar_data_db as $data) {
+        $date = $data['date'];
+        $day = (int)date('j', strtotime($date));
+        $attendance_by_date[$day] = [
+            'present' => $data['present_count'],
+            'absent' => $data['absent_count'],
+            'total' => $data['total_count'],
+            'percentage' => $data['total_count'] > 0 ? round(($data['present_count'] / $data['total_count']) * 100, 1) : 0
+        ];
+    }
+} catch (Exception $e) {
+    $attendance_by_date = [];
+    error_log("Error fetching calendar data: " . $e->getMessage());
+}
+
 // สร้างข้อมูลวันที่ก่อนหน้าเดือนปัจจุบัน
 for ($i = 0; $i < $first_day - 1; $i++) {
     $calendar_data[] = [
@@ -205,7 +497,7 @@ for ($i = 0; $i < $first_day - 1; $i++) {
         'current_month' => false,
         'present' => 0,
         'absent' => 0,
-        'total' => $current_class['total_students'],
+        'total' => $current_class['total_students'] ?? 0,
         'percentage' => 0,
         'is_school_day' => false
     ];
@@ -219,14 +511,18 @@ for ($day = 1; $day <= $days_in_month; $day++) {
     // สมมติว่าวันเสาร์-อาทิตย์ไม่ใช่วันเรียน
     $is_school_day = ($day_of_week < 6);
     
-    // สุ่มข้อมูลการเช็คชื่อสำหรับวันเรียน
-    if ($is_school_day) {
-        $present = rand(round($current_class['total_students'] * 0.85), $current_class['total_students']);
-        $absent = $current_class['total_students'] - $present;
-        $percentage = round(($present / $current_class['total_students']) * 100, 1);
+    // ดึงข้อมูลการเช็คชื่อสำหรับวันนี้ (ถ้ามี)
+    $attendance = $attendance_by_date[$day] ?? null;
+    
+    if ($attendance) {
+        $present = $attendance['present'];
+        $absent = $attendance['absent'];
+        $total = $attendance['total'];
+        $percentage = $attendance['percentage'];
     } else {
         $present = 0;
         $absent = 0;
+        $total = $current_class['total_students'] ?? 0;
         $percentage = 0;
     }
     
@@ -237,7 +533,7 @@ for ($day = 1; $day <= $days_in_month; $day++) {
         'current_month' => true,
         'present' => $present,
         'absent' => $absent,
-        'total' => $current_class['total_students'],
+        'total' => $total,
         'percentage' => $percentage,
         'is_school_day' => $is_school_day
     ];
@@ -260,7 +556,7 @@ for ($day = 1; $day <= $remaining_days; $day++) {
         'current_month' => false,
         'present' => 0,
         'absent' => 0,
-        'total' => $current_class['total_students'],
+        'total' => $current_class['total_students'] ?? 0,
         'percentage' => 0,
         'is_school_day' => false
     ];

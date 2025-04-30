@@ -2,6 +2,72 @@
  * teacher-reports.css - สไตล์เฉพาะสำหรับหน้ารายงานของ Teacher-Prasat
  */
 
+/* สไตล์ทั่วไป */
+:root {
+    --primary-color: #1976d2;
+    --primary-color-dark: #0d47a1;
+    --primary-color-light: #bbdefb;
+    --success-color: #4caf50;
+    --success-color-light: #c8e6c9;
+    --warning-color: #ff9800;
+    --warning-color-light: #ffe0b2;
+    --danger-color: #f44336;
+    --danger-color-light: #ffcdd2;
+    --text-dark: #212121;
+    --text-light: #757575;
+    --border-color: #e0e0e0;
+    --card-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+body {
+    font-family: 'Prompt', sans-serif;
+    background-color: #f5f5f5;
+    color: var(--text-dark);
+    line-height: 1.5;
+}
+
+.container {
+    padding: 15px;
+    margin-bottom: 80px; /* เพิ่มระยะห่างด้านล่างเพื่อรองรับ footer */
+}
+
+/* Header */
+.header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 15px;
+    background-color: white;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.header h1 {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 500;
+}
+
+.header-icon {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    border-radius: 50%;
+    color: var(--text-dark);
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.header-icon:hover {
+    background-color: rgba(0,0,0,0.05);
+}
+
 /* ตัวเลือกห้องเรียน */
 .class-selector {
     background-color: white;
@@ -35,6 +101,93 @@
 .class-selector select:focus {
     border-color: var(--primary-color);
     box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.2);
+}
+
+/* ข้อมูลชั้นเรียน */
+.class-info {
+    background-color: white;
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 15px;
+    box-shadow: var(--card-shadow);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.class-details h2 {
+    margin: 0 0 5px 0;
+    font-size: 18px;
+    font-weight: 500;
+}
+
+.class-details p {
+    margin: 0;
+    color: var(--text-light);
+}
+
+.date-select {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.date-select label {
+    font-weight: 500;
+}
+
+.date-select select {
+    padding: 8px 12px;
+    border: 1px solid #e0e0e0;
+    border-radius: 5px;
+    font-family: 'Prompt', sans-serif;
+    outline: none;
+    background-color: #f5f5f5;
+    cursor: pointer;
+}
+
+/* สถิติการเข้าแถว */
+.stats-container {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+.stat-card {
+    background-color: white;
+    border-radius: 10px;
+    padding: 15px;
+    box-shadow: var(--card-shadow);
+    text-align: center;
+    border-top: 3px solid transparent;
+}
+
+.stat-card.blue {
+    border-top-color: #2196f3;
+}
+
+.stat-card.green {
+    border-top-color: #4caf50;
+}
+
+.stat-card.red {
+    border-top-color: #f44336;
+}
+
+.stat-card.amber {
+    border-top-color: #ffc107;
+}
+
+.stat-value {
+    font-size: 24px;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.stat-label {
+    color: var(--text-light);
+    font-size: 14px;
 }
 
 /* ตารางสรุปเปอร์เซ็นต์การเข้าแถว */
@@ -780,85 +933,28 @@
     color: var(--danger-color);
 }
 
-/* Alert Container */
-.alert-container {
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    z-index: 1001;
-    max-width: 300px;
+/* การแจ้งเตือน */
+.loading {
+    text-align: center;
+    padding: 20px;
+    color: var(--text-light);
 }
 
-.alert {
-    background-color: white;
-    border-radius: 5px;
-    padding: 15px;
-    margin-bottom: 10px;
-    box-shadow: 0 3px 6px rgba(0,0,0,0.16);
-    display: flex;
-    align-items: flex-start;
-}
-
-.alert.success {
-    border-left: 4px solid var(--success-color);
-}
-
-.alert.info {
-    border-left: 4px solid var(--primary-color);
-}
-
-.alert.warning {
-    border-left: 4px solid var(--warning-color);
-}
-
-.alert.error {
-    border-left: 4px solid var(--danger-color);
-}
-
-.alert-icon {
-    margin-right: 10px;
-}
-
-.alert-icon .material-icons {
-    font-size: 20px;
-}
-
-.alert.success .alert-icon .material-icons {
-    color: var(--success-color);
-}
-
-.alert.info .alert-icon .material-icons {
-    color: var(--primary-color);
-}
-
-.alert.warning .alert-icon .material-icons {
-    color: var(--warning-color);
-}
-
-.alert.error .alert-icon .material-icons {
+.error {
+    text-align: center;
+    padding: 20px;
     color: var(--danger-color);
 }
 
-.alert-content {
-    flex: 1;
-    margin-right: 10px;
-}
-
-.alert-message {
-    font-size: 14px;
-}
-
-.alert-close {
-    background: none;
-    border: none;
-    color: #999;
-    font-size: 20px;
-    cursor: pointer;
+.loading-message {
+    text-align: center;
+    color: var(--text-light);
+    font-style: italic;
 }
 
 /* Responsive Design */
 @media (max-width: 768px) {
-    .class-selector, .control-bar {
+    .class-selector, .control-bar, .class-info {
         flex-direction: column;
         align-items: flex-start;
         gap: 10px;
