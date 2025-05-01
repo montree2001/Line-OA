@@ -2,7 +2,9 @@
  * teacher-reports.css - สไตล์เฉพาะสำหรับหน้ารายงานของ Teacher-Prasat
  */
 
+
 /* สไตล์ทั่วไป */
+
 :root {
     --primary-color: #1976d2;
     --primary-color-dark: #0d47a1;
@@ -16,7 +18,7 @@
     --text-dark: #212121;
     --text-light: #757575;
     --border-color: #e0e0e0;
-    --card-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    --card-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 body {
@@ -28,17 +30,20 @@ body {
 
 .container {
     padding: 15px;
-    margin-bottom: 80px; /* เพิ่มระยะห่างด้านล่างเพื่อรองรับ footer */
+    margin-bottom: 80px;
+    /* เพิ่มระยะห่างด้านล่างเพื่อรองรับ footer */
 }
 
+
 /* Header */
+
 .header {
     display: flex;
     align-items: center;
     justify-content: space-between;
     padding: 15px;
     background-color: white;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     position: sticky;
     top: 0;
     z-index: 100;
@@ -65,10 +70,12 @@ body {
 }
 
 .header-icon:hover {
-    background-color: rgba(0,0,0,0.05);
+    background-color: rgba(0, 0, 0, 0.05);
 }
 
+
 /* ตัวเลือกห้องเรียน */
+
 .class-selector {
     background-color: white;
     border-radius: 10px;
@@ -103,7 +110,9 @@ body {
     box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.2);
 }
 
+
 /* ข้อมูลชั้นเรียน */
+
 .class-info {
     background-color: white;
     border-radius: 10px;
@@ -146,7 +155,9 @@ body {
     cursor: pointer;
 }
 
+
 /* สถิติการเข้าแถว */
+
 .stats-container {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
@@ -190,7 +201,9 @@ body {
     font-size: 14px;
 }
 
+
 /* ตารางสรุปเปอร์เซ็นต์การเข้าแถว */
+
 .chart-card {
     background-color: white;
     border-radius: 10px;
@@ -199,14 +212,18 @@ body {
     box-shadow: var(--card-shadow);
 }
 
-.chart-header, .graph-header, .calendar-header {
+.chart-header,
+.graph-header,
+.calendar-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: 20px;
 }
 
-.chart-title, .graph-title, .calendar-title {
+.chart-title,
+.graph-title,
+.calendar-title {
     font-size: 18px;
     font-weight: bold;
 }
@@ -285,7 +302,9 @@ body {
     background-color: #e0e0e0;
 }
 
+
 /* แถบควบคุม */
+
 .control-bar {
     background-color: white;
     border-radius: 10px;
@@ -337,7 +356,9 @@ body {
     margin-right: 5px;
 }
 
+
 /* แท็บเมนู */
+
 .tab-menu {
     background-color: white;
     border-radius: 10px;
@@ -362,7 +383,9 @@ body {
     border-bottom-color: var(--primary-color);
 }
 
+
 /* ตารางรายชื่อนักเรียน */
+
 .student-table-card {
     background-color: white;
     border-radius: 10px;
@@ -475,7 +498,9 @@ body {
     color: var(--text-light);
 }
 
+
 /* กราฟรายละเอียดนักเรียน */
+
 .graph-card {
     background-color: white;
     border-radius: 10px;
@@ -585,7 +610,9 @@ body {
     background-color: var(--danger-color-light);
 }
 
+
 /* ปฏิทินการเข้าแถว */
+
 .calendar-card {
     background-color: white;
     border-radius: 10px;
@@ -639,7 +666,7 @@ body {
     aspect-ratio: 1/1;
     border-radius: 10px;
     background-color: white;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
     padding: 10px;
     display: flex;
     flex-direction: column;
@@ -691,7 +718,9 @@ body {
     color: var(--danger-color);
 }
 
+
 /* Modal แจ้งเตือนผู้ปกครอง */
+
 .modal {
     display: none;
     position: fixed;
@@ -699,7 +728,7 @@ body {
     left: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(0,0,0,0.5);
+    background-color: rgba(0, 0, 0, 0.5);
     z-index: 1000;
     align-items: center;
     justify-content: center;
@@ -715,7 +744,7 @@ body {
     padding: 20px;
     width: 90%;
     max-width: 500px;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
     position: relative;
     max-height: 90vh;
     overflow-y: auto;
@@ -831,14 +860,18 @@ body {
     background-color: #e0e0e0;
 }
 
+
 /* รายละเอียดนักเรียน ใน modal */
-.student-profile, .parent-profile {
+
+.student-profile,
+.parent-profile {
     display: flex;
     align-items: center;
     margin-bottom: 20px;
 }
 
-.student-avatar, .parent-avatar {
+.student-avatar,
+.parent-avatar {
     width: 60px;
     height: 60px;
     border-radius: 50%;
@@ -852,17 +885,20 @@ body {
     margin-right: 15px;
 }
 
-.student-info, .parent-info {
+.student-info,
+.parent-info {
     flex: 1;
 }
 
-.student-name, .parent-name {
+.student-name,
+.parent-name {
     font-size: 18px;
     font-weight: bold;
     margin-bottom: 5px;
 }
 
-.student-info p, .parent-info p {
+.student-info p,
+.parent-info p {
     font-size: 14px;
     color: var(--text-light);
     margin-bottom: 3px;
@@ -908,7 +944,8 @@ body {
     border-collapse: collapse;
 }
 
-.history-table th, .history-table td {
+.history-table th,
+.history-table td {
     padding: 8px 12px;
     border-bottom: 1px solid #eee;
     font-size: 14px;
@@ -933,7 +970,9 @@ body {
     color: var(--danger-color);
 }
 
+
 /* การแจ้งเตือน */
+
 .loading {
     text-align: center;
     padding: 20px;
@@ -952,53 +991,47 @@ body {
     font-style: italic;
 }
 
+
 /* Responsive Design */
+
 @media (max-width: 768px) {
-    .class-selector, .control-bar, .class-info {
+    .class-selector,
+    .control-bar,
+    .class-info {
         flex-direction: column;
         align-items: flex-start;
         gap: 10px;
     }
-    
     .control-actions {
         width: 100%;
         justify-content: space-between;
     }
-    
     .date-select {
         width: 100%;
     }
-    
     .stats-container {
         grid-template-columns: repeat(2, 1fr);
     }
-    
     .chart-controls {
         flex-direction: column;
     }
-    
     .search-bar {
         width: 100%;
     }
-    
     .student-table th:nth-child(3),
     .student-table td:nth-child(3) {
         display: none;
     }
-    
     .calendar-grid {
         gap: 5px;
     }
-    
     .calendar-day {
         padding: 5px;
     }
-    
     .attendance-summary {
         font-size: 10px;
         gap: 2px;
     }
-    
     .radio-options {
         flex-direction: column;
     }
@@ -1008,35 +1041,362 @@ body {
     .stats-container {
         grid-template-columns: 1fr;
     }
-    
     .chart-bars {
         gap: 8px;
     }
-    
     .search-bar {
         max-width: 100%;
     }
-    
     .calendar-grid {
         gap: 3px;
     }
-    
     .calendar-day-header {
         font-size: 12px;
     }
-    
     .attendance-summary {
         display: none;
     }
-    
     .student-bar-label {
         width: 100px;
         font-size: 12px;
     }
-    
     .chart-legend {
         flex-direction: column;
         align-items: flex-start;
         gap: 10px;
+    }
+    /* CSS สำหรับการแสดงผลแบบ Responsive */
+    /* ปรับขนาดตารางสำหรับมือถือ */
+    @media (max-width: 768px) {
+        .student-table {
+            font-size: 14px;
+        }
+        .student-table th,
+        .student-table td {
+            padding: 8px 10px;
+        }
+        /* ซ่อนคอลัมน์ที่ไม่จำเป็นบนมือถือ */
+        .student-table th:nth-child(3),
+        .student-table td:nth-child(3) {
+            display: none;
+        }
+        /* ลดขนาดคอลัมน์ action */
+        .student-table th:last-child,
+        .student-table td:last-child {
+            width: 60px;
+            padding-left: 5px;
+            padding-right: 5px;
+        }
+        .action-buttons {
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        /* ปรับขนาดปุ่มให้ใหญ่ขึ้นเพื่อง่ายต่อการกด */
+        .action-button {
+            width: 36px;
+            height: 36px;
+            margin-bottom: 4px;
+        }
+        /* ปรับปรุง search bar */
+        .search-bar {
+            width: 100%;
+        }
+    }
+    /* สำหรับหน้าจอขนาดเล็กมาก */
+    @media (max-width: 480px) {
+        /* เปลี่ยนเป็นแสดงผลแบบการ์ด */
+        .student-table thead {
+            display: none;
+        }
+        .student-table,
+        .student-table tbody,
+        .student-table tr {
+            display: block;
+            width: 100%;
+        }
+        .student-table tr {
+            margin-bottom: 15px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            background-color: white;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        .student-table td {
+            display: flex;
+            padding: 10px 15px;
+            border-bottom: 1px solid #f0f0f0;
+            text-align: left;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .student-table td:before {
+            content: attr(data-label);
+            font-weight: bold;
+            margin-right: 10px;
+            min-width: 40%;
+            max-width: 40%;
+        }
+        .student-table td:last-child {
+            border-bottom: none;
+        }
+        /* ปรับขนาดปุ่มใหญ่ขึ้นบนมือถือ */
+        .action-button {
+            width: 40px;
+            height: 40px;
+        }
+        /* แสดงคอลัมน์ที่ซ่อนเมื่อเปลี่ยนเป็นแบบการ์ด */
+        .student-table td:nth-child(3) {
+            display: flex;
+        }
+    }
+    /* ปรับปรุง Modal สำหรับมือถือ */
+    @media (max-width: 768px) {
+        .modal-content {
+            width: 95%;
+            max-width: 100%;
+            max-height: 85vh;
+        }
+        .student-profile,
+        .parent-profile {
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+        .student-avatar,
+        .parent-avatar {
+            margin-right: 0;
+            margin-bottom: 10px;
+        }
+        .history-table {
+            font-size: 13px;
+        }
+        .history-table th,
+        .history-table td {
+            padding: 6px 8px;
+        }
+    }
+    /* CSS เพิ่มเติมสำหรับการแสดงรายงาน */
+    /* สไตล์สำหรับหัวข้อเซ็กชั่น */
+    .section-title {
+        margin-top: 25px;
+        margin-bottom: 15px;
+        font-size: 18px;
+        font-weight: 600;
+        color: #1976d2;
+        border-bottom: 2px solid #e0e0e0;
+        padding-bottom: 8px;
+    }
+    /* สไตล์สำหรับข้อมูลผู้ปกครอง */
+    #parent-detail-section {
+        background-color: #f8f9fa;
+        border-radius: 8px;
+        padding: 15px;
+        margin-top: 20px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+    .parent-profile {
+        display: flex;
+        align-items: center;
+    }
+    .parent-avatar {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        background-color: #bbdefb;
+        color: #1976d2;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+        font-weight: bold;
+        margin-right: 15px;
+        flex-shrink: 0;
+    }
+    .parent-info {
+        flex: 1;
+    }
+    .parent-name {
+        font-size: 18px;
+        font-weight: 600;
+        margin: 0 0 5px 0;
+        color: #212121;
+    }
+    .parent-info p {
+        margin: 0 0 5px 0;
+        color: #757575;
+        font-size: 14px;
+    }
+    /* ปรับแต่งประวัติการเข้าแถว */
+    .attendance-history {
+        margin-top: 15px;
+    }
+    .attendance-history h4 {
+        font-size: 16px;
+        font-weight: 600;
+        margin-bottom: 10px;
+        color: #1976d2;
+    }
+    .history-table {
+        width: 100%;
+        border-collapse: collapse;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        border-radius: 4px;
+        overflow: hidden;
+    }
+    .history-table th {
+        background-color: #f5f5f5;
+        color: #616161;
+        font-weight: 600;
+        text-align: left;
+        padding: 10px 12px;
+        border-bottom: 2px solid #e0e0e0;
+    }
+    .history-table td {
+        padding: 10px 12px;
+        border-bottom: 1px solid #f0f0f0;
+        vertical-align: middle;
+    }
+    .history-table tr:last-child td {
+        border-bottom: none;
+    }
+    .history-table tr:hover {
+        background-color: #f9f9f9;
+    }
+    /* สถานะการเข้าแถว */
+    .status {
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-weight: 500;
+        display: inline-block;
+        text-align: center;
+    }
+    .status.present {
+        background-color: #e8f5e9;
+        color: #4caf50;
+    }
+    .status.late {
+        background-color: #fff8e1;
+        color: #ff9800;
+    }
+    .status.leave {
+        background-color: #e3f2fd;
+        color: #2196f3;
+    }
+    .status.absent {
+        background-color: #ffebee;
+        color: #f44336;
+    }
+    /* สไตล์สำหรับข้อความแจ้งเตือน */
+    .no-data-message {
+        text-align: center;
+        padding: 20px;
+        background-color: #f5f5f5;
+        border-radius: 4px;
+        color: #757575;
+        font-style: italic;
+    }
+    .loading {
+        text-align: center;
+        padding: 20px;
+        color: #757575;
+    }
+    .loading:after {
+        content: '';
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        border: 2px solid #bbdefb;
+        border-radius: 50%;
+        border-top-color: #1976d2;
+        animation: spin 1s ease-in-out infinite;
+        margin-left: 10px;
+        vertical-align: middle;
+    }
+    @keyframes spin {
+        to {
+            transform: rotate(360deg);
+        }
+    }
+    .error {
+        padding: 15px;
+        color: #f44336;
+        background-color: #ffebee;
+        border-radius: 4px;
+        text-align: center;
+    }
+    /* ปรับแต่งปุ่มในโมดัล */
+    .modal-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        margin-top: 20px;
+    }
+    .modal-button {
+        padding: 10px 15px;
+        border-radius: 4px;
+        border: none;
+        font-weight: 500;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        transition: all 0.3s;
+    }
+    .modal-button.secondary {
+        background-color: #f5f5f5;
+        color: #616161;
+    }
+    .modal-button.secondary:hover {
+        background-color: #e0e0e0;
+    }
+    .modal-button.primary {
+        background-color: #1976d2;
+        color: white;
+    }
+    .modal-button.primary:hover {
+        background-color: #1565c0;
+    }
+    .modal-button .material-icons {
+        font-size: 18px;
+    }
+    /* ปรับแต่งความสวยงามทั่วไป */
+    .student-profile {
+        margin-bottom: 20px;
+        border-bottom: 1px solid #f0f0f0;
+        padding-bottom: 20px;
+    }
+    .student-avatar {
+        background-color: #e3f2fd;
+        color: #1976d2;
+        border: 2px solid #bbdefb;
+    }
+    .attendance-stats {
+        background-color: #f5f5f5;
+        border-radius: 8px;
+        padding: 15px;
+    }
+    /* ปรับแต่งการ์ดสำหรับ Responsive */
+    @media (max-width: 480px) {
+        .student-card {
+            background-color: white;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            margin-bottom: 15px;
+        }
+        .student-name {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+        .student-details {
+            color: #757575;
+            font-size: 14px;
+        }
+        .action-buttons {
+            margin-top: 10px;
+            justify-content: flex-end;
+        }
     }
 }

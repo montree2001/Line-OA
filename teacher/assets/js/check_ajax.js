@@ -86,33 +86,29 @@ function setupTabSystem() {
  * แสดง/ซ่อนช่องหมายเหตุตามสถานะ
  */
 function setupRemarkField() {
-    const statusInputs = document.querySelectorAll('input[name="attendanceStatus"]');
-    const remarksContainer = document.getElementById('remarksContainer');
+    // ค้นหา input สำหรับหมายเหตุ
+    const remarkFields = document.querySelectorAll('textarea[name="remarks"], input[name="remarks"], #attendanceRemarks, .remarks-field');
 
-    if (statusInputs.length > 0 && remarksContainer) {
-        statusInputs.forEach(input => {
-            input.addEventListener('change', function() {
-                const status = this.value;
+    if (remarkFields.length === 0) {
+        console.log('ไม่พบฟิลด์หมายเหตุที่จะตั้งค่า');
+        return;
+    }
 
-                // แสดงช่องหมายเหตุเฉพาะเมื่อเลือกสถานะมาสายหรือลา
-                if (status === 'late' || status === 'leave') {
-                    remarksContainer.style.display = 'block';
-                } else {
-                    remarksContainer.style.display = 'none';
-                }
-            });
+    remarkFields.forEach(field => {
+        // เพิ่ม event listener สำหรับการเปลี่ยนแปลงค่า
+        field.addEventListener('input', function() {
+            // บันทึกค่าล่าสุดใน localStorage
+            localStorage.setItem('lastRemarkText', this.value);
         });
 
-        // ตรวจสอบค่าเริ่มต้น
-        const checkedStatus = document.querySelector('input[name="attendanceStatus"]:checked');
-        if (checkedStatus) {
-            if (checkedStatus.value === 'late' || checkedStatus.value === 'leave') {
-                remarksContainer.style.display = 'block';
-            } else {
-                remarksContainer.style.display = 'none';
-            }
+        // โหลดค่าล่าสุดจาก localStorage (ถ้ามี)
+        const lastRemark = localStorage.getItem('lastRemarkText');
+        if (lastRemark) {
+            field.value = lastRemark;
         }
-    }
+
+        console.log('ตั้งค่าฟิลด์หมายเหตุเรียบร้อยแล้ว');
+    });
 }
 
 /**
@@ -180,7 +176,7 @@ function changeDate(date) {
 function searchStudents() {
     const searchInput = document.getElementById('searchInput');
     if (!searchInput) return;
-    
+
     const searchTerm = searchInput.value.toLowerCase().trim();
 
     // ค้นหาในทั้งสองแท็บ
@@ -202,20 +198,20 @@ function searchInTab(tabId, searchTerm) {
     studentCards.forEach(card => {
         // ค้นหาจากหลายแหล่งข้อมูล
         const name = card.getAttribute('data-name') || '';
-        
+
         // ค้นหาจากชื่อใน .student-name (กรณีที่ data-name ไม่มี)
         const nameElement = card.querySelector('.student-name');
         const nameText = nameElement ? nameElement.textContent.toLowerCase() : '';
-        
+
         // ค้นหาจากรหัสนักเรียน
         const codeElement = card.querySelector('.student-code');
         const codeText = codeElement ? codeElement.textContent.toLowerCase() : '';
-        
+
         // ค้นหาจากเลขที่นักเรียน
         const numberElement = card.querySelector('.student-number');
         const numberText = numberElement ? numberElement.textContent.toLowerCase() : '';
 
-        if (searchTerm === '' || 
+        if (searchTerm === '' ||
             name.toLowerCase().includes(searchTerm) ||
             nameText.includes(searchTerm) ||
             codeText.includes(searchTerm) ||
@@ -235,12 +231,12 @@ function searchInTab(tabId, searchTerm) {
 function showEmptyMessage(tabId, searchTerm) {
     const tab = document.getElementById(tabId);
     if (!tab || tab.style.display === 'none') return;
-    
+
     // นับจำนวนการ์ดที่แสดงอยู่
     const visibleCards = Array.from(tab.querySelectorAll('.student-card')).filter(
         card => card.style.display !== 'none'
     );
-    
+
     // ถ้าไม่พบการ์ดใดๆ ที่ตรงกับการค้นหา
     if (visibleCards.length === 0) {
         // ซ่อน student-list (ถ้ามี)
@@ -248,7 +244,7 @@ function showEmptyMessage(tabId, searchTerm) {
         if (studentList) {
             studentList.style.display = 'none';
         }
-        
+
         // สร้างข้อความว่าง
         const emptyMessage = document.createElement('div');
         emptyMessage.className = 'empty-state empty-search-result';
@@ -257,7 +253,7 @@ function showEmptyMessage(tabId, searchTerm) {
             <h3>ไม่พบนักเรียนที่ค้นหา</h3>
             <p>ไม่พบข้อมูลที่ตรงกับ "<span class="search-term">${searchTerm}</span>"</p>
         `;
-        
+
         // เพิ่มข้อความว่างเข้าไปในแท็บ
         tab.appendChild(emptyMessage);
     }

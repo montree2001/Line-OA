@@ -72,14 +72,14 @@
                 </button>
             </div>
         </div>
-        
+
         <div class="chart-container">
             <div class="chart-bars">
                 <?php foreach ($daily_attendance as $day): ?>
-                <div class="chart-bar" style="height: <?php echo $day['percentage']; ?>%">
-                    <div class="chart-bar-value"><?php echo $day['percentage']; ?>%</div>
-                    <div class="chart-bar-label"><?php echo $day['day']; ?><br><?php echo $day['date']; ?></div>
-                </div>
+                    <div class="chart-bar" style="height: <?php echo $day['percentage']; ?>%">
+                        <div class="chart-bar-value"><?php echo $day['percentage']; ?>%</div>
+                        <div class="chart-bar-label"><?php echo $day['day']; ?><br><?php echo $day['date']; ?></div>
+                    </div>
                 <?php endforeach; ?>
             </div>
             <div class="chart-x-axis"></div>
@@ -93,9 +93,7 @@
             <button class="control-button" onclick="downloadReport()">
                 <span class="material-icons">file_download</span> ดาวน์โหลดรายงาน
             </button>
-            <button class="control-button orange" onclick="notifyParents()">
-                <span class="material-icons">notification_important</span> แจ้งเตือนผู้ปกครอง
-            </button>
+            <!-- ลบปุ่ม "แจ้งเตือนผู้ปกครอง" ตามที่ต้องการ -->
         </div>
     </div>
 
@@ -108,52 +106,52 @@
 
     <!-- ตารางรายชื่อนักเรียน -->
     <div class="student-table-card" id="table-view">
-        <div class="table-header">
-            <div class="table-title">รายชื่อนักเรียน</div>
-            <div class="search-bar">
-                <span class="material-icons">search</span>
-                <input type="text" placeholder="ค้นหานักเรียน..." id="student-search" onkeyup="searchStudents()">
-            </div>
+    <div class="table-header">
+        <div class="table-title">รายชื่อนักเรียน</div>
+        <div class="search-bar">
+            <span class="material-icons">search</span>
+            <input type="text" placeholder="ค้นหานักเรียน..." id="student-search" onkeyup="searchStudents()">
         </div>
-        
-        <table class="student-table">
-            <thead>
-                <tr>
-                    <th>เลขที่</th>
-                    <th>ชื่อ-นามสกุล</th>
-                    <th>จำนวนวันเข้าแถว</th>
-                    <th>อัตราการเข้าแถว</th>
-                    <th>จัดการ</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php if (empty($students)): ?>
-                <tr>
-                    <td colspan="5" style="text-align: center;">ไม่พบข้อมูลนักเรียน</td>
-                </tr>
-                <?php else: ?>
-                <?php foreach ($students as $student): ?>
-                <tr>
-                    <td><?php echo $student['number']; ?></td>
-                    <td><?php echo $student['name']; ?></td>
-                    <td><?php echo $student['attendance_days']; ?></td>
-                    <td><span class="attendance-percent <?php echo $student['status']; ?>"><?php echo $student['percentage']; ?>%</span></td>
-                    <td>
-                        <div class="action-buttons">
-                            <button class="action-button" title="ดูรายละเอียด" onclick="viewStudentDetail(<?php echo $student['id']; ?>)">
-                                <span class="material-icons">visibility</span>
-                            </button>
-                            <button class="action-button" title="ส่งข้อความถึงผู้ปกครอง" onclick="contactParent(<?php echo $student['id']; ?>)">
-                                <span class="material-icons">mail</span>
-                            </button>
-                        </div>
-                    </td>
-                </tr>
-                <?php endforeach; ?>
-                <?php endif; ?>
-            </tbody>
-        </table>
     </div>
+    
+    <table class="student-table">
+        <thead>
+            <tr>
+                <th>เลขที่</th>
+                <th>ชื่อ-นามสกุล</th>
+                <th>จำนวนวันเข้าแถว</th>
+                <th>อัตราการเข้าแถว</th>
+                <th>จัดการ</th>
+            </tr>
+        </thead>
+        <tbody>
+            <?php if (empty($students)): ?>
+            <tr>
+                <td colspan="5" style="text-align: center;">ไม่พบข้อมูลนักเรียน</td>
+            </tr>
+            <?php else: ?>
+            <?php foreach ($students as $student): ?>
+            <tr>
+                <td data-label="เลขที่"><?php echo $student['number']; ?></td>
+                <td data-label="ชื่อ-นามสกุล"><?php echo $student['name']; ?></td>
+                <td data-label="จำนวนวันเข้าแถว"><?php echo $student['attendance_days']; ?></td>
+                <td data-label="อัตราการเข้าแถว"><span class="attendance-percent <?php echo $student['status']; ?>"><?php echo $student['percentage']; ?>%</span></td>
+                <td data-label="จัดการ">
+                    <div class="action-buttons">
+                        <button class="action-button" title="ดูรายละเอียด" onclick="viewStudentDetail(<?php echo $student['id']; ?>)">
+                            <span class="material-icons">visibility</span>
+                        </button>
+                        <button class="action-button" title="ส่งข้อความถึงผู้ปกครอง" onclick="contactParent(<?php echo $student['id']; ?>)">
+                            <span class="material-icons">mail</span>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+            <?php endforeach; ?>
+            <?php endif; ?>
+        </tbody>
+    </table>
+</div>
 
     <!-- แสดงเป็นกราฟ -->
     <div class="graph-card" id="graph-view" style="display: none;">
@@ -168,29 +166,29 @@
                 </button>
             </div>
         </div>
-        
+
         <div class="graph-container">
             <div class="student-bars">
-                <?php 
+                <?php
                 $count = 0;
-                foreach ($students as $student): 
+                foreach ($students as $student):
                     if ($count < 10): // แสดงเฉพาะ 10 คนแรก
                         $count++;
                 ?>
-                <div class="student-bar-container">
-                    <div class="student-bar-label"><?php echo $student['number']; ?>. <?php echo substr($student['name'], 0, 15); ?></div>
-                    <div class="student-bar-chart">
-                        <div class="student-bar <?php echo $student['status']; ?>" style="width: <?php echo $student['percentage']; ?>%">
-                            <span class="student-bar-value"><?php echo $student['percentage']; ?>%</span>
+                        <div class="student-bar-container">
+                            <div class="student-bar-label"><?php echo $student['number']; ?>. <?php echo substr($student['name'], 0, 15); ?></div>
+                            <div class="student-bar-chart">
+                                <div class="student-bar <?php echo $student['status']; ?>" style="width: <?php echo $student['percentage']; ?>%">
+                                    <span class="student-bar-value"><?php echo $student['percentage']; ?>%</span>
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                </div>
-                <?php 
+                <?php
                     endif;
-                endforeach; 
+                endforeach;
                 ?>
             </div>
-            
+
             <div class="chart-legend">
                 <div class="legend-item">
                     <div class="legend-color good"></div>
@@ -217,14 +215,22 @@
                     <span class="material-icons">chevron_left</span>
                 </button>
                 <span class="calendar-month">
-                    <?php 
+                    <?php
                     $month_names = [
-                        1 => 'มกราคม', 2 => 'กุมภาพันธ์', 3 => 'มีนาคม', 
-                        4 => 'เมษายน', 5 => 'พฤษภาคม', 6 => 'มิถุนายน', 
-                        7 => 'กรกฎาคม', 8 => 'สิงหาคม', 9 => 'กันยายน', 
-                        10 => 'ตุลาคม', 11 => 'พฤศจิกายน', 12 => 'ธันวาคม'
+                        1 => 'มกราคม',
+                        2 => 'กุมภาพันธ์',
+                        3 => 'มีนาคม',
+                        4 => 'เมษายน',
+                        5 => 'พฤษภาคม',
+                        6 => 'มิถุนายน',
+                        7 => 'กรกฎาคม',
+                        8 => 'สิงหาคม',
+                        9 => 'กันยายน',
+                        10 => 'ตุลาคม',
+                        11 => 'พฤศจิกายน',
+                        12 => 'ธันวาคม'
                     ];
-                    echo $month_names[$current_month] . ' ' . ($current_year + 543); 
+                    echo $month_names[$current_month] . ' ' . ($current_year + 543);
                     ?>
                 </span>
                 <button class="nav-button" onclick="nextMonth()">
@@ -232,7 +238,7 @@
                 </button>
             </div>
         </div>
-        
+
         <div class="calendar-grid">
             <!-- วันในสัปดาห์ -->
             <div class="calendar-day-header">จ</div>
@@ -242,32 +248,32 @@
             <div class="calendar-day-header">ศ</div>
             <div class="calendar-day-header">ส</div>
             <div class="calendar-day-header">อา</div>
-            
+
             <!-- วันในเดือน -->
             <?php foreach ($calendar_data as $day): ?>
-            <div class="calendar-day <?php echo (!$day['current_month']) ? 'inactive' : ''; ?> <?php echo (date('j') == $day['day'] && date('n') == $day['month'] && date('Y') == $day['year']) ? 'today' : ''; ?>">
-                <div class="calendar-day-number"><?php echo $day['day']; ?></div>
-                <?php if ($day['is_school_day'] && $day['current_month']): ?>
-                <div class="attendance-summary">
-                    <div class="attendance-row">
-                        <span class="attendance-label">มา:</span>
-                        <span class="attendance-value good"><?php echo $day['present']; ?></span>
-                    </div>
-                    <div class="attendance-row">
-                        <span class="attendance-label">ขาด:</span>
-                        <span class="attendance-value <?php echo ($day['absent'] > 0) ? 'danger' : ''; ?>"><?php echo $day['absent']; ?></span>
-                    </div>
-                    <div class="attendance-row">
-                        <span class="attendance-label">อัตรา:</span>
-                        <span class="attendance-value <?php 
-                            if ($day['percentage'] >= 90) echo 'good';
-                            else if ($day['percentage'] >= 80) echo 'warning';
-                            else echo 'danger';
-                        ?>"><?php echo $day['percentage']; ?>%</span>
-                    </div>
+                <div class="calendar-day <?php echo (!$day['current_month']) ? 'inactive' : ''; ?> <?php echo (date('j') == $day['day'] && date('n') == $day['month'] && date('Y') == $day['year']) ? 'today' : ''; ?>">
+                    <div class="calendar-day-number"><?php echo $day['day']; ?></div>
+                    <?php if ($day['is_school_day'] && $day['current_month']): ?>
+                        <div class="attendance-summary">
+                            <div class="attendance-row">
+                                <span class="attendance-label">มา:</span>
+                                <span class="attendance-value good"><?php echo $day['present']; ?></span>
+                            </div>
+                            <div class="attendance-row">
+                                <span class="attendance-label">ขาด:</span>
+                                <span class="attendance-value <?php echo ($day['absent'] > 0) ? 'danger' : ''; ?>"><?php echo $day['absent']; ?></span>
+                            </div>
+                            <div class="attendance-row">
+                                <span class="attendance-label">อัตรา:</span>
+                                <span class="attendance-value <?php
+                                                                if ($day['percentage'] >= 90) echo 'good';
+                                                                else if ($day['percentage'] >= 80) echo 'warning';
+                                                                else echo 'danger';
+                                                                ?>"><?php echo $day['percentage']; ?>%</span>
+                            </div>
+                        </div>
+                    <?php endif; ?>
                 </div>
-                <?php endif; ?>
-            </div>
             <?php endforeach; ?>
         </div>
     </div>
@@ -280,7 +286,7 @@
             <span class="material-icons">close</span>
         </button>
         <h2 class="modal-title">แจ้งเตือนผู้ปกครอง</h2>
-        
+
         <div class="notification-options">
             <div class="option-group">
                 <label class="option-label">เลือกประเภทการแจ้งเตือน:</label>
@@ -295,13 +301,13 @@
                     </label>
                 </div>
             </div>
-            
+
             <div class="option-group">
                 <label class="option-label">ข้อความแจ้งเตือน:</label>
                 <textarea id="message-text" rows="5" placeholder="ระบุข้อความที่ต้องการแจ้งเตือนไปยังผู้ปกครอง..." class="message-textarea">เรียนท่านผู้ปกครอง โรงเรียนขอแจ้งข้อมูลการเข้าแถวของนักเรียนในเดือนนี้ กรุณาตรวจสอบสถิติการเข้าแถวของนักเรียนในความปกครองของท่าน</textarea>
             </div>
         </div>
-        
+
         <div class="modal-actions">
             <button class="modal-button cancel" onclick="closeModal('notify-parents-modal')">ยกเลิก</button>
             <button class="modal-button primary" onclick="sendNotification()">ส่งการแจ้งเตือน</button>
@@ -319,37 +325,19 @@
         
         <div id="student-detail-content">
             <!-- จะถูกเติมด้วย JS เมื่อเรียกใช้ -->
-            <div class="student-profile">
-                <div class="student-avatar">ส</div>
-                <div class="student-info">
-                    <h3 class="student-name">นักเรียนตัวอย่าง</h3>
-                    <p>โหลดข้อมูล...</p>
-                </div>
-            </div>
-            
-            <div class="attendance-stats">
-                <div class="stat-item">
-                    <span class="stat-label">วันเข้าแถวทั้งหมด:</span>
-                    <span class="stat-value">โหลดข้อมูล...</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">อัตราการเข้าแถว:</span>
-                    <span class="stat-value good">โหลดข้อมูล...</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">ขาดล่าสุด:</span>
-                    <span class="stat-value">โหลดข้อมูล...</span>
-                </div>
-            </div>
-            
-            <div class="attendance-history">
-                <h4>ประวัติการเข้าแถว</h4>
-                <p class="loading-message">กำลังโหลดข้อมูล...</p>
+            <div class="loading">กำลังโหลดข้อมูล...</div>
+        </div>
+        
+        <!-- แสดงข้อมูลผู้ปกครอง -->
+        <div id="parent-detail-section" style="display: none;">
+            <h3 class="section-title">ข้อมูลผู้ปกครอง</h3>
+            <div id="parent-detail-content">
+                <!-- จะถูกเติมด้วย JS เมื่อเรียกใช้ -->
             </div>
         </div>
         
         <div class="modal-actions">
-            <button class="modal-button secondary" onclick="contactStudentParent()">
+            <button class="modal-button secondary" onclick="contactStudentParent()" id="contactParentBtn" style="display: none;">
                 <span class="material-icons">mail</span> ติดต่อผู้ปกครอง
             </button>
             <button class="modal-button primary" onclick="printStudentReport()">
@@ -358,7 +346,6 @@
         </div>
     </div>
 </div>
-
 <!-- Modal ติดต่อผู้ปกครอง -->
 <div class="modal" id="contact-parent-modal">
     <div class="modal-content">
@@ -366,7 +353,7 @@
             <span class="material-icons">close</span>
         </button>
         <h2 class="modal-title">ติดต่อผู้ปกครอง</h2>
-        
+
         <div id="parent-detail">
             <div class="parent-profile">
                 <div class="parent-avatar">ผ</div>
@@ -375,13 +362,13 @@
                     <p>โหลดข้อมูล...</p>
                 </div>
             </div>
-            
+
             <div class="message-form">
                 <label class="option-label">ข้อความถึงผู้ปกครอง:</label>
                 <textarea id="parent-message" rows="5" placeholder="ระบุข้อความที่ต้องการส่งถึงผู้ปกครอง..." class="message-textarea">เรียนท่านผู้ปกครอง ขอแจ้งข้อมูลการเข้าแถวของนักเรียนในความปกครองของท่าน...</textarea>
             </div>
         </div>
-        
+
         <div class="modal-actions">
             <button class="modal-button cancel" onclick="closeModal('contact-parent-modal')">ยกเลิก</button>
             <button class="modal-button primary" onclick="sendParentMessage()">ส่งข้อความ</button>
@@ -390,68 +377,75 @@
 </div>
 
 <script type="text/javascript">
-// เพิ่มสคริปต์เพื่อรองรับการทำงานกับฐานข้อมูลจริง
-document.addEventListener('DOMContentLoaded', function() {
-    // เริ่มต้นระบบแท็บ
-    initTabMenu();
-    
-    // เพิ่มฟังก์ชันดูรายละเอียดนักเรียน
-    window.viewStudentDetail = function(studentId) {
-        // แสดง Modal
-        const modal = document.getElementById('student-detail-modal');
-        if (modal) {
-            modal.classList.add('active');
-            document.body.style.overflow = 'hidden';
-        }
-        
-        // ดึงข้อมูลนักเรียน (จะถูกเพิ่มเมื่อมีการเชื่อมต่อกับ API)
-        const detailContent = document.getElementById('student-detail-content');
-        if (detailContent) {
-            detailContent.innerHTML = '<div class="loading">กำลังโหลดข้อมูล...</div>';
-            
-            // ในระบบจริงจะดึงข้อมูลจาก API
-            setTimeout(() => {
-                // จำลองการดึงข้อมูล
-                const studentInfo = findStudentById(studentId);
-                if (studentInfo) {
-                    updateStudentDetailModal(studentInfo);
-                } else {
-                    detailContent.innerHTML = '<div class="error">ไม่พบข้อมูลนักเรียน</div>';
-                }
-            }, 500);
-        }
-    };
-    
-    // ฟังก์ชันค้นหานักเรียนจาก ID
-    function findStudentById(studentId) {
-        // หาจากตาราง
-        const rows = document.querySelectorAll('.student-table tbody tr');
-        for (let row of rows) {
-            const viewButton = row.querySelector('.action-button[onclick*="viewStudentDetail"]');
-            if (viewButton) {
-                const idInOnclick = viewButton.getAttribute('onclick').match(/\d+/)[0];
-                if (parseInt(idInOnclick) === studentId) {
-                    // ดึงข้อมูลจากแถว
-                    const name = row.cells[1].textContent;
-                    const number = row.cells[0].textContent;
-                    const attendance = row.cells[2].textContent;
-                    const percentage = row.cells[3].querySelector('.attendance-percent').textContent;
-                    const status = row.cells[3].querySelector('.attendance-percent').className.replace('attendance-percent ', '');
-                    
-                    return { id: studentId, name, number, attendance, percentage, status };
+    // เพิ่มสคริปต์เพื่อรองรับการทำงานกับฐานข้อมูลจริง
+    document.addEventListener('DOMContentLoaded', function() {
+        // เริ่มต้นระบบแท็บ
+        initTabMenu();
+
+        // เพิ่มฟังก์ชันดูรายละเอียดนักเรียน
+        window.viewStudentDetail = function(studentId) {
+            // แสดง Modal
+            const modal = document.getElementById('student-detail-modal');
+            if (modal) {
+                modal.classList.add('active');
+                document.body.style.overflow = 'hidden';
+            }
+
+            // ดึงข้อมูลนักเรียน (จะถูกเพิ่มเมื่อมีการเชื่อมต่อกับ API)
+            const detailContent = document.getElementById('student-detail-content');
+            if (detailContent) {
+                detailContent.innerHTML = '<div class="loading">กำลังโหลดข้อมูล...</div>';
+
+                // ในระบบจริงจะดึงข้อมูลจาก API
+                setTimeout(() => {
+                    // จำลองการดึงข้อมูล
+                    const studentInfo = findStudentById(studentId);
+                    if (studentInfo) {
+                        updateStudentDetailModal(studentInfo);
+                    } else {
+                        detailContent.innerHTML = '<div class="error">ไม่พบข้อมูลนักเรียน</div>';
+                    }
+                }, 500);
+            }
+        };
+
+        // ฟังก์ชันค้นหานักเรียนจาก ID
+        function findStudentById(studentId) {
+            // หาจากตาราง
+            const rows = document.querySelectorAll('.student-table tbody tr');
+            for (let row of rows) {
+                const viewButton = row.querySelector('.action-button[onclick*="viewStudentDetail"]');
+                if (viewButton) {
+                    const idInOnclick = viewButton.getAttribute('onclick').match(/\d+/)[0];
+                    if (parseInt(idInOnclick) === studentId) {
+                        // ดึงข้อมูลจากแถว
+                        const name = row.cells[1].textContent;
+                        const number = row.cells[0].textContent;
+                        const attendance = row.cells[2].textContent;
+                        const percentage = row.cells[3].querySelector('.attendance-percent').textContent;
+                        const status = row.cells[3].querySelector('.attendance-percent').className.replace('attendance-percent ', '');
+
+                        return {
+                            id: studentId,
+                            name,
+                            number,
+                            attendance,
+                            percentage,
+                            status
+                        };
+                    }
                 }
             }
+            return null;
         }
-        return null;
-    }
-    
-    // ฟังก์ชันอัพเดต Modal รายละเอียดนักเรียน
-    function updateStudentDetailModal(student) {
-        const detailContent = document.getElementById('student-detail-content');
-        if (!detailContent) return;
-        
-        // สร้าง HTML สำหรับ Modal
-        let html = `
+
+        // ฟังก์ชันอัพเดต Modal รายละเอียดนักเรียน
+        function updateStudentDetailModal(student) {
+            const detailContent = document.getElementById('student-detail-content');
+            if (!detailContent) return;
+
+            // สร้าง HTML สำหรับ Modal
+            let html = `
             <div class="student-profile">
                 <div class="student-avatar">${student.name.charAt(0)}</div>
                 <div class="student-info">
@@ -477,69 +471,69 @@ document.addEventListener('DOMContentLoaded', function() {
                 <p>กรุณาอัพเดตระบบเพื่อแสดงข้อมูลในส่วนนี้</p>
             </div>
         `;
-        
-        detailContent.innerHTML = html;
-    }
-});
 
-// ฟังก์ชันสำหรับระบบแท็บ
-function initTabMenu() {
-    // เริ่มต้นแสดงแท็บแรก
-    switchTab('table');
-    
-    // เพิ่ม Event Listener ให้กับปุ่มแท็บ
-    const tabButtons = document.querySelectorAll('.tab-button');
-    tabButtons.forEach(button => {
-        button.addEventListener('click', function() {
-            const tabName = this.textContent.toLowerCase().includes('รายการ') ? 'table' : 
-                            this.textContent.toLowerCase().includes('กราฟ') ? 'graph' : 'calendar';
-            switchTab(tabName);
+            detailContent.innerHTML = html;
+        }
+    });
+
+    // ฟังก์ชันสำหรับระบบแท็บ
+    function initTabMenu() {
+        // เริ่มต้นแสดงแท็บแรก
+        switchTab('table');
+
+        // เพิ่ม Event Listener ให้กับปุ่มแท็บ
+        const tabButtons = document.querySelectorAll('.tab-button');
+        tabButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const tabName = this.textContent.toLowerCase().includes('รายการ') ? 'table' :
+                    this.textContent.toLowerCase().includes('กราฟ') ? 'graph' : 'calendar';
+                switchTab(tabName);
+            });
         });
-    });
-}
-
-// ฟังก์ชันเปลี่ยนแท็บที่แสดง
-function switchTab(tabName) {
-    // ซ่อนทุกแท็บ
-    const tableView = document.getElementById('table-view');
-    const graphView = document.getElementById('graph-view');
-    const calendarView = document.getElementById('calendar-view');
-    
-    if (tableView) tableView.style.display = 'none';
-    if (graphView) graphView.style.display = 'none';
-    if (calendarView) calendarView.style.display = 'none';
-    
-    // แสดงแท็บที่เลือก
-    if (tabName === 'table' && tableView) {
-        tableView.style.display = 'block';
-    } else if (tabName === 'graph' && graphView) {
-        graphView.style.display = 'block';
-    } else if (tabName === 'calendar' && calendarView) {
-        calendarView.style.display = 'block';
     }
-    
-    // อัพเดทปุ่มแท็บ
-    const tabButtons = document.querySelectorAll('.tab-button');
-    tabButtons.forEach(button => {
-        button.classList.remove('active');
-    });
-    
-    // เพิ่มคลาส active ให้กับปุ่มที่เลือก
-    const selectedButton = document.querySelector(`.tab-button:nth-child(${
+
+    // ฟังก์ชันเปลี่ยนแท็บที่แสดง
+    function switchTab(tabName) {
+        // ซ่อนทุกแท็บ
+        const tableView = document.getElementById('table-view');
+        const graphView = document.getElementById('graph-view');
+        const calendarView = document.getElementById('calendar-view');
+
+        if (tableView) tableView.style.display = 'none';
+        if (graphView) graphView.style.display = 'none';
+        if (calendarView) calendarView.style.display = 'none';
+
+        // แสดงแท็บที่เลือก
+        if (tabName === 'table' && tableView) {
+            tableView.style.display = 'block';
+        } else if (tabName === 'graph' && graphView) {
+            graphView.style.display = 'block';
+        } else if (tabName === 'calendar' && calendarView) {
+            calendarView.style.display = 'block';
+        }
+
+        // อัพเดทปุ่มแท็บ
+        const tabButtons = document.querySelectorAll('.tab-button');
+        tabButtons.forEach(button => {
+            button.classList.remove('active');
+        });
+
+        // เพิ่มคลาส active ให้กับปุ่มที่เลือก
+        const selectedButton = document.querySelector(`.tab-button:nth-child(${
         tabName === 'table' ? 1 : tabName === 'graph' ? 2 : 3
     })`);
-    
-    if (selectedButton) {
-        selectedButton.classList.add('active');
-    }
-}
 
-// ฟังก์ชันปิด Modal
-function closeModal(modalId) {
-    const modal = document.getElementById(modalId);
-    if (modal) {
-        modal.classList.remove('active');
-        document.body.style.overflow = '';
+        if (selectedButton) {
+            selectedButton.classList.add('active');
+        }
     }
-}
+
+    // ฟังก์ชันปิด Modal
+    function closeModal(modalId) {
+        const modal = document.getElementById(modalId);
+        if (modal) {
+            modal.classList.remove('active');
+            document.body.style.overflow = '';
+        }
+    }
 </script>

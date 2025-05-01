@@ -14,7 +14,7 @@ document.addEventListener('DOMContentLoaded', function() {
 function initReportsPage() {
     // เริ่มต้นแท็บเมนู
     initTabMenu();
-    
+
     // เพิ่ม Event Listener สำหรับค้นหานักเรียน
     const searchInput = document.getElementById('student-search');
     if (searchInput) {
@@ -39,11 +39,11 @@ function switchTab(tabName) {
     const tableView = document.getElementById('table-view');
     const graphView = document.getElementById('graph-view');
     const calendarView = document.getElementById('calendar-view');
-    
+
     if (tableView) tableView.style.display = 'none';
     if (graphView) graphView.style.display = 'none';
     if (calendarView) calendarView.style.display = 'none';
-    
+
     // แสดงแท็บที่เลือก
     if (tabName === 'table' && tableView) {
         tableView.style.display = 'block';
@@ -52,18 +52,18 @@ function switchTab(tabName) {
     } else if (tabName === 'calendar' && calendarView) {
         calendarView.style.display = 'block';
     }
-    
+
     // อัพเดทปุ่มแท็บ
     const tabButtons = document.querySelectorAll('.tab-button');
     tabButtons.forEach(button => {
         button.classList.remove('active');
     });
-    
+
     // เพิ่มคลาส active ให้กับปุ่มที่เลือก
     const selectedButton = document.querySelector(`.tab-button:nth-child(${
         tabName === 'table' ? 1 : tabName === 'graph' ? 2 : 3
     })`);
-    
+
     if (selectedButton) {
         selectedButton.classList.add('active');
     }
@@ -77,15 +77,15 @@ function changeClass(classId) {
     // ดึงเดือนปัจจุบัน
     const monthSelect = document.getElementById('month-select');
     const currentMonth = monthSelect ? monthSelect.value : '';
-    
+
     // สร้าง URL สำหรับการนำทาง
     let url = 'reports.php?class_id=' + classId;
-    
+
     // เพิ่มพารามิเตอร์เดือนถ้ามี
     if (currentMonth) {
         url += '&month=' + currentMonth;
     }
-    
+
     // นำทางไปยัง URL ใหม่
     window.location.href = url;
 }
@@ -96,14 +96,14 @@ function changeClass(classId) {
 function changeMonth() {
     const monthSelect = document.getElementById('month-select');
     if (!monthSelect) return;
-    
+
     // ดึง class_id จาก URL หรือใช้ค่าเริ่มต้น
     const urlParams = new URLSearchParams(window.location.search);
     const classId = urlParams.get('class_id') || '1';
-    
+
     // สร้าง URL ใหม่พร้อมพารามิเตอร์
     const url = 'reports.php?class_id=' + classId + '&month=' + monthSelect.value;
-    
+
     // นำทางไปยัง URL ใหม่
     window.location.href = url;
 }
@@ -115,20 +115,20 @@ function prevMonth() {
     const urlParams = new URLSearchParams(window.location.search);
     let month = parseInt(urlParams.get('month')) || new Date().getMonth() + 1;
     let year = parseInt(urlParams.get('year')) || new Date().getFullYear();
-    
+
     // คำนวณเดือนก่อนหน้า
     month--;
     if (month < 1) {
         month = 12;
         year--;
     }
-    
+
     // ดึง class_id
     const classId = urlParams.get('class_id') || '1';
-    
+
     // สร้าง URL ใหม่
     const url = 'reports.php?class_id=' + classId + '&month=' + month + '&year=' + year;
-    
+
     // นำทางไปยัง URL ใหม่
     window.location.href = url;
 }
@@ -140,20 +140,20 @@ function nextMonth() {
     const urlParams = new URLSearchParams(window.location.search);
     let month = parseInt(urlParams.get('month')) || new Date().getMonth() + 1;
     let year = parseInt(urlParams.get('year')) || new Date().getFullYear();
-    
+
     // คำนวณเดือนถัดไป
     month++;
     if (month > 12) {
         month = 1;
         year++;
     }
-    
+
     // ดึง class_id
     const classId = urlParams.get('class_id') || '1';
-    
+
     // สร้าง URL ใหม่
     const url = 'reports.php?class_id=' + classId + '&month=' + month + '&year=' + year;
-    
+
     // นำทางไปยัง URL ใหม่
     window.location.href = url;
 }
@@ -164,13 +164,13 @@ function nextMonth() {
 function searchStudents() {
     const searchInput = document.getElementById('student-search');
     if (!searchInput) return;
-    
+
     const searchText = searchInput.value.toLowerCase();
     const studentTable = document.querySelector('.student-table');
     if (!studentTable) return;
-    
+
     const rows = studentTable.querySelectorAll('tbody tr');
-    
+
     rows.forEach(row => {
         const name = row.cells[1] ? row.cells[1].textContent.toLowerCase() : '';
         if (name.includes(searchText)) {
@@ -186,28 +186,262 @@ function searchStudents() {
  * @param {number} studentId - ID ของนักเรียน
  */
 function viewStudentDetail(studentId) {
-    if (!studentId) {
-        console.error('ไม่ได้ระบุรหัสนักเรียน');
-        return;
-    }
-    
     // แสดง Modal
     const modal = document.getElementById('student-detail-modal');
     if (modal) {
         modal.classList.add('active');
         document.body.style.overflow = 'hidden';
     }
-    
+
     // แสดงการโหลดข้อมูล
     const detailContent = document.getElementById('student-detail-content');
     if (detailContent) {
         detailContent.innerHTML = '<div class="loading">กำลังโหลดข้อมูล...</div>';
     }
-    
-    // ดึงข้อมูลประวัติการเข้าแถวจาก API
-    fetchStudentAttendanceHistory(studentId);
+
+    // ซ่อนส่วนข้อมูลผู้ปกครองและปุ่มติดต่อ
+    const parentSection = document.getElementById('parent-detail-section');
+    if (parentSection) {
+        parentSection.style.display = 'none';
+    }
+
+    const contactBtn = document.getElementById('contactParentBtn');
+    if (contactBtn) {
+        contactBtn.style.display = 'none';
+    }
+
+    // ดึงข้อมูลนักเรียนและผู้ปกครองจาก API
+    fetch(`api/student_parent_data.php?student_id=${studentId}`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('เกิดข้อผิดพลาดในการดึงข้อมูล: ' + response.status);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                // แสดงข้อมูลนักเรียน
+                updateStudentDetailContent(data);
+
+                // แสดงข้อมูลผู้ปกครอง (ถ้ามี)
+                if (data.parents && data.parents.length > 0) {
+                    updateParentDetailContent(data.parents);
+                    parentSection.style.display = 'block';
+                    contactBtn.style.display = 'inline-flex';
+                }
+            } else {
+                // แสดงข้อความแจ้งเตือนในกรณีที่มีข้อผิดพลาด
+                detailContent.innerHTML = `<div class="error">${data.message || 'เกิดข้อผิดพลาดในการดึงข้อมูล'}</div>`;
+            }
+        })
+        .catch(error => {
+            console.error('เกิดข้อผิดพลาดในการดึงข้อมูล:', error);
+            detailContent.innerHTML = `<div class="error">เกิดข้อผิดพลาดในการดึงข้อมูล: ${error.message}</div>`;
+
+            // เมื่อ API ยังไม่พร้อมใช้งาน ให้ใช้ข้อมูลจำลอง
+            fallbackToMockData(studentId);
+        });
 }
 
+// ฟังก์ชันอัพเดตข้อมูลนักเรียน
+function updateStudentDetailContent(data) {
+    const detailContent = document.getElementById('student-detail-content');
+    if (!detailContent) return;
+
+    const student = data.student;
+    const summary = data.summary;
+
+    // สร้าง Avatar
+    let avatarHtml = '';
+    if (student.profile_picture) {
+        avatarHtml = `<div class="student-avatar" style="background-image: url('${student.profile_picture}'); background-size: cover;"></div>`;
+    } else {
+        const firstChar = student.name.charAt(0);
+        avatarHtml = `<div class="student-avatar">${firstChar}</div>`;
+    }
+
+    // สร้าง HTML สำหรับข้อมูลนักเรียน
+    let html = `
+        <div class="student-profile">
+            ${avatarHtml}
+            <div class="student-info">
+                <h3 class="student-name">${student.name}</h3>
+                <p>เลขที่ ${student.number} รหัส ${student.code}</p>
+                <p>ห้อง ${student.class}</p>
+                ${student.phone ? `<p>โทรศัพท์: ${student.phone}</p>` : ''}
+                ${student.email ? `<p>อีเมล: ${student.email}</p>` : ''}
+            </div>
+        </div>
+        
+        <div class="attendance-stats">
+            <div class="stat-item">
+                <span class="stat-label">วันเข้าแถวทั้งหมด:</span>
+                <span class="stat-value">${summary.present_days + summary.late_days}/${summary.total_days} วัน</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">อัตราการเข้าแถว:</span>
+                <span class="stat-value ${summary.status}">${summary.attendance_percentage}%</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">ขาดเรียน:</span>
+                <span class="stat-value">${summary.absent_days} วัน</span>
+            </div>
+    `;
+    
+    if (summary.absent_days > 0 && summary.last_absent_date) {
+        html += `
+            <div class="stat-item">
+                <span class="stat-label">ขาดล่าสุด:</span>
+                <span class="stat-value">${summary.last_absent_date}</span>
+            </div>
+        `;
+    }
+    
+    html += `</div>`;
+    
+    // เพิ่มประวัติการเข้าแถว
+    html += `
+        <div class="attendance-history">
+            <h4>ประวัติการเข้าแถว</h4>
+    `;
+    
+    if (data.attendance && data.attendance.length > 0) {
+        html += `
+            <table class="history-table">
+                <thead>
+                    <tr>
+                        <th>วันที่</th>
+                        <th>สถานะ</th>
+                        <th>เวลา</th>
+                        <th>หมายเหตุ</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+        
+        data.attendance.forEach(record => {
+            html += `
+                <tr>
+                    <td>${record.thai_date}</td>
+                    <td class="status ${record.status_class}">${record.status_text}</td>
+                    <td>${record.time}</td>
+                    <td>${record.remarks || '-'}</td>
+                </tr>
+            `;
+        });
+        
+        html += `
+                </tbody>
+            </table>
+        `;
+    } else {
+        html += `<p class="no-data-message">ไม่พบประวัติการเข้าแถว</p>`;
+    }
+    
+    html += `</div>`;
+    
+    detailContent.innerHTML = html;
+    detailContent.dataset.studentId = student.id;
+    detailContent.dataset.studentName = student.name;
+}
+
+
+// ฟังก์ชันอัพเดตข้อมูลผู้ปกครอง
+function updateParentDetailContent(parents) {
+    const parentContent = document.getElementById('parent-detail-content');
+    if (!parentContent) return;
+    
+    let html = '';
+    
+    parents.forEach((parent, index) => {
+        // สร้าง Avatar
+        let avatarHtml = '';
+        if (parent.profile_picture) {
+            avatarHtml = `<div class="parent-avatar" style="background-image: url('${parent.profile_picture}'); background-size: cover;"></div>`;
+        } else {
+            const firstChar = parent.name.charAt(0);
+            avatarHtml = `<div class="parent-avatar">${firstChar}</div>`;
+        }
+        
+        html += `
+            <div class="parent-profile" ${index > 0 ? 'style="margin-top: 20px; border-top: 1px solid #eee; padding-top: 20px;"' : ''}>
+                ${avatarHtml}
+                <div class="parent-info">
+                    <h3 class="parent-name">${parent.name}</h3>
+                    <p>ความสัมพันธ์: ${parent.relationship}</p>
+                    ${parent.phone ? `<p>โทรศัพท์: ${parent.phone}</p>` : ''}
+                    ${parent.email ? `<p>อีเมล: ${parent.email}</p>` : ''}
+                </div>
+            </div>
+        `;
+    });
+    
+    parentContent.innerHTML = html;
+    parentContent.dataset.parent_id = parents[0].id;
+}
+
+function fallbackToMockData(studentId) {
+    // หาข้อมูลนักเรียนจากตาราง
+    const studentInfo = findStudentById(studentId);
+    if (studentInfo) {
+        const detailContent = document.getElementById('student-detail-content');
+        
+        // สร้าง HTML สำหรับ Modal
+        let html = `
+            <div class="student-profile">
+                <div class="student-avatar">${studentInfo.name.charAt(0)}</div>
+                <div class="student-info">
+                    <h3 class="student-name">${studentInfo.name}</h3>
+                    <p>เลขที่ ${studentInfo.number}</p>
+                </div>
+            </div>
+            
+            <div class="attendance-stats">
+                <div class="stat-item">
+                    <span class="stat-label">วันเข้าแถวทั้งหมด:</span>
+                    <span class="stat-value">${studentInfo.attendance}</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">อัตราการเข้าแถว:</span>
+                    <span class="stat-value ${studentInfo.status}">${studentInfo.percentage}</span>
+                </div>
+            </div>
+            
+            <div class="attendance-history">
+                <h4>ประวัติการเข้าแถว</h4>
+                <p class="no-data-message">ไม่มีข้อมูลประวัติการเข้าแถวในขณะนี้</p>
+                <p class="no-data-message">กรุณาอัพเดตระบบเพื่อแสดงข้อมูลในส่วนนี้</p>
+            </div>
+        `;
+        
+        if (detailContent) {
+            detailContent.innerHTML = html;
+            detailContent.dataset.studentId = studentId;
+            detailContent.dataset.studentName = studentInfo.name;
+        }
+        
+        // แสดงข้อมูลผู้ปกครองจำลอง
+        const parentSection = document.getElementById('parent-detail-section');
+        const parentContent = document.getElementById('parent-detail-content');
+        const contactBtn = document.getElementById('contactParentBtn');
+        
+        if (parentSection && parentContent) {
+            parentContent.innerHTML = `
+                <div class="parent-profile">
+                    <div class="parent-avatar">ผ</div>
+                    <div class="parent-info">
+                        <h3 class="parent-name">ผู้ปกครองของ ${studentInfo.name}</h3>
+                        <p>ความสัมพันธ์: ผู้ปกครอง</p>
+                        <p class="no-data-message">ระบบจะแสดงข้อมูลผู้ปกครองจริงเมื่อเชื่อมต่อกับฐานข้อมูล</p>
+                    </div>
+                </div>
+            `;
+            
+            parentSection.style.display = 'block';
+            if (contactBtn) contactBtn.style.display = 'inline-flex';
+        }
+    }
+}
 /**
  * ดึงข้อมูลประวัติการเข้าแถวของนักเรียน
  * @param {number} studentId - ID ของนักเรียน
@@ -217,11 +451,11 @@ function fetchStudentAttendanceHistory(studentId) {
     const urlParams = new URLSearchParams(window.location.search);
     const month = urlParams.get('month') || '';
     const year = urlParams.get('year') || '';
-    
+
     let apiUrl = `api/student_attendance_history.php?student_id=${studentId}`;
     if (month) apiUrl += `&month=${month}`;
     if (year) apiUrl += `&year=${year}`;
-    
+
     // ทำการ fetch ข้อมูล
     fetch(apiUrl)
         .then(response => {
@@ -258,7 +492,7 @@ function fetchStudentAttendanceHistory(studentId) {
 function updateStudentDetailModal(data) {
     const detailContent = document.getElementById('student-detail-content');
     if (!detailContent) return;
-    
+
     // สร้าง Avatar จากชื่อนักเรียนหรือใช้รูปโปรไฟล์ถ้ามี
     let avatarHtml = '';
     if (data.student.profile_picture) {
@@ -267,7 +501,7 @@ function updateStudentDetailModal(data) {
         const firstChar = data.student.name.charAt(0);
         avatarHtml = `<div class="student-avatar">${firstChar}</div>`;
     }
-    
+
     // สร้าง HTML สำหรับ Modal
     let html = `
         <div class="student-profile">
@@ -293,7 +527,7 @@ function updateStudentDetailModal(data) {
                 <span class="stat-value">${data.summary.absent_days} วัน</span>
             </div>
     `;
-    
+
     if (data.summary.absent_days > 0) {
         html += `
             <div class="stat-item">
@@ -302,15 +536,15 @@ function updateStudentDetailModal(data) {
             </div>
         `;
     }
-    
+
     html += `</div>`;
-    
+
     // เพิ่มประวัติการเข้าแถว
     html += `
         <div class="attendance-history">
             <h4>ประวัติการเข้าแถว</h4>
     `;
-    
+
     if (data.history && data.history.length > 0) {
         html += `
             <table class="history-table">
@@ -324,7 +558,7 @@ function updateStudentDetailModal(data) {
                 </thead>
                 <tbody>
         `;
-        
+
         data.history.forEach(record => {
             html += `
                 <tr>
@@ -335,7 +569,7 @@ function updateStudentDetailModal(data) {
                 </tr>
             `;
         });
-        
+
         html += `
                 </tbody>
             </table>
@@ -343,11 +577,11 @@ function updateStudentDetailModal(data) {
     } else {
         html += `<p class="no-data-message">ไม่พบประวัติการเข้าแถว</p>`;
     }
-    
+
     html += `</div>`;
-    
+
     detailContent.innerHTML = html;
-    
+
     // เก็บข้อมูลนักเรียนไว้สำหรับใช้ในฟังก์ชันติดต่อผู้ปกครอง
     detailContent.dataset.studentName = data.student.name;
     detailContent.dataset.studentId = data.student.id;
@@ -362,17 +596,17 @@ function contactParent(studentId) {
         console.error('ไม่ได้ระบุรหัสนักเรียน');
         return;
     }
-    
+
     // แสดงหน้าต่างติดต่อผู้ปกครอง
     const modal = document.getElementById('contact-parent-modal');
     if (modal) {
         modal.classList.add('active');
         document.body.style.overflow = 'hidden';
     }
-    
+
     // ดึงข้อมูลนักเรียน
     const studentInfo = findStudentById(studentId);
-    
+
     // อัพเดทข้อมูลใน Modal
     if (studentInfo) {
         updateParentContactModal(studentInfo);
@@ -388,32 +622,24 @@ function contactParent(studentId) {
  * @returns {Object|null} ข้อมูลนักเรียนหรือ null ถ้าไม่พบ
  */
 function findStudentById(studentId) {
-    // ค้นหาข้อมูลนักเรียนจากตาราง
+    // หาจากตาราง
     const rows = document.querySelectorAll('.student-table tbody tr');
-    
     for (let row of rows) {
-        const actionButton = row.querySelector('.action-button[onclick*="viewStudentDetail"]');
-        if (actionButton) {
-            const onclickValue = actionButton.getAttribute('onclick');
-            const match = onclickValue.match(/viewStudentDetail\((\d+)/);
-            
-            if (match && parseInt(match[1]) === studentId) {
-                // ดึงข้อมูลจากแถวตาราง
-                const cellCount = row.cells.length;
-                if (cellCount >= 4) {
-                    return {
-                        id: studentId,
-                        number: row.cells[0].textContent.trim(),
-                        name: row.cells[1].textContent.trim(),
-                        attendance: row.cells[2].textContent.trim(),
-                        percentage: row.cells[3].querySelector('.attendance-percent').textContent.trim(),
-                        status: row.cells[3].querySelector('.attendance-percent').className.replace('attendance-percent ', '')
-                    };
-                }
+        const viewButton = row.querySelector('.action-button[onclick*="viewStudentDetail"]');
+        if (viewButton) {
+            const idInOnclick = viewButton.getAttribute('onclick').match(/\d+/)[0];
+            if (parseInt(idInOnclick) === studentId) {
+                // ดึงข้อมูลจากแถว
+                const name = row.cells[1].textContent;
+                const number = row.cells[0].textContent;
+                const attendance = row.cells[2].textContent;
+                const percentage = row.cells[3].querySelector('.attendance-percent').textContent;
+                const status = row.cells[3].querySelector('.attendance-percent').className.replace('attendance-percent ', '');
+                
+                return { id: studentId, name, number, attendance, percentage, status };
             }
         }
     }
-    
     return null;
 }
 
@@ -441,7 +667,7 @@ function fetchStudentForParentContact(studentId) {
                     percentage: `${data.summary.attendance_percentage}%`,
                     status: data.summary.status
                 };
-                
+
                 // อัพเดท Modal
                 updateParentContactModal(studentInfo);
             } else {
@@ -468,11 +694,11 @@ function fetchStudentForParentContact(studentId) {
 function updateParentContactModal(student) {
     const parentDetail = document.getElementById('parent-detail');
     if (!parentDetail) return;
-    
+
     // ในระบบจริงจะดึงข้อมูลผู้ปกครองจากฐานข้อมูล
     // แต่ในตัวอย่างนี้จะใช้ข้อมูลตัวอย่าง
     const parentName = "ผู้ปกครองของ " + student.name;
-    
+
     let html = `
         <div class="parent-profile">
             <div class="parent-avatar">ผ</div>
@@ -488,9 +714,9 @@ function updateParentContactModal(student) {
             <textarea id="parent-message" rows="5" placeholder="ระบุข้อความที่ต้องการส่งถึงผู้ปกครอง..." class="message-textarea">เรียนท่านผู้ปกครอง ขอแจ้งข้อมูลการเข้าแถวของ ${student.name} อัตราการเข้าแถวปัจจุบันอยู่ที่ ${student.percentage} กรุณาติดตามและดูแลการมาเรียนของนักเรียน</textarea>
         </div>
     `;
-    
+
     parentDetail.innerHTML = html;
-    
+
     // เก็บ ID นักเรียนสำหรับใช้ในการส่งข้อความ
     parentDetail.dataset.studentId = student.id;
 }
@@ -501,31 +727,31 @@ function updateParentContactModal(student) {
 function contactStudentParent() {
     // ปิด Modal รายละเอียดนักเรียน
     closeModal('student-detail-modal');
-    
+
     // ดึงข้อมูลนักเรียนจาก Modal รายละเอียด
     const detailContent = document.getElementById('student-detail-content');
     if (!detailContent) return;
-    
+
     const studentName = detailContent.querySelector('.student-name');
     const studentId = detailContent.dataset.studentId;
-    
+
     if (!studentName || !studentId) {
         console.error('ไม่พบข้อมูลนักเรียน');
         return;
     }
-    
+
     // เปิด Modal ติดต่อผู้ปกครอง
     const modal = document.getElementById('contact-parent-modal');
     if (modal) {
         modal.classList.add('active');
         document.body.style.overflow = 'hidden';
     }
-    
+
     // อัพเดทข้อมูลใน Modal
     const parentDetail = document.getElementById('parent-detail');
     if (parentDetail) {
         const parentName = "ผู้ปกครองของ " + studentName.textContent;
-        
+
         let html = `
             <div class="parent-profile">
                 <div class="parent-avatar">ผ</div>
@@ -541,7 +767,7 @@ function contactStudentParent() {
                 <textarea id="parent-message" rows="5" placeholder="ระบุข้อความที่ต้องการส่งถึงผู้ปกครอง..." class="message-textarea">เรียนท่านผู้ปกครอง ขอแจ้งข้อมูลการเข้าแถวของ ${studentName.textContent} กรุณาติดตามและดูแลการมาเรียนของนักเรียน</textarea>
             </div>
         `;
-        
+
         parentDetail.innerHTML = html;
         parentDetail.dataset.studentId = studentId;
     }
@@ -553,34 +779,34 @@ function contactStudentParent() {
 function sendParentMessage() {
     const messageTextarea = document.getElementById('parent-message');
     if (!messageTextarea) return;
-    
+
     const message = messageTextarea.value.trim();
     if (!message) {
         alert('กรุณาระบุข้อความที่ต้องการส่งถึงผู้ปกครอง');
         return;
     }
-    
+
     // ดึง ID นักเรียนจาก dataset
     const parentDetail = document.getElementById('parent-detail');
     if (!parentDetail || !parentDetail.dataset.studentId) {
         alert('ไม่พบข้อมูลนักเรียน');
         return;
     }
-    
+
     const studentId = parentDetail.dataset.studentId;
-    
+
     // แสดงการโหลด
     parentDetail.classList.add('loading');
-    
+
     // ในระบบจริงจะส่ง AJAX request ไปยังเซิร์ฟเวอร์
     // เช่น fetch('api/send_message.php', { method: 'POST', body: JSON.stringify({ studentId, message }) })
-    
+
     // จำลองการส่ง
     setTimeout(() => {
         // ปิด Modal
         closeModal('contact-parent-modal');
         parentDetail.classList.remove('loading');
-        
+
         // แสดงการแจ้งเตือน
         showAlert('ส่งข้อความถึงผู้ปกครองเรียบร้อยแล้ว', 'success');
     }, 1000);
@@ -593,14 +819,14 @@ function printStudentReport() {
     // เตรียมข้อมูลสำหรับพิมพ์
     const detailContent = document.getElementById('student-detail-content');
     if (!detailContent) return;
-    
+
     // สร้างหน้าใหม่สำหรับพิมพ์
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
         alert('ไม่สามารถเปิดหน้าต่างใหม่ได้ กรุณาตรวจสอบการตั้งค่าเบราว์เซอร์');
         return;
     }
-    
+
     // สร้าง HTML สำหรับหน้าพิมพ์
     printWindow.document.write(`
         <!DOCTYPE html>
@@ -698,7 +924,7 @@ function printStudentReport() {
         </body>
         </html>
     `);
-    
+
     // ปิดการเขียน document
     printWindow.document.close();
 }
@@ -721,26 +947,26 @@ function sendNotification() {
     // รับประเภทการแจ้งเตือนที่เลือก
     const notificationType = document.querySelector('input[name="notification-type"]:checked');
     if (!notificationType) return;
-    
+
     // รับข้อความแจ้งเตือน
     const messageTextarea = document.getElementById('message-text');
     if (!messageTextarea) return;
-    
+
     const message = messageTextarea.value.trim();
     if (!message) {
         alert('กรุณาระบุข้อความแจ้งเตือน');
         return;
     }
-    
+
     // แสดงการโหลด
     const modalContent = document.querySelector('#notify-parents-modal .modal-content');
     if (modalContent) {
         modalContent.classList.add('loading');
     }
-    
+
     // ในระบบจริงจะส่ง AJAX request ไปยังเซิร์ฟเวอร์
     // เช่น fetch('api/notify_parents.php', { method: 'POST', body: JSON.stringify({ type: notificationType.value, message }) })
-    
+
     // จำลองการส่ง
     setTimeout(() => {
         // ปิด Modal
@@ -748,7 +974,7 @@ function sendNotification() {
         if (modalContent) {
             modalContent.classList.remove('loading');
         }
-        
+
         // แสดงการแจ้งเตือน
         const isAll = notificationType.value === 'all';
         showAlert(
@@ -764,10 +990,10 @@ function sendNotification() {
 function downloadReport() {
     // แสดงการแจ้งเตือน
     showAlert('กำลังเตรียมรายงานสำหรับดาวน์โหลด...', 'info');
-    
+
     // ในระบบจริงจะส่ง AJAX request ไปยังเซิร์ฟเวอร์เพื่อสร้างไฟล์รายงาน
     // เช่น window.location.href = 'api/generate_report.php?class_id=' + currentClassId + '&month=' + currentMonth + '&year=' + currentYear;
-    
+
     // จำลองการดาวน์โหลด
     setTimeout(() => {
         showAlert('ดาวน์โหลดรายงานเรียบร้อยแล้ว', 'success');
@@ -779,7 +1005,7 @@ function downloadReport() {
  */
 function downloadDailyChart() {
     showAlert('กำลังเตรียมกราฟสำหรับดาวน์โหลด...', 'info');
-    
+
     // จำลองการดาวน์โหลด
     setTimeout(() => {
         showAlert('ดาวน์โหลดกราฟเรียบร้อยแล้ว', 'success');
@@ -791,18 +1017,18 @@ function downloadDailyChart() {
  */
 function printDailyChart() {
     showAlert('กำลังเตรียมกราฟสำหรับพิมพ์...', 'info');
-    
+
     // เตรียมข้อมูลสำหรับพิมพ์
     const chartCard = document.querySelector('.chart-card');
     if (!chartCard) return;
-    
+
     // สร้างหน้าใหม่สำหรับพิมพ์
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
         alert('ไม่สามารถเปิดหน้าต่างใหม่ได้ กรุณาตรวจสอบการตั้งค่าเบราว์เซอร์');
         return;
     }
-    
+
     // สร้าง HTML สำหรับหน้าพิมพ์
     printWindow.document.write(`
         <!DOCTYPE html>
@@ -875,7 +1101,7 @@ function printDailyChart() {
         </body>
         </html>
     `);
-    
+
     // ปิดการเขียน document
     printWindow.document.close();
 }
@@ -885,7 +1111,7 @@ function printDailyChart() {
  */
 function downloadStudentChart() {
     showAlert('กำลังเตรียมกราฟสำหรับดาวน์โหลด...', 'info');
-    
+
     // จำลองการดาวน์โหลด
     setTimeout(() => {
         showAlert('ดาวน์โหลดกราฟเรียบร้อยแล้ว', 'success');
@@ -897,18 +1123,18 @@ function downloadStudentChart() {
  */
 function printStudentChart() {
     showAlert('กำลังเตรียมกราฟสำหรับพิมพ์...', 'info');
-    
+
     // เตรียมข้อมูลสำหรับพิมพ์
     const graphCard = document.querySelector('.graph-card');
     if (!graphCard) return;
-    
+
     // สร้างหน้าใหม่สำหรับพิมพ์
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
         alert('ไม่สามารถเปิดหน้าต่างใหม่ได้ กรุณาตรวจสอบการตั้งค่าเบราว์เซอร์');
         return;
     }
-    
+
     // สร้าง HTML สำหรับหน้าพิมพ์
     printWindow.document.write(`
         <!DOCTYPE html>
@@ -1038,7 +1264,7 @@ function printStudentChart() {
         </body>
         </html>
     `);
-    
+
     // ปิดการเขียน document
     printWindow.document.close();
 }
@@ -1078,7 +1304,7 @@ function toggleOptions() {
 function showAlert(message, type = 'info') {
     // ตรวจสอบว่ามี alert container หรือไม่
     let alertContainer = document.querySelector('.alert-container');
-    
+
     if (!alertContainer) {
         // สร้าง alert container
         alertContainer = document.createElement('div');
@@ -1089,17 +1315,17 @@ function showAlert(message, type = 'info') {
         alertContainer.style.zIndex = '9999';
         document.body.appendChild(alertContainer);
     }
-    
+
     // สร้าง alert element
     const alert = document.createElement('div');
     alert.className = `alert ${type}`;
-    
+
     // กำหนดไอคอนตามประเภท
     let icon = 'info';
     if (type === 'success') icon = 'check_circle';
     else if (type === 'warning') icon = 'warning';
     else if (type === 'error') icon = 'error';
-    
+
     // สร้าง HTML สำหรับ alert
     alert.innerHTML = `
         <div class="alert-icon">
@@ -1110,16 +1336,16 @@ function showAlert(message, type = 'info') {
         </div>
         <button class="alert-close">&times;</button>
     `;
-    
+
     // เพิ่ม alert ไปยัง container
     alertContainer.appendChild(alert);
-    
+
     // กำหนดการปิด alert เมื่อคลิกปุ่มปิด
     const closeButton = alert.querySelector('.alert-close');
     closeButton.addEventListener('click', function() {
         alertContainer.removeChild(alert);
     });
-    
+
     // ปิด alert โดยอัตโนมัติหลังจาก 5 วินาที
     setTimeout(() => {
         if (alertContainer.contains(alert)) {

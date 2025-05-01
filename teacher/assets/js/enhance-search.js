@@ -151,7 +151,7 @@ function improveSearchFunction() {
             // ค้นหาในทั้งสองแท็บ
             searchInTab('waitingTab', searchTerm);
             searchInTab('checkedTab', searchTerm);
-            
+
             // ลองค้นหาในแท็บที่อาจมีชื่ออื่น
             searchInTab('unchecked-tab', searchTerm);
             searchInTab('checked-tab', searchTerm);
@@ -192,13 +192,13 @@ function searchInTab(tabId, searchTerm) {
         // ค้นหาข้อมูลจากหลายแหล่ง
         const nameAttr = card.getAttribute('data-name');
         const name = nameAttr ? nameAttr : '';
-        
+
         const studentCodeElement = card.querySelector('.student-code');
         const studentCode = studentCodeElement ? studentCodeElement.textContent : '';
-        
+
         const studentNumberElement = card.querySelector('.student-number');
         const studentNumber = studentNumberElement ? studentNumberElement.textContent : '';
-        
+
         const studentNameElement = card.querySelector('.student-name');
         const nameFromElement = studentNameElement ? studentNameElement.textContent.toLowerCase() : '';
 
@@ -306,8 +306,10 @@ function enhanceModalFunctions() {
 if (typeof window.confirmDetailAttendance !== 'function') {
     window.confirmDetailAttendance = function() {
         const studentId = document.getElementById('studentIdDetail').value;
-        const status = document.querySelector('input[name="attendanceStatus"]:checked').value;
-        const remarks = document.getElementById('attendanceRemarks').value;
+        const statusElement = document.querySelector('input[name="attendanceStatus"]:checked');
+        const status = statusElement ? statusElement.value : 'present';
+        const remarksElement = document.getElementById('attendanceRemarks');
+        const remarks = remarksElement ? remarksElement.value : '';
 
         // ตรวจสอบการเช็คชื่อย้อนหลัง
         const today = new Date().toISOString().split('T')[0];
@@ -340,14 +342,23 @@ if (typeof window.confirmDetailAttendance !== 'function') {
         const data = {
             student_id: studentId,
             status: status,
-            class_id: currentClassId,
-            date: checkDate,
+            class_id: window.currentClassId,
+            date: window.checkDate,
             is_retroactive: isRetroactive,
             remarks: finalRemarks
         };
 
         // ปิด Modal
-        closeModal('attendanceDetailModal');
+        const modalElement = document.getElementById('attendanceDetailModal');
+        if (modalElement) {
+            // ใช้ฟังก์ชัน closeModal ถ้ามี
+            if (typeof closeModal === 'function') {
+                closeModal('attendanceDetailModal');
+            } else {
+                // Fallback ถ้าไม่มีฟังก์ชัน closeModal
+                modalElement.style.display = 'none';
+            }
+        }
 
         // แสดงข้อความกำลังดำเนินการ
         showNotification('กำลังบันทึกข้อมูล...', 'info');

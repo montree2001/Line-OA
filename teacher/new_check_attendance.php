@@ -1169,3 +1169,41 @@ console.log('Global variables set:', {
 });
 </script>
 
+<script>
+// เพิ่มฟังก์ชัน setupRemarkField ที่หายไป
+function setupRemarkField() {
+    // ค้นหา input สำหรับหมายเหตุ
+    const remarkFields = document.querySelectorAll('textarea[name="remarks"], input[name="remarks"], #attendanceRemarks, .remarks-field');
+    
+    if (remarkFields.length === 0) {
+        console.log('ไม่พบฟิลด์หมายเหตุที่จะตั้งค่า');
+        return;
+    }
+    
+    remarkFields.forEach(field => {
+        // เพิ่ม event listener สำหรับการเปลี่ยนแปลงค่า
+        field.addEventListener('input', function() {
+            // บันทึกค่าล่าสุดใน localStorage
+            localStorage.setItem('lastRemarkText', this.value);
+        });
+        
+        // โหลดค่าล่าสุดจาก localStorage (ถ้ามี)
+        const lastRemark = localStorage.getItem('lastRemarkText');
+        if (lastRemark) {
+            field.value = lastRemark;
+        }
+        
+        console.log('ตั้งค่าฟิลด์หมายเหตุเรียบร้อยแล้ว');
+    });
+}
+
+// ถ้ามีการเรียกใช้ฟังก์ชันอยู่แล้ว ให้เรียกใช้หลังจากที่สร้างฟังก์ชัน
+document.addEventListener('DOMContentLoaded', function() {
+    // ตรวจสอบว่ามีการเรียกใช้ฟังก์ชันไปแล้วหรือไม่ ถ้ามีให้เรียกใช้อีกครั้ง
+    if (typeof setupRemarkField === 'function') {
+        setupRemarkField();
+        console.log('ทำการเรียกใช้ setupRemarkField หลังจากสร้างฟังก์ชัน');
+    }
+});
+</script>
+

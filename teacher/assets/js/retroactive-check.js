@@ -271,7 +271,7 @@ function showRetroactiveModal(button, status, studentId) {
     if (!retroModal) {
         // สร้าง Modal เช็คชื่อย้อนหลัง
         retroModal = createRetroactiveModal();
-        
+
         // ให้เวลา DOM อัพเดทก่อนดำเนินการต่อ
         setTimeout(() => {
             // ตั้งค่าข้อมูลในโมดัลหลังจากที่มั่นใจว่าสร้างเสร็จแล้ว
@@ -312,11 +312,11 @@ function setRetroactiveModalData(button, status, studentId) {
     if (titleElement) {
         titleElement.textContent = 'เช็คชื่อย้อนหลัง: ' + studentName;
     }
-    
+
     if (studentIdElement) {
         studentIdElement.value = studentId;
     }
-    
+
     if (studentNameElement) {
         studentNameElement.value = studentName;
     }
@@ -331,7 +331,7 @@ function setRetroactiveModalData(button, status, studentId) {
     if (reasonElement) {
         reasonElement.value = '';
     }
-    
+
     if (remarksElement) {
         remarksElement.value = '';
     }
@@ -343,13 +343,20 @@ function setRetroactiveModalData(button, status, studentId) {
  * @param {string} studentName - ชื่อนักเรียน
  */
 function openRetroactiveDetailModal(studentId, studentName) {
+    // ตรวจสอบว่าได้รับพารามิเตอร์ที่จำเป็นหรือไม่
+    if (!studentId || !studentName) {
+        console.error('openRetroactiveDetailModal: ไม่พบข้อมูล studentId หรือ studentName');
+        showNotification('เกิดข้อผิดพลาด: ไม่พบข้อมูลนักเรียน', 'error');
+        return;
+    }
+
     // ตรวจสอบว่ามี Modal หรือยัง
     let retroModal = document.getElementById('retroactiveModal');
 
     if (!retroModal) {
         // สร้าง Modal
         retroModal = createRetroactiveModal();
-        
+
         // ให้เวลา DOM อัพเดทก่อนดำเนินการต่อ
         setTimeout(() => {
             // ตั้งค่าข้อมูลในโมดัลหลังจากที่มั่นใจว่าสร้างเสร็จแล้ว
@@ -370,39 +377,61 @@ function openRetroactiveDetailModal(studentId, studentName) {
  * @param {string} studentName - ชื่อนักเรียน
  */
 function setRetroactiveDetailModalData(studentId, studentName) {
-    // ตรวจสอบว่าโมดัลถูกสร้างแล้วหรือยัง
-    const titleElement = document.getElementById('retroactiveModalTitle');
-    const studentIdElement = document.getElementById('retroactiveStudentId');
-    const studentNameElement = document.getElementById('retroactiveStudentName');
-    const reasonElement = document.getElementById('retroactiveReason');
-    const remarksElement = document.getElementById('retroactiveRemarks');
+    try {
+        // ตรวจสอบว่าได้รับพารามิเตอร์ที่จำเป็นหรือไม่
+        if (!studentId || !studentName) {
+            console.error('setRetroactiveDetailModalData: ไม่พบข้อมูล studentId หรือ studentName');
+            return;
+        }
 
-    // ตั้งค่าเฉพาะส่วนที่มีอยู่
-    if (titleElement) {
-        titleElement.textContent = 'เช็คชื่อย้อนหลัง: ' + studentName;
-    }
-    
-    if (studentIdElement) {
-        studentIdElement.value = studentId;
-    }
-    
-    if (studentNameElement) {
-        studentNameElement.value = studentName;
-    }
+        // ตรวจสอบว่าโมดัลถูกสร้างแล้วหรือยัง
+        const titleElement = document.getElementById('retroactiveModalTitle');
+        const studentIdElement = document.getElementById('retroactiveStudentId');
+        const studentNameElement = document.getElementById('retroactiveStudentName');
+        const reasonElement = document.getElementById('retroactiveReason');
+        const remarksElement = document.getElementById('retroactiveRemarks');
 
-    // กำหนดสถานะเริ่มต้น
-    const statusRadio = document.querySelector('input[name="retroactiveStatus"][value="present"]');
-    if (statusRadio) {
-        statusRadio.checked = true;
-    }
+        // ตั้งค่าเฉพาะส่วนที่มีอยู่
+        if (titleElement) {
+            titleElement.textContent = 'เช็คชื่อย้อนหลัง: ' + studentName;
+        } else {
+            console.warn('ไม่พบอิลิเมนต์ retroactiveModalTitle');
+        }
 
-    // ล้างค่าเดิม
-    if (reasonElement) {
-        reasonElement.value = '';
-    }
-    
-    if (remarksElement) {
-        remarksElement.value = '';
+        if (studentIdElement) {
+            studentIdElement.value = studentId;
+        } else {
+            console.warn('ไม่พบอิลิเมนต์ retroactiveStudentId');
+        }
+
+        if (studentNameElement) {
+            studentNameElement.value = studentName;
+        } else {
+            console.warn('ไม่พบอิลิเมนต์ retroactiveStudentName');
+        }
+
+        // กำหนดสถานะเริ่มต้น
+        const statusRadio = document.querySelector('input[name="retroactiveStatus"][value="present"]');
+        if (statusRadio) {
+            statusRadio.checked = true;
+        } else {
+            console.warn('ไม่พบอิลิเมนต์ retroactiveStatus radio button');
+        }
+
+        // ล้างค่าเดิม
+        if (reasonElement) {
+            reasonElement.value = '';
+        } else {
+            console.warn('ไม่พบอิลิเมนต์ retroactiveReason');
+        }
+
+        if (remarksElement) {
+            remarksElement.value = '';
+        } else {
+            console.warn('ไม่พบอิลิเมนต์ retroactiveRemarks');
+        }
+    } catch (error) {
+        console.error('เกิดข้อผิดพลาดใน setRetroactiveDetailModalData:', error);
     }
 }
 
@@ -445,8 +474,10 @@ function confirmRetroactiveAttendance() {
         showNotification('กำลังบันทึกการเช็คชื่อย้อนหลัง...', 'info');
 
         // เตรียมข้อมูลสำหรับส่ง API
-        const classId = window.currentClassId || document.getElementById('classSelect')?.value;
-        const date = window.checkDate || document.getElementById('dateSelect')?.value;
+        const classSelect = document.getElementById('classSelect');
+        const dateSelect = document.getElementById('dateSelect');
+        const classId = window.currentClassId || (classSelect ? classSelect.value : null);
+        const date = window.checkDate || (dateSelect ? dateSelect.value : null);
 
         if (!classId || !date) {
             console.error('ไม่พบค่า classId หรือ date');
@@ -535,8 +566,10 @@ function confirmRetroactiveDetailAttendance() {
         showNotification('กำลังบันทึกการเช็คชื่อย้อนหลัง...', 'info');
 
         // เตรียมข้อมูลสำหรับส่ง API
-        const classId = window.currentClassId || document.getElementById('classSelect')?.value;
-        const date = window.checkDate || document.getElementById('dateSelect')?.value;
+        const classSelect = document.getElementById('classSelect');
+        const dateSelect = document.getElementById('dateSelect');
+        const classId = window.currentClassId || (classSelect ? classSelect.value : null);
+        const date = window.checkDate || (dateSelect ? dateSelect.value : null);
 
         if (!classId || !date) {
             console.error('ไม่พบค่า classId หรือ date');
@@ -927,7 +960,7 @@ function createRetroactiveModal() {
     // หาวันที่เช็คชื่อย้อนหลัง
     const dateSelect = document.getElementById('dateSelect');
     const retroactiveDate = dateSelect ? dateSelect.value : new Date().toISOString().split('T')[0];
-    
+
     // แปลงให้เป็นรูปแบบแสดงผล (DD/MM/YYYY)
     const displayDate = formatDateThai(retroactiveDate);
 
@@ -1027,13 +1060,13 @@ function createRetroactiveModal() {
  */
 function formatDateThai(dateString) {
     if (!dateString) return '';
-    
+
     const parts = dateString.split('-');
     if (parts.length !== 3) return dateString;
-    
+
     // แปลงปีให้เป็น พ.ศ.
     const year = parseInt(parts[0]) + 543;
-    
+
     // คืนค่าในรูปแบบ DD/MM/YYYY
     return `${parts[2]}/${parts[1]}/${year}`;
 }
