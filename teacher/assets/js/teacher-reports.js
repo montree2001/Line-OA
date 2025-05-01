@@ -28,6 +28,15 @@ function initReportsPage() {
 function initTabMenu() {
     // ตั้งค่าเริ่มต้นให้แสดงแท็บ table
     switchTab('table');
+
+    // เพิ่ม Event Listener ให้กับปุ่มแท็บ
+    const tabButtons = document.querySelectorAll('.tab-button');
+    tabButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const tabName = this.getAttribute('data-tab');
+            switchTab(tabName);
+        });
+    });
 }
 
 /**
@@ -57,16 +66,10 @@ function switchTab(tabName) {
     const tabButtons = document.querySelectorAll('.tab-button');
     tabButtons.forEach(button => {
         button.classList.remove('active');
+        if (button.getAttribute('data-tab') === tabName) {
+            button.classList.add('active');
+        }
     });
-
-    // เพิ่มคลาส active ให้กับปุ่มที่เลือก
-    const selectedButton = document.querySelector(`.tab-button:nth-child(${
-        tabName === 'table' ? 1 : tabName === 'graph' ? 2 : 3
-    })`);
-
-    if (selectedButton) {
-        selectedButton.classList.add('active');
-    }
 }
 
 /**
@@ -77,13 +80,19 @@ function changeClass(classId) {
     // ดึงเดือนปัจจุบัน
     const monthSelect = document.getElementById('month-select');
     const currentMonth = monthSelect ? monthSelect.value : '';
+    const yearSelect = document.getElementById('year-select');
+    const currentYear = yearSelect ? yearSelect.value : new Date().getFullYear();
 
     // สร้าง URL สำหรับการนำทาง
     let url = 'reports.php?class_id=' + classId;
 
-    // เพิ่มพารามิเตอร์เดือนถ้ามี
+    // เพิ่มพารามิเตอร์เดือนและปีถ้ามี
     if (currentMonth) {
         url += '&month=' + currentMonth;
+    }
+
+    if (currentYear) {
+        url += '&year=' + currentYear;
     }
 
     // นำทางไปยัง URL ใหม่
@@ -99,10 +108,11 @@ function changeMonth() {
 
     // ดึง class_id จาก URL หรือใช้ค่าเริ่มต้น
     const urlParams = new URLSearchParams(window.location.search);
-    const classId = urlParams.get('class_id') || '1';
+    const classId = urlParams.get('class_id') || document.getElementById('class-select').value;
+    const year = urlParams.get('year') || new Date().getFullYear();
 
     // สร้าง URL ใหม่พร้อมพารามิเตอร์
-    const url = 'reports.php?class_id=' + classId + '&month=' + monthSelect.value;
+    const url = 'reports.php?class_id=' + classId + '&month=' + monthSelect.value + '&year=' + year;
 
     // นำทางไปยัง URL ใหม่
     window.location.href = url;
@@ -124,7 +134,7 @@ function prevMonth() {
     }
 
     // ดึง class_id
-    const classId = urlParams.get('class_id') || '1';
+    const classId = urlParams.get('class_id') || document.getElementById('class-select').value;
 
     // สร้าง URL ใหม่
     const url = 'reports.php?class_id=' + classId + '&month=' + month + '&year=' + year;
@@ -149,7 +159,7 @@ function nextMonth() {
     }
 
     // ดึง class_id
-    const classId = urlParams.get('class_id') || '1';
+    const classId = urlParams.get('class_id') || document.getElementById('class-select').value;
 
     // สร้าง URL ใหม่
     const url = 'reports.php?class_id=' + classId + '&month=' + month + '&year=' + year;
@@ -173,7 +183,9 @@ function searchStudents() {
 
     rows.forEach(row => {
         const name = row.cells[1] ? row.cells[1].textContent.toLowerCase() : '';
-        if (name.includes(searchText)) {
+        const number = row.cells[0] ? row.cells[0].textContent.toLowerCase() : '';
+
+        if (name.includes(searchText) || number.includes(searchText)) {
             row.style.display = '';
         } else {
             row.style.display = 'none';
@@ -210,8 +222,25 @@ function viewStudentDetail(studentId) {
         contactBtn.style.display = 'none';
     }
 
-    // ดึงข้อมูลนักเรียนและผู้ปกครองจาก API
-    fetch(`api/student_parent_data.php?student_id=${studentId}`)
+    // ดึงพารามิเตอร์จาก URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const currentMonth = urlParams.get('month');
+    const currentYear = urlParams.get('year');
+
+    // ดึงข้อมูลนักเรียนจาก API
+    let apiUrl = `api/student_attendance_history.php?student_id=${studentId}`;
+
+    // เพิ่มพารามิเตอร์เดือนและปี (ถ้ามี)
+    if (currentMonth) {
+        apiUrl += `&month=${currentMonth}`;
+    }
+
+    if (currentYear) {
+        apiUrl += `&year=${currentYear}`;
+    }
+
+    // ดึงข้อมูลนักเรียนและประวัติการเข้าแถว
+    fetch(apiUrl)
         .then(response => {
             if (!response.ok) {
                 throw new Error('เกิดข้อผิดพลาดในการดึงข้อมูล: ' + response.status);
@@ -223,27 +252,42 @@ function viewStudentDetail(studentId) {
                 // แสดงข้อมูลนักเรียน
                 updateStudentDetailContent(data);
 
-                // แสดงข้อมูลผู้ปกครอง (ถ้ามี)
-                if (data.parents && data.parents.length > 0) {
-                    updateParentDetailContent(data.parents);
-                    parentSection.style.display = 'block';
-                    contactBtn.style.display = 'inline-flex';
-                }
+                // ดึงข้อมูลผู้ปกครอง
+                return fetch(`api/student_parent_data.php?student_id=${studentId}`);
             } else {
                 // แสดงข้อความแจ้งเตือนในกรณีที่มีข้อผิดพลาด
                 detailContent.innerHTML = `<div class="error">${data.message || 'เกิดข้อผิดพลาดในการดึงข้อมูล'}</div>`;
+                throw new Error('ไม่พบข้อมูลนักเรียน');
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('เกิดข้อผิดพลาดในการดึงข้อมูลผู้ปกครอง');
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success && data.parents && data.parents.length > 0) {
+                // แสดงข้อมูลผู้ปกครอง
+                updateParentDetailContent(data.parents);
+                parentSection.style.display = 'block';
+                contactBtn.style.display = 'inline-flex';
             }
         })
         .catch(error => {
             console.error('เกิดข้อผิดพลาดในการดึงข้อมูล:', error);
-            detailContent.innerHTML = `<div class="error">เกิดข้อผิดพลาดในการดึงข้อมูล: ${error.message}</div>`;
 
-            // เมื่อ API ยังไม่พร้อมใช้งาน ให้ใช้ข้อมูลจำลอง
-            fallbackToMockData(studentId);
+            // หากเกิดข้อผิดพลาดในการดึงข้อมูลผู้ปกครอง ยังคงแสดงข้อมูลนักเรียนถ้ามี
+            if (!detailContent.querySelector('.student-profile')) {
+                detailContent.innerHTML = `<div class="error">เกิดข้อผิดพลาดในการดึงข้อมูล: ${error.message}</div>`;
+            }
         });
 }
 
-// ฟังก์ชันอัพเดตข้อมูลนักเรียน
+/**
+ * อัพเดตข้อมูลนักเรียนใน Modal
+ * @param {Object} data - ข้อมูลนักเรียน
+ */
 function updateStudentDetailContent(data) {
     const detailContent = document.getElementById('student-detail-content');
     if (!detailContent) return;
@@ -260,6 +304,17 @@ function updateStudentDetailContent(data) {
         avatarHtml = `<div class="student-avatar">${firstChar}</div>`;
     }
 
+    // คำนวณจำนวนวันเข้าแถว
+    const attendanceDays = summary.present_days + summary.late_days;
+    const attendanceRate = summary.attendance_percentage;
+    let statusClass = 'danger';
+
+    if (attendanceRate >= 80) {
+        statusClass = 'good';
+    } else if (attendanceRate >= 70) {
+        statusClass = 'warning';
+    }
+
     // สร้าง HTML สำหรับข้อมูลนักเรียน
     let html = `
         <div class="student-profile">
@@ -268,44 +323,44 @@ function updateStudentDetailContent(data) {
                 <h3 class="student-name">${student.name}</h3>
                 <p>เลขที่ ${student.number} รหัส ${student.code}</p>
                 <p>ห้อง ${student.class}</p>
-                ${student.phone ? `<p>โทรศัพท์: ${student.phone}</p>` : ''}
-                ${student.email ? `<p>อีเมล: ${student.email}</p>` : ''}
             </div>
         </div>
         
         <div class="attendance-stats">
             <div class="stat-item">
                 <span class="stat-label">วันเข้าแถวทั้งหมด:</span>
-                <span class="stat-value">${summary.present_days + summary.late_days}/${summary.total_days} วัน</span>
+                <span class="stat-value">${attendanceDays}/${summary.total_days} วัน</span>
             </div>
             <div class="stat-item">
                 <span class="stat-label">อัตราการเข้าแถว:</span>
-                <span class="stat-value ${summary.status}">${summary.attendance_percentage}%</span>
+                <span class="stat-value ${statusClass}">${attendanceRate}%</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">มาเรียน:</span>
+                <span class="stat-value good">${summary.present_days} วัน</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">มาสาย:</span>
+                <span class="stat-value warning">${summary.late_days} วัน</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">ลา:</span>
+                <span class="stat-value">${summary.leave_days} วัน</span>
             </div>
             <div class="stat-item">
                 <span class="stat-label">ขาดเรียน:</span>
-                <span class="stat-value">${summary.absent_days} วัน</span>
+                <span class="stat-value ${summary.absent_days > 0 ? 'danger' : ''}">${summary.absent_days} วัน</span>
             </div>
+        </div>
     `;
-    
-    if (summary.absent_days > 0 && summary.last_absent_date) {
-        html += `
-            <div class="stat-item">
-                <span class="stat-label">ขาดล่าสุด:</span>
-                <span class="stat-value">${summary.last_absent_date}</span>
-            </div>
-        `;
-    }
-    
-    html += `</div>`;
-    
+
     // เพิ่มประวัติการเข้าแถว
     html += `
         <div class="attendance-history">
             <h4>ประวัติการเข้าแถว</h4>
     `;
-    
-    if (data.attendance && data.attendance.length > 0) {
+
+    if (data.history && data.history.length > 0) {
         html += `
             <table class="history-table">
                 <thead>
@@ -313,57 +368,73 @@ function updateStudentDetailContent(data) {
                         <th>วันที่</th>
                         <th>สถานะ</th>
                         <th>เวลา</th>
+                        <th>วิธีการเช็ค</th>
                         <th>หมายเหตุ</th>
                     </tr>
                 </thead>
                 <tbody>
         `;
-        
-        data.attendance.forEach(record => {
+
+        // แสดงข้อมูลย้อนหลัง 30 วันล่าสุด
+        data.history.forEach(record => {
             html += `
                 <tr>
                     <td>${record.thai_date}</td>
-                    <td class="status ${record.status_class}">${record.status_text}</td>
+                    <td><span class="status ${record.status_class}">${record.status_text}</span></td>
                     <td>${record.time}</td>
+                    <td>${record.method}</td>
                     <td>${record.remarks || '-'}</td>
                 </tr>
             `;
         });
-        
+
         html += `
                 </tbody>
             </table>
         `;
+
+        // ตัวแปรสำหรับการกำหนดหน้า (pagination)
+        if (data.history.length > 30) {
+            html += `
+            <div class="pagination">
+                <button class="pagination-button" onclick="changePage(1)">1</button>
+                <button class="pagination-button" onclick="changePage(2)">2</button>
+                <button class="pagination-button" onclick="changePage(3)">3</button>
+            </div>
+            `;
+        }
     } else {
         html += `<p class="no-data-message">ไม่พบประวัติการเข้าแถว</p>`;
     }
-    
+
     html += `</div>`;
-    
+
     detailContent.innerHTML = html;
     detailContent.dataset.studentId = student.id;
     detailContent.dataset.studentName = student.name;
 }
 
-
-// ฟังก์ชันอัพเดตข้อมูลผู้ปกครอง
+/**
+ * อัพเดตข้อมูลผู้ปกครองใน Modal
+ * @param {Array} parents - ข้อมูลผู้ปกครอง
+ */
 function updateParentDetailContent(parents) {
     const parentContent = document.getElementById('parent-detail-content');
     if (!parentContent) return;
-    
+
     let html = '';
-    
+
     parents.forEach((parent, index) => {
-        // สร้าง Avatar
-        let avatarHtml = '';
-        if (parent.profile_picture) {
-            avatarHtml = `<div class="parent-avatar" style="background-image: url('${parent.profile_picture}'); background-size: cover;"></div>`;
-        } else {
-            const firstChar = parent.name.charAt(0);
-            avatarHtml = `<div class="parent-avatar">${firstChar}</div>`;
-        }
-        
-        html += `
+                // สร้าง Avatar
+                let avatarHtml = '';
+                if (parent.profile_picture) {
+                    avatarHtml = `<div class="parent-avatar" style="background-image: url('${parent.profile_picture}'); background-size: cover;"></div>`;
+                } else {
+                    const firstChar = parent.name.charAt(0);
+                    avatarHtml = `<div class="parent-avatar">${firstChar}</div>`;
+                }
+
+                html += `
             <div class="parent-profile" ${index > 0 ? 'style="margin-top: 20px; border-top: 1px solid #eee; padding-top: 20px;"' : ''}>
                 ${avatarHtml}
                 <div class="parent-info">
@@ -377,214 +448,13 @@ function updateParentDetailContent(parents) {
     });
     
     parentContent.innerHTML = html;
-    parentContent.dataset.parent_id = parents[0].id;
-}
-
-function fallbackToMockData(studentId) {
-    // หาข้อมูลนักเรียนจากตาราง
-    const studentInfo = findStudentById(studentId);
-    if (studentInfo) {
-        const detailContent = document.getElementById('student-detail-content');
-        
-        // สร้าง HTML สำหรับ Modal
-        let html = `
-            <div class="student-profile">
-                <div class="student-avatar">${studentInfo.name.charAt(0)}</div>
-                <div class="student-info">
-                    <h3 class="student-name">${studentInfo.name}</h3>
-                    <p>เลขที่ ${studentInfo.number}</p>
-                </div>
-            </div>
-            
-            <div class="attendance-stats">
-                <div class="stat-item">
-                    <span class="stat-label">วันเข้าแถวทั้งหมด:</span>
-                    <span class="stat-value">${studentInfo.attendance}</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">อัตราการเข้าแถว:</span>
-                    <span class="stat-value ${studentInfo.status}">${studentInfo.percentage}</span>
-                </div>
-            </div>
-            
-            <div class="attendance-history">
-                <h4>ประวัติการเข้าแถว</h4>
-                <p class="no-data-message">ไม่มีข้อมูลประวัติการเข้าแถวในขณะนี้</p>
-                <p class="no-data-message">กรุณาอัพเดตระบบเพื่อแสดงข้อมูลในส่วนนี้</p>
-            </div>
-        `;
-        
-        if (detailContent) {
-            detailContent.innerHTML = html;
-            detailContent.dataset.studentId = studentId;
-            detailContent.dataset.studentName = studentInfo.name;
-        }
-        
-        // แสดงข้อมูลผู้ปกครองจำลอง
-        const parentSection = document.getElementById('parent-detail-section');
-        const parentContent = document.getElementById('parent-detail-content');
-        const contactBtn = document.getElementById('contactParentBtn');
-        
-        if (parentSection && parentContent) {
-            parentContent.innerHTML = `
-                <div class="parent-profile">
-                    <div class="parent-avatar">ผ</div>
-                    <div class="parent-info">
-                        <h3 class="parent-name">ผู้ปกครองของ ${studentInfo.name}</h3>
-                        <p>ความสัมพันธ์: ผู้ปกครอง</p>
-                        <p class="no-data-message">ระบบจะแสดงข้อมูลผู้ปกครองจริงเมื่อเชื่อมต่อกับฐานข้อมูล</p>
-                    </div>
-                </div>
-            `;
-            
-            parentSection.style.display = 'block';
-            if (contactBtn) contactBtn.style.display = 'inline-flex';
-        }
+    
+    // เก็บข้อมูลผู้ปกครองใน dataset
+    if (parents.length > 0) {
+        parentContent.dataset.parent_id = parents[0].id;
+        parentContent.dataset.parent_name = parents[0].name;
+        parentContent.dataset.parent_phone = parents[0].phone || '';
     }
-}
-/**
- * ดึงข้อมูลประวัติการเข้าแถวของนักเรียน
- * @param {number} studentId - ID ของนักเรียน
- */
-function fetchStudentAttendanceHistory(studentId) {
-    // สร้าง URL สำหรับดึงข้อมูล
-    const urlParams = new URLSearchParams(window.location.search);
-    const month = urlParams.get('month') || '';
-    const year = urlParams.get('year') || '';
-
-    let apiUrl = `api/student_attendance_history.php?student_id=${studentId}`;
-    if (month) apiUrl += `&month=${month}`;
-    if (year) apiUrl += `&year=${year}`;
-
-    // ทำการ fetch ข้อมูล
-    fetch(apiUrl)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('เกิดข้อผิดพลาดในการดึงข้อมูล: ' + response.status);
-            }
-            return response.json();
-        })
-        .then(data => {
-            if (data.success) {
-                // อัพเดท Modal ด้วยข้อมูลที่ได้
-                updateStudentDetailModal(data);
-            } else {
-                // แสดงข้อความแจ้งเตือนในกรณีที่มีข้อผิดพลาด
-                const detailContent = document.getElementById('student-detail-content');
-                if (detailContent) {
-                    detailContent.innerHTML = `<div class="error">${data.message || 'เกิดข้อผิดพลาดในการดึงข้อมูล'}</div>`;
-                }
-            }
-        })
-        .catch(error => {
-            console.error('เกิดข้อผิดพลาดในการดึงข้อมูล:', error);
-            const detailContent = document.getElementById('student-detail-content');
-            if (detailContent) {
-                detailContent.innerHTML = `<div class="error">เกิดข้อผิดพลาดในการดึงข้อมูล: ${error.message}</div>`;
-            }
-        });
-}
-
-/**
- * อัพเดท Modal รายละเอียดนักเรียนด้วยข้อมูลที่ได้จาก API
- * @param {Object} data - ข้อมูลที่ได้จาก API
- */
-function updateStudentDetailModal(data) {
-    const detailContent = document.getElementById('student-detail-content');
-    if (!detailContent) return;
-
-    // สร้าง Avatar จากชื่อนักเรียนหรือใช้รูปโปรไฟล์ถ้ามี
-    let avatarHtml = '';
-    if (data.student.profile_picture) {
-        avatarHtml = `<div class="student-avatar" style="background-image: url('${data.student.profile_picture}'); background-size: cover;"></div>`;
-    } else {
-        const firstChar = data.student.name.charAt(0);
-        avatarHtml = `<div class="student-avatar">${firstChar}</div>`;
-    }
-
-    // สร้าง HTML สำหรับ Modal
-    let html = `
-        <div class="student-profile">
-            ${avatarHtml}
-            <div class="student-info">
-                <h3 class="student-name">${data.student.name}</h3>
-                <p>เลขที่ ${data.student.number} รหัส ${data.student.code}</p>
-                <p>ห้อง ${data.student.class}</p>
-            </div>
-        </div>
-        
-        <div class="attendance-stats">
-            <div class="stat-item">
-                <span class="stat-label">วันเข้าแถวทั้งหมด:</span>
-                <span class="stat-value">${data.summary.present_days + data.summary.late_days}/${data.summary.total_days} วัน</span>
-            </div>
-            <div class="stat-item">
-                <span class="stat-label">อัตราการเข้าแถว:</span>
-                <span class="stat-value ${data.summary.status}">${data.summary.attendance_percentage}%</span>
-            </div>
-            <div class="stat-item">
-                <span class="stat-label">ขาดเรียน:</span>
-                <span class="stat-value">${data.summary.absent_days} วัน</span>
-            </div>
-    `;
-
-    if (data.summary.absent_days > 0) {
-        html += `
-            <div class="stat-item">
-                <span class="stat-label">ขาดล่าสุด:</span>
-                <span class="stat-value">${data.summary.last_absent_date}</span>
-            </div>
-        `;
-    }
-
-    html += `</div>`;
-
-    // เพิ่มประวัติการเข้าแถว
-    html += `
-        <div class="attendance-history">
-            <h4>ประวัติการเข้าแถว</h4>
-    `;
-
-    if (data.history && data.history.length > 0) {
-        html += `
-            <table class="history-table">
-                <thead>
-                    <tr>
-                        <th style="width: 30%;">วันที่</th>
-                        <th style="width: 20%;">สถานะ</th>
-                        <th style="width: 15%;">เวลา</th>
-                        <th style="width: 35%;">หมายเหตุ</th>
-                    </tr>
-                </thead>
-                <tbody>
-        `;
-
-        data.history.forEach(record => {
-            html += `
-                <tr>
-                    <td>${record.thai_date}</td>
-                    <td class="status ${record.status_class}">${record.status_text}</td>
-                    <td>${record.time}</td>
-                    <td>${record.remarks || '-'}</td>
-                </tr>
-            `;
-        });
-
-        html += `
-                </tbody>
-            </table>
-        `;
-    } else {
-        html += `<p class="no-data-message">ไม่พบประวัติการเข้าแถว</p>`;
-    }
-
-    html += `</div>`;
-
-    detailContent.innerHTML = html;
-
-    // เก็บข้อมูลนักเรียนไว้สำหรับใช้ในฟังก์ชันติดต่อผู้ปกครอง
-    detailContent.dataset.studentName = data.student.name;
-    detailContent.dataset.studentId = data.student.id;
 }
 
 /**
@@ -604,52 +474,14 @@ function contactParent(studentId) {
         document.body.style.overflow = 'hidden';
     }
 
-    // ดึงข้อมูลนักเรียน
-    const studentInfo = findStudentById(studentId);
-
-    // อัพเดทข้อมูลใน Modal
-    if (studentInfo) {
-        updateParentContactModal(studentInfo);
-    } else {
-        // กรณีไม่พบข้อมูลในตาราง ให้ดึงข้อมูลจาก API
-        fetchStudentForParentContact(studentId);
+    // แสดงการโหลดข้อมูล
+    const parentDetail = document.getElementById('parent-detail');
+    if (parentDetail) {
+        parentDetail.innerHTML = '<div class="loading">กำลังโหลดข้อมูล...</div>';
     }
-}
 
-/**
- * ค้นหาข้อมูลนักเรียนจาก ID
- * @param {number} studentId - ID ของนักเรียน
- * @returns {Object|null} ข้อมูลนักเรียนหรือ null ถ้าไม่พบ
- */
-function findStudentById(studentId) {
-    // หาจากตาราง
-    const rows = document.querySelectorAll('.student-table tbody tr');
-    for (let row of rows) {
-        const viewButton = row.querySelector('.action-button[onclick*="viewStudentDetail"]');
-        if (viewButton) {
-            const idInOnclick = viewButton.getAttribute('onclick').match(/\d+/)[0];
-            if (parseInt(idInOnclick) === studentId) {
-                // ดึงข้อมูลจากแถว
-                const name = row.cells[1].textContent;
-                const number = row.cells[0].textContent;
-                const attendance = row.cells[2].textContent;
-                const percentage = row.cells[3].querySelector('.attendance-percent').textContent;
-                const status = row.cells[3].querySelector('.attendance-percent').className.replace('attendance-percent ', '');
-                
-                return { id: studentId, name, number, attendance, percentage, status };
-            }
-        }
-    }
-    return null;
-}
-
-/**
- * ดึงข้อมูลนักเรียนจาก API สำหรับติดต่อผู้ปกครอง
- * @param {number} studentId - ID ของนักเรียน
- */
-function fetchStudentForParentContact(studentId) {
-    // ทำการ fetch ข้อมูล
-    fetch(`api/student_attendance_history.php?student_id=${studentId}`)
+    // ดึงข้อมูลนักเรียนและผู้ปกครอง
+    fetch(`api/student_parent_data.php?student_id=${studentId}`)
         .then(response => {
             if (!response.ok) {
                 throw new Error('เกิดข้อผิดพลาดในการดึงข้อมูล: ' + response.status);
@@ -658,67 +490,82 @@ function fetchStudentForParentContact(studentId) {
         })
         .then(data => {
             if (data.success) {
-                // สร้างข้อมูลนักเรียนสำหรับส่งต่อไปยังฟังก์ชันอัพเดท Modal
-                const studentInfo = {
-                    id: data.student.id,
-                    number: data.student.number,
-                    name: data.student.name,
-                    attendance: `${data.summary.present_days + data.summary.late_days}/${data.summary.total_days}`,
-                    percentage: `${data.summary.attendance_percentage}%`,
-                    status: data.summary.status
-                };
-
-                // อัพเดท Modal
-                updateParentContactModal(studentInfo);
+                // แสดงข้อมูลผู้ปกครอง
+                if (data.parents && data.parents.length > 0) {
+                    updateParentContactModal(data.student, data.parents);
+                } else {
+                    // กรณีไม่พบข้อมูลผู้ปกครอง
+                    parentDetail.innerHTML = `
+                        <div class="parent-profile">
+                            <div class="parent-avatar">ผ</div>
+                            <div class="parent-info">
+                                <h3 class="parent-name">ไม่พบข้อมูลผู้ปกครอง</h3>
+                                <p>นักเรียน: ${data.student.name}</p>
+                                <p class="no-data-message">ยังไม่มีการบันทึกข้อมูลผู้ปกครองในระบบ</p>
+                            </div>
+                        </div>
+                        
+                        <div class="message-form">
+                            <label class="option-label">ข้อความถึงผู้ปกครอง:</label>
+                            <textarea id="parent-message" rows="5" placeholder="ระบุข้อความที่ต้องการส่งถึงผู้ปกครอง..." class="message-textarea">เรียนท่านผู้ปกครองของ ${data.student.name} ขอแจ้งข้อมูลการเข้าแถวของนักเรียน กรุณาติดตามและดูแลการมาเรียนของนักเรียน</textarea>
+                        </div>
+                    `;
+                }
             } else {
                 // แสดงข้อความแจ้งเตือนในกรณีที่มีข้อผิดพลาด
-                const parentDetail = document.getElementById('parent-detail');
-                if (parentDetail) {
-                    parentDetail.innerHTML = `<div class="error">${data.message || 'เกิดข้อผิดพลาดในการดึงข้อมูล'}</div>`;
-                }
+                parentDetail.innerHTML = `<div class="error">${data.message || 'เกิดข้อผิดพลาดในการดึงข้อมูล'}</div>`;
             }
         })
         .catch(error => {
             console.error('เกิดข้อผิดพลาดในการดึงข้อมูล:', error);
-            const parentDetail = document.getElementById('parent-detail');
-            if (parentDetail) {
-                parentDetail.innerHTML = `<div class="error">เกิดข้อผิดพลาดในการดึงข้อมูล: ${error.message}</div>`;
-            }
+            parentDetail.innerHTML = `<div class="error">เกิดข้อผิดพลาดในการดึงข้อมูล: ${error.message}</div>`;
         });
 }
 
 /**
- * อัพเดทข้อมูลใน Modal ติดต่อผู้ปกครอง
+ * อัพเดตข้อมูลใน Modal ติดต่อผู้ปกครอง
  * @param {Object} student - ข้อมูลนักเรียน
+ * @param {Array} parents - ข้อมูลผู้ปกครอง
  */
-function updateParentContactModal(student) {
+function updateParentContactModal(student, parents) {
     const parentDetail = document.getElementById('parent-detail');
     if (!parentDetail) return;
 
-    // ในระบบจริงจะดึงข้อมูลผู้ปกครองจากฐานข้อมูล
-    // แต่ในตัวอย่างนี้จะใช้ข้อมูลตัวอย่าง
-    const parentName = "ผู้ปกครองของ " + student.name;
-
+    // เลือกผู้ปกครองคนแรก
+    const parent = parents[0];
+    
+    // สร้าง Avatar
+    let avatarHtml = '';
+    if (parent.profile_picture) {
+        avatarHtml = `<div class="parent-avatar" style="background-image: url('${parent.profile_picture}'); background-size: cover;"></div>`;
+    } else {
+        const firstChar = parent.name.charAt(0);
+        avatarHtml = `<div class="parent-avatar">${firstChar}</div>`;
+    }
+    
     let html = `
         <div class="parent-profile">
-            <div class="parent-avatar">ผ</div>
+            ${avatarHtml}
             <div class="parent-info">
-                <h3 class="parent-name">${parentName}</h3>
+                <h3 class="parent-name">${parent.name}</h3>
                 <p>ผู้ปกครองของ ${student.name}</p>
-                <p>ความสัมพันธ์: ผู้ปกครอง</p>
+                <p>ความสัมพันธ์: ${parent.relationship}</p>
+                ${parent.phone ? `<p>โทรศัพท์: ${parent.phone}</p>` : ''}
+                ${parent.email ? `<p>อีเมล: ${parent.email}</p>` : ''}
             </div>
         </div>
         
         <div class="message-form">
             <label class="option-label">ข้อความถึงผู้ปกครอง:</label>
-            <textarea id="parent-message" rows="5" placeholder="ระบุข้อความที่ต้องการส่งถึงผู้ปกครอง..." class="message-textarea">เรียนท่านผู้ปกครอง ขอแจ้งข้อมูลการเข้าแถวของ ${student.name} อัตราการเข้าแถวปัจจุบันอยู่ที่ ${student.percentage} กรุณาติดตามและดูแลการมาเรียนของนักเรียน</textarea>
+            <textarea id="parent-message" rows="5" placeholder="ระบุข้อความที่ต้องการส่งถึงผู้ปกครอง..." class="message-textarea">เรียนท่านผู้ปกครอง ${parent.name} ขอแจ้งข้อมูลการเข้าแถวของ ${student.name} กรุณาติดตามและดูแลการมาเรียนของนักเรียน</textarea>
         </div>
     `;
 
     parentDetail.innerHTML = html;
 
-    // เก็บ ID นักเรียนสำหรับใช้ในการส่งข้อความ
+    // เก็บ ID นักเรียนและผู้ปกครองสำหรับใช้ในการส่งข้อความ
     parentDetail.dataset.studentId = student.id;
+    parentDetail.dataset.parentId = parent.id;
 }
 
 /**
@@ -732,45 +579,16 @@ function contactStudentParent() {
     const detailContent = document.getElementById('student-detail-content');
     if (!detailContent) return;
 
-    const studentName = detailContent.querySelector('.student-name');
     const studentId = detailContent.dataset.studentId;
+    const studentName = detailContent.dataset.studentName;
 
-    if (!studentName || !studentId) {
+    if (!studentId) {
         console.error('ไม่พบข้อมูลนักเรียน');
         return;
     }
 
-    // เปิด Modal ติดต่อผู้ปกครอง
-    const modal = document.getElementById('contact-parent-modal');
-    if (modal) {
-        modal.classList.add('active');
-        document.body.style.overflow = 'hidden';
-    }
-
-    // อัพเดทข้อมูลใน Modal
-    const parentDetail = document.getElementById('parent-detail');
-    if (parentDetail) {
-        const parentName = "ผู้ปกครองของ " + studentName.textContent;
-
-        let html = `
-            <div class="parent-profile">
-                <div class="parent-avatar">ผ</div>
-                <div class="parent-info">
-                    <h3 class="parent-name">${parentName}</h3>
-                    <p>ผู้ปกครองของ ${studentName.textContent}</p>
-                    <p>ความสัมพันธ์: ผู้ปกครอง</p>
-                </div>
-            </div>
-            
-            <div class="message-form">
-                <label class="option-label">ข้อความถึงผู้ปกครอง:</label>
-                <textarea id="parent-message" rows="5" placeholder="ระบุข้อความที่ต้องการส่งถึงผู้ปกครอง..." class="message-textarea">เรียนท่านผู้ปกครอง ขอแจ้งข้อมูลการเข้าแถวของ ${studentName.textContent} กรุณาติดตามและดูแลการมาเรียนของนักเรียน</textarea>
-            </div>
-        `;
-
-        parentDetail.innerHTML = html;
-        parentDetail.dataset.studentId = studentId;
-    }
+    // เรียกฟังก์ชันติดต่อผู้ปกครอง
+    contactParent(studentId);
 }
 
 /**
@@ -786,26 +604,54 @@ function sendParentMessage() {
         return;
     }
 
-    // ดึง ID นักเรียนจาก dataset
+    // ดึงข้อมูลจาก dataset
     const parentDetail = document.getElementById('parent-detail');
-    if (!parentDetail || !parentDetail.dataset.studentId) {
-        alert('ไม่พบข้อมูลนักเรียน');
+    if (!parentDetail) return;
+
+    const studentId = parentDetail.dataset.studentId;
+    const parentId = parentDetail.dataset.parentId;
+
+    if (!studentId || !parentId) {
+        showAlert('ไม่พบข้อมูลนักเรียนหรือผู้ปกครอง', 'error');
         return;
     }
 
-    const studentId = parentDetail.dataset.studentId;
-
     // แสดงการโหลด
-    parentDetail.classList.add('loading');
+    parentDetail.innerHTML += '<div class="loading-overlay">กำลังส่งข้อความ...</div>';
+
+    // ข้อมูลที่จะส่งไปยังเซิร์ฟเวอร์
+    const data = {
+        student_id: studentId,
+        parent_id: parentId,
+        message: message
+    };
 
     // ในระบบจริงจะส่ง AJAX request ไปยังเซิร์ฟเวอร์
-    // เช่น fetch('api/send_message.php', { method: 'POST', body: JSON.stringify({ studentId, message }) })
+    // fetch('api/send_parent_message.php', {
+    //     method: 'POST', 
+    //     headers: {
+    //         'Content-Type': 'application/json',
+    //     },
+    //     body: JSON.stringify(data)
+    // })
+    //     .then(response => response.json())
+    //     .then(data => {
+    //         closeModal('contact-parent-modal');
+    //         if (data.success) {
+    //             showAlert('ส่งข้อความถึงผู้ปกครองเรียบร้อยแล้ว', 'success');
+    //         } else {
+    //             showAlert('เกิดข้อผิดพลาดในการส่งข้อความ: ' + data.message, 'error');
+    //         }
+    //     })
+    //     .catch(error => {
+    //         showAlert('เกิดข้อผิดพลาดในการส่งข้อความ', 'error');
+    //         console.error('Error:', error);
+    //     });
 
     // จำลองการส่ง
     setTimeout(() => {
         // ปิด Modal
         closeModal('contact-parent-modal');
-        parentDetail.classList.remove('loading');
 
         // แสดงการแจ้งเตือน
         showAlert('ส่งข้อความถึงผู้ปกครองเรียบร้อยแล้ว', 'success');
@@ -892,6 +738,26 @@ function printStudentReport() {
                         display: none;
                     }
                 }
+                .status {
+                    padding: 2px 6px;
+                    border-radius: 3px;
+                }
+                .status.present {
+                    background-color: #e8f5e9;
+                    color: #4caf50;
+                }
+                .status.absent {
+                    background-color: #ffebee;
+                    color: #f44336;
+                }
+                .status.late {
+                    background-color: #fff8e1;
+                    color: #ff9800;
+                }
+                .status.leave {
+                    background-color: #e3f2fd;
+                    color: #2196f3;
+                }
             </style>
         </head>
         <body>
@@ -915,7 +781,6 @@ function printStudentReport() {
             <script>
                 // พิมพ์อัตโนมัติหลังจากโหลดหน้าเสร็จ
                 window.onload = function() {
-                    // เปิดหน้าต่างพิมพ์อัตโนมัติหลังจากโหลดเสร็จ 1 วินาที
                     setTimeout(function() {
                         window.print();
                     }, 1000);
@@ -958,22 +823,49 @@ function sendNotification() {
         return;
     }
 
+    // ดึงพารามิเตอร์จาก URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const classId = urlParams.get('class_id') || document.getElementById('class-select').value;
+
+    // สร้างข้อมูลที่จะส่งไปยังเซิร์ฟเวอร์
+    const data = {
+        class_id: classId,
+        notification_type: notificationType.value,
+        message: message
+    };
+
     // แสดงการโหลด
     const modalContent = document.querySelector('#notify-parents-modal .modal-content');
     if (modalContent) {
-        modalContent.classList.add('loading');
+        modalContent.innerHTML += '<div class="loading-overlay">กำลังส่งการแจ้งเตือน...</div>';
     }
 
     // ในระบบจริงจะส่ง AJAX request ไปยังเซิร์ฟเวอร์
-    // เช่น fetch('api/notify_parents.php', { method: 'POST', body: JSON.stringify({ type: notificationType.value, message }) })
+    // fetch('api/send_notification.php', {
+    //     method: 'POST',
+    //     headers: {
+    //         'Content-Type': 'application/json',
+    //     },
+    //     body: JSON.stringify(data)
+    // })
+    //     .then(response => response.json())
+    //     .then(data => {
+    //         closeModal('notify-parents-modal');
+    //         if (data.success) {
+    //             showAlert('ส่งการแจ้งเตือนไปยังผู้ปกครองเรียบร้อยแล้ว', 'success');
+    //         } else {
+    //             showAlert('เกิดข้อผิดพลาดในการส่งการแจ้งเตือน: ' + data.message, 'error');
+    //         }
+    //     })
+    //     .catch(error => {
+    //         showAlert('เกิดข้อผิดพลาดในการส่งการแจ้งเตือน', 'error');
+    //         console.error('Error:', error);
+    //     });
 
     // จำลองการส่ง
     setTimeout(() => {
         // ปิด Modal
         closeModal('notify-parents-modal');
-        if (modalContent) {
-            modalContent.classList.remove('loading');
-        }
 
         // แสดงการแจ้งเตือน
         const isAll = notificationType.value === 'all';
@@ -988,11 +880,17 @@ function sendNotification() {
  * ดาวน์โหลดรายงานการเข้าแถว
  */
 function downloadReport() {
+    // ดึงพารามิเตอร์จาก URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const classId = urlParams.get('class_id') || document.getElementById('class-select').value;
+    const month = urlParams.get('month') || new Date().getMonth() + 1;
+    const year = urlParams.get('year') || new Date().getFullYear();
+
     // แสดงการแจ้งเตือน
     showAlert('กำลังเตรียมรายงานสำหรับดาวน์โหลด...', 'info');
 
     // ในระบบจริงจะส่ง AJAX request ไปยังเซิร์ฟเวอร์เพื่อสร้างไฟล์รายงาน
-    // เช่น window.location.href = 'api/generate_report.php?class_id=' + currentClassId + '&month=' + currentMonth + '&year=' + currentYear;
+    // window.location.href = `api/download_report.php?class_id=${classId}&month=${month}&year=${year}`;
 
     // จำลองการดาวน์โหลด
     setTimeout(() => {
@@ -1092,7 +990,6 @@ function printDailyChart() {
             <script>
                 // พิมพ์อัตโนมัติหลังจากโหลดหน้าเสร็จ
                 window.onload = function() {
-                    // เปิดหน้าต่างพิมพ์อัตโนมัติหลังจากโหลดเสร็จ 1 วินาที
                     setTimeout(function() {
                         window.print();
                     }, 1000);
@@ -1255,7 +1152,6 @@ function printStudentChart() {
             <script>
                 // พิมพ์อัตโนมัติหลังจากโหลดหน้าเสร็จ
                 window.onload = function() {
-                    // เปิดหน้าต่างพิมพ์อัตโนมัติหลังจากโหลดเสร็จ 1 วินาที
                     setTimeout(function() {
                         window.print();
                     }, 1000);
@@ -1289,11 +1185,17 @@ function goBack() {
 }
 
 /**
- * แสดงเมนูเพิ่มเติม (ในระบบจริงจะแสดงเมนูดรอปดาวน์)
+ * แสดงเมนูเพิ่มเติม
  */
 function toggleOptions() {
     // แสดงการแจ้งเตือน
-    showAlert('เมนูเพิ่มเติม (กำลังพัฒนา)', 'info');
+    showAlert('เมนูเพิ่มเติม', 'info');
+    
+    // ในระบบจริงจะแสดงเมนูดรอปดาวน์
+    const userDropdown = document.getElementById('userDropdown');
+    if (userDropdown) {
+        userDropdown.style.display = userDropdown.style.display === 'block' ? 'none' : 'block';
+    }
 }
 
 /**
@@ -1309,10 +1211,6 @@ function showAlert(message, type = 'info') {
         // สร้าง alert container
         alertContainer = document.createElement('div');
         alertContainer.className = 'alert-container';
-        alertContainer.style.position = 'fixed';
-        alertContainer.style.top = '20px';
-        alertContainer.style.right = '20px';
-        alertContainer.style.zIndex = '9999';
         document.body.appendChild(alertContainer);
     }
 
@@ -1352,4 +1250,118 @@ function showAlert(message, type = 'info') {
             alertContainer.removeChild(alert);
         }
     }, 5000);
+}
+
+/**
+ * เปลี่ยนหน้าในตารางประวัติการเข้าแถว (Pagination)
+ * @param {number} page - หน้าที่ต้องการแสดง
+ */
+function changePage(page) {
+    // ในระบบจริงจะดึงข้อมูลหน้าที่ต้องการจาก API
+    const studentId = document.getElementById('student-detail-content').dataset.studentId;
+    
+    if (!studentId) return;
+    
+    // แสดงการโหลดข้อมูล
+    const historySection = document.querySelector('.attendance-history');
+    if (historySection) {
+        historySection.innerHTML = '<div class="loading">กำลังโหลดข้อมูล...</div>';
+    }
+    
+    // ดึงพารามิเตอร์จาก URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const currentMonth = urlParams.get('month');
+    const currentYear = urlParams.get('year');
+    
+    // สร้าง URL สำหรับดึงข้อมูล
+    let apiUrl = `api/student_attendance_history.php?student_id=${studentId}&page=${page}`;
+    
+    // เพิ่มพารามิเตอร์เดือนและปี (ถ้ามี)
+    if (currentMonth) {
+        apiUrl += `&month=${currentMonth}`;
+    }
+    
+    if (currentYear) {
+        apiUrl += `&year=${currentYear}`;
+    }
+    
+    // ดึงข้อมูลจาก API
+    fetch(apiUrl)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('เกิดข้อผิดพลาดในการดึงข้อมูล: ' + response.status);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                // อัพเดตเฉพาะส่วนของประวัติการเข้าแถว
+                updateAttendanceHistory(data.history, page);
+            } else {
+                // แสดงข้อความแจ้งเตือนในกรณีที่มีข้อผิดพลาด
+                historySection.innerHTML = `<div class="error">${data.message || 'เกิดข้อผิดพลาดในการดึงข้อมูล'}</div>`;
+            }
+        })
+        .catch(error => {
+            console.error('เกิดข้อผิดพลาดในการดึงข้อมูล:', error);
+            historySection.innerHTML = `<div class="error">เกิดข้อผิดพลาดในการดึงข้อมูล: ${error.message}</div>`;
+        });
+}
+
+/**
+ * อัพเดตส่วนของประวัติการเข้าแถว
+ * @param {Array} history - ข้อมูลประวัติการเข้าแถว
+ * @param {number} currentPage - หน้าปัจจุบัน
+ */
+function updateAttendanceHistory(history, currentPage) {
+    const historySection = document.querySelector('.attendance-history');
+    if (!historySection) return;
+    
+    let html = `<h4>ประวัติการเข้าแถว</h4>`;
+    
+    if (history && history.length > 0) {
+        html += `
+            <table class="history-table">
+                <thead>
+                    <tr>
+                        <th>วันที่</th>
+                        <th>สถานะ</th>
+                        <th>เวลา</th>
+                        <th>วิธีการเช็ค</th>
+                        <th>หมายเหตุ</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+        
+        history.forEach(record => {
+            html += `
+                <tr>
+                    <td>${record.thai_date}</td>
+                    <td><span class="status ${record.status_class}">${record.status_text}</span></td>
+                    <td>${record.time}</td>
+                    <td>${record.method}</td>
+                    <td>${record.remarks || '-'}</td>
+                </tr>
+            `;
+        });
+        
+        html += `
+                </tbody>
+            </table>
+        `;
+        
+        // สร้าง pagination
+        html += `
+        <div class="pagination">
+            <button class="pagination-button ${currentPage === 1 ? 'active' : ''}" onclick="changePage(1)">1</button>
+            <button class="pagination-button ${currentPage === 2 ? 'active' : ''}" onclick="changePage(2)">2</button>
+            <button class="pagination-button ${currentPage === 3 ? 'active' : ''}" onclick="changePage(3)">3</button>
+        </div>
+        `;
+    } else {
+        html += `<p class="no-data-message">ไม่พบประวัติการเข้าแถว</p>`;
+    }
+    
+    historySection.innerHTML = html;
 }

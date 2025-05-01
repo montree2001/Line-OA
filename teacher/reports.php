@@ -1,8 +1,14 @@
 <?php
+/**
+ * reports.php - หน้ารายงานการเข้าแถวของ Teacher-Prasat
+ * 
+ * หน้านี้ใช้สำหรับแสดงรายงานการเข้าแถวของนักเรียนในกลุ่มที่ครูเป็นที่ปรึกษา
+ * และดูรายงานต่างๆ เกี่ยวกับการเข้าแถวของนักเรียน
+ */
+
 // กำหนดข้อมูลหน้าปัจจุบัน
 $current_page = 'reports';
 $page_title = 'Teacher-Prasat - รายงานการเข้าแถว';
-$page_header = 'รายงานการเข้าแถว';
 
 // เริ่มต้น session และตรวจสอบการล็อกอิน
 session_start();
@@ -537,31 +543,6 @@ for ($day = 1; $day <= $days_in_month; $day++) {
         'is_school_day' => $is_school_day
     ];
 }
-
-
-// ฟังก์ชันใหม่สำหรับดึงข้อมูลผู้ปกครอง
-function getParentsInfo($db, $student_id) {
-    try {
-        $parent_query = "SELECT p.parent_id, p.relationship, u.first_name, u.last_name, 
-                         u.phone_number, u.email, u.profile_picture, p.title
-                         FROM parent_student_relation psr
-                         JOIN parents p ON psr.parent_id = p.parent_id
-                         JOIN users u ON p.user_id = u.user_id
-                         WHERE psr.student_id = :student_id";
-        
-        $stmt = $db->prepare($parent_query);
-        $stmt->bindParam(':student_id', $student_id, PDO::PARAM_INT);
-        $stmt->execute();
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
-    } catch (Exception $e) {
-        error_log("Error fetching parent info: " . $e->getMessage());
-        return [];
-    }
-}
-
-
-
-
 
 // สร้างข้อมูลวันที่หลังเดือนปัจจุบัน (เพื่อให้ครบ 42 ช่อง หรือ 6 สัปดาห์)
 $next_month = $current_month + 1;
