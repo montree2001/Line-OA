@@ -1,94 +1,7 @@
-/* ตั้งค่าพื้นฐาน */
-
-:root {
-    --primary-color: #8e24aa;
-    /* สีม่วงสำหรับ SADD-Prasat (ผู้ปกครอง) */
-    --primary-color-dark: #5c007a;
-    --primary-color-light: #f3e5f5;
-    --secondary-color: #1976d2;
-    --secondary-color-light: #e3f2fd;
-    --warning-color: #ff9800;
-    --warning-color-light: #fff8e1;
-    --danger-color: #f44336;
-    --danger-color-light: #ffebee;
-    --success-color: #4caf50;
-    --success-color-light: #e8f5e9;
-    --text-dark: #333;
-    --text-light: #666;
-    --text-muted: #78909c;
-    --bg-light: #f5f5f5;
-    --border-color: #e0e0e0;
-    --card-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
-    --transition-speed: 0.3s;
-}
-
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-    font-family: 'Prompt', sans-serif;
-}
-
-html,
-body {
-    height: 100%;
-    width: 100%;
-    overflow-x: hidden;
-}
-
-body {
-    background-color: var(--bg-light);
-    color: var(--text-dark);
-    font-size: 16px;
-    line-height: 1.5;
-    display: flex;
-    flex-direction: column;
-    position: relative;
-}
+/* ปรับปรุง CSS สำหรับหน้าหลักผู้ปกครอง */
 
 
-/* ส่วนหัว */
-
-.header {
-    background: linear-gradient(135deg, #8e24aa 0%, #6a1b9a 100%);
-    color: white;
-    padding: 15px 20px;
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    z-index: 1000;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.app-name {
-    font-size: 20px;
-    font-weight: 600;
-}
-
-.header-icons {
-    display: flex;
-    gap: 15px;
-}
-
-.header-icons .material-icons {
-    cursor: pointer;
-}
-
-
-/* เนื้อหาหลัก */
-
-.container {
-    max-width: 600px;
-    margin: 70px auto 80px;
-    padding: 15px;
-}
-
-
-/* แจ้งเตือน */
+/* แก้ไขสไตล์สำหรับการแจ้งเตือน */
 
 .notification-banner {
     background-color: var(--success-color-light);
@@ -99,6 +12,7 @@ body {
     display: flex;
     align-items: center;
     border-left: 4px solid var(--success-color);
+    transition: all 0.3s ease;
 }
 
 .notification-banner.warning {
@@ -115,6 +29,8 @@ body {
     margin-right: 15px;
     color: var(--success-color);
     font-size: 24px;
+    flex-shrink: 0;
+    /* ป้องกันการหดตัวของไอคอน */
 }
 
 .notification-banner.warning .icon {
@@ -127,60 +43,30 @@ body {
 
 .notification-banner .content {
     flex: 1;
+    min-width: 0;
+    /* ช่วยให้ text-overflow ทำงานได้อย่างถูกต้อง */
 }
 
 .notification-banner .title {
     font-weight: 600;
     margin-bottom: 5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .notification-banner .message {
     font-size: 14px;
     color: var(--text-light);
-}
-
-
-/* แท็บเมนู */
-
-.tab-menu {
-    background-color: white;
-    border-radius: 10px;
-    display: flex;
-    margin-bottom: 20px;
     overflow: hidden;
-    box-shadow: var(--card-shadow);
-}
-
-.tab-button {
-    flex: 1;
-    padding: 15px 0;
-    text-align: center;
-    background: none;
-    border: none;
-    font-weight: 600;
-    font-size: 14px;
-    color: var(--text-light);
-    position: relative;
-    cursor: pointer;
-    transition: color var(--transition-speed);
-}
-
-.tab-button.active {
-    color: var(--primary-color);
-}
-
-.tab-button.active::after {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    height: 3px;
-    background-color: var(--primary-color);
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
 }
 
 
-/* ข้อมูลนักเรียน */
+/* ปรับปรุงส่วนแสดงข้อมูลนักเรียนในความดูแล */
 
 .student-section {
     margin-bottom: 20px;
@@ -197,6 +83,13 @@ body {
     font-size: 18px;
     font-weight: 600;
     color: var(--text-dark);
+    display: flex;
+    align-items: center;
+}
+
+.section-header h2 .material-icons {
+    margin-right: 5px;
+    font-size: 20px;
 }
 
 .view-all {
@@ -204,23 +97,52 @@ body {
     font-size: 14px;
     font-weight: 500;
     text-decoration: none;
+    display: flex;
+    align-items: center;
 }
+
+.view-all .material-icons {
+    font-size: 16px;
+    margin-left: 2px;
+}
+
+.view-details-button {
+    width: 100%;
+    justify-content: center;
+    padding: 10px;
+}
+
+
+/* ปรับ padding ของเนื้อหา */
+
+.student-card-body {
+    padding: 15px;
+}
+
+
+/* ปรับปรุง student-cards ให้รองรับการเลื่อนแบบ touch */
 
 .student-cards {
     display: flex;
+    flex-direction: column;
+    /* เปลี่ยนเป็นแนวตั้ง */
     gap: 15px;
-    overflow-x: auto;
     padding-bottom: 10px;
-    scrollbar-width: thin;
-    scrollbar-color: var(--border-color) transparent;
+    width: 100%;
+    /* ให้เต็มความกว้าง */
+    overflow-x: visible;
+    /* ไม่ต้องมีการเลื่อนแนวนอน */
 }
 
-.student-cards::-webkit-scrollbar {
-    height: 4px;
-}
-
-.student-cards::-webkit-scrollbar-track {
-    background: #f1f1f1;
+.student-card {
+    width: 100%;
+    /* เต็มความกว้าง */
+    min-width: unset;
+    /* ยกเลิกการกำหนดความกว้างขั้นต่ำ */
+    max-width: 100%;
+    /* ไม่เกินความกว้างของ container */
+    box-sizing: border-box;
+    transition: transform 0.2s, box-shadow 0.2s;
 }
 
 .student-cards::-webkit-scrollbar-thumb {
@@ -235,69 +157,78 @@ body {
     min-width: 250px;
     box-shadow: var(--card-shadow);
     border-top: 4px solid var(--primary-color);
+    scroll-snap-align: start;
+    /* เพิ่มการเลื่อนแบบ snap */
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.student-card:hover,
+.student-card:active {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
 }
 
 .student-card .header {
     display: flex;
     align-items: center;
     position: relative;
-    background: none;
-    box-shadow: none;
-    padding: 0;
-    margin-bottom: 15px;
+    padding-right: 120px;
+    /* เพิ่มพื้นที่สำหรับสถานะ */
 }
+
+
+/* ปรับขนาดของ avatar ให้มีขนาดที่เหมาะสม */
 
 .student-avatar {
     width: 50px;
     height: 50px;
-    border-radius: 50%;
-    background-color: var(--primary-color);
-    margin-right: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    font-size: 20px;
-    font-weight: 600;
+    flex-shrink: 0;
 }
+
+
+/* ปรับข้อมูลนักเรียนให้เต็มพื้นที่ */
 
 .student-info {
     flex: 1;
+    min-width: 0;
+    /* ช่วยให้ text-overflow ทำงานได้ */
+    margin-right: 10px;
+    /* ให้มีระยะห่างจากสถานะ */
 }
 
 .student-name {
     font-weight: 600;
     margin-bottom: 5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .student-class {
     font-size: 14px;
     color: var(--text-light);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 
-/* อัปเดต CSS เฉพาะส่วนของ student-status */
+/* สถานะให้อยู่ตำแหน่งเดิมแต่ปรับขนาดและตำแหน่ง */
 
 .student-status {
     position: absolute;
-    top: 15px;
+    top: 50%;
     right: 15px;
-    display: inline-flex;
-    align-items: center;
-    font-size: 12px;
-    font-weight: 500;
-    padding: 4px 8px;
-    border-radius: 20px;
+    transform: translateY(-50%);
     max-width: 110px;
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
 }
 
 .student-status .material-icons {
     font-size: 14px;
     margin-right: 4px;
     min-width: 14px;
+    flex-shrink: 0;
+    /* ป้องกันการหดตัว */
 }
 
 .status-details {
@@ -306,112 +237,28 @@ body {
 }
 
 
-/* เพิ่มการแสดงรายละเอียดเมื่อเลื่อนเมาส์ไปที่สถานะ */
+/* เพิ่มการแสดงผลเมื่อแตะที่สถานะบนอุปกรณ์มือถือ */
 
-.student-status:hover {
+.student-status:hover,
+.student-status:active,
+.student-status.expanded {
     max-width: none;
     z-index: 10;
 }
 
-.student-status:hover .status-details {
+.student-status:hover .status-details,
+.student-status:active .status-details,
+.student-status.expanded .status-details {
     display: inline;
     font-size: 10px;
     margin-left: 5px;
     font-weight: normal;
 }
 
-.student-status.present {
-    background-color: var(--success-color-light);
-    color: var(--success-color);
-}
-
-.student-status.absent {
-    background-color: var(--danger-color-light);
-    color: var(--danger-color);
-}
-
-.student-status.late {
-    background-color: var(--warning-color-light);
-    color: var(--warning-color);
-}
-
-.student-status.leave {
-    background-color: #f0f0f0;
-    color: var(--text-muted);
-}
-
-.student-status.unknown {
-    background-color: #f0f0f0;
-    color: var(--text-muted);
-}
-
-
-/* การตอบสนองต่อขนาดหน้าจอ */
-
-@media (max-width: 768px) {
-    .student-card-header {
-        padding-right: 120px;
-        /* เพิ่มพื้นที่ด้านขวาเพื่อไม่ให้สถานะบังเนื้อหา */
-        position: relative;
-    }
-    .student-status {
-        top: 15px;
-        /* คงตำแหน่งด้านบนขวา */
-        right: 15px;
-        width: auto;
-        transform: none;
-    }
-    .student-avatar {
-        margin-right: 0;
-        margin-bottom: 10px;
-    }
-    .student-basic-info {
-        margin-bottom: 10px;
-        text-align: left;
-        /* เปลี่ยนจาก center เป็น left */
-        width: 100%;
-    }
-}
-
-@media (max-width: 480px) {
-    .student-card-header {
-        flex-direction: row;
-        /* เปลี่ยนกลับไปเป็นแนวนอน */
-        align-items: flex-start;
-        padding: 15px;
-        padding-right: 80px;
-        /* ให้พื้นที่สำหรับสถานะ */
-    }
-    .student-status {
-        top: 15px;
-        right: 10px;
-        padding: 3px 6px;
-        font-size: 10px;
-        max-width: 70px;
-    }
-    .student-status .material-icons {
-        font-size: 12px;
-        margin-right: 2px;
-    }
-    .student-avatar {
-        width: 45px;
-        height: 45px;
-        font-size: 18px;
-        margin-right: 10px;
-        margin-bottom: 0;
-    }
-    .student-name {
-        font-size: 14px;
-        margin-bottom: 3px;
-    }
-    .student-class,
-    .student-id {
-        font-size: 11px;
-        margin-bottom: 1px;
-    }
-}
-
 .attendance-details {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
     background-color: var(--bg-light);
     border-radius: 8px;
     padding: 10px;
@@ -419,9 +266,9 @@ body {
 
 .attendance-item {
     display: flex;
-    justify-content: space-between;
-    margin-bottom: 8px;
-    font-size: 14px;
+    flex-direction: column;
+    text-align: center;
+    margin-bottom: 0;
 }
 
 .attendance-item:last-child {
@@ -430,26 +277,60 @@ body {
 
 .attendance-label {
     color: var(--text-light);
+    font-size: 12px;
+    order: 2;
+    /* สลับตำแหน่งให้ค่าอยู่ด้านบน ป้ายกำกับอยู่ด้านล่าง */
 }
 
 .attendance-value {
-    font-weight: 500;
-}
-
-.attendance-value.good {
-    color: var(--success-color);
-}
-
-.attendance-value.warning {
-    color: var(--warning-color);
-}
-
-.attendance-value.danger {
-    color: var(--danger-color);
+    font-weight: 600;
+    font-size: 18px;
+    margin-bottom: 5px;
+    order: 1;
+    /* สลับตำแหน่งให้ค่าอยู่ด้านบน */
 }
 
 
-/* กิจกรรมล่าสุด */
+/* สไตล์สำหรับ "ไม่พบข้อมูล" */
+
+.no-data {
+    text-align: center;
+    padding: 40px 20px;
+    background-color: white;
+    border-radius: 12px;
+    box-shadow: var(--card-shadow);
+    margin-bottom: 20px;
+}
+
+.no-data.small {
+    padding: 20px;
+}
+
+.no-data-icon {
+    margin-bottom: 15px;
+}
+
+.no-data-icon .material-icons {
+    font-size: 48px;
+    color: #e0e0e0;
+}
+
+.no-data.small .no-data-icon .material-icons {
+    font-size: 36px;
+}
+
+.no-data-message {
+    font-size: 16px;
+    color: var(--text-light);
+    margin-bottom: 15px;
+}
+
+.no-data-action {
+    margin-top: 10px;
+}
+
+
+/* ปรับปรุงส่วนกิจกรรมล่าสุด */
 
 .recent-activities {
     background-color: white;
@@ -482,6 +363,8 @@ body {
     justify-content: center;
     margin-right: 15px;
     color: var(--secondary-color);
+    flex-shrink: 0;
+    /* ป้องกันการหดตัว */
 }
 
 .activity-icon.check-in {
@@ -501,11 +384,18 @@ body {
 
 .activity-content {
     flex: 1;
+    min-width: 0;
+    /* ช่วยให้ text-overflow ทำงานได้อย่างถูกต้อง */
 }
 
 .activity-title {
     font-weight: 500;
     margin-bottom: 5px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
 }
 
 .activity-time {
@@ -514,14 +404,25 @@ body {
 }
 
 
-/* ติดต่อครู */
+/* ปรับปรุงส่วนติดต่อครูประจำชั้น */
+
+.contact-teacher-section {
+    margin-bottom: 20px;
+}
 
 .contact-teacher {
     background-color: white;
     border-radius: 12px;
     padding: 20px;
-    margin-bottom: 20px;
+    margin-bottom: 15px;
     box-shadow: var(--card-shadow);
+    transition: all 0.3s ease;
+}
+
+.contact-teacher:hover,
+.contact-teacher:active {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
 }
 
 .teacher-info {
@@ -542,6 +443,8 @@ body {
     color: var(--secondary-color);
     font-size: 24px;
     overflow: hidden;
+    flex-shrink: 0;
+    /* ป้องกันการหดตัว */
 }
 
 .teacher-avatar img {
@@ -552,16 +455,47 @@ body {
 
 .teacher-details {
     flex: 1;
+    min-width: 0;
+    /* ช่วยให้ text-overflow ทำงานได้อย่างถูกต้อง */
 }
 
 .teacher-name {
     font-weight: 600;
     margin-bottom: 5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .teacher-position {
     font-size: 14px;
     color: var(--text-light);
+    margin-bottom: 5px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+.teacher-students {
+    margin-top: 8px;
+    font-size: 14px;
+    color: var(--text-light);
+}
+
+.students-label {
+    font-weight: 500;
+    margin-bottom: 3px;
+}
+
+.students-list {
+    color: var(--text-light);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
 }
 
 .contact-buttons {
@@ -588,7 +522,8 @@ body {
     color: var(--success-color);
 }
 
-.contact-button.call:hover {
+.contact-button.call:hover,
+.contact-button.call:active {
     background-color: #d7f0d8;
 }
 
@@ -597,7 +532,8 @@ body {
     color: var(--secondary-color);
 }
 
-.contact-button.message:hover {
+.contact-button.message:hover,
+.contact-button.message:active {
     background-color: #d2e8fd;
 }
 
@@ -606,8 +542,28 @@ body {
     font-size: 18px;
 }
 
+.more-teachers {
+    text-align: center;
+    margin-top: 15px;
+}
 
-/* ประกาศและข่าวสาร */
+.view-more-button {
+    display: inline-flex;
+    align-items: center;
+    background-color: var(--primary-color-light);
+    color: var(--primary-color);
+    padding: 10px 20px;
+    border-radius: 25px;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.view-more-button .material-icons {
+    margin-right: 5px;
+}
+
+
+/* ปรับปรุงส่วนประกาศและข่าวสาร */
 
 .announcements {
     background-color: white;
@@ -622,6 +578,12 @@ body {
     border-radius: 8px;
     background-color: var(--bg-light);
     margin-bottom: 15px;
+    transition: all 0.3s ease;
+}
+
+.announcement-item:hover,
+.announcement-item:active {
+    background-color: #eaeaea;
 }
 
 .announcement-item:last-child {
@@ -642,6 +604,9 @@ body {
     padding: 3px 8px;
     border-radius: 12px;
     margin-right: 10px;
+    white-space: nowrap;
+    flex-shrink: 0;
+    /* ป้องกันการหดตัว */
 }
 
 .announcement-category.event {
@@ -655,223 +620,98 @@ body {
 .announcement-date {
     font-size: 12px;
     color: var(--text-muted);
+    white-space: nowrap;
 }
 
 .announcement-title {
     font-weight: 600;
     margin-bottom: 8px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
 }
 
 .announcement-text {
     font-size: 14px;
     color: var(--text-light);
+    overflow: hidden;
+    text-overflow: ellipsis;
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
-    overflow: hidden;
 }
 
 
-/* แถบนำทางด้านล่าง - 3 รายการ */
-
-.bottom-nav {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    align-items: center;
-    background-color: white;
-    padding: 10px 0;
-    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
-    z-index: 1000;
-    border-top: 1px solid #f1f1f1;
-}
-
-.nav-item {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    text-decoration: none;
-    color: #666;
-    position: relative;
-    width: 100%;
-    text-align: center;
-    transition: color 0.3s ease;
-}
-
-.nav-item .nav-icon {
-    font-size: 24px;
-    margin-bottom: 4px;
-    color: #666;
-    transition: color 0.3s ease;
-}
-
-.nav-item span {
-    font-size: 12px;
-    font-weight: 500;
-}
-
-.nav-item.active {
-    color: #8e24aa;
-}
-
-.nav-item.active .nav-icon {
-    color: #8e24aa;
-}
-
-
-/* Responsive adjustments */
-
-@media (max-width: 480px) {
-    .nav-item .nav-icon {
-        font-size: 22px;
-    }
-    .nav-item span {
-        font-size: 11px;
-    }
-}
-
-@media (max-width: 375px) {
-    .nav-item .nav-icon {
-        font-size: 20px;
-    }
-    .nav-item span {
-        font-size: 10px;
-    }
-}
-
-
-/* ลบโค้ดส่วน popup-notification */
-
-
-/* ไอคอนจาก Material Icons */
-
-.material-icons {
-    font-family: 'Material Icons';
-    font-weight: normal;
-    font-style: normal;
-    font-size: 24px;
-    line-height: 1;
-    letter-spacing: normal;
-    text-transform: none;
-    display: inline-block;
-    white-space: nowrap;
-    word-wrap: normal;
-    direction: ltr;
-    -webkit-font-feature-settings: 'liga';
-    -webkit-font-smoothing: antialiased;
-}
-
-
-/* ลบโค้ดส่วน Animations ที่เกี่ยวข้องกับ popup-notification */
-
-
-/* ข้อความแสดงความผิดพลาด */
-
-.error-message {
-    background-color: var(--danger-color-light);
-    border-left: 4px solid var(--danger-color);
-    padding: 15px;
-    border-radius: 5px;
-    margin: 20px 0;
-    color: var(--danger-color);
-}
-
-
-/* การตอบสนองต่อขนาดหน้าจอ */
+/* ปรับการตอบสนองต่อขนาดหน้าจอ */
 
 @media (max-width: 768px) {
-    .container {
-        padding: 10px;
-    }
-    .student-cards {
-        padding-bottom: 5px;
-    }
     .student-card {
-        min-width: 200px;
+        min-width: 220px;
     }
-    .section-header h2 {
-        font-size: 16px;
-    }
-    .contact-button {
-        padding: 10px 0;
-    }
-}
-
-@media (max-width: 480px) {
-    .header {
-        padding: 12px 15px;
-    }
-    .app-name {
-        font-size: 18px;
-    }
-    .notification-banner {
-        padding: 12px;
-    }
-    .notification-banner .icon {
-        font-size: 20px;
-    }
-    .notification-banner .title {
-        font-size: 14px;
-    }
-    .notification-banner .message {
-        font-size: 12px;
-    }
-    .tab-button {
-        font-size: 12px;
-        padding: 12px 0;
-    }
-    .student-card {
-        padding: 12px;
-    }
-    .student-avatar {
-        width: 40px;
-        height: 40px;
-        font-size: 16px;
-    }
-    .student-name {
-        font-size: 14px;
-    }
-    .student-class {
-        font-size: 12px;
-    }
-    .attendance-item {
-        font-size: 12px;
-    }
-    .recent-activities,
-    .contact-teacher,
-    .announcements {
-        padding: 15px;
-    }
-    .activity-icon {
-        width: 35px;
-        height: 35px;
-    }
-    .activity-title {
-        font-size: 14px;
+    .teacher-info {
+        flex-direction: row;
+        /* คงการแสดงผลแบบแนวนอน */
+        align-items: flex-start;
     }
     .teacher-avatar {
         width: 50px;
         height: 50px;
+        font-size: 20px;
     }
-    .contact-button {
-        font-size: 12px;
+    .attendance-stats {
+        flex-wrap: wrap;
     }
-    .announcement-title {
-        font-size: 14px;
+    .stat-item {
+        flex-basis: 33.33%;
+        margin-bottom: 10px;
     }
-    .announcement-text {
-        font-size: 12px;
+    .announcement-header {
+        flex-wrap: wrap;
+    }
+    .announcement-date {
+        margin-top: 5px;
+        width: 100%;
     }
 }
 
-@media (max-width: 768px) {
-    /* CSS สำหรับแท็บเล็ต */
-}
+
+/* ปรับมุมมองสำหรับอุปกรณ์มือถือ */
 
 @media (max-width: 480px) {
-    /* CSS สำหรับมือถือ */
+    .student-card .header {
+        padding-right: 85px;
+        /* ปรับตามขนาดหน้าจอ */
+    }
+    .student-avatar {
+        width: 45px;
+        height: 45px;
+        font-size: 18px;
+    }
+    .student-status {
+        max-width: 80px;
+    }
+    .attendance-value {
+        font-size: 16px;
+    }
+}
+
+
+/* สำหรับหน้าจอขนาดเล็กมาก */
+
+@media (max-width: 360px) {
+    .student-card .header {
+        padding-right: 75px;
+    }
+    .attendance-details {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 5px;
+    }
+    .attendance-label {
+        font-size: 10px;
+    }
+    .attendance-value {
+        font-size: 14px;
+    }
 }
