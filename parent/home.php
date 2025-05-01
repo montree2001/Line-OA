@@ -72,44 +72,7 @@ function getStudents($conn, $parent_id) {
     
     if ($result->num_rows === 0) {
         // ถ้าไม่พบข้อมูลจริง ใช้ข้อมูลจำลอง (สำหรับการพัฒนา)
-        return [
-            [
-                'id' => 1,
-                'name' => 'นายเอกชัย รักเรียน',
-                'avatar' => 'อ',
-                'class' => 'ม.6/1',
-                'number' => 15,
-                'present' => true,
-                'check_in_time' => '07:45',
-                'attendance_days' => 97,
-                'absent_days' => 0,
-                'attendance_percentage' => 100
-            ],
-            [
-                'id' => 2,
-                'name' => 'นางสาวสมหญิง รักเรียน',
-                'avatar' => 'ส',
-                'class' => 'ม.4/2',
-                'number' => 8,
-                'present' => true,
-                'check_in_time' => '07:40',
-                'attendance_days' => 95,
-                'absent_days' => 2,
-                'attendance_percentage' => 97.9
-            ],
-            [
-                'id' => 3,
-                'name' => 'เด็กชายธนกฤต รักเรียน',
-                'avatar' => 'ธ',
-                'class' => 'ป.6/3',
-                'number' => 10,
-                'present' => true,
-                'check_in_time' => '07:35',
-                'attendance_days' => 94,
-                'absent_days' => 3,
-                'attendance_percentage' => 96.9
-            ]
-        ];
+        return [];
     }
     
     while ($row = $result->fetch_assoc()) {
@@ -196,15 +159,7 @@ function getActivities($conn, $parent_id) {
     
     if ($result->num_rows === 0) {
         // ถ้าไม่พบข้อมูลจริง ใช้ข้อมูลจำลอง (สำหรับการพัฒนา)
-        return [
-            [
-                'id' => 1,
-                'type' => 'check-in',
-                'icon' => 'check_circle',
-                'title' => 'นายเอกชัย รักเรียน เช็คชื่อเข้าแถว',
-                'time' => 'วันนี้, 07:45 น.'
-            ]
-        ];
+        return [];
     }
     
     while ($row = $result->fetch_assoc()) {
@@ -287,49 +242,84 @@ function getActivities($conn, $parent_id) {
     return $activities;
 }
 
-// สร้างฟังก์ชันดึงข้อมูลครูที่ปรึกษา
-function getTeacher($conn, $student_id) {
-    // SQL เพื่อดึงข้อมูลครูที่ปรึกษาของนักเรียน
-    $sql = "SELECT t.teacher_id, t.title, t.first_name, t.last_name, 
-                  u.phone_number, d.department_name, c.level, c.group_number
-           FROM students s
-           JOIN classes c ON s.current_class_id = c.class_id
-           JOIN class_advisors ca ON c.class_id = ca.class_id AND ca.is_primary = 1
-           JOIN teachers t ON ca.teacher_id = t.teacher_id
-           JOIN users u ON t.user_id = u.user_id
-           JOIN departments d ON t.department_id = d.department_id
-           WHERE s.student_id = ?
-           LIMIT 1";
+// สร้างฟังก์ชันดึงข้อมูลครูที่ปรึกษาสำหรับทุกนักเรียนของผู้ปกครอง
+function getAllTeachers($conn, $parent_id) {
+    $teachers = [];
+    
+    // SQL เพื่อดึงข้อมูลนักเรียนที่เกี่ยวข้องกับผู้ปกครอง
+    $sql = "SELECT s.student_id, s.title as student_title, su.first_name as student_first_name, su.last_name as student_last_name,
+                  c.class_id, c.level, c.group_number, d.department_name,
+                  t.teacher_id, t.title as teacher_title, t.first_name as teacher_first_name, t.last_name as teacher_last_name,
+                  tu.phone_number, ca.is_primary
+           FROM parent_student_relation psr
+           JOIN students s ON psr.student_id = s.student_id
+           JOIN users su ON s.user_id = su.user_id
+           LEFT JOIN classes c ON s.current_class_id = c.class_id
+           LEFT JOIN departments d ON c.department_id = d.department_id
+           LEFT JOIN class_advisors ca ON c.class_id = ca.class_id
+           LEFT JOIN teachers t ON ca.teacher_id = t.teacher_id
+           LEFT JOIN users tu ON t.user_id = tu.user_id
+           WHERE psr.parent_id = ? AND s.status = 'กำลังศึกษา'
+           ORDER BY s.student_id, ca.is_primary DESC";
     
     $stmt = $conn->prepare($sql);
-    $stmt->bind_param("i", $student_id);
+    $stmt->bind_param("i", $parent_id);
     $stmt->execute();
     $result = $stmt->get_result();
     
     if ($result->num_rows === 0) {
-        // ถ้าไม่พบข้อมูล ใช้ข้อมูลจำลอง
-        return [
-            'id' => 1,
-            'name' => 'อาจารย์ใจดี มากเมตตา',
-            'position' => 'ครูประจำชั้น ม.6/1',
-            'phone' => '0812345678',
-            'line_id' => '@teacher_prasat'
-        ];
+        // ถ้าไม่พบข้อมูล ส่งค่าว่างกลับไป
+        return [];
     }
     
-    $row = $result->fetch_assoc();
-    $full_name = $row['title'] . ' ' . $row['first_name'] . ' ' . $row['last_name'];
-    $position = 'ครูประจำชั้น ' . $row['level'] . '/' . $row['group_number'] . ' แผนก' . $row['department_name'];
+    // สร้างโครงสร้างข้อมูลสำหรับจัดเก็บครูที่ปรึกษาตามนักเรียน
+    $student_teachers = [];
     
+    while ($row = $result->fetch_assoc()) {
+        $student_id = $row['student_id'];
+        $student_name = $row['student_title'] . ' ' . $row['student_first_name'] . ' ' . $row['student_last_name'];
+        $class_name = $row['level'] . '/' . $row['group_number'] . ' แผนก' . $row['department_name'];
+        
+        // ถ้ายังไม่มีข้อมูลของนักเรียนนี้ ให้สร้างใหม่
+        if (!isset($student_teachers[$student_id])) {
+            $student_teachers[$student_id] = [
+                'student_id' => $student_id,
+                'student_name' => $student_name,
+                'class_name' => $class_name,
+                'advisors' => []
+            ];
+        }
+        
+        // ถ้ามีข้อมูลครูที่ปรึกษา ให้เพิ่มเข้าไป
+        if ($row['teacher_id']) {
+            $teacher_id = $row['teacher_id'];
+            $teacher_name = $row['teacher_title'] . ' ' . $row['teacher_first_name'] . ' ' . $row['teacher_last_name'];
+            $position = ($row['is_primary'] == 1) ? 'ครูที่ปรึกษาหลัก' : 'ครูที่ปรึกษาร่วม';
+            $position .= ' ' . $class_name;
+            
+            // ตรวจสอบว่าครูนี้ยังไม่อยู่ในรายการครูที่ปรึกษาของนักเรียนนี้
+            $advisor_exists = false;
+            foreach ($student_teachers[$student_id]['advisors'] as $advisor) {
+                if ($advisor['id'] == $teacher_id) {
+                    $advisor_exists = true;
+                    break;
+                }
+            }
+            
+            if (!$advisor_exists) {
+                $student_teachers[$student_id]['advisors'][] = [
+                    'id' => $teacher_id,
+                    'name' => $teacher_name,
+                    'position' => $position,
+                    'phone' => $row['phone_number'],
+                    'is_primary' => $row['is_primary']
+                ];
+            }
+        }
+    }
     $stmt->close();
     
-    return [
-        'id' => $row['teacher_id'],
-        'name' => $full_name,
-        'position' => $position,
-        'phone' => $row['phone_number'],
-        'line_id' => '@teacher_prasat' // ข้อมูลจำลอง (ควรมีในฐานข้อมูล)
-    ];
+    return array_values($student_teachers);
 }
 
 // สร้างฟังก์ชันดึงข้อมูลประกาศ
@@ -344,25 +334,8 @@ function getAnnouncements($conn) {
     $result = $conn->query($sql);
     
     if ($result->num_rows === 0) {
-        // ถ้าไม่พบข้อมูล ใช้ข้อมูลจำลอง
-        return [
-            [
-                'id' => 1,
-                'category' => 'สอบ',
-                'category_class' => 'exam',
-                'title' => 'แจ้งกำหนดการสอบปลายภาค',
-                'content' => 'แจ้งกำหนดการสอบปลายภาคเรียนที่ 2/2567 ระหว่างวันที่ 1-5 เมษายน 2568 โดยนักเรียนต้องมาถึงโรงเรียนก่อนเวลา 8.00 น.',
-                'date' => '14 มี.ค. 2568'
-            ],
-            [
-                'id' => 2,
-                'category' => 'กิจกรรม',
-                'category_class' => 'event',
-                'title' => 'ประชุมผู้ปกครองภาคเรียนที่ 2',
-                'content' => 'ขอเชิญผู้ปกครองทุกท่านเข้าร่วมประชุมผู้ปกครองภาคเรียนที่ 2 ในวันเสาร์ที่ 22 มีนาคม 2568 เวลา 9.00-12.00 น. ณ หอประชุมโรงเรียน',
-                'date' => '10 มี.ค. 2568'
-            ]
-        ];
+        // ถ้าไม่พบข้อมูล ส่งค่าว่างกลับไป
+        return [];
     }
     
     $announcements = [];
@@ -409,11 +382,8 @@ if (!empty($students) && isset($students[0]) && isset($students[0]['check_in_tim
 
 $activities = getActivities($conn, $parent_id);
 
-// ดึงข้อมูลครูที่ปรึกษาของนักเรียนคนแรก (ถ้ามีข้อมูล)
-$teacher = null;
-if (!empty($students) && isset($students[0]['id'])) {
-    $teacher = getTeacher($conn, $students[0]['id']);
-}
+// ดึงข้อมูลครูที่ปรึกษาของทุกนักเรียนในความดูแลของผู้ปกครอง
+$student_teachers = getAllTeachers($conn, $parent_id);
 
 $announcements = getAnnouncements($conn);
 
