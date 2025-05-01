@@ -6,7 +6,7 @@
 document.addEventListener('DOMContentLoaded', function() {
     // เริ่มต้นการทำงาน
     initStudentsPage();
-    
+
     // ตรวจสอบหน้า URL และแสดงเนื้อหาที่เหมาะสม
     checkCurrentView();
 });
@@ -17,15 +17,18 @@ document.addEventListener('DOMContentLoaded', function() {
 function initStudentsPage() {
     // ตั้งค่าปุ่มกรอง
     setupFilterDropdown();
-    
+
     // ตั้งค่าการค้นหา
     setupSearch();
-    
-    // ตั้งค่าปุ่มเพิ่มนักเรียน
-    setupAddStudentButton();
-    
+
     // ตั้งค่าการคลิกที่การ์ดนักเรียน
     setupStudentCards();
+
+    // ตั้งค่าการลบนักเรียน
+    setupRemoveStudent();
+
+    // ตั้งค่าการเพิ่มนักเรียน
+    setupAddStudent();
 }
 
 /**
@@ -35,10 +38,10 @@ function checkCurrentView() {
     // ตรวจสอบว่ามีการระบุ ID นักเรียนหรือไม่
     const urlParams = new URLSearchParams(window.location.search);
     const studentId = urlParams.get('id');
-    
+
     if (studentId) {
         console.log(`แสดงข้อมูลนักเรียน ID: ${studentId}`);
-        // ในการใช้งานจริงควรมีการดึงข้อมูลนักเรียนจาก API
+        // ในงานจริงอาจมีการโหลดข้อมูลเพิ่มเติมจาก API
     } else {
         console.log('แสดงรายการนักเรียนทั้งหมด');
     }
@@ -50,21 +53,21 @@ function checkCurrentView() {
 function setupFilterDropdown() {
     const filterToggle = document.getElementById('filter-toggle');
     if (!filterToggle) return;
-    
+
     const filterMenu = document.getElementById('filter-menu');
-    
+
     // เปิด/ปิดเมนูกรอง
     filterToggle.addEventListener('click', function() {
         filterMenu.classList.toggle('active');
     });
-    
+
     // ปิดเมนูกรองเมื่อคลิกที่อื่น
     document.addEventListener('click', function(event) {
         if (!event.target.closest('#filter-toggle') && !event.target.closest('#filter-menu')) {
             filterMenu.classList.remove('active');
         }
     });
-    
+
     // ตั้งค่าตัวกรอง
     const filterItems = document.querySelectorAll('.filter-item input');
     filterItems.forEach(item => {
@@ -80,27 +83,10 @@ function setupFilterDropdown() {
 function setupSearch() {
     const searchInput = document.getElementById('search-student');
     if (!searchInput) return;
-    
+
     searchInput.addEventListener('input', function() {
         const searchText = this.value.toLowerCase().trim();
         filterStudentsBySearch(searchText);
-    });
-}
-
-/**
- * ตั้งค่าปุ่มเพิ่มนักเรียน
- */
-function setupAddStudentButton() {
-    const addButton = document.getElementById('add-student-fab');
-    if (!addButton) return;
-    
-    addButton.addEventListener('click', function() {
-        // ในการใช้งานจริงควรนำไปยังหน้าเพิ่มนักเรียน
-        console.log('คลิกปุ่มเพิ่มนักเรียน');
-        // window.location.href = 'add_student.php';
-        
-        // สำหรับตอนนี้แสดงการแจ้งเตือน
-        alert('กำลังนำไปยังหน้าเพิ่มนักเรียน');
     });
 }
 
@@ -109,17 +95,54 @@ function setupAddStudentButton() {
  */
 function setupStudentCards() {
     const studentCards = document.querySelectorAll('.student-card');
-    
+
     studentCards.forEach(card => {
         card.addEventListener('click', function(e) {
-            // ถ้าคลิกที่ปุ่มดูรายละเอียด ให้ดำเนินการตามปกติ
-            if (e.target.closest('.view-details-button')) {
+            // ถ้าคลิกที่ปุ่มดูรายละเอียดหรือปุ่มลบ ให้ดำเนินการตามปกติ
+            if (e.target.closest('.view-details-button') ||
+                e.target.closest('.remove-student-button') ||
+                e.target.closest('.remove-student-form')) {
                 return;
             }
-            
+
             // ถ้าคลิกที่ส่วนอื่นของการ์ด ให้ไปที่หน้ารายละเอียด
             const studentId = this.getAttribute('data-id');
             window.location.href = `students.php?id=${studentId}`;
+        });
+    });
+}
+
+/**
+ * ตั้งค่าการลบนักเรียน
+ */
+function setupRemoveStudent() {
+    const removeButtons = document.querySelectorAll('.remove-student-button');
+
+    removeButtons.forEach(button => {
+        button.addEventListener('click', function(e) {
+            // ยืนยันการลบนักเรียน
+            if (!confirm('คุณต้องการลบนักเรียนออกจากความดูแลหรือไม่?')) {
+                e.preventDefault();
+            }
+        });
+    });
+}
+
+/**
+ * ตั้งค่าการเพิ่มนักเรียน
+ */
+function setupAddStudent() {
+    const addButtons = document.querySelectorAll('.add-student-button');
+
+    addButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            // ในกรณีที่กดปุ่มเพิ่มที่ไม่ใช่ฟอร์ม ให้เลื่อนไปที่ส่วนค้นหานักเรียน
+            if (!this.closest('form')) {
+                const addStudentSection = document.getElementById('add-student-section');
+                if (addStudentSection) {
+                    addStudentSection.scrollIntoView({ behavior: 'smooth' });
+                }
+            }
         });
     });
 }
@@ -132,32 +155,32 @@ function applyFilters() {
     const filterAll = document.getElementById('filter-all');
     const filterHighSchool = document.getElementById('filter-high-school');
     const filterPrimarySchool = document.getElementById('filter-primary-school');
-    
+
     // ตรวจสอบว่าตัวกรองทั้งหมดถูกเลือกหรือไม่มีการเลือกเลย
-    if ((filterAll && filterAll.checked) || 
-        (!filterHighSchool || !filterHighSchool.checked) && 
+    if ((filterAll && filterAll.checked) ||
+        (!filterHighSchool || !filterHighSchool.checked) &&
         (!filterPrimarySchool || !filterPrimarySchool.checked)) {
         // แสดงนักเรียนทั้งหมด
         showAllStudents();
         return;
     }
-    
+
     // ซ่อนนักเรียนทั้งหมดก่อน
     hideAllStudents();
-    
+
     // แสดงนักเรียนตามเงื่อนไขที่เลือก
     const studentCards = document.querySelectorAll('.student-card');
-    
+
     studentCards.forEach(card => {
         const studentClass = card.querySelector('.student-class').textContent.toLowerCase();
-        
-        // กรองนักเรียนมัธยม
-        if (filterHighSchool && filterHighSchool.checked && studentClass.includes('ม.')) {
+
+        // กรองนักเรียนระดับ ปวส.
+        if (filterHighSchool && filterHighSchool.checked && studentClass.includes('ปวส.')) {
             card.style.display = 'block';
         }
-        
-        // กรองนักเรียนประถม
-        if (filterPrimarySchool && filterPrimarySchool.checked && studentClass.includes('ป.')) {
+
+        // กรองนักเรียนระดับ ปวช.
+        if (filterPrimarySchool && filterPrimarySchool.checked && studentClass.includes('ปวช.')) {
             card.style.display = 'block';
         }
     });
@@ -169,20 +192,20 @@ function applyFilters() {
  */
 function filterStudentsBySearch(searchText) {
     const studentCards = document.querySelectorAll('.student-card');
-    
+
     if (!searchText) {
         // ถ้าไม่มีข้อความค้นหา ให้แสดงนักเรียนทั้งหมด
         showAllStudents();
         return;
     }
-    
+
     studentCards.forEach(card => {
         const studentName = card.querySelector('.student-name').textContent.toLowerCase();
         const studentClass = card.querySelector('.student-class').textContent.toLowerCase();
         const studentId = card.querySelector('.student-id').textContent.toLowerCase();
-        
-        if (studentName.includes(searchText) || 
-            studentClass.includes(searchText) || 
+
+        if (studentName.includes(searchText) ||
+            studentClass.includes(searchText) ||
             studentId.includes(searchText)) {
             card.style.display = 'block';
         } else {
@@ -219,26 +242,23 @@ function filterAttendance(filterType) {
     // ตั้งค่าปุ่มกรอง
     const filterButtons = document.querySelectorAll('.filter-button');
     filterButtons.forEach(button => button.classList.remove('active'));
-    
-    const clickedButton = Array.from(filterButtons).find(button => 
-        button.textContent.trim().toLowerCase().includes(filterType) || 
+
+    const clickedButton = Array.from(filterButtons).find(button =>
+        button.textContent.trim().toLowerCase().includes(filterType) ||
         (filterType === 'all' && button.textContent.trim() === 'ทั้งหมด') ||
         (filterType === 'month' && button.textContent.trim() === 'เดือนนี้') ||
         (filterType === 'week' && button.textContent.trim() === 'สัปดาห์นี้') ||
         (filterType === 'present' && button.textContent.trim() === 'มาเรียน') ||
         (filterType === 'absent' && button.textContent.trim() === 'ขาดเรียน')
     );
-    
+
     if (clickedButton) {
         clickedButton.classList.add('active');
     }
-    
-    // ในการใช้งานจริงควรมีการกรองข้อมูลการเข้าแถวตามประเภท
-    console.log(`กรองข้อมูลตามประเภท: ${filterType}`);
-    
-    // ตัวอย่างการกรองรายการเข้าแถว
+
+    // กรองรายการเข้าแถว
     const attendanceItems = document.querySelectorAll('.attendance-item');
-    
+
     if (filterType === 'all') {
         // แสดงทั้งหมด
         attendanceItems.forEach(item => {
@@ -248,9 +268,9 @@ function filterAttendance(filterType) {
         // กรองตามเดือนปัจจุบัน
         const currentMonth = new Date().getMonth() + 1; // 1-12
         attendanceItems.forEach(item => {
-            const dateText = item.querySelector('.attendance-month').textContent;
+            const monthText = item.querySelector('.date-month') ? .textContent;
             // สำหรับตัวอย่าง ตรวจสอบแค่ว่าเป็นเดือนปัจจุบัน (ในการใช้งานจริงควรมีการตรวจสอบที่ดีกว่านี้)
-            if (currentMonth === getMonthNumberFromThaiAbbr(dateText)) {
+            if (monthText && getMonthNumberFromThaiAbbr(monthText) === currentMonth) {
                 item.style.display = 'flex';
             } else {
                 item.style.display = 'none';
@@ -261,11 +281,9 @@ function filterAttendance(filterType) {
         const today = new Date();
         const startOfWeek = new Date(today);
         startOfWeek.setDate(today.getDate() - today.getDay()); // วันอาทิตย์ของสัปดาห์นี้
-        
-        attendanceItems.forEach(item => {
-            // สำหรับตัวอย่าง สมมติว่าเป็นสัปดาห์ปัจจุบัน (ในการใช้งานจริงควรมีการตรวจสอบที่ดีกว่านี้)
-            // แสดง 3 รายการล่าสุด
-            const index = Array.from(attendanceItems).indexOf(item);
+
+        attendanceItems.forEach((item, index) => {
+            // สำหรับตัวอย่าง แสดง 3 รายการล่าสุด
             if (index < 3) {
                 item.style.display = 'flex';
             } else {
@@ -275,8 +293,8 @@ function filterAttendance(filterType) {
     } else if (filterType === 'present') {
         // กรองเฉพาะมาเรียน
         attendanceItems.forEach(item => {
-            const statusElement = item.querySelector('.status-text');
-            if (statusElement && statusElement.classList.contains('present')) {
+            const statusElement = item.querySelector('.attendance-status-text');
+            if (statusElement && (statusElement.classList.contains('present') || statusElement.classList.contains('late'))) {
                 item.style.display = 'flex';
             } else {
                 item.style.display = 'none';
@@ -285,7 +303,7 @@ function filterAttendance(filterType) {
     } else if (filterType === 'absent') {
         // กรองเฉพาะขาดเรียน
         attendanceItems.forEach(item => {
-            const statusElement = item.querySelector('.status-text');
+            const statusElement = item.querySelector('.attendance-status-text');
             if (statusElement && statusElement.classList.contains('absent')) {
                 item.style.display = 'flex';
             } else {
@@ -315,7 +333,7 @@ function getMonthNumberFromThaiAbbr(thaiMonth) {
         'พ.ย.': 11,
         'ธ.ค.': 12
     };
-    
+
     // ดึงเฉพาะชื่อเดือน (เช่น จาก "ม.ค." หรือ "ม.ค. 2567")
     const monthAbbr = thaiMonth.split(' ')[0].trim();
     return monthMap[monthAbbr] || 0;
@@ -326,8 +344,6 @@ function getMonthNumberFromThaiAbbr(thaiMonth) {
  * @param {string} phone - เบอร์โทรศัพท์ของครูที่ปรึกษา
  */
 function callTeacher(phone) {
-    // ในการใช้งานจริงควรมีการเชื่อมต่อกับระบบโทรศัพท์หรือ LINE
-    console.log(`โทรหาครูที่ปรึกษา: ${phone}`);
     window.location.href = `tel:${phone}`;
 }
 
@@ -336,7 +352,5 @@ function callTeacher(phone) {
  * @param {number} teacherId - รหัสครูที่ปรึกษา
  */
 function messageTeacher(teacherId) {
-    // ในการใช้งานจริงควรมีการเชื่อมต่อกับ LINE API หรือไปยังหน้าส่งข้อความ
-    console.log(`ส่งข้อความหาครูที่ปรึกษา ID: ${teacherId}`);
     window.location.href = `messages.php?teacher=${teacherId}`;
 }

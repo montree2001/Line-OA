@@ -275,28 +275,140 @@ body {
     color: var(--text-light);
 }
 
+
+/* อัปเดต CSS เฉพาะส่วนของ student-status */
+
 .student-status {
     position: absolute;
-    top: 0;
-    right: 0;
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--success-color);
-    background-color: var(--success-color-light);
-    padding: 3px 8px;
-    border-radius: 12px;
-    display: flex;
+    top: 15px;
+    right: 15px;
+    display: inline-flex;
     align-items: center;
-}
-
-.student-status.absent {
-    color: var(--danger-color);
-    background-color: var(--danger-color-light);
+    font-size: 12px;
+    font-weight: 500;
+    padding: 4px 8px;
+    border-radius: 20px;
+    max-width: 110px;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
 }
 
 .student-status .material-icons {
     font-size: 14px;
     margin-right: 4px;
+    min-width: 14px;
+}
+
+.status-details {
+    display: none;
+    /* ซ่อนรายละเอียดวันที่และเวลาในมุมมองปกติ */
+}
+
+
+/* เพิ่มการแสดงรายละเอียดเมื่อเลื่อนเมาส์ไปที่สถานะ */
+
+.student-status:hover {
+    max-width: none;
+    z-index: 10;
+}
+
+.student-status:hover .status-details {
+    display: inline;
+    font-size: 10px;
+    margin-left: 5px;
+    font-weight: normal;
+}
+
+.student-status.present {
+    background-color: var(--success-color-light);
+    color: var(--success-color);
+}
+
+.student-status.absent {
+    background-color: var(--danger-color-light);
+    color: var(--danger-color);
+}
+
+.student-status.late {
+    background-color: var(--warning-color-light);
+    color: var(--warning-color);
+}
+
+.student-status.leave {
+    background-color: #f0f0f0;
+    color: var(--text-muted);
+}
+
+.student-status.unknown {
+    background-color: #f0f0f0;
+    color: var(--text-muted);
+}
+
+
+/* การตอบสนองต่อขนาดหน้าจอ */
+
+@media (max-width: 768px) {
+    .student-card-header {
+        padding-right: 120px;
+        /* เพิ่มพื้นที่ด้านขวาเพื่อไม่ให้สถานะบังเนื้อหา */
+        position: relative;
+    }
+    .student-status {
+        top: 15px;
+        /* คงตำแหน่งด้านบนขวา */
+        right: 15px;
+        width: auto;
+        transform: none;
+    }
+    .student-avatar {
+        margin-right: 0;
+        margin-bottom: 10px;
+    }
+    .student-basic-info {
+        margin-bottom: 10px;
+        text-align: left;
+        /* เปลี่ยนจาก center เป็น left */
+        width: 100%;
+    }
+}
+
+@media (max-width: 480px) {
+    .student-card-header {
+        flex-direction: row;
+        /* เปลี่ยนกลับไปเป็นแนวนอน */
+        align-items: flex-start;
+        padding: 15px;
+        padding-right: 80px;
+        /* ให้พื้นที่สำหรับสถานะ */
+    }
+    .student-status {
+        top: 15px;
+        right: 10px;
+        padding: 3px 6px;
+        font-size: 10px;
+        max-width: 70px;
+    }
+    .student-status .material-icons {
+        font-size: 12px;
+        margin-right: 2px;
+    }
+    .student-avatar {
+        width: 45px;
+        height: 45px;
+        font-size: 18px;
+        margin-right: 10px;
+        margin-bottom: 0;
+    }
+    .student-name {
+        font-size: 14px;
+        margin-bottom: 3px;
+    }
+    .student-class,
+    .student-id {
+        font-size: 11px;
+        margin-bottom: 1px;
+    }
 }
 
 .attendance-details {

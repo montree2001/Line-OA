@@ -7,6 +7,27 @@ if (isset($selected_student)) {
     // แสดงรายการนักเรียนทั้งหมด
 ?>
 
+<!-- แสดงข้อความแจ้งเตือน -->
+<?php if(isset($success_message)): ?>
+<div class="notification-banner success">
+    <span class="material-icons icon">check_circle</span>
+    <div class="content">
+        <div class="title">สำเร็จ</div>
+        <div class="message"><?php echo $success_message; ?></div>
+    </div>
+</div>
+<?php endif; ?>
+
+<?php if(isset($error_message)): ?>
+<div class="notification-banner danger">
+    <span class="material-icons icon">error</span>
+    <div class="content">
+        <div class="title">เกิดข้อผิดพลาด</div>
+        <div class="message"><?php echo $error_message; ?></div>
+    </div>
+</div>
+<?php endif; ?>
+
 <!-- แจ้งเตือน -->
 <div class="notification-banner">
     <span class="material-icons icon">child_care</span>
@@ -20,7 +41,7 @@ if (isset($selected_student)) {
 <div class="search-section">
     <div class="search-input">
         <span class="material-icons">search</span>
-        <input type="text" id="search-student" placeholder="ค้นหานักเรียน...">
+        <input type="text" id="search-student" placeholder="ค้นหานักเรียนในความดูแล...">
     </div>
     <div class="filter-dropdown">
         <button class="filter-button" id="filter-toggle">
@@ -34,19 +55,23 @@ if (isset($selected_student)) {
             </div>
             <div class="filter-item">
                 <input type="checkbox" id="filter-high-school">
-                <label for="filter-high-school">มัธยมศึกษา</label>
+                <label for="filter-high-school">ระดับ ปวส.</label>
             </div>
             <div class="filter-item">
                 <input type="checkbox" id="filter-primary-school">
-                <label for="filter-primary-school">ประถมศึกษา</label>
+                <label for="filter-primary-school">ระดับ ปวช.</label>
             </div>
         </div>
     </div>
 </div>
 
-<!-- รายการนักเรียน -->
+<!-- รายการนักเรียนในความดูแล -->
+<div class="section-header">
+    <h2>นักเรียนในความดูแล</h2>
+</div>
+
 <div class="student-list">
-    <?php if(isset($students) && !empty($students)): ?>
+    <?php if(!empty($students)): ?>
         <?php foreach($students as $student): ?>
             <div class="student-card" data-id="<?php echo $student['id']; ?>">
                 <div class="student-card-header">
@@ -54,15 +79,13 @@ if (isset($selected_student)) {
                     <div class="student-basic-info">
                         <div class="student-name"><?php echo $student['name']; ?></div>
                         <div class="student-class"><?php echo $student['class']; ?> เลขที่ <?php echo $student['number']; ?></div>
-                        <div class="student-id">รหัสนักเรียน: <?php echo $student['student_id']; ?></div>
+                        <div class="student-id">รหัสนักเรียน: <?php echo $student['student_code']; ?></div>
                     </div>
-                    <div class="student-status <?php echo $student['present'] ? 'present' : 'absent'; ?>">
-                        <?php if($student['present']): ?>
-                            <span class="material-icons">check_circle</span>
-                            <span>มาเรียน</span>
-                        <?php else: ?>
-                            <span class="material-icons">cancel</span>
-                            <span>ขาดเรียน</span>
+                    <div class="student-status <?php echo $student['status_class']; ?>" title="<?php echo $student['status']; ?> <?php echo $student['check_date']; ?> <?php echo $student['check_in_time']; ?>">
+                        <span class="material-icons"><?php echo $student['status_icon']; ?></span>
+                        <span><?php echo $student['status']; ?></span>
+                        <?php if($student['check_in_time']): ?>
+                            <span class="status-details"><?php echo $student['check_date']; ?>, <?php echo $student['check_in_time']; ?> น.</span>
                         <?php endif; ?>
                     </div>
                 </div>
@@ -83,10 +106,19 @@ if (isset($selected_student)) {
                             <div class="attendance-label">อัตราการเข้าแถว</div>
                         </div>
                     </div>
-                    <a href="students.php?id=<?php echo $student['id']; ?>" class="view-details-button">
-                        <span class="material-icons">visibility</span>
-                        ดูรายละเอียด
-                    </a>
+                    <div class="student-actions">
+                        <a href="students.php?id=<?php echo $student['id']; ?>" class="view-details-button">
+                            <span class="material-icons">visibility</span>
+                            ดูรายละเอียด
+                        </a>
+                        <form method="post" class="remove-student-form" onsubmit="return confirm('คุณต้องการลบนักเรียนออกจากความดูแลหรือไม่?');">
+                            <input type="hidden" name="student_id" value="<?php echo $student['id']; ?>">
+                            <button type="submit" name="remove_student" class="remove-student-button">
+                                <span class="material-icons">person_remove</span>
+                                ลบออก
+                            </button>
+                        </form>
+                    </div>
                 </div>
             </div>
         <?php endforeach; ?>
@@ -97,7 +129,7 @@ if (isset($selected_student)) {
             </div>
             <div class="no-data-message">ไม่พบข้อมูลนักเรียนในความดูแล</div>
             <div class="no-data-action">
-                <a href="#" class="add-student-button">
+                <a href="#add-student-section" class="add-student-button">
                     <span class="material-icons">add_circle</span>
                     เพิ่มนักเรียน
                 </a>
@@ -106,9 +138,57 @@ if (isset($selected_student)) {
     <?php endif; ?>
 </div>
 
-<!-- ปุ่มเพิ่มนักเรียน -->
-<div class="floating-action-button" id="add-student-fab">
-    <span class="material-icons">add</span>
+<!-- ค้นหานักเรียนเพื่อเพิ่มเข้าความดูแล -->
+<div id="add-student-section" class="section-header">
+    <h2>เพิ่มนักเรียนเข้าสู่ความดูแล</h2>
+</div>
+
+<div class="search-add-section">
+    <form method="get" class="search-form">
+        <div class="search-input-large">
+            <span class="material-icons">search</span>
+            <input type="text" name="search" placeholder="ค้นหานักเรียนด้วยชื่อหรือรหัสนักเรียน..." value="<?php echo isset($_GET['search']) ? htmlspecialchars($_GET['search']) : ''; ?>">
+            <button type="submit" class="search-button">
+                <span class="material-icons">search</span>
+                ค้นหา
+            </button>
+        </div>
+    </form>
+    
+    <?php if(isset($_GET['search']) && !empty($_GET['search'])): ?>
+        <div class="search-results">
+            <h3>ผลการค้นหา "<?php echo htmlspecialchars($_GET['search']); ?>"</h3>
+            
+            <?php if(!empty($search_results)): ?>
+                <div class="search-results-list">
+                    <?php foreach($search_results as $result): ?>
+                        <div class="search-result-item">
+                            <div class="student-info">
+                                <div class="student-name"><?php echo $result['name']; ?></div>
+                                <div class="student-details">
+                                    <span class="student-class">ชั้น <?php echo $result['class']; ?></span>
+                                    <span class="student-department"><?php echo $result['department']; ?></span>
+                                    <span class="student-code">รหัส <?php echo $result['student_code']; ?></span>
+                                </div>
+                            </div>
+                            <form method="post">
+                                <input type="hidden" name="student_id" value="<?php echo $result['id']; ?>">
+                                <button type="submit" name="add_student" class="add-student-button">
+                                    <span class="material-icons">person_add</span>
+                                    เพิ่ม
+                                </button>
+                            </form>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            <?php else: ?>
+                <div class="no-results">
+                    <span class="material-icons">search_off</span>
+                    <p>ไม่พบนักเรียนที่ตรงกับคำค้นหา หรือนักเรียนอยู่ในความดูแลของคุณแล้ว</p>
+                </div>
+            <?php endif; ?>
+        </div>
+    <?php endif; ?>
 </div>
 
 <script>
@@ -118,7 +198,17 @@ document.getElementById('filter-toggle').addEventListener('click', function() {
     filterMenu.classList.toggle('active');
 });
 
-// ค้นหานักเรียน
+// ปิดเมนูกรองเมื่อคลิกที่อื่น
+document.addEventListener('click', function(e) {
+    const filterMenu = document.getElementById('filter-menu');
+    const filterToggle = document.getElementById('filter-toggle');
+    
+    if (!filterToggle.contains(e.target) && !filterMenu.contains(e.target)) {
+        filterMenu.classList.remove('active');
+    }
+});
+
+// ค้นหานักเรียนในความดูแล
 document.getElementById('search-student').addEventListener('input', function() {
     const searchText = this.value.toLowerCase().trim();
     const studentCards = document.querySelectorAll('.student-card');
@@ -136,18 +226,12 @@ document.getElementById('search-student').addEventListener('input', function() {
     });
 });
 
-// เพิ่มนักเรียนใหม่
-document.getElementById('add-student-fab').addEventListener('click', function() {
-    // ในการใช้งานจริงควรนำไปยังหน้าเพิ่มนักเรียน
-    alert('กำลังนำไปยังหน้าเพิ่มนักเรียน');
-    // window.location.href = 'add_student.php';
-});
-
 // ตรวจสอบการคลิกที่การ์ดนักเรียน
 document.querySelectorAll('.student-card').forEach(card => {
     card.addEventListener('click', function(e) {
-        // ถ้าคลิกที่ปุ่มดูรายละเอียด ให้ดำเนินการตามปกติ
-        if (e.target.closest('.view-details-button')) {
+        // ถ้าคลิกที่ปุ่มดูรายละเอียดหรือปุ่มลบ ให้ดำเนินการตามปกติ
+        if (e.target.closest('.view-details-button') || e.target.closest('.remove-student-button') || 
+            e.target.closest('.remove-student-form')) {
             return;
         }
         
@@ -242,7 +326,7 @@ document.querySelectorAll('.student-card').forEach(card => {
     display: flex;
     flex-direction: column;
     gap: 15px;
-    margin-bottom: 80px; /* ให้มีพื้นที่ด้านล่างสำหรับ floating button */
+    margin-bottom: 25px;
 }
 
 .student-card {
@@ -300,12 +384,39 @@ document.querySelectorAll('.student-card').forEach(card => {
     position: absolute;
     top: 15px;
     right: 15px;
-    display: flex;
+    display: inline-flex;
     align-items: center;
-    font-size: 14px;
+    font-size: 12px;
     font-weight: 500;
-    padding: 5px 10px;
+    padding: 4px 8px;
     border-radius: 20px;
+    max-width: 110px;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.student-status .material-icons {
+    font-size: 14px;
+    margin-right: 4px;
+    min-width: 14px;
+}
+
+.status-details {
+    display: none; /* ซ่อนรายละเอียดวันที่และเวลาในมุมมองปกติ */
+}
+
+/* เพิ่มการแสดงรายละเอียดเมื่อเลื่อนเมาส์ไปที่สถานะ */
+.student-status:hover {
+    max-width: none;
+    z-index: 10;
+}
+
+.student-status:hover .status-details {
+    display: inline;
+    font-size: 10px;
+    margin-left: 5px;
+    font-weight: normal;
 }
 
 .student-status.present {
@@ -318,9 +429,19 @@ document.querySelectorAll('.student-card').forEach(card => {
     color: var(--danger-color);
 }
 
-.student-status .material-icons {
-    font-size: 16px;
-    margin-right: 5px;
+.student-status.late {
+    background-color: var(--warning-color-light);
+    color: var(--warning-color);
+}
+
+.student-status.leave {
+    background-color: #f0f0f0;
+    color: var(--text-muted);
+}
+
+.student-status.unknown {
+    background-color: #f0f0f0;
+    color: var(--text-muted);
 }
 
 .student-card-body {
@@ -365,24 +486,45 @@ document.querySelectorAll('.student-card').forEach(card => {
     color: var(--text-light);
 }
 
-.view-details-button {
+.student-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.view-details-button, .remove-student-button {
     display: flex;
     align-items: center;
     justify-content: center;
-    background-color: var(--primary-color-light);
-    color: var(--primary-color);
     padding: 10px;
     border-radius: 8px;
     font-weight: 500;
     text-decoration: none;
     transition: background-color 0.2s;
+    flex: 1;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.view-details-button {
+    background-color: var(--primary-color-light);
+    color: var(--primary-color);
 }
 
 .view-details-button:hover {
     background-color: #e8dbef;
 }
 
-.view-details-button .material-icons {
+.remove-student-button {
+    background-color: var(--danger-color-light);
+    color: var(--danger-color);
+}
+
+.remove-student-button:hover {
+    background-color: #ffe6e6;
+}
+
+.view-details-button .material-icons, .remove-student-button .material-icons {
     font-size: 18px;
     margin-right: 5px;
 }
@@ -420,40 +562,175 @@ document.querySelectorAll('.student-card').forEach(card => {
     border-radius: 25px;
     text-decoration: none;
     font-weight: 500;
+    border: none;
+    cursor: pointer;
 }
 
 .add-student-button .material-icons {
     margin-right: 5px;
 }
 
-.floating-action-button {
-    position: fixed;
-    bottom: 80px; /* ให้อยู่เหนือ bottom-nav */
-    right: 20px;
-    width: 56px;
-    height: 56px;
-    border-radius: 28px;
-    background-color: var(--primary-color);
-    color: white;
+/* ส่วนค้นหาและเพิ่มนักเรียน */
+.search-add-section {
+    background-color: white;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 30px;
+    box-shadow: var(--card-shadow);
+}
+
+.search-form {
+    margin-bottom: 20px;
+}
+
+.search-input-large {
     display: flex;
     align-items: center;
-    justify-content: center;
-    box-shadow: 0 4px 12px rgba(142, 36, 170, 0.4);
+    background-color: var(--bg-light);
+    border-radius: 8px;
+    padding: 0 15px;
+    overflow: hidden;
+}
+
+.search-input-large input {
+    flex: 1;
+    border: none;
+    background: transparent;
+    padding: 12px;
+    font-size: 15px;
+    outline: none;
+}
+
+.search-button {
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 0 8px 8px 0;
     cursor: pointer;
-    z-index: 100;
-    transition: transform 0.2s, box-shadow 0.2s;
+    display: flex;
+    align-items: center;
+    font-weight: 500;
 }
 
-.floating-action-button:hover {
-    transform: scale(1.05);
-    box-shadow: 0 6px 15px rgba(142, 36, 170, 0.5);
+.search-button .material-icons {
+    margin-right: 5px;
 }
 
-.floating-action-button .material-icons {
-    font-size: 24px;
+.search-results h3 {
+    font-size: 16px;
+    margin-bottom: 15px;
+    color: var(--text-dark);
 }
 
+.search-results-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.search-result-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 15px;
+    background-color: var(--bg-light);
+    border-radius: 8px;
+}
+
+.student-info {
+    flex: 1;
+}
+
+.student-details {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    font-size: 14px;
+    color: var(--text-light);
+    margin-top: 3px;
+}
+
+.no-results {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 30px;
+    text-align: center;
+    color: var(--text-light);
+}
+
+.no-results .material-icons {
+    font-size: 40px;
+    margin-bottom: 10px;
+    color: #ccc;
+}
+
+/* การตอบสนองต่อขนาดหน้าจอ */
 @media (max-width: 768px) {
+    .student-card-header {
+        padding-right: 120px; /* เพิ่มพื้นที่ด้านขวาเพื่อไม่ให้สถานะบังเนื้อหา */
+        position: relative;
+    }
+    
+    .student-status {
+        top: 15px; /* คงตำแหน่งด้านบนขวา */
+        right: 15px;
+        width: auto;
+        transform: none;
+    }
+    
+    .student-avatar {
+        margin-right: 0;
+        margin-bottom: 10px;
+    }
+    
+    .student-basic-info {
+        margin-bottom: 10px;
+        text-align: left; /* เปลี่ยนจาก center เป็น left */
+        width: 100%;
+    }
+}
+
+@media (max-width: 480px) {
+    .student-card-header {
+        flex-direction: row; /* เปลี่ยนกลับไปเป็นแนวนอน */
+        align-items: flex-start;
+        padding: 15px;
+        padding-right: 80px; /* ให้พื้นที่สำหรับสถานะ */
+    }
+    
+    .student-status {
+        top: 15px;
+        right: 10px;
+        padding: 3px 6px;
+        font-size: 10px;
+        max-width: 70px;
+    }
+    
+    .student-status .material-icons {
+        font-size: 12px;
+        margin-right: 2px;
+    }
+    
+    .student-avatar {
+        width: 45px;
+        height: 45px;
+        font-size: 18px;
+        margin-right: 10px;
+        margin-bottom: 0;
+    }
+    
+    .student-name {
+        font-size: 14px;
+        margin-bottom: 3px;
+    }
+    
+    .student-class, .student-id {
+        font-size: 11px;
+        margin-bottom: 1px;
+    }
+    
     .search-section {
         flex-direction: column;
         gap: 10px;
@@ -465,59 +742,43 @@ document.querySelectorAll('.student-card').forEach(card => {
         padding: 10px;
     }
     
-    .student-card-header {
-        flex-direction: column;
-        align-items: center;
-        text-align: center;
-        padding-top: 25px;
-    }
-    
-    .student-status {
-        top: 10px;
-        right: 10px;
-        font-size: 12px;
-        padding: 4px 8px;
-    }
-    
-    .student-avatar {
-        margin-right: 0;
-        margin-bottom: 10px;
-    }
-    
-    .student-basic-info {
-        margin-bottom: 10px;
-    }
-    
     .attendance-summary {
         justify-content: space-around;
     }
     
-    .view-details-button {
-        font-size: 14px;
-    }
-}
-
-@media (max-width: 480px) {
-    .student-name {
-        font-size: 16px;
+    .student-actions {
+        flex-direction: column;
     }
     
-    .student-class, .student-id {
-        font-size: 12px;
+    .view-details-button, .remove-student-button {
+        width: 100%;
     }
     
-    .attendance-value {
-        font-size: 18px;
+    .search-input-large {
+        flex-direction: column;
+        padding: 10px;
     }
     
-    .attendance-label {
-        font-size: 11px;
+    .search-button {
+        width: 100%;
+        border-radius: 8px;
+        margin-top: 10px;
+        justify-content: center;
     }
     
-    .floating-action-button {
-        width: 48px;
-        height: 48px;
-        bottom: 70px;
+    .search-result-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+    
+    .search-result-item form {
+        width: 100%;
+    }
+    
+    .search-result-item .add-student-button {
+        width: 100%;
+        justify-content: center;
     }
 }
 </style>

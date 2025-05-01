@@ -57,8 +57,6 @@
 </div>
 <?php endif; ?>
 
-
-
 <!-- ข้อมูลนักเรียน -->
 <div class="student-section">
     <div class="section-header">
@@ -74,7 +72,7 @@
                         <div class="student-avatar"><?php echo $student['avatar']; ?></div>
                         <div class="student-info">
                             <div class="student-name"><?php echo $student['name']; ?></div>
-                            <div class="student-class"><?php echo $student['class']; ?> เลขที่ <?php echo $student['number']; ?></div>
+                            <div class="student-class"><?php echo $student['class']; ?> <?php echo isset($student['number']) && $student['number'] > 0 ? 'เลขที่ ' . $student['number'] : ''; ?></div>
                         </div>
                         <div class="student-status <?php echo $student['present'] ? '' : 'absent'; ?>">
                             <span class="material-icons"><?php echo $student['present'] ? 'check_circle' : 'cancel'; ?></span>
@@ -122,62 +120,16 @@
                 </div>
             <?php endforeach; ?>
         <?php else: ?>
-            <!-- ข้อมูลตัวอย่างกรณีไม่มีข้อมูลจริง -->
-            <div class="student-card">
-                <div class="header">
-                    <div class="student-avatar">อ</div>
-                    <div class="student-info">
-                        <div class="student-name">นายเอกชัย รักเรียน</div>
-                        <div class="student-class">ม.6/1 เลขที่ 15</div>
-                    </div>
-                    <div class="student-status">
-                        <span class="material-icons">check_circle</span>
-                        มาเรียน
-                    </div>
+            <div class="no-data">
+                <div class="no-data-icon">
+                    <span class="material-icons">child_care</span>
                 </div>
-                
-                <div class="attendance-details">
-                    <div class="attendance-item">
-                        <div class="attendance-label">จำนวนวันเข้าแถว:</div>
-                        <div class="attendance-value">97 วัน</div>
-                    </div>
-                    <div class="attendance-item">
-                        <div class="attendance-label">จำนวนวันขาดแถว:</div>
-                        <div class="attendance-value">0 วัน</div>
-                    </div>
-                    <div class="attendance-item">
-                        <div class="attendance-label">อัตราการเข้าแถว:</div>
-                        <div class="attendance-value good">100%</div>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="student-card">
-                <div class="header">
-                    <div class="student-avatar">ส</div>
-                    <div class="student-info">
-                        <div class="student-name">นางสาวสมหญิง รักเรียน</div>
-                        <div class="student-class">ม.4/2 เลขที่ 8</div>
-                    </div>
-                    <div class="student-status">
-                        <span class="material-icons">check_circle</span>
-                        มาเรียน
-                    </div>
-                </div>
-                
-                <div class="attendance-details">
-                    <div class="attendance-item">
-                        <div class="attendance-label">จำนวนวันเข้าแถว:</div>
-                        <div class="attendance-value">95 วัน</div>
-                    </div>
-                    <div class="attendance-item">
-                        <div class="attendance-label">จำนวนวันขาดแถว:</div>
-                        <div class="attendance-value">2 วัน</div>
-                    </div>
-                    <div class="attendance-item">
-                        <div class="attendance-label">อัตราการเข้าแถว:</div>
-                        <div class="attendance-value good">97.9%</div>
-                    </div>
+                <div class="no-data-message">ไม่พบข้อมูลนักเรียนในความดูแล</div>
+                <div class="no-data-action">
+                    <a href="students.php" class="add-student-button">
+                        <span class="material-icons">add_circle</span>
+                        เพิ่มนักเรียนในความดูแล
+                    </a>
                 </div>
             </div>
         <?php endif; ?>
@@ -204,80 +156,74 @@
             </div>
         <?php endforeach; ?>
     <?php else: ?>
-        <!-- ข้อมูลตัวอย่างกรณีไม่มีข้อมูลจริง -->
-        <div class="activity-item">
-            <div class="activity-icon check-in">
-                <span class="material-icons">check_circle</span>
+        <div class="no-data small">
+            <div class="no-data-icon">
+                <span class="material-icons">event_busy</span>
             </div>
-            <div class="activity-content">
-                <div class="activity-title">นายเอกชัย รักเรียน เช็คชื่อเข้าแถว</div>
-                <div class="activity-time">วันนี้, 07:45 น.</div>
-            </div>
-        </div>
-        
-        <div class="activity-item">
-            <div class="activity-icon check-in">
-                <span class="material-icons">check_circle</span>
-            </div>
-            <div class="activity-content">
-                <div class="activity-title">นางสาวสมหญิง รักเรียน เช็คชื่อเข้าแถว</div>
-                <div class="activity-time">วันนี้, 07:40 น.</div>
-            </div>
-        </div>
-        
-        <div class="activity-item">
-            <div class="activity-icon announcement">
-                <span class="material-icons">campaign</span>
-            </div>
-            <div class="activity-content">
-                <div class="activity-title">ประกาศ: แจ้งกำหนดการสอบปลายภาค</div>
-                <div class="activity-time">เมื่อวาน, 10:30 น.</div>
-            </div>
+            <div class="no-data-message">ไม่พบข้อมูลกิจกรรมล่าสุด</div>
         </div>
     <?php endif; ?>
 </div>
 
 <!-- ติดต่อครูประจำชั้น -->
-<div class="contact-teacher">
+<div class="contact-teacher-section">
     <div class="section-header">
         <h2>ติดต่อครูประจำชั้น</h2>
+        <a href="teachers.php" class="view-all">ดูทั้งหมด</a>
     </div>
     
-    <?php if(isset($teacher) && !empty($teacher)): ?>
-        <div class="teacher-info">
-            <div class="teacher-avatar">
-                <?php if(isset($teacher['avatar']) && !empty($teacher['avatar'])): ?>
-                    <img src="<?php echo $teacher['avatar']; ?>" alt="<?php echo $teacher['name']; ?>">
-                <?php else: ?>
-                    <span class="material-icons">person</span>
-                <?php endif; ?>
+    <?php if(isset($teachers) && !empty($teachers)): ?>
+        <?php foreach($teachers as $index => $teacher): ?>
+            <?php if($index < 2): // แสดงเฉพาะ 2 คนแรกในหน้าหลัก ?>
+                <div class="contact-teacher">
+                    <div class="teacher-info">
+                        <div class="teacher-avatar">
+                            <?php if(isset($teacher['avatar']) && !empty($teacher['avatar'])): ?>
+                                <img src="<?php echo $teacher['avatar']; ?>" alt="<?php echo $teacher['name']; ?>">
+                            <?php else: ?>
+                                <span class="material-icons">person</span>
+                            <?php endif; ?>
+                        </div>
+                        <div class="teacher-details">
+                            <div class="teacher-name"><?php echo $teacher['name']; ?></div>
+                            <div class="teacher-position"><?php echo $teacher['position']; ?></div>
+                            <div class="teacher-students">
+                                <div class="students-label">นักเรียนในความดูแล:</div>
+                                <div class="students-list">
+                                    <?php echo implode(', ', $teacher['students']); ?>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="contact-buttons">
+                        <a href="tel:<?php echo $teacher['phone']; ?>" class="contact-button call">
+                            <span class="material-icons">call</span> โทร
+                        </a>
+                        <a href="messages.php?teacher=<?php echo $teacher['id']; ?>" class="contact-button message">
+                            <span class="material-icons">chat</span> ข้อความ
+                        </a>
+                    </div>
+                </div>
+            <?php endif; ?>
+        <?php endforeach; ?>
+        
+        <?php if(count($teachers) > 2): ?>
+            <div class="more-teachers">
+                <a href="teachers.php" class="view-more-button">
+                    <span class="material-icons">people</span>
+                    ดูครูที่ปรึกษาทั้งหมด (<?php echo count($teachers); ?> คน)
+                </a>
             </div>
-            <div class="teacher-details">
-                <div class="teacher-name"><?php echo $teacher['name']; ?></div>
-                <div class="teacher-position"><?php echo $teacher['position']; ?></div>
-            </div>
-        </div>
+        <?php endif; ?>
     <?php else: ?>
-        <!-- ข้อมูลตัวอย่างกรณีไม่มีข้อมูลจริง -->
-        <div class="teacher-info">
-            <div class="teacher-avatar">
-                <span class="material-icons">person</span>
+        <div class="no-data small">
+            <div class="no-data-icon">
+                <span class="material-icons">person_off</span>
             </div>
-            <div class="teacher-details">
-                <div class="teacher-name">อาจารย์ใจดี มากเมตตา</div>
-                <div class="teacher-position">ครูประจำชั้น ม.6/1</div>
-            </div>
+            <div class="no-data-message">ไม่พบข้อมูลครูที่ปรึกษา</div>
         </div>
     <?php endif; ?>
-    
-    <div class="contact-buttons">
-        <button class="contact-button call" onclick="callTeacher()">
-            <span class="material-icons">call</span> โทร
-        </button>
-        <button class="contact-button message" onclick="messageTeacher()">
-            <span class="material-icons">chat</span> ข้อความ
-        </button>
-    </div>
 </div>
 
 <!-- ประกาศและข่าวสาร -->
@@ -299,23 +245,114 @@
             </div>
         <?php endforeach; ?>
     <?php else: ?>
-        <!-- ข้อมูลตัวอย่างกรณีไม่มีข้อมูลจริง -->
-        <div class="announcement-item">
-            <div class="announcement-header">
-                <div class="announcement-category exam">สอบ</div>
-                <div class="announcement-date">14 มี.ค. 2568</div>
+        <div class="no-data small">
+            <div class="no-data-icon">
+                <span class="material-icons">campaign_off</span>
             </div>
-            <div class="announcement-title">แจ้งกำหนดการสอบปลายภาค</div>
-            <div class="announcement-text">แจ้งกำหนดการสอบปลายภาคเรียนที่ 2/2567 ระหว่างวันที่ 1-5 เมษายน 2568 โดยนักเรียนต้องมาถึงโรงเรียนก่อนเวลา 8.00 น.</div>
-        </div>
-        
-        <div class="announcement-item">
-            <div class="announcement-header">
-                <div class="announcement-category event">กิจกรรม</div>
-                <div class="announcement-date">10 มี.ค. 2568</div>
-            </div>
-            <div class="announcement-title">ประชุมผู้ปกครองภาคเรียนที่ 2</div>
-            <div class="announcement-text">ขอเชิญผู้ปกครองทุกท่านเข้าร่วมประชุมผู้ปกครองภาคเรียนที่ 2 ในวันเสาร์ที่ 22 มีนาคม 2568 เวลา 9.00-12.00 น. ณ หอประชุมโรงเรียน</div>
+            <div class="no-data-message">ไม่พบข้อมูลประกาศและข่าวสาร</div>
         </div>
     <?php endif; ?>
 </div>
+
+<style>
+/* เพิ่มสไตล์สำหรับหน้า Dashboard */
+.no-data {
+    text-align: center;
+    padding: 40px 20px;
+    background-color: white;
+    border-radius: 12px;
+    box-shadow: var(--card-shadow);
+    margin-bottom: 20px;
+}
+
+.no-data.small {
+    padding: 20px;
+}
+
+.no-data-icon {
+    margin-bottom: 15px;
+}
+
+.no-data-icon .material-icons {
+    font-size: 48px;
+    color: #e0e0e0;
+}
+
+.no-data.small .no-data-icon .material-icons {
+    font-size: 36px;
+}
+
+.no-data-message {
+    font-size: 16px;
+    color: var(--text-light);
+    margin-bottom: 15px;
+}
+
+.no-data-action {
+    margin-top: 10px;
+}
+
+.add-student-button, .view-more-button {
+    display: inline-flex;
+    align-items: center;
+    background-color: var(--primary-color);
+    color: white;
+    padding: 10px 20px;
+    border-radius: 25px;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.add-student-button .material-icons, .view-more-button .material-icons {
+    margin-right: 5px;
+}
+
+.teacher-students {
+    margin-top: 8px;
+    font-size: 14px;
+    color: var(--text-light);
+}
+
+.students-label {
+    font-weight: 500;
+    margin-bottom: 3px;
+}
+
+.students-list {
+    color: var(--text-light);
+}
+
+.more-teachers {
+    text-align: center;
+    margin-top: 15px;
+}
+
+.contact-teacher-section {
+    margin-bottom: 20px;
+}
+
+.contact-teacher {
+    background-color: white;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 15px;
+    box-shadow: var(--card-shadow);
+}
+
+@media (max-width: 768px) {
+    .teacher-info {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+    
+    .teacher-avatar {
+        margin-right: 0;
+        margin-bottom: 15px;
+    }
+    
+    .teacher-students {
+        text-align: center;
+    }
+}
+</style>
