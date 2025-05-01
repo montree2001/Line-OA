@@ -1,4 +1,3 @@
-<!-- แจ้งเตือน -->
 <?php if(isset($latest_check_in) && !empty($latest_check_in)): ?>
 <div class="notification-banner <?php echo isset($notification_type) ? $notification_type : 'success'; ?>">
     <span class="material-icons icon">
@@ -57,85 +56,65 @@
 </div>
 <?php endif; ?>
 
-<!-- ข้อมูลนักเรียน -->
-<div class="student-section">
-    <div class="section-header">
-        <h2>บุตรของฉัน</h2>
-        <a href="students.php" class="view-all">ดูทั้งหมด</a>
-    </div>
-    
-    <div class="student-cards">
-        <?php if(isset($students) && !empty($students)): ?>
-            <?php foreach($students as $student): ?>
-                <div class="student-card">
-                    <div class="header">
-                        <div class="student-avatar"><?php echo $student['avatar']; ?></div>
-                        <div class="student-info">
-                            <div class="student-name"><?php echo $student['name']; ?></div>
-                            <div class="student-class"><?php echo $student['class']; ?> <?php echo isset($student['number']) && $student['number'] > 0 ? 'เลขที่ ' . $student['number'] : ''; ?></div>
-                        </div>
-                        <div class="student-status <?php echo $student['present'] ? '' : 'absent'; ?>">
-                            <span class="material-icons"><?php echo $student['present'] ? 'check_circle' : 'cancel'; ?></span>
-                            <?php 
-                            if ($student['has_today_data']) {
-                                switch ($student['today_status']) {
-                                    case 'present':
-                                        echo 'มาเรียน';
-                                        break;
-                                    case 'late':
-                                        echo 'มาสาย';
-                                        break;
-                                    case 'absent':
-                                        echo 'ขาดเรียน';
-                                        break;
-                                    case 'leave':
-                                        echo 'ลา';
-                                        break;
-                                    default:
-                                        echo $student['present'] ? 'มาเรียน' : 'ขาดเรียน';
-                                }
-                            } else {
-                                echo 'รอเช็คชื่อ';
+
+
+<div class="student-cards">
+    <?php if(isset($students) && !empty($students)): ?>
+        <?php foreach($students as $student): ?>
+            <div class="student-card" data-id="<?php echo $student['id']; ?>">
+                <div class="header">
+                    <div class="student-avatar"><?php echo $student['avatar']; ?></div>
+                    <div class="student-info">
+                        <div class="student-name"><?php echo $student['name']; ?></div>
+                        <div class="student-class"><?php echo $student['class']; ?> <?php echo isset($student['number']) && $student['number'] > 0 ? 'เลขที่ ' . $student['number'] : ''; ?></div>
+                    </div>
+                    <div class="student-status <?php echo $student['present'] ? '' : 'absent'; ?>">
+                        <span class="material-icons"><?php echo $student['present'] ? 'check_circle' : 'cancel'; ?></span>
+                        <?php 
+                        if ($student['has_today_data']) {
+                            switch ($student['today_status']) {
+                                case 'present':
+                                    echo 'มาเรียน';
+                                    break;
+                                case 'late':
+                                    echo 'มาสาย';
+                                    break;
+                                case 'absent':
+                                    echo 'ขาดเรียน';
+                                    break;
+                                case 'leave':
+                                    echo 'ลา';
+                                    break;
+                                default:
+                                    echo $student['present'] ? 'มาเรียน' : 'ขาดเรียน';
                             }
-                            ?>
-                        </div>
-                    </div>
-                    
-                    <div class="attendance-details">
-                        <div class="attendance-item">
-                            <div class="attendance-label">จำนวนวันเข้าแถว:</div>
-                            <div class="attendance-value"><?php echo $student['attendance_days']; ?> วัน</div>
-                        </div>
-                        <div class="attendance-item">
-                            <div class="attendance-label">จำนวนวันขาดแถว:</div>
-                            <div class="attendance-value"><?php echo $student['absent_days']; ?> วัน</div>
-                        </div>
-                        <div class="attendance-item">
-                            <div class="attendance-label">อัตราการเข้าแถว:</div>
-                            <div class="attendance-value <?php echo $student['attendance_percentage'] >= 90 ? 'good' : ($student['attendance_percentage'] >= 80 ? 'warning' : 'danger'); ?>">
-                                <?php echo $student['attendance_percentage']; ?>%
-                            </div>
-                        </div>
+                        } else {
+                            echo 'รอเช็คชื่อ';
+                        }
+                        ?>
                     </div>
                 </div>
-            <?php endforeach; ?>
-        <?php else: ?>
-            <div class="no-data">
-                <div class="no-data-icon">
-                    <span class="material-icons">child_care</span>
-                </div>
-                <div class="no-data-message">ไม่พบข้อมูลนักเรียนในความดูแล</div>
-                <div class="no-data-action">
-                    <a href="students.php" class="add-student-button">
-                        <span class="material-icons">add_circle</span>
-                        เพิ่มนักเรียนในความดูแล
-                    </a>
+                
+                <div class="attendance-details">
+                    <div class="attendance-item">
+                        <div class="attendance-label">จำนวนวันเข้าแถว:</div>
+                        <div class="attendance-value"><?php echo $student['attendance_days']; ?> วัน</div>
+                    </div>
+                    <div class="attendance-item">
+                        <div class="attendance-label">จำนวนวันขาดแถว:</div>
+                        <div class="attendance-value"><?php echo $student['absent_days']; ?> วัน</div>
+                    </div>
+                    <div class="attendance-item">
+                        <div class="attendance-label">อัตราการเข้าแถว:</div>
+                        <div class="attendance-value <?php echo $student['attendance_percentage'] >= 90 ? 'good' : ($student['attendance_percentage'] >= 80 ? 'warning' : 'danger'); ?>">
+                            <?php echo $student['attendance_percentage']; ?>%
+                        </div>
+                    </div>
                 </div>
             </div>
-        <?php endif; ?>
-    </div>
+        <?php endforeach; ?>
+    <?php endif; ?>
 </div>
-
 <!-- กิจกรรมล่าสุด -->
 <div class="recent-activities">
     <div class="section-header">

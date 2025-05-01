@@ -145,7 +145,7 @@ function setupStudentCards() {
         card.addEventListener('click', function() {
             // ไปที่หน้ารายละเอียดนักเรียน
             const studentId = this.getAttribute('data-id') || '0';
-            window.location.href = `student_detail.php?id=${studentId}`;
+            window.location.href = `students.php?id=${studentId}`;
         });
     });
 
@@ -297,7 +297,7 @@ function setupTouchEvents() {
                 // Double tap - ไปที่หน้ารายละเอียด
                 if (element.classList.contains('student-card')) {
                     const studentId = element.getAttribute('data-id') || '0';
-                    window.location.href = `student_detail.php?id=${studentId}`;
+                    window.location.href = `student.php?id=${studentId}`;
                 } else if (element.classList.contains('contact-teacher')) {
                     const teacherId = element.getAttribute('data-teacher-id') || '0';
                     window.location.href = `teacher_detail.php?id=${teacherId}`;

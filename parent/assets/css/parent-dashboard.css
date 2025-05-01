@@ -1,0 +1,577 @@
+/* 
+ * parent-dashboard.css - ไฟล์ CSS สำหรับหน้า Dashboard ของผู้ปกครอง SADD-Prasat
+ */
+
+/* ส่วนข้อมูลนักเรียน */
+.student-section {
+    margin-bottom: 25px;
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    padding: 0 5px;
+}
+
+.section-header h2 {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-dark);
+}
+
+.view-all {
+    color: var(--primary-color);
+    font-size: 14px;
+    font-weight: 500;
+    text-decoration: none;
+}
+
+.view-all:hover {
+    text-decoration: underline;
+}
+
+/* การแสดงผลแบบใหม่: แนวตั้งแทนแนวนอน */
+.student-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    width: 100%;
+    padding-bottom: 0;
+    overflow-x: visible;
+}
+
+.student-card {
+    background-color: white;
+    border-radius: 12px;
+    padding: 15px;
+    width: 100%;
+    min-width: 100% !important;
+    box-shadow: var(--card-shadow);
+    border-top: 4px solid var(--primary-color);
+    transition: transform 0.2s, box-shadow 0.2s;
+    cursor: pointer;
+    box-sizing: border-box;
+    margin-bottom: 5px;
+}
+
+.student-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.student-card .header {
+    display: flex;
+    align-items: center;
+    position: relative;
+    background: none;
+    box-shadow: none;
+    padding: 0;
+    margin-bottom: 15px;
+}
+
+.student-avatar {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background-color: var(--primary-color);
+    margin-right: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 20px;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+
+.student-info {
+    flex: 1;
+}
+
+.student-name {
+    font-weight: 600;
+    margin-bottom: 5px;
+    font-size: 16px;
+}
+
+.student-class {
+    font-size: 14px;
+    color: var(--text-light);
+}
+
+/* สถานะนักเรียน */
+.student-status {
+    position: absolute;
+    top: 0;
+    right: 0;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--success-color);
+    background-color: var(--success-color-light);
+    padding: 3px 8px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+}
+
+.student-status.absent {
+    color: var(--danger-color);
+    background-color: var(--danger-color-light);
+}
+
+.student-status.late {
+    color: var(--warning-color);
+    background-color: var(--warning-color-light);
+}
+
+.student-status.leave {
+    color: var(--text-muted);
+    background-color: #f0f0f0;
+}
+
+.student-status .material-icons {
+    font-size: 14px;
+    margin-right: 4px;
+}
+
+/* รายละเอียดการเข้าแถว */
+.attendance-details {
+    background-color: var(--bg-light);
+    border-radius: 8px;
+    padding: 10px;
+}
+
+.attendance-item {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    font-size: 14px;
+}
+
+.attendance-item:last-child {
+    margin-bottom: 0;
+}
+
+.attendance-label {
+    color: var(--text-light);
+}
+
+.attendance-value {
+    font-weight: 500;
+}
+
+.attendance-value.good {
+    color: var(--success-color);
+}
+
+.attendance-value.warning {
+    color: var(--warning-color);
+}
+
+.attendance-value.danger {
+    color: var(--danger-color);
+}
+
+/* กิจกรรมล่าสุด */
+.recent-activities {
+    background-color: white;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: var(--card-shadow);
+}
+
+.activity-item {
+    display: flex;
+    margin-bottom: 15px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.activity-item:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+}
+
+.activity-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: var(--secondary-color-light);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 15px;
+    color: var(--secondary-color);
+    flex-shrink: 0;
+}
+
+.activity-icon.check-in {
+    background-color: var(--success-color-light);
+    color: var(--success-color);
+}
+
+.activity-icon.absent {
+    background-color: var(--danger-color-light);
+    color: var(--danger-color);
+}
+
+.activity-icon.announcement {
+    background-color: var(--warning-color-light);
+    color: var(--warning-color);
+}
+
+.activity-content {
+    flex: 1;
+}
+
+.activity-title {
+    font-weight: 500;
+    margin-bottom: 5px;
+}
+
+.activity-time {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+/* ติดต่อครูที่ปรึกษา */
+.contact-teacher-section {
+    margin-bottom: 20px;
+}
+
+.contact-teacher {
+    background-color: white;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 15px;
+    box-shadow: var(--card-shadow);
+}
+
+.teacher-info {
+    display: flex;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.teacher-avatar {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background-color: var(--secondary-color-light);
+    margin-right: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--secondary-color);
+    font-size: 24px;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.teacher-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.teacher-details {
+    flex: 1;
+}
+
+.teacher-name {
+    font-weight: 600;
+    margin-bottom: 5px;
+}
+
+.teacher-position {
+    font-size: 14px;
+    color: var(--text-light);
+}
+
+.teacher-students {
+    margin-top: 8px;
+    font-size: 14px;
+    color: var(--text-light);
+}
+
+.students-label {
+    font-weight: 500;
+    margin-bottom: 3px;
+}
+
+.students-list {
+    color: var(--text-light);
+}
+
+.contact-buttons {
+    display: flex;
+    gap: 10px;
+}
+
+.contact-button {
+    flex: 1;
+    padding: 12px 0;
+    border: none;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color var(--transition-speed);
+    text-decoration: none;
+}
+
+.contact-button.call {
+    background-color: var(--success-color-light);
+    color: var(--success-color);
+}
+
+.contact-button.call:hover {
+    background-color: #d7f0d8;
+}
+
+.contact-button.message {
+    background-color: var(--secondary-color-light);
+    color: var(--secondary-color);
+}
+
+.contact-button.message:hover {
+    background-color: #d2e8fd;
+}
+
+.contact-button .material-icons {
+    margin-right: 8px;
+    font-size: 18px;
+}
+
+.more-teachers {
+    text-align: center;
+    margin-top: 15px;
+}
+
+.view-more-button {
+    display: inline-flex;
+    align-items: center;
+    background-color: var(--primary-color);
+    color: white;
+    padding: 10px 20px;
+    border-radius: 25px;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.view-more-button .material-icons {
+    margin-right: 5px;
+}
+
+/* ประกาศและข่าวสาร */
+.announcements {
+    background-color: white;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: var(--card-shadow);
+}
+
+.announcement-item {
+    padding: 15px;
+    border-radius: 8px;
+    background-color: var(--bg-light);
+    margin-bottom: 15px;
+}
+
+.announcement-item:last-child {
+    margin-bottom: 0;
+}
+
+.announcement-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.announcement-category {
+    font-size: 12px;
+    font-weight: 600;
+    color: white;
+    background-color: var(--warning-color);
+    padding: 3px 8px;
+    border-radius: 12px;
+    margin-right: 10px;
+}
+
+.announcement-category.event {
+    background-color: var(--secondary-color);
+}
+
+.announcement-category.exam {
+    background-color: var(--danger-color);
+}
+
+.announcement-date {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.announcement-title {
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.announcement-text {
+    font-size: 14px;
+    color: var(--text-light);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+/* สำหรับกรณีไม่มีข้อมูล */
+.no-data {
+    text-align: center;
+    padding: 40px 20px;
+    background-color: white;
+    border-radius: 12px;
+    box-shadow: var(--card-shadow);
+    margin-bottom: 20px;
+}
+
+.no-data.small {
+    padding: 20px;
+}
+
+.no-data-icon {
+    margin-bottom: 15px;
+}
+
+.no-data-icon .material-icons {
+    font-size: 48px;
+    color: #e0e0e0;
+}
+
+.no-data.small .no-data-icon .material-icons {
+    font-size: 36px;
+}
+
+.no-data-message {
+    font-size: 16px;
+    color: var(--text-light);
+    margin-bottom: 15px;
+}
+
+.no-data-action {
+    margin-top: 10px;
+}
+
+.add-student-button {
+    display: inline-flex;
+    align-items: center;
+    background-color: var(--primary-color);
+    color: white;
+    padding: 10px 20px;
+    border-radius: 25px;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.add-student-button .material-icons {
+    margin-right: 5px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .teacher-info {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+    
+    .teacher-avatar {
+        margin-right: 0;
+        margin-bottom: 15px;
+    }
+    
+    .teacher-students {
+        text-align: center;
+    }
+    
+    .contact-buttons {
+        flex-direction: column;
+    }
+    
+    .announcement-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .announcement-category {
+        margin-bottom: 5px;
+    }
+}
+
+@media (max-width: 480px) {
+    .section-header h2 {
+        font-size: 16px;
+    }
+    
+    .view-all {
+        font-size: 12px;
+    }
+    
+    .student-card {
+        padding: 12px;
+    }
+    
+    .student-avatar {
+        width: 45px;
+        height: 45px;
+        font-size: 18px;
+    }
+    
+    .student-name {
+        font-size: 14px;
+    }
+    
+    .attendance-item {
+        font-size: 12px;
+    }
+    
+    .recent-activities, 
+    .contact-teacher, 
+    .announcements {
+        padding: 15px;
+    }
+    
+    .activity-icon {
+        width: 35px;
+        height: 35px;
+    }
+    
+    .activity-title {
+        font-size: 14px;
+    }
+    
+    .teacher-avatar {
+        width: 50px;
+        height: 50px;
+    }
+    
+    .contact-button {
+        font-size: 12px;
+    }
+    
+    .announcement-title {
+        font-size: 14px;
+    }
+    
+    .announcement-text {
+        font-size: 12px;
+    }
+}
