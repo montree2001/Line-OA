@@ -12,7 +12,7 @@
         <span class="material-icons nav-icon">assessment</span>
         <span>รายงาน</span>
     </a>
-    <a href="settings.php" class="nav-item <?php echo ($current_page == 'settings') ? 'active' : ''; ?>">
+    <a href="#" class="nav-item <?php echo ($current_page == 'settings') ? 'active' : ''; ?>">
         <span class="material-icons nav-icon">settings</span>
         <span>ตั้งค่า</span>
     </a>

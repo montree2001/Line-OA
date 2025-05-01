@@ -1,7 +1,7 @@
 <?php
 /**
  * parent/register_confirm.php
- * หน้ายืนยันข้อมูลการลงทะเบียนผู้ปกครอง (ขั้นตอนที่ 4)
+ * หน้ายืนยันข้อมูลในกระบวนการลงทะเบียนผู้ปกครอง (ขั้นตอนที่ 3)
  */
 
 // เริ่มต้น Session
@@ -14,9 +14,9 @@ if (!isset($_SESSION['user_id']) || !isset($_SESSION['role']) || $_SESSION['role
     exit;
 }
 
-// ตรวจสอบว่าขั้นตอนถูกต้องหรือไม่ (ควรผ่านขั้นตอนที่ 2 มาก่อน)
+// ตรวจสอบขั้นตอนการลงทะเบียน
 if (!isset($_SESSION['registration_step']) || $_SESSION['registration_step'] < 3) {
-    // ถ้ายังไม่ได้ผ่านขั้นตอนที่ 2 ให้กลับไปขั้นตอนก่อนหน้า
+    // ย้อนกลับไปยังขั้นตอนที่ 2
     header('Location: register_parent_info.php');
     exit;
 }
@@ -33,83 +33,83 @@ if ($conn->connect_error) {
 // ตั้งค่า character set เป็น UTF-8
 $conn->set_charset("utf8mb4");
 
-// ดึงข้อมูลผู้ใช้จาก users table
-$user_id = $_SESSION['user_id'];
-$stmt = $conn->prepare("SELECT title, first_name, last_name, phone_number, email FROM users WHERE user_id = ?");
-$stmt->bind_param("i", $user_id);
-$stmt->execute();
-$user_result = $stmt->get_result();
-$user_data = $user_result->fetch_assoc();
+// ดึงข้อมูลผู้ปกครอง
+$parent_info = $_SESSION['parent_info'] ?? [];
 
 // ดึงข้อมูลนักเรียนที่เลือก
 $selected_students = $_SESSION['selected_students'] ?? [];
 $students_data = [];
 
 if (!empty($selected_students)) {
-    $stmt = $conn->prepare("
-        SELECT s.student_id, s.student_code, u.first_name, u.last_name, c.level, c.department, c.group_number 
-        FROM students s 
-        INNER JOIN users u ON s.user_id = u.user_id 
-        LEFT JOIN classes c ON s.current_class_id = c.class_id 
-        WHERE s.student_id IN (" . str_repeat('?,', count($selected_students) - 1) . "?)
-    ");
+    $students_ids = implode(',', array_map('intval', $selected_students));
     
-    // เตรียมพารามิเตอร์
-    $param_types = str_repeat('i', count($selected_students));
-    $stmt->bind_param($param_types, ...$selected_students);
-    $stmt->execute();
-    $result = $stmt->get_result();
+    $sql = "SELECT s.student_id, s.student_code, u.first_name, u.last_name, c.level, d.department_name, c.group_number 
+            FROM students s 
+            INNER JOIN users u ON s.user_id = u.user_id 
+            LEFT JOIN classes c ON s.current_class_id = c.class_id 
+            LEFT JOIN departments d ON c.department_id = d.department_id
+            WHERE s.student_id IN ($students_ids)";
     
-    while ($row = $result->fetch_assoc()) {
-        $row['class_name'] = $row['level'] . ' ' . $row['department'] . ' กลุ่ม ' . $row['group_number'];
-        $row['avatar'] = substr($row['first_name'], 0, 1); // ใช้อักษรตัวแรกของชื่อเป็น avatar
-        $students_data[] = $row;
+    $result = $conn->query($sql);
+    
+    if ($result->num_rows > 0) {
+        while ($row = $result->fetch_assoc()) {
+            $row['class_name'] = $row['level'] . ' ' . $row['department_name'] . ' กลุ่ม ' . $row['group_number'];
+            $row['avatar'] = substr($row['first_name'], 0, 1); // ใช้อักษรตัวแรกของชื่อเป็น avatar
+            $students_data[] = $row;
+        }
     }
 }
 
-// ตรวจสอบการส่งฟอร์ม
-$error = '';
-if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['submit'])) {
-    // ตรวจสอบว่าได้ยอมรับข้อตกลงหรือไม่
-    if (!isset($_POST['privacy_agreement']) || !isset($_POST['info_agreement'])) {
-        $error = "กรุณายอมรับข้อตกลงทั้งหมด";
+// ส่งฟอร์ม
+if (isset($_POST['submit'])) {
+    // ตรวจสอบการยอมรับเงื่อนไข
+    if (!isset($_POST['accept_terms']) || $_POST['accept_terms'] != '1') {
+        $error_message = "กรุณายอมรับเงื่อนไขการใช้งานและนโยบายความเป็นส่วนตัว";
     } else {
+        // บันทึกข้อมูลผู้ปกครอง
+        $user_id = $_SESSION['user_id'];
+        
+        // เริ่ม Transaction
+        $conn->begin_transaction();
         try {
-            // เริ่ม transaction
-            $conn->begin_transaction();
-            
-            // 1. บันทึกข้อมูลผู้ใช้ - อัปเดต GDPR consent
-            $stmt = $conn->prepare("UPDATE users SET gdpr_consent = 1, gdpr_consent_date = NOW() WHERE user_id = ?");
-            $stmt->bind_param("i", $user_id);
-            $stmt->execute();
-            
-            // 2. บันทึกข้อมูลผู้ปกครอง
-            $stmt = $conn->prepare("INSERT INTO parents (user_id, relationship, created_at) VALUES (?, ?, ?, NOW())");
-            $stmt->bind_param("iss", $user_id, $_SESSION['parent_info']['relationship']);
+            // สร้างบันทึกผู้ปกครอง
+            $stmt = $conn->prepare("INSERT INTO parents (user_id, title, relationship, created_at) VALUES (?, ?, ?, NOW())");
+            $stmt->bind_param("iss", $user_id, $parent_info['title'], $parent_info['relationship']);
             $stmt->execute();
             $parent_id = $conn->insert_id;
+            $stmt->close();
             
-            // 3. สร้างความสัมพันธ์กับนักเรียน
+            // ถ้ามีนักเรียนที่เลือก ให้บันทึกความสัมพันธ์
             if (!empty($selected_students)) {
+                $stmt = $conn->prepare("INSERT INTO parent_student_relation (parent_id, student_id, created_at) VALUES (?, ?, NOW())");
+                
                 foreach ($selected_students as $student_id) {
-                    $stmt = $conn->prepare("INSERT INTO parent_student_relation (parent_id, student_id, created_at) VALUES (?, ?, NOW())");
                     $stmt->bind_param("ii", $parent_id, $student_id);
                     $stmt->execute();
                 }
+                
+                $stmt->close();
             }
             
-            // Commit transaction
+            // บันทึกยอมรับ GDPR
+            $stmt = $conn->prepare("UPDATE users SET gdpr_consent = 1, gdpr_consent_date = NOW() WHERE user_id = ?");
+            $stmt->bind_param("i", $user_id);
+            $stmt->execute();
+            $stmt->close();
+            
+            // Commit Transaction
             $conn->commit();
             
-            // ไปยังขั้นตอนถัดไป
+            // ไปยังขั้นตอนสุดท้าย
             $_SESSION['registration_step'] = 4;
             header('Location: register_complete.php');
             exit;
             
         } catch (Exception $e) {
-            // Rollback transaction ในกรณีที่เกิดข้อผิดพลาด
+            // Rollback Transaction
             $conn->rollback();
-            $error = "เกิดข้อผิดพลาดในการลงทะเบียน: " . $e->getMessage();
+            $error_message = "เกิดข้อผิดพลาดในการบันทึกข้อมูล: " . $e->getMessage();
         }
     }
 }
@@ -131,6 +131,17 @@ $page_title = 'SADD-Prasat - ยืนยันข้อมูล';
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <style>
         /* ตั้งค่าพื้นฐาน */
+        :root {
+            --primary-color: #8e24aa; /* สีม่วงสำหรับ SADD-Prasat (ผู้ปกครอง) */
+            --primary-color-dark: #5c007a;
+            --primary-color-light: #f3e5f5;
+            --text-dark: #333;
+            --text-light: #666;
+            --bg-light: #f8f9fa;
+            --border-color: #e0e0e0;
+            --card-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        
         * {
             margin: 0;
             padding: 0;
@@ -139,8 +150,8 @@ $page_title = 'SADD-Prasat - ยืนยันข้อมูล';
         }
         
         body {
-            background-color: #f8f9fa;
-            color: #333;
+            background-color: var(--bg-light);
+            color: var(--text-dark);
             font-size: 16px;
             line-height: 1.5;
         }
@@ -244,8 +255,8 @@ $page_title = 'SADD-Prasat - ยืนยันข้อมูล';
             color: #4caf50;
         }
         
-        /* คำแนะนำ */
-        .instruction-card {
+        /* แสดงข้อมูล */
+        .confirm-card {
             background-color: white;
             border-radius: 15px;
             padding: 20px;
@@ -253,109 +264,77 @@ $page_title = 'SADD-Prasat - ยืนยันข้อมูล';
             box-shadow: 0 2px 8px rgba(0,0,0,0.05);
         }
         
-        .instruction-title {
+        .confirm-title {
             font-size: 18px;
             font-weight: 600;
-            margin-bottom: 10px;
+            margin-bottom: 15px;
             color: #8e24aa;
         }
         
-        .instruction-text {
+        .confirm-description {
             color: #666;
-            margin-bottom: 15px;
+            margin-bottom: 20px;
             font-size: 14px;
         }
         
-        /* การ์ดข้อมูลสรุป */
-        .summary-card {
-            background-color: white;
-            border-radius: 15px;
-            padding: 20px;
+        /* ส่วนข้อมูลผู้ปกครอง */
+        .parent-data {
+            background-color: #f9f9f9;
+            border-radius: 10px;
+            padding: 15px;
             margin-bottom: 20px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
         }
         
-        .summary-title {
-            font-size: 16px;
-            font-weight: 600;
-            margin-bottom: 15px;
-            color: #333;
+        .data-row {
             display: flex;
-            justify-content: space-between;
-            align-items: center;
+            margin-bottom: 10px;
         }
         
-        .edit-link {
-            font-size: 14px;
-            color: #8e24aa;
-            display: flex;
-            align-items: center;
-            text-decoration: none;
-        }
-        
-        .edit-link .material-icons {
-            font-size: 16px;
-            margin-right: 5px;
-        }
-        
-        .summary-section {
-            margin-bottom: 20px;
-            padding-bottom: 15px;
-            border-bottom: 1px solid #f1f1f1;
-        }
-        
-        .summary-section:last-child {
+        .data-row:last-child {
             margin-bottom: 0;
-            padding-bottom: 0;
-            border-bottom: none;
         }
         
-        .section-heading {
+        .data-label {
             font-weight: 500;
+            width: 150px;
+            color: #555;
+        }
+        
+        .data-value {
+            flex: 1;
+        }
+        
+        /* รายการนักเรียน */
+        .students-list {
+            margin-top: 20px;
+        }
+        
+        .students-title {
+            font-weight: 600;
             margin-bottom: 10px;
-            display: flex;
-            align-items: center;
+            color: #555;
         }
         
-        .section-heading .material-icons {
-            font-size: 20px;
-            margin-right: 8px;
-            color: #8e24aa;
-        }
-        
-        .info-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-        }
-        
-        .info-item {
-            margin-bottom: 8px;
-        }
-        
-        .info-label {
-            font-size: 12px;
-            color: #666;
-            margin-bottom: 2px;
-        }
-        
-        .info-value {
-            font-weight: 500;
-        }
-        
-        .student-list {
-            list-style: none;
+        .no-students {
+            text-align: center;
+            padding: 15px;
+            background-color: #f9f9f9;
+            border-radius: 10px;
+            color: #999;
+            font-style: italic;
         }
         
         .student-item {
             display: flex;
             align-items: center;
-            padding: 10px 0;
-            border-bottom: 1px solid #f5f5f5;
+            padding: 10px;
+            background-color: #f9f9f9;
+            border-radius: 10px;
+            margin-bottom: 10px;
         }
         
         .student-item:last-child {
-            border-bottom: none;
+            margin-bottom: 0;
         }
         
         .student-avatar {
@@ -385,58 +364,45 @@ $page_title = 'SADD-Prasat - ยืนยันข้อมูล';
             color: #666;
         }
         
-        /* ข้อตกลงการใช้งาน */
-        .agreement-card {
-            background-color: white;
-            border-radius: 15px;
-            padding: 20px;
+        /* แสดงข้อผิดพลาด */
+        .error-message {
+            background-color: #ffebee;
+            border-left: 4px solid #f44336;
+            border-radius: 4px;
+            padding: 10px 15px;
             margin-bottom: 20px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            color: #d32f2f;
         }
         
-        .agreement-title {
-            font-size: 16px;
-            font-weight: 600;
-            margin-bottom: 15px;
-            color: #333;
+        /* ยอมรับเงื่อนไข */
+        .terms-container {
+            margin-top: 20px;
         }
         
-        .agreement-content {
-            height: 150px;
-            overflow-y: auto;
-            padding: 15px;
-            border: 1px solid #f1f1f1;
-            border-radius: 8px;
+        .terms-check {
+            display: flex;
+            align-items: flex-start;
             margin-bottom: 15px;
-            background-color: #f9f9f9;
+        }
+        
+        .terms-check input {
+            margin-top: 3px;
+            margin-right: 10px;
+            transform: scale(1.2);
+            accent-color: #8e24aa;
+        }
+        
+        .terms-text {
             font-size: 14px;
             color: #666;
         }
         
-        .agreement-checkbox {
-            display: flex;
-            align-items: flex-start;
-            margin-bottom: 10px;
+        .terms-link {
+            color: #8e24aa;
+            text-decoration: none;
         }
         
-        .agreement-checkbox input {
-            margin-right: 10px;
-            margin-top: 5px;
-            transform: scale(1.2);
-        }
-        
-        .agreement-label {
-            font-size: 14px;
-            color: #333;
-        }
-        
-        .error-message {
-            color: #f44336;
-            font-size: 14px;
-            margin-bottom: 10px;
-        }
-        
-        /* ปุ่มดำเนินการต่อ */
+        /* ปุ่ม */
         .action-button {
             background-color: #8e24aa;
             color: white;
@@ -456,25 +422,22 @@ $page_title = 'SADD-Prasat - ยืนยันข้อมูล';
             box-shadow: 0 6px 12px rgba(142, 36, 170, 0.4);
         }
         
-        .action-button:disabled {
+        .back-button {
+            background-color: #f5f5f5;
+            color: #666;
+            border: none;
+            border-radius: 10px;
+            padding: 15px 0;
+            font-size: 16px;
+            font-weight: 600;
+            width: 100%;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: background-color 0.2s;
+        }
+        
+        .back-button:hover {
             background-color: #e0e0e0;
-            color: #999;
-            cursor: not-allowed;
-            transform: none;
-            box-shadow: none;
-        }
-        
-        /* ข้อมูลเพิ่มเติม */
-        .info-text {
-            text-align: center;
-            margin-top: 20px;
-            font-size: 12px;
-            color: #999;
-        }
-        
-        .info-text a {
-            color: #8e24aa;
-            text-decoration: none;
         }
     </style>
 </head>
@@ -510,142 +473,84 @@ $page_title = 'SADD-Prasat - ยืนยันข้อมูล';
             </div>
         </div>
         
-        <!-- คำแนะนำ -->
-        <div class="instruction-card">
-            <div class="instruction-title">ตรวจสอบและยืนยันข้อมูล</div>
-            <div class="instruction-text">
-                กรุณาตรวจสอบความถูกต้องของข้อมูลที่ท่านได้กรอก หากต้องการแก้ไขข้อมูลส่วนใด สามารถคลิกที่ "แก้ไข" เพื่อกลับไปแก้ไขได้
+        <!-- สรุปข้อมูล -->
+        <div class="confirm-card">
+            <div class="confirm-title">ตรวจสอบข้อมูล</div>
+            <div class="confirm-description">
+                กรุณาตรวจสอบความถูกต้องของข้อมูล และยืนยันการเข้าร่วมระบบ
             </div>
-        </div>
-        
-        <?php if (!empty($error)): ?>
-            <div class="error-message"><?php echo $error; ?></div>
-        <?php endif; ?>
-        
-        <!-- ข้อมูลสรุป -->
-        <div class="summary-card">
-            <div class="summary-title">
-                สรุปข้อมูล
-            </div>
+            
+            <?php if (isset($error_message)): ?>
+                <div class="error-message">
+                    <?php echo $error_message; ?>
+                </div>
+            <?php endif; ?>
             
             <!-- ข้อมูลผู้ปกครอง -->
-            <div class="summary-section">
-                <div class="section-heading">
-                    <span class="material-icons">person</span> ข้อมูลผู้ปกครอง
-                    <a href="register_parent_info.php" class="edit-link" style="margin-left: auto;">
-                        <span class="material-icons">edit</span> แก้ไข
-                    </a>
+            <h3 style="margin-bottom: 10px;">ข้อมูลผู้ปกครอง</h3>
+            <div class="parent-data">
+                <div class="data-row">
+                    <div class="data-label">ชื่อ-นามสกุล:</div>
+                    <div class="data-value"><?php echo htmlspecialchars($parent_info['title'] ?? '') . ' ' . htmlspecialchars($parent_info['first_name'] ?? '') . ' ' . htmlspecialchars($parent_info['last_name'] ?? ''); ?></div>
                 </div>
-                <div class="info-grid">
-                    <div class="info-item">
-                        <div class="info-label">ชื่อ-นามสกุล</div>
-                        <div class="info-value"><?php echo $user_data['title'] . ' ' . $user_data['first_name'] . ' ' . $user_data['last_name']; ?></div>
-                    </div>
-                    <div class="info-item">
-                        <div class="info-label">ความสัมพันธ์</div>
-                        <div class="info-value"><?php echo $_SESSION['parent_info']['relationship'] ?? '-'; ?></div>
-                    </div>
-                    <div class="info-item">
-                        <div class="info-label">เบอร์โทรศัพท์</div>
-                        <div class="info-value"><?php echo $user_data['phone_number'] ?? '-'; ?></div>
-                    </div>
-                    <div class="info-item">
-                        <div class="info-label">อีเมล</div>
-                        <div class="info-value"><?php echo $user_data['email'] ?? '-'; ?></div>
-                    </div>
+                <div class="data-row">
+                    <div class="data-label">ความสัมพันธ์:</div>
+                    <div class="data-value"><?php echo htmlspecialchars($parent_info['relationship'] ?? ''); ?></div>
                 </div>
-            </div>
-            
-            <!-- ข้อมูลนักเรียน -->
-            <div class="summary-section">
-                <div class="section-heading">
-                    <span class="material-icons">school</span> นักเรียนที่ดูแล
-                    <a href="register_select_students.php" class="edit-link" style="margin-left: auto;">
-                        <span class="material-icons">edit</span> แก้ไข
-                    </a>
+                <div class="data-row">
+                    <div class="data-label">เบอร์โทรศัพท์:</div>
+                    <div class="data-value"><?php echo htmlspecialchars($parent_info['phone_number'] ?? ''); ?></div>
                 </div>
-                <?php if (!empty($students_data)): ?>
-                    <ul class="student-list">
-                        <?php foreach ($students_data as $student): ?>
-                            <li class="student-item">
-                                <div class="student-avatar"><?php echo $student['avatar']; ?></div>
-                                <div class="student-info">
-                                    <div class="student-name"><?php echo $student['first_name'] . ' ' . $student['last_name']; ?></div>
-                                    <div class="student-class"><?php echo $student['class_name']; ?> (รหัส: <?php echo $student['student_code']; ?>)</div>
-                                </div>
-                            </li>
-                        <?php endforeach; ?>
-                    </ul>
-                <?php else: ?>
-                    <p>ยังไม่ได้เลือกนักเรียน</p>
+                <?php if (!empty($parent_info['email'])): ?>
+                <div class="data-row">
+                    <div class="data-label">อีเมล:</div>
+                    <div class="data-value"><?php echo htmlspecialchars($parent_info['email']); ?></div>
+                </div>
                 <?php endif; ?>
             </div>
-        </div>
-        
-        <!-- ข้อตกลงการใช้งาน -->
-        <div class="agreement-card">
-            <div class="agreement-title">ข้อตกลงการใช้งานและนโยบายความเป็นส่วนตัว</div>
             
-            <div class="agreement-content">
-                <p><b>ข้อตกลงการใช้งานและนโยบายความเป็นส่วนตัว</b></p>
-                <p>ข้อตกลงการใช้งานระบบ SADD-Prasat ระบบติดตามการเข้าแถวสำหรับผู้ปกครอง</p>
-                <br>
-                <p>1. <b>วัตถุประสงค์การใช้งาน</b></p>
-                <p>ระบบ SADD-Prasat มีวัตถุประสงค์เพื่อติดตามการเข้าแถวของนักเรียนและแจ้งข้อมูลต่าง ๆ ไปยังผู้ปกครอง ช่วยสร้างความมั่นใจให้กับผู้ปกครองว่านักเรียนเข้าโรงเรียนตรงเวลา</p>
-                <br>
-                <p>2. <b>การเก็บรวบรวมและใช้ข้อมูลส่วนบุคคล</b></p>
-                <p>ข้อมูลที่ระบบจัดเก็บจะประกอบด้วย ชื่อ-นามสกุล เบอร์โทรศัพท์ ความสัมพันธ์กับนักเรียน และข้อมูลการเข้าแถวของนักเรียน โดยทางโรงเรียนจะใช้ข้อมูลดังกล่าวเพื่อการติดต่อสื่อสารกับผู้ปกครองเท่านั้น</p>
-                <br>
-                <p>3. <b>การแจ้งเตือนผ่าน LINE</b></p>
-                <p>ระบบนี้จะมีการแจ้งเตือนผ่าน LINE Official Account ซึ่งผู้ปกครองตกลงที่จะรับข้อความแจ้งเตือนเกี่ยวกับการเข้าแถว การขาดเรียน และข่าวสารสำคัญของทางโรงเรียน</p>
-                <br>
-                <p>4. <b>การรักษาความปลอดภัยของข้อมูล</b></p>
-                <p>ทางโรงเรียนจะดำเนินการตามมาตรการรักษาความปลอดภัยที่เหมาะสมเพื่อป้องกันการเข้าถึง เปิดเผย เปลี่ยนแปลง หรือทำลายข้อมูลโดยไม่ได้รับอนุญาต</p>
-                <br>
-                <p>5. <b>การแก้ไขข้อมูล</b></p>
-                <p>ผู้ปกครองสามารถแก้ไขข้อมูลส่วนตัวได้ผ่านทางระบบหรือแจ้งต่อทางโรงเรียนโดยตรง</p>
+            <!-- รายการนักเรียน -->
+            <div class="students-list">
+                <div class="students-title">นักเรียนในความดูแล</div>
+                
+                <?php if (empty($students_data)): ?>
+                    <div class="no-students">
+                        ยังไม่ได้เลือกนักเรียน
+                    </div>
+                <?php else: ?>
+                    <?php foreach ($students_data as $student): ?>
+                        <div class="student-item">
+                            <div class="student-avatar"><?php echo $student['avatar']; ?></div>
+                            <div class="student-info">
+                                <div class="student-name"><?php echo htmlspecialchars($student['first_name'] . ' ' . $student['last_name']); ?></div>
+                                <div class="student-class"><?php echo htmlspecialchars($student['class_name']); ?> (รหัส: <?php echo htmlspecialchars($student['student_code']); ?>)</div>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                <?php endif; ?>
             </div>
             
             <form method="post" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>">
-                <div class="agreement-checkbox">
-                    <input type="checkbox" id="privacy-agreement" name="privacy_agreement">
-                    <label for="privacy-agreement" class="agreement-label">
-                        ข้าพเจ้ายอมรับข้อตกลงในการใช้งานและนโยบายความเป็นส่วนตัว
-                    </label>
+                <!-- ยอมรับเงื่อนไข -->
+                <div class="terms-container">
+                    <div class="terms-check">
+                        <input type="checkbox" name="accept_terms" id="accept_terms" value="1" <?php echo isset($_POST['accept_terms']) && $_POST['accept_terms'] == '1' ? 'checked' : ''; ?>>
+                        <label for="accept_terms" class="terms-text">
+                            ข้าพเจ้ายอมรับ <a href="#" class="terms-link">เงื่อนไขการใช้งาน</a> และ <a href="#" class="terms-link">นโยบายความเป็นส่วนตัว</a> ของระบบ SADD-Prasat และยินยอมให้เก็บข้อมูลส่วนบุคคลเพื่อวัตถุประสงค์ในการแจ้งเตือนและติดตามข้อมูลการเข้าแถวของนักเรียนในความดูแล
+                        </label>
+                    </div>
                 </div>
                 
-                <div class="agreement-checkbox">
-                    <input type="checkbox" id="info-agreement" name="info_agreement">
-                    <label for="info-agreement" class="agreement-label">
-                        ข้าพเจ้ายืนยันว่าข้อมูลที่กรอกเป็นความจริงและเป็นข้อมูลที่เป็นปัจจุบัน
-                    </label>
-                </div>
-                
-                <!-- ปุ่มดำเนินการต่อ -->
-                <button type="submit" name="submit" class="action-button" id="confirm-button" disabled>
+                <!-- ปุ่มดำเนินการ -->
+                <button type="submit" name="submit" class="action-button">
                     ยืนยันข้อมูล
                 </button>
+                
+                <a href="register_parent_info.php" class="back-button" style="display: block; text-align: center; text-decoration: none;">
+                    ย้อนกลับ
+                </a>
             </form>
         </div>
-        
-        <!-- ข้อมูลเพิ่มเติม -->
-        <div class="info-text">
-            <p>หากมีข้อสงสัยหรือต้องการความช่วยเหลือ <a href="#">ติดต่อเรา</a></p>
-        </div>
     </div>
-
-    <script>
-        // ตรวจสอบการยอมรับข้อตกลง
-        const privacyCheckbox = document.getElementById('privacy-agreement');
-        const infoCheckbox = document.getElementById('info-agreement');
-        const confirmButton = document.getElementById('confirm-button');
-        
-        function checkAgreements() {
-            confirmButton.disabled = !(privacyCheckbox.checked && infoCheckbox.checked);
-        }
-        
-        privacyCheckbox.addEventListener('change', checkAgreements);
-        infoCheckbox.addEventListener('change', checkAgreements);
-    </script>
 </body>
 </html>

@@ -17,6 +17,11 @@ if (!isset($_SESSION['user_id']) || !isset($_SESSION['role']) || $_SESSION['role
 // ตั้งค่าขั้นตอนการลงทะเบียน
 $_SESSION['registration_step'] = 1;
 
+// สร้างหรือเรียกใช้ตัวแปร session สำหรับเก็บรายชื่อนักเรียนที่เลือก
+if (!isset($_SESSION['selected_students'])) {
+    $_SESSION['selected_students'] = [];
+}
+
 // เชื่อมต่อฐานข้อมูล
 require_once '../config/db_config.php';
 $conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
@@ -34,6 +39,24 @@ $search_result = [];
 $search_query = '';
 $search_type = 'id'; // ค่าเริ่มต้นค้นหาด้วยรหัสนักเรียน
 
+// ตรวจสอบการเพิ่ม/ลบนักเรียนผ่าน AJAX
+if (isset($_POST['action']) && $_POST['action'] == 'toggle_student') {
+    $student_id = (int)$_POST['student_id'];
+    
+    if (in_array($student_id, $_SESSION['selected_students'])) {
+        // ถ้ามีอยู่แล้ว ให้ลบออก
+        $_SESSION['selected_students'] = array_values(array_filter($_SESSION['selected_students'], function($id) use ($student_id) {
+            return $id != $student_id;
+        }));
+    } else {
+        // ถ้ายังไม่มี ให้เพิ่มเข้าไป
+        $_SESSION['selected_students'][] = $student_id;
+    }
+    
+    echo json_encode(['success' => true, 'selected_students' => $_SESSION['selected_students']]);
+    exit;
+}
+
 // ตรวจสอบการค้นหา
 if (isset($_POST['search']) && !empty($_POST['search_query'])) {
     $search_query = $_POST['search_query'];
@@ -42,18 +65,20 @@ if (isset($_POST['search']) && !empty($_POST['search_query'])) {
     // สร้างคำสั่ง SQL ตามประเภทการค้นหา
     if ($search_type == 'id') {
         // ค้นหาด้วยรหัสนักเรียน
-        $sql = "SELECT s.student_id, s.student_code, u.first_name, u.last_name, c.level, c.department, c.group_number 
+        $sql = "SELECT s.student_id, s.student_code, u.first_name, u.last_name, c.level, d.department_name, c.group_number 
                 FROM students s 
                 INNER JOIN users u ON s.user_id = u.user_id 
                 LEFT JOIN classes c ON s.current_class_id = c.class_id 
+                LEFT JOIN departments d ON c.department_id = d.department_id
                 WHERE s.student_code LIKE ?";
         $param = "%$search_query%";
     } else {
         // ค้นหาด้วยชื่อ-นามสกุล
-        $sql = "SELECT s.student_id, s.student_code, u.first_name, u.last_name, c.level, c.department, c.group_number 
+        $sql = "SELECT s.student_id, s.student_code, u.first_name, u.last_name, c.level, d.department_name, c.group_number 
                 FROM students s 
                 INNER JOIN users u ON s.user_id = u.user_id 
                 LEFT JOIN classes c ON s.current_class_id = c.class_id 
+                LEFT JOIN departments d ON c.department_id = d.department_id
                 WHERE u.first_name LIKE ? OR u.last_name LIKE ?";
         $param1 = "%$search_query%";
         $param2 = "%$search_query%";
@@ -74,7 +99,7 @@ if (isset($_POST['search']) && !empty($_POST['search_query'])) {
     // เก็บผลลัพธ์
     if ($result->num_rows > 0) {
         while ($row = $result->fetch_assoc()) {
-            $row['class_name'] = $row['level'] . ' ' . $row['department'] . ' กลุ่ม ' . $row['group_number'];
+            $row['class_name'] = $row['level'] . ' ' . $row['department_name'] . ' กลุ่ม ' . $row['group_number'];
             $row['avatar'] = substr($row['first_name'], 0, 1); // ใช้อักษรตัวแรกของชื่อเป็น avatar
             $search_result[] = $row;
         }
@@ -83,15 +108,31 @@ if (isset($_POST['search']) && !empty($_POST['search_query'])) {
     $stmt->close();
 }
 
+// ดึงข้อมูลนักเรียนที่เลือกแล้ว
+$selected_students_data = [];
+if (!empty($_SESSION['selected_students'])) {
+    $students_ids = implode(',', array_map('intval', $_SESSION['selected_students']));
+    
+    $sql = "SELECT s.student_id, s.student_code, u.first_name, u.last_name, c.level, d.department_name, c.group_number 
+            FROM students s 
+            INNER JOIN users u ON s.user_id = u.user_id 
+            LEFT JOIN classes c ON s.current_class_id = c.class_id 
+            LEFT JOIN departments d ON c.department_id = d.department_id
+            WHERE s.student_id IN ($students_ids)";
+    
+    $result = $conn->query($sql);
+    
+    if ($result && $result->num_rows > 0) {
+        while ($row = $result->fetch_assoc()) {
+            $row['class_name'] = $row['level'] . ' ' . $row['department_name'] . ' กลุ่ม ' . $row['group_number'];
+            $row['avatar'] = substr($row['first_name'], 0, 1); // ใช้อักษรตัวแรกของชื่อเป็น avatar
+            $selected_students_data[] = $row;
+        }
+    }
+}
+
 // ตรวจสอบการเลือกนักเรียน
 if (isset($_POST['submit'])) {
-    // ตรวจสอบว่ามีการเลือกนักเรียนหรือไม่
-    if (isset($_POST['selected_students']) && !empty($_POST['selected_students'])) {
-        $_SESSION['selected_students'] = $_POST['selected_students'];
-    } else {
-        $_SESSION['selected_students'] = [];
-    }
-    
     // ไปยังขั้นตอนถัดไป
     $_SESSION['registration_step'] = 2;
     header('Location: register_parent_info.php');
@@ -115,6 +156,17 @@ $page_title = 'SADD-Prasat - เลือกนักเรียน';
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <style>
         /* ตั้งค่าพื้นฐาน */
+        :root {
+            --primary-color: #8e24aa; /* สีม่วงสำหรับ SADD-Prasat (ผู้ปกครอง) */
+            --primary-color-dark: #5c007a;
+            --primary-color-light: #f3e5f5;
+            --text-dark: #333;
+            --text-light: #666;
+            --bg-light: #f8f9fa;
+            --border-color: #e0e0e0;
+            --card-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        
         * {
             margin: 0;
             padding: 0;
@@ -123,8 +175,8 @@ $page_title = 'SADD-Prasat - เลือกนักเรียน';
         }
         
         body {
-            background-color: #f8f9fa;
-            color: #333;
+            background-color: var(--bg-light);
+            color: var(--text-dark);
             font-size: 16px;
             line-height: 1.5;
         }
@@ -507,11 +559,42 @@ $page_title = 'SADD-Prasat - เลือกนักเรียน';
                 <?php endif; ?>
             </div>
             
+            <!-- แสดงนักเรียนที่เลือกแล้ว -->
+            <?php if (!empty($selected_students_data)): ?>
+                <div class="selected-students-section">
+                    <h3 style="margin-bottom: 15px;">นักเรียนที่เลือกแล้ว (<?php echo count($selected_students_data); ?> คน)</h3>
+                    
+                    <div class="selected-students-list">
+                        <?php foreach ($selected_students_data as $student): ?>
+                            <div class="student-item selected">
+                                <input type="checkbox" class="student-checkbox" checked 
+                                       onclick="toggleStudent(<?php echo $student['student_id']; ?>)" 
+                                       data-id="<?php echo $student['student_id']; ?>">
+                                <div class="student-avatar"><?php echo $student['avatar']; ?></div>
+                                <div class="student-info">
+                                    <div class="student-name"><?php echo $student['first_name'] . ' ' . $student['last_name']; ?></div>
+                                    <div class="student-class"><?php echo $student['class_name']; ?> (รหัส: <?php echo $student['student_code']; ?>)</div>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+                
+                <div class="divider" style="height: 1px; background-color: #e0e0e0; margin: 20px 0;"></div>
+            <?php endif; ?>
+            
+            <!-- แสดงผลการค้นหา -->
             <?php if (!empty($search_result)): ?>
-                <form method="post" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>">
+                <div>
                     <?php foreach ($search_result as $student): ?>
-                        <div class="student-item">
-                            <input type="checkbox" class="student-checkbox" name="selected_students[]" value="<?php echo $student['student_id']; ?>">
+                        <?php
+                        // ตรวจสอบว่านักเรียนคนนี้ถูกเลือกไว้แล้วหรือไม่
+                        $isSelected = in_array($student['student_id'], $_SESSION['selected_students']);
+                        ?>
+                        <div class="student-item <?php echo $isSelected ? 'selected' : ''; ?>">
+                            <input type="checkbox" class="student-checkbox" <?php echo $isSelected ? 'checked' : ''; ?> 
+                                   onclick="toggleStudent(<?php echo $student['student_id']; ?>)" 
+                                   data-id="<?php echo $student['student_id']; ?>">
                             <div class="student-avatar"><?php echo $student['avatar']; ?></div>
                             <div class="student-info">
                                 <div class="student-name"><?php echo $student['first_name'] . ' ' . $student['last_name']; ?></div>
@@ -519,16 +602,20 @@ $page_title = 'SADD-Prasat - เลือกนักเรียน';
                             </div>
                         </div>
                     <?php endforeach; ?>
-                    
-                    <!-- ปุ่มดำเนินการต่อ -->
-                    <button type="submit" name="submit" class="action-button" style="margin-top: 20px;">
-                        ดำเนินการต่อ
-                    </button>
-                </form>
+                </div>
             <?php elseif (isset($_POST['search'])): ?>
                 <div class="no-results">
                     <p>ไม่พบข้อมูลนักเรียนที่ค้นหา</p>
                 </div>
+            <?php endif; ?>
+            
+            <!-- ปุ่มดำเนินการต่อ - แสดงเฉพาะเมื่อมีนักเรียนที่เลือกแล้ว -->
+            <?php if (!empty($selected_students_data)): ?>
+                <form method="post" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>">
+                    <button type="submit" name="submit" class="action-button" style="margin-top: 20px;">
+                        ดำเนินการต่อ (<?php echo count($selected_students_data); ?> คน)
+                    </button>
+                </form>
             <?php endif; ?>
         </div>
         
@@ -545,6 +632,37 @@ $page_title = 'SADD-Prasat - เลือกนักเรียน';
         </div>
     </div>
 
+    <style>
+        /* เพิ่มสไตล์สำหรับนักเรียนที่เลือกแล้ว */
+        .selected-students-section {
+            background-color: #f3e5f5;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+            border: 1px solid #ce93d8;
+        }
+        
+        .selected-students-list {
+            margin-bottom: 0;
+        }
+        
+        .student-item.selected {
+            background-color: #f3e5f5;
+            border-radius: 8px;
+        }
+        
+        /* เพิ่มเอฟเฟกต์เมื่อกดเลือกนักเรียน */
+        .student-item {
+            transition: background-color 0.3s, transform 0.2s;
+            padding: 10px;
+            border-radius: 8px;
+        }
+        
+        .student-item:hover {
+            background-color: #f9f9f9;
+        }
+    </style>
+    
     <script>
         // สลับประเภทการค้นหา
         function switchSearchType(type) {
@@ -563,6 +681,44 @@ $page_title = 'SADD-Prasat - เลือกนักเรียน';
                 searchField.placeholder = 'กรอกชื่อ-นามสกุลนักเรียน';
                 searchType.value = 'name';
             }
+        }
+        
+        // ฟังก์ชันเพิ่ม/ลบนักเรียนออกจากรายการที่เลือก
+        function toggleStudent(studentId) {
+            // ส่งคำขอ AJAX ไปยังเซิร์ฟเวอร์
+            fetch('<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: 'action=toggle_student&student_id=' + studentId
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // อัพเดทสถานะการเลือก
+                    const checkboxes = document.querySelectorAll(`.student-checkbox[data-id="${studentId}"]`);
+                    const studentItems = document.querySelectorAll(`.student-item:has(.student-checkbox[data-id="${studentId}"])`);
+                    
+                    checkboxes.forEach(checkbox => {
+                        checkbox.checked = data.selected_students.includes(studentId);
+                    });
+                    
+                    if (data.selected_students.includes(studentId)) {
+                        // ถ้าเลือก ให้เพิ่มคลาส selected
+                        studentItems.forEach(item => item.classList.add('selected'));
+                    } else {
+                        // ถ้ายกเลิกการเลือก ให้ลบคลาส selected
+                        studentItems.forEach(item => item.classList.remove('selected'));
+                    }
+                    
+                    // รีโหลดหน้าเพื่ออัพเดทข้อมูล
+                    location.reload();
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
         }
     </script>
 </body>

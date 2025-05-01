@@ -111,7 +111,7 @@
     <!-- การดำเนินการหลัก -->
     <div class="main-actions">
         <!-- ปุ่มเช็คชื่อ -->
-        <a href="check-attendance.php?class_id=<?php echo $current_class_id; ?>" class="main-action-btn check">
+        <a href="new_check_attendance.php?class_id=<?php echo $current_class_id; ?>" class="main-action-btn check">
             <span class="material-icons">how_to_reg</span>
             <span>เช็คชื่อนักเรียนเข้าแถว</span>
         </a>

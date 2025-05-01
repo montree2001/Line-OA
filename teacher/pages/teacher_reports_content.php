@@ -99,59 +99,58 @@
 
     <!-- แท็บเมนู -->
     <div class="tab-menu">
-        <div class="tab-button active" onclick="switchTab('table')">รายการ</div>
-        <div class="tab-button" onclick="switchTab('graph')">กราฟ</div>
-        <div class="tab-button" onclick="switchTab('calendar')">ปฏิทิน</div>
+        <div class="tab-button active" data-tab="table" onclick="switchTab('table')">รายการ</div>
+        <div class="tab-button" data-tab="graph" onclick="switchTab('graph')">กราฟ</div>
+        <div class="tab-button" data-tab="calendar" onclick="switchTab('calendar')">ปฏิทิน</div>
     </div>
-
     <!-- ตารางรายชื่อนักเรียน -->
     <div class="student-table-card" id="table-view">
-    <div class="table-header">
-        <div class="table-title">รายชื่อนักเรียน</div>
-        <div class="search-bar">
-            <span class="material-icons">search</span>
-            <input type="text" placeholder="ค้นหานักเรียน..." id="student-search" onkeyup="searchStudents()">
+        <div class="table-header">
+            <div class="table-title">รายชื่อนักเรียน</div>
+            <div class="search-bar">
+                <span class="material-icons">search</span>
+                <input type="text" placeholder="ค้นหานักเรียน..." id="student-search" onkeyup="searchStudents()">
+            </div>
         </div>
+
+        <table class="student-table">
+            <thead>
+                <tr>
+                    <th>เลขที่</th>
+                    <th>ชื่อ-นามสกุล</th>
+                    <th>จำนวนวันเข้าแถว</th>
+                    <th>อัตราการเข้าแถว</th>
+                    <th>จัดการ</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php if (empty($students)): ?>
+                    <tr>
+                        <td colspan="5" style="text-align: center;">ไม่พบข้อมูลนักเรียน</td>
+                    </tr>
+                <?php else: ?>
+                    <?php foreach ($students as $student): ?>
+                        <tr>
+                            <td data-label="เลขที่"><?php echo $student['number']; ?></td>
+                            <td data-label="ชื่อ-นามสกุล"><?php echo $student['name']; ?></td>
+                            <td data-label="จำนวนวันเข้าแถว"><?php echo $student['attendance_days']; ?></td>
+                            <td data-label="อัตราการเข้าแถว"><span class="attendance-percent <?php echo $student['status']; ?>"><?php echo $student['percentage']; ?>%</span></td>
+                            <td data-label="จัดการ">
+                                <div class="action-buttons">
+                                    <button class="action-button" title="ดูรายละเอียด" onclick="viewStudentDetail(<?php echo $student['id']; ?>)">
+                                        <span class="material-icons">visibility</span>
+                                    </button>
+                                    <button class="action-button" title="ส่งข้อความถึงผู้ปกครอง" onclick="contactParent(<?php echo $student['id']; ?>)">
+                                        <span class="material-icons">mail</span>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+            </tbody>
+        </table>
     </div>
-    
-    <table class="student-table">
-        <thead>
-            <tr>
-                <th>เลขที่</th>
-                <th>ชื่อ-นามสกุล</th>
-                <th>จำนวนวันเข้าแถว</th>
-                <th>อัตราการเข้าแถว</th>
-                <th>จัดการ</th>
-            </tr>
-        </thead>
-        <tbody>
-            <?php if (empty($students)): ?>
-            <tr>
-                <td colspan="5" style="text-align: center;">ไม่พบข้อมูลนักเรียน</td>
-            </tr>
-            <?php else: ?>
-            <?php foreach ($students as $student): ?>
-            <tr>
-                <td data-label="เลขที่"><?php echo $student['number']; ?></td>
-                <td data-label="ชื่อ-นามสกุล"><?php echo $student['name']; ?></td>
-                <td data-label="จำนวนวันเข้าแถว"><?php echo $student['attendance_days']; ?></td>
-                <td data-label="อัตราการเข้าแถว"><span class="attendance-percent <?php echo $student['status']; ?>"><?php echo $student['percentage']; ?>%</span></td>
-                <td data-label="จัดการ">
-                    <div class="action-buttons">
-                        <button class="action-button" title="ดูรายละเอียด" onclick="viewStudentDetail(<?php echo $student['id']; ?>)">
-                            <span class="material-icons">visibility</span>
-                        </button>
-                        <button class="action-button" title="ส่งข้อความถึงผู้ปกครอง" onclick="contactParent(<?php echo $student['id']; ?>)">
-                            <span class="material-icons">mail</span>
-                        </button>
-                    </div>
-                </td>
-            </tr>
-            <?php endforeach; ?>
-            <?php endif; ?>
-        </tbody>
-    </table>
-</div>
 
     <!-- แสดงเป็นกราฟ -->
     <div class="graph-card" id="graph-view" style="display: none;">
@@ -288,12 +287,12 @@
             <span class="material-icons">close</span>
         </button>
         <h2 class="modal-title">รายละเอียดการเข้าแถวของนักเรียน</h2>
-        
+
         <div id="student-detail-content">
             <!-- จะถูกเติมด้วย JavaScript เมื่อเรียกใช้ -->
             <div class="loading">กำลังโหลดข้อมูล...</div>
         </div>
-        
+
         <!-- แสดงข้อมูลผู้ปกครอง -->
         <div id="parent-detail-section" style="display: none;">
             <h3 class="section-title">ข้อมูลผู้ปกครอง</h3>
@@ -301,9 +300,9 @@
                 <!-- จะถูกเติมด้วย JavaScript เมื่อเรียกใช้ -->
             </div>
         </div>
-        
+
         <div class="modal-actions">
-        
+
             <button class="modal-button primary" onclick="printStudentReport()">
                 <span class="material-icons">print</span> พิมพ์รายงาน
             </button>
@@ -370,41 +369,7 @@
         });
     }
 
-    // ฟังก์ชันเปลี่ยนแท็บที่แสดง
-    function switchTab(tabName) {
-        // ซ่อนทุกแท็บ
-        const tableView = document.getElementById('table-view');
-        const graphView = document.getElementById('graph-view');
-        const calendarView = document.getElementById('calendar-view');
 
-        if (tableView) tableView.style.display = 'none';
-        if (graphView) graphView.style.display = 'none';
-        if (calendarView) calendarView.style.display = 'none';
-
-        // แสดงแท็บที่เลือก
-        if (tabName === 'table' && tableView) {
-            tableView.style.display = 'block';
-        } else if (tabName === 'graph' && graphView) {
-            graphView.style.display = 'block';
-        } else if (tabName === 'calendar' && calendarView) {
-            calendarView.style.display = 'block';
-        }
-
-        // อัพเดทปุ่มแท็บ
-        const tabButtons = document.querySelectorAll('.tab-button');
-        tabButtons.forEach(button => {
-            button.classList.remove('active');
-        });
-
-        // เพิ่มคลาส active ให้กับปุ่มที่เลือก
-        const selectedButton = document.querySelector(`.tab-button:nth-child(${
-        tabName === 'table' ? 1 : tabName === 'graph' ? 2 : 3
-    })`);
-
-        if (selectedButton) {
-            selectedButton.classList.add('active');
-        }
-    }
 
     // ฟังก์ชันปิด Modal
     function closeModal(modalId) {

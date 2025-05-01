@@ -183,7 +183,7 @@ switch ($role) {
         if (!checkParentRegistered($user_id)) {
             header('Location: parent/register.php');
         } else {
-            header('Location: parent/dashboard.php');
+            header('Location: parent/home.php');
         }
         break;
     case 'admin':

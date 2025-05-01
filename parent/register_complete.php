@@ -1,7 +1,7 @@
 <?php
 /**
  * parent/register_complete.php
- * หน้าเสร็จสิ้นการลงทะเบียนผู้ปกครอง (ขั้นตอนที่ 5)
+ * หน้ายืนยันการลงทะเบียนเสร็จสิ้น (ขั้นตอนที่ 4)
  */
 
 // เริ่มต้น Session
@@ -14,40 +14,17 @@ if (!isset($_SESSION['user_id']) || !isset($_SESSION['role']) || $_SESSION['role
     exit;
 }
 
-// ตรวจสอบว่าขั้นตอนถูกต้องหรือไม่ (ควรผ่านขั้นตอนที่ 3 มาก่อน)
+// ตรวจสอบขั้นตอนการลงทะเบียน
 if (!isset($_SESSION['registration_step']) || $_SESSION['registration_step'] < 4) {
-    // ถ้ายังไม่ได้ผ่านขั้นตอนที่ 3 ให้กลับไปขั้นตอนก่อนหน้า
-    header('Location: register_confirm.php');
+    // ย้อนกลับไปยังขั้นตอนที่ 1
+    header('Location: register_select_students.php');
     exit;
 }
 
-// เชื่อมต่อฐานข้อมูล
-require_once '../config/db_config.php';
-$conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
-
-// ตรวจสอบการเชื่อมต่อ
-if ($conn->connect_error) {
-    die("การเชื่อมต่อฐานข้อมูลล้มเหลว: " . $conn->connect_error);
-}
-
-// ตั้งค่า character set เป็น UTF-8
-$conn->set_charset("utf8mb4");
-
-// ดึงข้อมูลผู้ใช้จาก users table
-$user_id = $_SESSION['user_id'];
-$stmt = $conn->prepare("SELECT first_name, last_name, profile_picture FROM users WHERE user_id = ?");
-$stmt->bind_param("i", $user_id);
-$stmt->execute();
-$user_result = $stmt->get_result();
-$user_data = $user_result->fetch_assoc();
-
-// ล้างข้อมูลการลงทะเบียนที่ไม่จำเป็นแล้ว
+// ล้างข้อมูลลงทะเบียนที่ไม่จำเป็น
 unset($_SESSION['registration_step']);
-unset($_SESSION['parent_info']);
 unset($_SESSION['selected_students']);
-
-// ปิดการเชื่อมต่อฐานข้อมูล
-$conn->close();
+unset($_SESSION['parent_info']);
 
 // ตั้งค่าหัวข้อหน้า
 $page_title = 'SADD-Prasat - ลงทะเบียนสำเร็จ';
@@ -63,6 +40,19 @@ $page_title = 'SADD-Prasat - ลงทะเบียนสำเร็จ';
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <style>
         /* ตั้งค่าพื้นฐาน */
+        :root {
+            --primary-color: #8e24aa; /* สีม่วงสำหรับ SADD-Prasat (ผู้ปกครอง) */
+            --primary-color-dark: #5c007a;
+            --primary-color-light: #f3e5f5;
+            --success-color: #4caf50;
+            --success-color-light: #e8f5e9;
+            --text-dark: #333;
+            --text-light: #666;
+            --bg-light: #f8f9fa;
+            --border-color: #e0e0e0;
+            --card-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        
         * {
             margin: 0;
             padding: 0;
@@ -71,13 +61,10 @@ $page_title = 'SADD-Prasat - ลงทะเบียนสำเร็จ';
         }
         
         body {
-            background-color: #f8f9fa;
-            color: #333;
+            background-color: var(--bg-light);
+            color: var(--text-dark);
             font-size: 16px;
             line-height: 1.5;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
         }
         
         /* ส่วนหัว */
@@ -104,7 +91,6 @@ $page_title = 'SADD-Prasat - ลงทะเบียนสำเร็จ';
             max-width: 600px;
             margin: 70px auto 30px;
             padding: 15px;
-            flex: 1;
         }
         
         /* ตัวแสดงขั้นตอน */
@@ -147,11 +133,6 @@ $page_title = 'SADD-Prasat - ลงทะเบียนสำเร็จ';
             margin-bottom: 5px;
         }
         
-        .step.active .step-number {
-            background-color: #8e24aa;
-            color: white;
-        }
-        
         .step.completed .step-number {
             background-color: #4caf50;
             color: white;
@@ -163,16 +144,11 @@ $page_title = 'SADD-Prasat - ลงทะเบียนสำเร็จ';
             text-align: center;
         }
         
-        .step.active .step-label {
-            color: #8e24aa;
-            font-weight: 500;
-        }
-        
         .step.completed .step-label {
             color: #4caf50;
         }
         
-        /* ส่วนแสดงผลการลงทะเบียนสำเร็จ */
+        /* ส่วนสำเร็จ */
         .success-card {
             background-color: white;
             border-radius: 15px;
@@ -183,36 +159,66 @@ $page_title = 'SADD-Prasat - ลงทะเบียนสำเร็จ';
         }
         
         .success-icon {
-            width: 100px;
-            height: 100px;
+            width: 80px;
+            height: 80px;
+            background-color: var(--success-color-light);
             border-radius: 50%;
-            background-color: #e8f5e9;
-            color: #4caf50;
             display: flex;
             align-items: center;
             justify-content: center;
             margin: 0 auto 20px;
         }
         
-        .success-icon .material-icons {
-            font-size: 60px;
+        .success-icon span {
+            font-size: 48px;
+            color: var(--success-color);
         }
         
         .success-title {
-            font-size: 24px;
+            font-size: 22px;
             font-weight: 600;
             margin-bottom: 15px;
-            color: #333;
+            color: var(--success-color);
         }
         
-        .success-message {
-            font-size: 16px;
-            color: #666;
+        .success-description {
+            color: var(--text-light);
             margin-bottom: 30px;
+            padding: 0 10px;
         }
         
-        /* ข้อมูลการเชื่อมต่อ LINE */
-        .connect-card {
+        /* ปุ่ม */
+        .action-button {
+            background-color: #8e24aa;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            padding: 15px 0;
+            font-size: 16px;
+            font-weight: 600;
+            width: 100%;
+            cursor: pointer;
+            box-shadow: 0 4px 8px rgba(142, 36, 170, 0.3);
+            transition: transform 0.2s, box-shadow 0.2s;
+            text-decoration: none;
+            display: block;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        
+        .action-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(142, 36, 170, 0.4);
+        }
+        
+        .success-footer {
+            color: var(--text-light);
+            font-size: 14px;
+            margin-top: 20px;
+        }
+        
+        /* คุณสมบัติระบบ */
+        .features-container {
             background-color: white;
             border-radius: 15px;
             padding: 20px;
@@ -220,82 +226,15 @@ $page_title = 'SADD-Prasat - ลงทะเบียนสำเร็จ';
             box-shadow: 0 2px 8px rgba(0,0,0,0.05);
         }
         
-        .connect-title {
-            font-size: 16px;
+        .features-title {
+            font-size: 18px;
             font-weight: 600;
             margin-bottom: 15px;
-            color: #333;
+            color: var(--primary-color);
+            text-align: center;
         }
         
-        .line-connect {
-            display: flex;
-            align-items: center;
-            background-color: #f8f9fa;
-            border-radius: 10px;
-            padding: 15px;
-            margin-bottom: 15px;
-        }
-        
-        .line-icon {
-            width: 50px;
-            height: 50px;
-            background-color: #06C755;
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-right: 15px;
-        }
-        
-        .line-icon img {
-            width: 30px;
-            height: 30px;
-            object-fit: contain;
-        }
-        
-        .line-info {
-            flex: 1;
-        }
-        
-        .line-name {
-            font-weight: 500;
-            margin-bottom: 5px;
-        }
-        
-        .line-status {
-            font-size: 14px;
-            color: #4caf50;
-            display: flex;
-            align-items: center;
-        }
-        
-        .line-status .material-icons {
-            font-size: 16px;
-            margin-right: 5px;
-        }
-        
-        .connect-note {
-            font-size: 14px;
-            color: #666;
-        }
-        
-        /* ข้อมูลระบบ */
-        .info-card {
-            background-color: white;
-            border-radius: 15px;
-            padding: 20px;
-            margin-bottom: 20px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-        }
-        
-        .info-title {
-            font-size: 16px;
-            font-weight: 600;
-            margin-bottom: 15px;
-            color: #333;
-        }
-        
-        .feature-list {
+        .features-list {
             list-style: none;
         }
         
@@ -305,94 +244,27 @@ $page_title = 'SADD-Prasat - ลงทะเบียนสำเร็จ';
             margin-bottom: 15px;
         }
         
-        .feature-icon {
-            background-color: #f3e5f5;
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-right: 15px;
-            flex-shrink: 0;
+        .feature-item:last-child {
+            margin-bottom: 0;
         }
         
-        .feature-icon .material-icons {
-            color: #8e24aa;
-            font-size: 20px;
+        .feature-icon {
+            color: var(--primary-color);
+            margin-right: 10px;
+            margin-top: 2px;
         }
         
         .feature-text {
             flex: 1;
-        }
-        
-        .feature-heading {
-            font-weight: 500;
-            margin-bottom: 5px;
-        }
-        
-        .feature-description {
             font-size: 14px;
-            color: #666;
-        }
-        
-        /* ปุ่มดำเนินการ */
-        .action-buttons {
-            display: flex;
-            gap: 10px;
-            margin-top: 20px;
-        }
-        
-        .action-button {
-            flex: 1;
-            background-color: #8e24aa;
-            color: white;
-            border: none;
-            border-radius: 10px;
-            padding: 15px 0;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            box-shadow: 0 4px 8px rgba(142, 36, 170, 0.3);
-            transition: transform 0.2s, box-shadow 0.2s;
-            text-decoration: none;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        
-        .action-button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 12px rgba(142, 36, 170, 0.4);
-        }
-        
-        .action-button .material-icons {
-            margin-right: 8px;
-        }
-        
-        .action-button.secondary {
-            background-color: white;
-            color: #8e24aa;
-            border: 1px solid #8e24aa;
-        }
-        
-        /* ข้อมูลเพิ่มเติม */
-        .info-text {
-            text-align: center;
-            margin-top: 20px;
-            font-size: 12px;
-            color: #999;
-        }
-        
-        .info-text a {
-            color: #8e24aa;
-            text-decoration: none;
         }
     </style>
 </head>
 <body>
     <div class="header">
+        <div class="header-left"></div>
         <h1>ลงทะเบียนสำเร็จ</h1>
+        <div class="header-right"></div>
     </div>
 
     <div class="container">
@@ -416,91 +288,50 @@ $page_title = 'SADD-Prasat - ลงทะเบียนสำเร็จ';
             </div>
         </div>
         
-        <!-- ส่วนแสดงผลการลงทะเบียนสำเร็จ -->
+        <!-- การ์ดแสดงความสำเร็จ -->
         <div class="success-card">
             <div class="success-icon">
                 <span class="material-icons">check_circle</span>
             </div>
-            <h1 class="success-title">ลงทะเบียนสำเร็จ</h1>
-            <p class="success-message">
-                ท่านได้ลงทะเบียนเข้าใช้งานระบบ SADD-Prasat เรียบร้อยแล้ว<br>
-                ขณะนี้ท่านสามารถติดตามการเข้าแถวของนักเรียนได้แล้ว
-            </p>
-        </div>
-        
-        <!-- ข้อมูลการเชื่อมต่อ LINE -->
-        <div class="connect-card">
-            <div class="connect-title">การเชื่อมต่อกับ LINE</div>
-            
-            <div class="line-connect">
-                <div class="line-icon">
-                    <img src="../assets/images/line-icon-white.png" alt="LINE" onerror="this.src='https://via.placeholder.com/30x30?text=LINE'">
-                </div>
-                <div class="line-info">
-                    <div class="line-name">SADD-Prasat</div>
-                    <div class="line-status">
-                        <span class="material-icons">check_circle</span> เชื่อมต่อสำเร็จ
-                    </div>
-                </div>
+            <div class="success-title">ลงทะเบียนสำเร็จ</div>
+            <div class="success-description">
+                ขอบคุณที่ลงทะเบียนกับระบบ SADD-Prasat ท่านสามารถเริ่มใช้งานระบบเพื่อติดตามข้อมูลการเข้าแถวของนักเรียนในความดูแลได้ทันที
             </div>
             
-            <p class="connect-note">
-                ท่านจะได้รับการแจ้งเตือนผ่าน LINE เมื่อนักเรียนเช็คชื่อเข้าแถว หรือไม่ได้เข้าแถวในแต่ละวัน รวมถึงข่าวสารสำคัญจากทางโรงเรียน
-            </p>
+            <a href="home.php" class="action-button">
+                เข้าสู่หน้าหลัก
+            </a>
+            
+            <div class="success-footer">
+                หากมีข้อสงสัยเพิ่มเติม กรุณาติดต่อครูที่ปรึกษา
+            </div>
         </div>
         
-        <!-- ข้อมูลระบบ -->
-        <div class="info-card">
-            <div class="info-title">คุณสมบัติของระบบ</div>
-            
-            <ul class="feature-list">
+        <!-- คุณสมบัติระบบ -->
+        <div class="features-container">
+            <div class="features-title">คุณสมบัติของระบบ SADD-Prasat</div>
+            <ul class="features-list">
                 <li class="feature-item">
-                    <div class="feature-icon">
-                        <span class="material-icons">notifications</span>
-                    </div>
-                    <div class="feature-text">
-                        <div class="feature-heading">แจ้งเตือนการเข้าแถว</div>
-                        <div class="feature-description">
-                            รับการแจ้งเตือนเมื่อนักเรียนเช็คชื่อหรือขาดการเข้าแถวในแต่ละวัน
-                        </div>
-                    </div>
+                    <span class="material-icons feature-icon">notifications</span>
+                    <div class="feature-text">รับการแจ้งเตือนการเข้าแถวของนักเรียนในความดูแลผ่าน LINE</div>
                 </li>
                 <li class="feature-item">
-                    <div class="feature-icon">
-                        <span class="material-icons">bar_chart</span>
-                    </div>
-                    <div class="feature-text">
-                        <div class="feature-heading">ดูสถิติการเข้าแถว</div>
-                        <div class="feature-description">
-                            ตรวจสอบสถิติการเข้าแถวของนักเรียนได้ทุกที่ทุกเวลา
-                        </div>
-                    </div>
+                    <span class="material-icons feature-icon">trending_up</span>
+                    <div class="feature-text">ติดตามสถิติการเข้าแถวรายวัน รายสัปดาห์ และรายเดือน</div>
                 </li>
                 <li class="feature-item">
-                    <div class="feature-icon">
-                        <span class="material-icons">chat</span>
-                    </div>
-                    <div class="feature-text">
-                        <div class="feature-heading">ติดต่อครูที่ปรึกษา</div>
-                        <div class="feature-description">
-                            สามารถติดต่อสื่อสารกับครูที่ปรึกษาได้โดยตรงผ่านระบบ
-                        </div>
-                    </div>
+                    <span class="material-icons feature-icon">warning</span>
+                    <div class="feature-text">ได้รับการแจ้งเตือนเมื่อนักเรียนมีความเสี่ยงที่จะไม่ผ่านกิจกรรม</div>
+                </li>
+                <li class="feature-item">
+                    <span class="material-icons feature-icon">chat</span>
+                    <div class="feature-text">ติดต่อสื่อสารกับครูที่ปรึกษาได้โดยตรง</div>
+                </li>
+                <li class="feature-item">
+                    <span class="material-icons feature-icon">event_note</span>
+                    <div class="feature-text">รับข่าวสารและประกาศจากทางโรงเรียน</div>
                 </li>
             </ul>
-        </div>
-        
-        <!-- ปุ่มดำเนินการ -->
-        <div class="action-buttons">
-            <a href="dashboard.php" class="action-button">
-                <span class="material-icons">dashboard</span> ไปยังหน้าหลัก
-            </a>
-        </div>
-        
-        <!-- ข้อมูลเพิ่มเติม -->
-        <div class="info-text">
-            <p>&copy; <?php echo date('Y'); ?> โรงเรียนปราสาทวิทยาคม</p>
-            <p>หากมีข้อสงสัยหรือต้องการความช่วยเหลือ <a href="#">ติดต่อเรา</a></p>
         </div>
     </div>
 </body>

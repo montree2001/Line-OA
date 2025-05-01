@@ -1,7 +1,7 @@
 
 <!-- แถบนำทางด้านล่าง -->
 <div class="bottom-nav">
-    <a href="index.php" class="nav-item <?php echo ($current_page == 'dashboard') ? 'active' : ''; ?>">
+    <a href="home.php" class="nav-item <?php echo ($current_page == 'dashboard') ? 'active' : ''; ?>">
         <span class="material-icons nav-icon">home</span>
         <span>หน้าหลัก</span>
     </a>
