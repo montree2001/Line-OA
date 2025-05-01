@@ -279,41 +279,7 @@
     </div>
 </div>
 
-<!-- Modal แจ้งเตือนผู้ปกครอง -->
-<div class="modal" id="notify-parents-modal">
-    <div class="modal-content">
-        <button class="modal-close" onclick="closeModal('notify-parents-modal')">
-            <span class="material-icons">close</span>
-        </button>
-        <h2 class="modal-title">แจ้งเตือนผู้ปกครอง</h2>
 
-        <div class="notification-options">
-            <div class="option-group">
-                <label class="option-label">เลือกประเภทการแจ้งเตือน:</label>
-                <div class="radio-options">
-                    <label class="radio-container">
-                        <input type="radio" name="notification-type" value="all" checked>
-                        <span class="radio-label">แจ้งเตือนผู้ปกครองทั้งหมด</span>
-                    </label>
-                    <label class="radio-container">
-                        <input type="radio" name="notification-type" value="problem">
-                        <span class="radio-label">แจ้งเตือนเฉพาะผู้ปกครองนักเรียนที่มีปัญหา</span>
-                    </label>
-                </div>
-            </div>
-
-            <div class="option-group">
-                <label class="option-label">ข้อความแจ้งเตือน:</label>
-                <textarea id="message-text" rows="5" placeholder="ระบุข้อความที่ต้องการแจ้งเตือนไปยังผู้ปกครอง..." class="message-textarea">เรียนท่านผู้ปกครอง โรงเรียนขอแจ้งข้อมูลการเข้าแถวของนักเรียนในเดือนนี้ กรุณาตรวจสอบสถิติการเข้าแถวของนักเรียนในความปกครองของท่าน</textarea>
-            </div>
-        </div>
-
-        <div class="modal-actions">
-            <button class="modal-button cancel" onclick="closeModal('notify-parents-modal')">ยกเลิก</button>
-            <button class="modal-button primary" onclick="sendNotification()">ส่งการแจ้งเตือน</button>
-        </div>
-    </div>
-</div>
 
 <!-- Modal ดูรายละเอียดนักเรียน -->
 <div class="modal" id="student-detail-modal">
@@ -324,7 +290,7 @@
         <h2 class="modal-title">รายละเอียดการเข้าแถวของนักเรียน</h2>
         
         <div id="student-detail-content">
-            <!-- จะถูกเติมด้วย JS เมื่อเรียกใช้ -->
+            <!-- จะถูกเติมด้วย JavaScript เมื่อเรียกใช้ -->
             <div class="loading">กำลังโหลดข้อมูล...</div>
         </div>
         
@@ -332,20 +298,19 @@
         <div id="parent-detail-section" style="display: none;">
             <h3 class="section-title">ข้อมูลผู้ปกครอง</h3>
             <div id="parent-detail-content">
-                <!-- จะถูกเติมด้วย JS เมื่อเรียกใช้ -->
+                <!-- จะถูกเติมด้วย JavaScript เมื่อเรียกใช้ -->
             </div>
         </div>
         
         <div class="modal-actions">
-            <button class="modal-button secondary" onclick="contactStudentParent()" id="contactParentBtn" style="display: none;">
-                <span class="material-icons">mail</span> ติดต่อผู้ปกครอง
-            </button>
+        
             <button class="modal-button primary" onclick="printStudentReport()">
                 <span class="material-icons">print</span> พิมพ์รายงาน
             </button>
         </div>
     </div>
 </div>
+
 <!-- Modal ติดต่อผู้ปกครอง -->
 <div class="modal" id="contact-parent-modal">
     <div class="modal-content">
@@ -376,103 +341,16 @@
     </div>
 </div>
 
+
 <script type="text/javascript">
-    // เพิ่มสคริปต์เพื่อรองรับการทำงานกับฐานข้อมูลจริง
     document.addEventListener('DOMContentLoaded', function() {
         // เริ่มต้นระบบแท็บ
         initTabMenu();
 
-        // เพิ่มฟังก์ชันดูรายละเอียดนักเรียน
-        window.viewStudentDetail = function(studentId) {
-            // แสดง Modal
-            const modal = document.getElementById('student-detail-modal');
-            if (modal) {
-                modal.classList.add('active');
-                document.body.style.overflow = 'hidden';
-            }
-
-            // ดึงข้อมูลนักเรียน (จะถูกเพิ่มเมื่อมีการเชื่อมต่อกับ API)
-            const detailContent = document.getElementById('student-detail-content');
-            if (detailContent) {
-                detailContent.innerHTML = '<div class="loading">กำลังโหลดข้อมูล...</div>';
-
-                // ในระบบจริงจะดึงข้อมูลจาก API
-                setTimeout(() => {
-                    // จำลองการดึงข้อมูล
-                    const studentInfo = findStudentById(studentId);
-                    if (studentInfo) {
-                        updateStudentDetailModal(studentInfo);
-                    } else {
-                        detailContent.innerHTML = '<div class="error">ไม่พบข้อมูลนักเรียน</div>';
-                    }
-                }, 500);
-            }
-        };
-
-        // ฟังก์ชันค้นหานักเรียนจาก ID
-        function findStudentById(studentId) {
-            // หาจากตาราง
-            const rows = document.querySelectorAll('.student-table tbody tr');
-            for (let row of rows) {
-                const viewButton = row.querySelector('.action-button[onclick*="viewStudentDetail"]');
-                if (viewButton) {
-                    const idInOnclick = viewButton.getAttribute('onclick').match(/\d+/)[0];
-                    if (parseInt(idInOnclick) === studentId) {
-                        // ดึงข้อมูลจากแถว
-                        const name = row.cells[1].textContent;
-                        const number = row.cells[0].textContent;
-                        const attendance = row.cells[2].textContent;
-                        const percentage = row.cells[3].querySelector('.attendance-percent').textContent;
-                        const status = row.cells[3].querySelector('.attendance-percent').className.replace('attendance-percent ', '');
-
-                        return {
-                            id: studentId,
-                            name,
-                            number,
-                            attendance,
-                            percentage,
-                            status
-                        };
-                    }
-                }
-            }
-            return null;
-        }
-
-        // ฟังก์ชันอัพเดต Modal รายละเอียดนักเรียน
-        function updateStudentDetailModal(student) {
-            const detailContent = document.getElementById('student-detail-content');
-            if (!detailContent) return;
-
-            // สร้าง HTML สำหรับ Modal
-            let html = `
-            <div class="student-profile">
-                <div class="student-avatar">${student.name.charAt(0)}</div>
-                <div class="student-info">
-                    <h3 class="student-name">${student.name}</h3>
-                    <p>เลขที่ ${student.number}</p>
-                </div>
-            </div>
-            
-            <div class="attendance-stats">
-                <div class="stat-item">
-                    <span class="stat-label">วันเข้าแถวทั้งหมด:</span>
-                    <span class="stat-value">${student.attendance}</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">อัตราการเข้าแถว:</span>
-                    <span class="stat-value ${student.status}">${student.percentage}</span>
-                </div>
-            </div>
-            
-            <div class="attendance-history">
-                <h4>ประวัติการเข้าแถว</h4>
-                <p>ไม่มีข้อมูลประวัติการเข้าแถวในขณะนี้</p>
-                <p>กรุณาอัพเดตระบบเพื่อแสดงข้อมูลในส่วนนี้</p>
-            </div>
-        `;
-
-            detailContent.innerHTML = html;
+        // เพิ่ม Event Listener สำหรับค้นหานักเรียน
+        const searchInput = document.getElementById('student-search');
+        if (searchInput) {
+            searchInput.addEventListener('input', searchStudents);
         }
     });
 
@@ -535,5 +413,25 @@
             modal.classList.remove('active');
             document.body.style.overflow = '';
         }
+    }
+
+    // ฟังก์ชันค้นหานักเรียน
+    function searchStudents() {
+        const searchInput = document.getElementById('student-search');
+        if (!searchInput) return;
+
+        const searchText = searchInput.value.toLowerCase();
+        const rows = document.querySelectorAll('.student-table tbody tr');
+
+        rows.forEach(row => {
+            const name = row.querySelector('[data-label="ชื่อ-นามสกุล"]')?.textContent.toLowerCase() || '';
+            const number = row.querySelector('[data-label="เลขที่"]')?.textContent.toLowerCase() || '';
+
+            if (name.includes(searchText) || number.includes(searchText)) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
     }
 </script>
