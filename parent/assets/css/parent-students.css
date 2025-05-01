@@ -2,7 +2,9 @@
  * parent-students.css - ไฟล์ CSS สำหรับหน้านักเรียนในความดูแลของผู้ปกครอง SADD-Prasat
  */
 
+
 /* ตัวกรองข้อมูล */
+
 .search-section {
     background-color: white;
     border-radius: 12px;
@@ -61,7 +63,7 @@
     background-color: white;
     border-radius: 8px;
     padding: 10px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     min-width: 200px;
     z-index: 100;
     display: none;
@@ -81,12 +83,15 @@
     margin-right: 10px;
 }
 
+
 /* รายการนักเรียน */
+
 .student-list {
     display: flex;
     flex-direction: column;
     gap: 15px;
-    margin-bottom: 80px; /* ให้มีพื้นที่ด้านล่างสำหรับ floating button */
+    margin-bottom: 80px;
+    /* ให้มีพื้นที่ด้านล่างสำหรับ floating button */
 }
 
 .student-card {
@@ -100,7 +105,7 @@
 
 .student-card:hover {
     transform: translateY(-2px);
-    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
 }
 
 .student-card-header {
@@ -134,7 +139,8 @@
     margin-bottom: 5px;
 }
 
-.student-class, .student-id {
+.student-class,
+.student-id {
     font-size: 14px;
     color: var(--text-light);
     margin-bottom: 2px;
@@ -150,16 +156,6 @@
     font-weight: 500;
     padding: 5px 10px;
     border-radius: 20px;
-}
-
-.student-status.present {
-    background-color: var(--success-color-light);
-    color: var(--success-color);
-}
-
-.student-status.absent {
-    background-color: var(--danger-color-light);
-    color: var(--danger-color);
 }
 
 .student-status .material-icons {
@@ -231,7 +227,9 @@
     margin-right: 5px;
 }
 
+
 /* ไม่มีข้อมูลนักเรียน */
+
 .no-data {
     text-align: center;
     padding: 40px 20px;
@@ -271,10 +269,13 @@
     margin-right: 5px;
 }
 
+
 /* ปุ่มลอย */
+
 .floating-action-button {
     position: fixed;
-    bottom: 80px; /* ให้อยู่เหนือ bottom-nav */
+    bottom: 80px;
+    /* ให้อยู่เหนือ bottom-nav */
     right: 20px;
     width: 56px;
     height: 56px;
@@ -299,7 +300,9 @@
     font-size: 24px;
 }
 
+
 /* รายละเอียดนักเรียน */
+
 .header-navigation {
     display: flex;
     align-items: center;
@@ -391,34 +394,31 @@
     font-weight: 500;
 }
 
+
 /* Responsive Design */
+
 @media (max-width: 768px) {
     .search-section {
         flex-direction: column;
         gap: 10px;
     }
-    
     .filter-button {
         width: 100%;
         justify-content: center;
         padding: 10px;
     }
-    
     .student-card-header {
         padding-top: 25px;
     }
-    
     .student-status {
         top: 10px;
         right: 10px;
         font-size: 12px;
         padding: 4px 8px;
     }
-    
     .attendance-summary {
         justify-content: space-around;
     }
-    
     .view-details-button {
         font-size: 14px;
     }
@@ -428,19 +428,16 @@
     .student-name {
         font-size: 16px;
     }
-    
-    .student-class, .student-id {
+    .student-class,
+    .student-id {
         font-size: 12px;
     }
-    
     .attendance-value {
         font-size: 18px;
     }
-    
     .attendance-label {
         font-size: 11px;
     }
-    
     .floating-action-button {
         width: 48px;
         height: 48px;

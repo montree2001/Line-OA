@@ -35,9 +35,7 @@
                                 <div class="student-name"><?php echo $student['name']; ?></div>
                                 <div class="student-class"><?php echo $student['class']; ?> เลขที่ <?php echo $student['number']; ?></div>
                             </div>
-                            <div class="student-status <?php echo $student['present'] === null ? '' : ($student['present'] ? '' : 'absent'); ?>">
-
-                            </div>
+                           
                         </div>
 
                         <div class="attendance-details">
