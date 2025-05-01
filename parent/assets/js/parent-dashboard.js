@@ -4,11 +4,10 @@
 
 // Document Ready Function
 document.addEventListener('DOMContentLoaded', function() {
-    // เริ่มต้นแสดงแท็บภาพรวม
-    initTabContent('overview');
 
-    // ตรวจสอบการแจ้งเตือนใหม่
-    checkNewNotifications();
+
+    // ตรวจสอบการแจ้งเตือนใหม่ (ลบโค้ดส่วนการแสดง popup-notification)
+    // checkNewNotifications(); (ลบการเรียกใช้ฟังก์ชันนี้)
 
     // ตั้งค่าการทำงานของแท็บ
     setupTabs();
@@ -17,79 +16,29 @@ document.addEventListener('DOMContentLoaded', function() {
     setupStudentCards();
 });
 
-/**
- * เริ่มต้นแสดงเนื้อหาตามแท็บที่เลือก
- * @param {string} tabName - ชื่อแท็บที่ต้องการแสดง
- */
-function initTabContent(tabName) {
-    // ซ่อนทุก content container ก่อน
-    hideAllTabContents();
 
-    // แสดง content ตามแท็บที่เลือก
-    showTabContent(tabName);
-
-    // ตั้งค่า Active Tab
-    const tabs = document.querySelectorAll('.tab-button');
-    tabs.forEach(tab => tab.classList.remove('active'));
-
-    // Active Tab ตามชื่อแท็บ
-    if (tabName === 'overview') {
-        tabs[0].classList.add('active');
-    } else if (tabName === 'attendance') {
-        tabs[1].classList.add('active');
-        loadAttendanceData();
-    } else if (tabName === 'news') {
-        tabs[2].classList.add('active');
-        loadNewsData();
-    }
-}
-
-/**
- * ซ่อนเนื้อหาของทุกแท็บ
- */
-function hideAllTabContents() {
-    const tabContents = document.querySelectorAll('.tab-content');
-    tabContents.forEach(content => {
-        content.style.display = 'none';
-    });
-}
-
-/**
- * แสดงเนื้อหาตามแท็บที่เลือก
- * @param {string} tabName - ชื่อแท็บที่ต้องการแสดง
- */
-function showTabContent(tabName) {
-    const selectedContent = document.getElementById(`${tabName}-content`);
-    if (selectedContent) {
-        selectedContent.style.display = 'block';
-    }
-}
 
 /**
  * สลับแท็บ
  * @param {string} tabName - ชื่อแท็บที่ต้องการเปิด
  */
 function switchTab(tabName) {
-    // ซ่อนทุก content container ก่อน
-    hideAllTabContents();
-
-    // แสดง content ตามแท็บที่เลือก
-    showTabContent(tabName);
-
-    // ตั้งค่าแท็บที่เลือก
     const tabs = document.querySelectorAll('.tab-button');
     tabs.forEach(tab => tab.classList.remove('active'));
 
     // ตั้งค่าแท็บที่เลือก
     if (tabName === 'overview') {
         tabs[0].classList.add('active');
+        // ในการใช้งานจริงควรแสดงเนื้อหาแท็บ overview
         console.log("สลับไปที่แท็บ overview");
     } else if (tabName === 'attendance') {
         tabs[1].classList.add('active');
+        // ในการใช้งานจริงควรแสดงเนื้อหาแท็บ attendance
         console.log("สลับไปที่แท็บ attendance");
         loadAttendanceData();
     } else if (tabName === 'news') {
         tabs[2].classList.add('active');
+        // ในการใช้งานจริงควรแสดงเนื้อหาแท็บ news
         console.log("สลับไปที่แท็บ news");
         loadNewsData();
     }
@@ -160,57 +109,27 @@ function loadNewsData() {
     }, 500);
 }
 
-/**
- * ตรวจสอบการแจ้งเตือนใหม่
- */
-function checkNewNotifications() {
-    // ในงานจริงควรมีการตรวจสอบการแจ้งเตือนจาก API หรือ WebSocket
-    console.log("กำลังตรวจสอบการแจ้งเตือนใหม่");
-
-    // จำลองการได้รับการแจ้งเตือนใหม่หลังจาก 10 วินาที
-    setTimeout(function() {
-        // สุ่มว่าจะแสดงการแจ้งเตือนหรือไม่
-        if (Math.random() > 0.7) {
-            const notifications = [
-                "นายเอกชัย รักเรียน กำลังเข้าเรียนคาบที่ 1",
-                "นางสาวสมหญิง รักเรียน ส่งการบ้านวิชาคณิตศาสตร์แล้ว",
-                "ประกาศใหม่: วันหยุดพิเศษ 25 มีนาคม 2568",
-                "นัดหมายประชุมผู้ปกครองวันที่ 22 มีนาคม 2568"
-            ];
-
-            const randomIndex = Math.floor(Math.random() * notifications.length);
-            showNotification(notifications[randomIndex]);
-        }
-    }, 10000);
-}
+// ลบฟังก์ชัน checkNewNotifications() และ showNotification()
 
 /**
  * โทรหาครูประจำชั้น
- * @param {string} phone - เบอร์โทรศัพท์ของครูที่ปรึกษา
  */
-function callTeacher(phone) {
-    // ตรวจสอบว่ามีเบอร์โทรหรือไม่
-    if (!phone || phone.trim() === '') {
-        // ถ้าไม่มีเบอร์โทร แสดงข้อความแจ้งเตือน
-        alert('ไม่พบเบอร์โทรศัพท์ของครูที่ปรึกษา กรุณาติดต่อทางโรงเรียนเพื่อขอเบอร์โทรศัพท์');
-        return;
-    }
+function callTeacher() {
+    // ในงานจริงควรมีการเชื่อมต่อกับระบบโทรศัพท์หรือ LINE
+    console.log("กำลังโทรหาครูประจำชั้น");
 
-    // เรียกใช้ฟังก์ชัน tel: เพื่อโทรศัพท์
-    console.log(`กำลังโทรหาครูที่ปรึกษา: ${phone}`);
-    window.location.href = `tel:${phone}`;
+    alert('กำลังโทรหาครูประจำชั้น: อาจารย์ใจดี มากเมตตา');
 }
 
 /**
  * ส่งข้อความหาครูประจำชั้น
- * @param {number} teacherId - รหัสครูที่ปรึกษา
  */
-function messageTeacher(teacherId) {
+function messageTeacher() {
     // ในงานจริงควรมีการเชื่อมต่อกับ LINE หรือระบบข้อความ
-    console.log(`กำลังส่งข้อความหาครูที่ปรึกษา ID: ${teacherId}`);
+    console.log("กำลังส่งข้อความหาครูประจำชั้น");
 
     // นำไปยังหน้าสนทนากับครู
-    window.location.href = `messages.php?teacher=${teacherId}`;
+    window.location.href = 'messages.php?teacher=อาจารย์ใจดี%20มากเมตตา';
 }
 
 /**
