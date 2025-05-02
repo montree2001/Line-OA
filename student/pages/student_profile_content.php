@@ -33,9 +33,9 @@
             </div>
             <div class="profile-info">
                 <div class="profile-name"><?php echo $student_info['full_name']; ?></div>
-                <div class="profile-details"><?php echo $student_info['class']; ?> เลขที่ <?php echo $student_info['student_code']; ?></div>
+                <div class="profile-details"><?php echo $student_info['class']; ?> ID <?php echo $student_info['id']; ?></div>
                 <div class="profile-details">แผนก: <?php echo $student_info['department']; ?></div>
-                <div class="profile-details">รหัสนักเรียน: <?php echo $student_info['id']; ?></div>
+                <div class="profile-details">รหัสนักเรียน: <?php echo $student_info['student_code']; ?></div>
             </div>
         </div>
 
@@ -192,41 +192,6 @@
             </div>
         </div>
     </div>
-
-    <!-- ตั้งค่าบัญชี -->
-    <div class="settings-card">
-        <div class="card-title">
-            <span class="material-icons">settings</span>
-            ตั้งค่าบัญชี
-        </div>
-        <div class="settings-menu">
-            <a href="edit_profile.php" class="settings-item">
-                <span class="material-icons">edit</span>
-                <div class="settings-text">แก้ไขข้อมูลส่วนตัว</div>
-                <span class="material-icons arrow">chevron_right</span>
-            </a>
-            <a href="change_password.php" class="settings-item">
-                <span class="material-icons">lock</span>
-                <div class="settings-text">เปลี่ยนรหัสผ่าน</div>
-                <span class="material-icons arrow">chevron_right</span>
-            </a>
-            <a href="attendance_history.php" class="settings-item">
-                <span class="material-icons">history</span>
-                <div class="settings-text">ประวัติการเข้าแถว</div>
-                <span class="material-icons arrow">chevron_right</span>
-            </a>
-            <a href="notifications_settings.php" class="settings-item">
-                <span class="material-icons">notifications</span>
-                <div class="settings-text">การแจ้งเตือน</div>
-                <span class="material-icons arrow">chevron_right</span>
-            </a>
-        </div>
-    </div>
-
-    <!-- ปุ่มออกจากระบบ -->
-    <a href="logout.php" class="logout-button">
-        <span class="material-icons">logout</span> ออกจากระบบ
-    </a>
 
     <!-- ข้อมูลเวอร์ชัน -->
     <div class="version-info">

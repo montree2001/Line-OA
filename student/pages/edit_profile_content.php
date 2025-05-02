@@ -92,11 +92,7 @@
                 <div class="form-helper">อีเมลสำหรับรับข้อมูลข่าวสาร</div>
             </div>
             
-            <div class="form-group">
-                <label for="line_id">ไลน์ไอดี</label>
-                <input type="text" id="line_id" name="line_id" class="form-control" value="<?php echo $student_info['line_id']; ?>">
-                <div class="form-helper">ไลน์ไอดีสำหรับรับการแจ้งเตือน</div>
-            </div>
+       
             
             <div class="form-group form-actions">
                 <button type="button" class="btn-cancel" onclick="window.location.href='student_profile.php'">

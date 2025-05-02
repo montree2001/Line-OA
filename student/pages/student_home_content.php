@@ -41,14 +41,14 @@
             </div>
             <div class="stat-box">
                 <div class="stat-value"><?php echo $attendance_stats['attendance_days']; ?></div>
-                <div class="stat-label">วันเข้าแถว</div>
+                <div class="stat-label">วันเข้าแถวแล้ว</div>
             </div>
             <div class="stat-box">
                 <?php
                 $color_class = '';
-                if ($attendance_stats['attendance_percentage'] >= $attendance_stats['status_level']['safe']) {
+                if ($attendance_stats['attendance_percentage'] >= 80) {
                     $color_class = 'good';
-                } elseif ($attendance_stats['attendance_percentage'] >= $attendance_stats['status_level']['warning']) {
+                } elseif ($attendance_stats['attendance_percentage'] >= 70) {
                     $color_class = 'warning';
                 } else {
                     $color_class = 'danger';
@@ -58,15 +58,6 @@
                 <div class="stat-label">อัตราการเข้าแถว</div>
             </div>
         </div>
-        
-        <?php if ($attendance_stats['is_at_risk']): ?>
-        <div class="risk-alert">
-            <span class="material-icons risk-icon">warning</span>
-            <div class="risk-message">
-                เสี่ยงตกกิจกรรม: อัตราการเข้าแถวต่ำกว่า <?php echo $attendance_stats['passing_rate']; ?>%
-            </div>
-        </div>
-        <?php endif; ?>
     </div>
 
     <!-- ปุ่มเช็คชื่อ -->
@@ -155,28 +146,3 @@
 </div>
 
 </div>
-
-<style>
-/* เพิ่มสไตล์สำหรับแจ้งเตือนความเสี่ยง */
-.risk-alert {
-    display: flex;
-    align-items: center;
-    background-color: #fff3e0;
-    border-radius: 8px;
-    padding: 12px;
-    margin-top: 15px;
-    border-left: 4px solid #ff9800;
-}
-
-.risk-icon {
-    margin-right: 12px;
-    color: #ff9800;
-    font-size: 24px;
-}
-
-.risk-message {
-    font-size: 14px;
-    color: #e65100;
-    font-weight: 500;
-}
-</style>

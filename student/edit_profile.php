@@ -38,6 +38,11 @@ try {
     // เชื่อมต่อฐานข้อมูล
     $conn = getDB();
     
+    // ตรวจสอบว่าการเชื่อมต่อสำเร็จหรือไม่
+    if ($conn === null) {
+        throw new Exception('ไม่สามารถเชื่อมต่อกับฐานข้อมูลได้');
+    }
+    
     // ตรวจสอบหากมีการส่งข้อมูลการแก้ไข
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // รับข้อมูลจากฟอร์ม
@@ -46,7 +51,7 @@ try {
         $last_name = $_POST['last_name'] ?? '';
         $phone = $_POST['phone'] ?? '';
         $email = $_POST['email'] ?? '';
-        $line_id = $_POST['line_id'] ?? '';
+     
         
         // ตรวจสอบความถูกต้องของข้อมูล
         $errors = [];
@@ -90,10 +95,12 @@ try {
                 // อัปเดตคำนำหน้าในตาราง students
                 $stmt = $conn->prepare("
                     UPDATE students
-                    SET title = ?, line_id = ?
+                    SET title = ?, updated_at = NOW()
                     WHERE user_id = ?
                 ");
-                $stmt->execute([$title, $line_id, $user_id]);
+                $stmt->execute([$title, $user_id]);
+                
+           
                 
                 // ยืนยัน transaction
                 $conn->commit();
@@ -101,8 +108,11 @@ try {
                 
             } catch (Exception $e) {
                 // ยกเลิก transaction
-                $conn->rollBack();
+                if ($conn->inTransaction()) {
+                    $conn->rollBack();
+                }
                 $error = 'เกิดข้อผิดพลาดในการอัปเดตข้อมูล: ' . $e->getMessage();
+                error_log("Error updating profile: " . $e->getMessage());
             }
         } else {
             // มีข้อผิดพลาดในการตรวจสอบข้อมูล
@@ -112,7 +122,7 @@ try {
     
     // ดึงข้อมูลนักเรียนเพื่อแสดงในฟอร์ม
     $stmt = $conn->prepare("
-        SELECT s.student_id, s.student_code, s.title as student_title, s.current_class_id, s.line_id,
+        SELECT s.student_id, s.student_code, s.title as student_title, s.current_class_id,
                u.title as user_title, u.first_name, u.last_name, u.profile_picture, u.phone_number, u.email, 
                c.level, c.group_number, d.department_name
         FROM students s
@@ -123,6 +133,8 @@ try {
     ");
     $stmt->execute([$user_id]);
     $student_data = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+
     
     if (!$student_data) {
         // ไม่พบข้อมูลนักเรียน - อาจยังไม่ได้ลงทะเบียน
@@ -149,7 +161,6 @@ try {
         'department' => $student_data['department_name'],
         'phone' => $student_data['phone_number'],
         'email' => $student_data['email'],
-        'line_id' => $student_data['line_id'],
         'avatar' => $first_char,
         'profile_image' => !empty($student_data['profile_picture']) ? $student_data['profile_picture'] : null
     ];
@@ -174,8 +185,129 @@ try {
     // บันทึกข้อผิดพลาดแต่ไม่แสดงให้ผู้ใช้เห็น
     error_log("Database error in edit_profile.php: " . $e->getMessage());
     
-    // ส่งไปยังหน้า error
-    header('Location: error.php?msg=' . urlencode('เกิดข้อผิดพลาดในการเชื่อมต่อกับฐานข้อมูล'));
-    exit;
+    // ส่งไปยังหน้า error หรือกำหนดข้อความข้อผิดพลาด
+    $error_message = 'เกิดข้อผิดพลาดในการเชื่อมต่อกับฐานข้อมูล';
+    
+    // ตรวจสอบว่ามีไฟล์ error.php หรือไม่
+    if (file_exists('error.php')) {
+        header('Location: error.php?msg=' . urlencode($error_message));
+        exit;
+    } else {
+        // แสดงข้อความข้อผิดพลาดอย่างง่าย
+        echo '<!DOCTYPE html>
+              <html>
+              <head>
+                <meta charset="UTF-8">
+                <title>ข้อผิดพลาด</title>
+                <style>
+                    body {
+                        font-family: Arial, sans-serif;
+                        margin: 0;
+                        padding: 20px;
+                        background-color: #f5f5f5;
+                    }
+                    .error-container {
+                        max-width: 500px;
+                        margin: 100px auto;
+                        background: white;
+                        padding: 20px;
+                        border-radius: 5px;
+                        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+                        text-align: center;
+                    }
+                    .error-icon {
+                        font-size: 48px;
+                        color: #f44336;
+                        margin-bottom: 20px;
+                    }
+                    .error-message {
+                        margin-bottom: 20px;
+                    }
+                    .back-button {
+                        background-color: #4CAF50;
+                        color: white;
+                        padding: 10px 15px;
+                        border: none;
+                        border-radius: 4px;
+                        cursor: pointer;
+                        text-decoration: none;
+                        display: inline-block;
+                    }
+                </style>
+              </head>
+              <body>
+                <div class="error-container">
+                    <div class="error-icon">⚠️</div>
+                    <div class="error-message">' . $error_message . '</div>
+                    <a href="student_profile.php" class="back-button">กลับไปยังหน้าโปรไฟล์</a>
+                </div>
+              </body>
+              </html>';
+        exit;
+    }
+} catch (Exception $e) {
+    // จัดการกับข้อผิดพลาดทั่วไป
+    error_log("General error in edit_profile.php: " . $e->getMessage());
+    
+    // ส่งไปยังหน้า error หรือกำหนดข้อความข้อผิดพลาด
+    $error_message = $e->getMessage();
+    
+    // ตรวจสอบว่ามีไฟล์ error.php หรือไม่
+    if (file_exists('error.php')) {
+        header('Location: error.php?msg=' . urlencode($error_message));
+        exit;
+    } else {
+        // แสดงข้อความข้อผิดพลาดอย่างง่าย
+        echo '<!DOCTYPE html>
+              <html>
+              <head>
+                <meta charset="UTF-8">
+                <title>ข้อผิดพลาด</title>
+                <style>
+                    body {
+                        font-family: Arial, sans-serif;
+                        margin: 0;
+                        padding: 20px;
+                        background-color: #f5f5f5;
+                    }
+                    .error-container {
+                        max-width: 500px;
+                        margin: 100px auto;
+                        background: white;
+                        padding: 20px;
+                        border-radius: 5px;
+                        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+                        text-align: center;
+                    }
+                    .error-icon {
+                        font-size: 48px;
+                        color: #f44336;
+                        margin-bottom: 20px;
+                    }
+                    .error-message {
+                        margin-bottom: 20px;
+                    }
+                    .back-button {
+                        background-color: #4CAF50;
+                        color: white;
+                        padding: 10px 15px;
+                        border: none;
+                        border-radius: 4px;
+                        cursor: pointer;
+                        text-decoration: none;
+                        display: inline-block;
+                    }
+                </style>
+              </head>
+              <body>
+                <div class="error-container">
+                    <div class="error-icon">⚠️</div>
+                    <div class="error-message">' . $error_message . '</div>
+                    <a href="student_profile.php" class="back-button">กลับไปยังหน้าโปรไฟล์</a>
+                </div>
+              </body>
+              </html>';
+        exit;
+    }
 }
 ?>
