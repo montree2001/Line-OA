@@ -121,11 +121,11 @@ try {
         exit;
     }
     
-    // บันทึกการเช็คชื่อ
+    // บันทึกการเช็คชื่อ - ใช้ attendance_status แทน is_present ให้สอดคล้องกับโครงสร้างฐานข้อมูลปัจจุบัน
     $stmt = $conn->prepare("
-        INSERT INTO attendance (student_id, academic_year_id, date, is_present, check_method, 
+        INSERT INTO attendance (student_id, academic_year_id, date, attendance_status, check_method, 
                                pin_code, check_time, created_at)
-        VALUES (?, ?, ?, 1, 'PIN', ?, NOW(), NOW())
+        VALUES (?, ?, ?, 'present', 'PIN', ?, NOW(), NOW())
     ");
     $stmt->execute([
         $student_id,
