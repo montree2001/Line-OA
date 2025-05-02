@@ -187,7 +187,7 @@
                         <a href="tel:<?php echo $teacher['phone']; ?>" class="contact-button call">
                             <span class="material-icons">call</span> โทร
                         </a>
-                        <a href="messages.php?teacher=<?php echo $teacher['id']; ?>" class="contact-button message">
+                        <a href="#" class="contact-button message">
                             <span class="material-icons">chat</span> ข้อความ
                         </a>
                     </div>

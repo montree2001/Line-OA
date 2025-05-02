@@ -148,7 +148,7 @@ try {
         // ดึงข้อมูลการเข้าแถวของเดือนปัจจุบัน
         $stmt = $conn->prepare("
             SELECT COUNT(*) as total_days, 
-                   SUM(CASE WHEN is_present = 1 THEN 1 ELSE 0 END) as present_days
+                   SUM(CASE WHEN attendance_status = 'present' THEN 1 ELSE 0 END) as present_days
             FROM attendance
             WHERE student_id = ? 
               AND academic_year_id = ?
@@ -216,7 +216,7 @@ try {
             
             $stmt = $conn->prepare("
                 SELECT COUNT(*) as total_days, 
-                       SUM(CASE WHEN is_present = 1 THEN 1 ELSE 0 END) as present_days
+                       SUM(CASE WHEN attendance_status = 'present' THEN 1 ELSE 0 END) as present_days
                 FROM attendance
                 WHERE student_id = ? 
                   AND academic_year_id = ?
@@ -255,7 +255,7 @@ try {
     // ดึงข้อมูลประวัติการเข้าแถว
     if ($academic_year_id) {
         $stmt = $conn->prepare("
-            SELECT a.date, a.is_present, a.check_method, a.check_time 
+            SELECT a.date, a.attendance_status, a.check_method, a.check_time 
             FROM attendance a
             WHERE a.student_id = ? 
               AND a.academic_year_id = ?
@@ -277,7 +277,7 @@ try {
             $check_in_history[] = [
                 'date' => $day . ' ' . $month . ' ' . $year,
                 'time' => $check_time,
-                'status' => $entry['is_present'] ? 'present' : 'absent',
+                'status' => $entry['attendance_status'], // ใช้ attendance_status โดยตรง
                 'method' => mapCheckMethod($entry['check_method'])
             ];
         }
@@ -344,7 +344,7 @@ try {
     $calendar_dates = [];
     if ($academic_year_id) {
         $stmt = $conn->prepare("
-            SELECT DAY(date) as day, is_present 
+            SELECT DAY(date) as day, attendance_status 
             FROM attendance
             WHERE student_id = ? 
               AND academic_year_id = ?
@@ -357,7 +357,7 @@ try {
         // แปลงเป็น associative array เพื่อง่ายต่อการค้นหา
         $attendance_by_day = [];
         foreach ($calendar_attendance as $entry) {
-            $attendance_by_day[$entry['day']] = $entry['is_present'] ? 'present' : 'absent';
+            $attendance_by_day[$entry['day']] = $entry['attendance_status'];
         }
     } else {
         // ข้อมูลตัวอย่าง
@@ -415,8 +415,6 @@ try {
         ];
     }
     
-    // ส่งค่าเกณฑ์ผ่านจากฐานข้อมูลไปยัง template ทุกครั้ง
-
     // กำหนดค่าสำหรับ template
     $content_path = 'pages/student_report_content.php';
     
@@ -583,19 +581,4 @@ function mapCheckMethod($method) {
             return 'ไม่ระบุ';
     }
 }
-
-// ฟังก์ชันกำหนดไอคอนตามวิธีการเช็คชื่อ
-function getMethodIcon($method) {
-    switch ($method) {
-        case 'GPS':
-            return 'gps_fixed';
-        case 'QR_Code':
-            return 'qr_code_scanner';
-        case 'PIN':
-            return 'pin';
-        case 'Manual':
-            return 'person';
-        default:
-            return 'help_outline';
-    }
-}
+?>

@@ -1,0 +1,568 @@
+/* 
+ * parent-profile.css - ไฟล์ CSS สำหรับหน้าโปรไฟล์ผู้ปกครอง SADD-Prasat
+ */
+
+/* สไตล์สำหรับหน้าโปรไฟล์ผู้ปกครอง */
+.profile-section {
+    margin-bottom: 20px;
+}
+
+.profile-header {
+    background-color: white;
+    border-radius: 12px;
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    margin-bottom: 20px;
+    box-shadow: var(--card-shadow);
+}
+
+.profile-image {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    background-color: var(--primary-color-light);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    margin-right: 20px;
+    flex-shrink: 0;
+}
+
+.profile-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.profile-icon {
+    font-size: 80px;
+    color: var(--primary-color);
+}
+
+.profile-info {
+    flex: 1;
+}
+
+.profile-name {
+    font-size: 24px;
+    font-weight: 600;
+    margin-bottom: 5px;
+    color: var(--text-dark);
+}
+
+.profile-role {
+    font-size: 16px;
+    color: var(--primary-color);
+    font-weight: 500;
+    margin-bottom: 10px;
+}
+
+.profile-relationship {
+    font-size: 14px;
+    color: var(--text-light);
+}
+
+.relationship-label {
+    font-weight: 500;
+    margin-right: 5px;
+}
+
+/* แท็บนำทาง */
+.profile-tabs {
+    display: flex;
+    background-color: white;
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 20px;
+    box-shadow: var(--card-shadow);
+}
+
+.tab-button {
+    flex: 1;
+    padding: 15px 0;
+    text-align: center;
+    background: none;
+    border: none;
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--text-light);
+    position: relative;
+    cursor: pointer;
+    transition: color var(--transition-speed);
+}
+
+.tab-button.active {
+    color: var(--primary-color);
+}
+
+.tab-button.active::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background-color: var(--primary-color);
+}
+
+/* เนื้อหาของแท็บ */
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+/* การ์ดฟอร์ม */
+.form-card {
+    background-color: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: var(--card-shadow);
+    margin-bottom: 20px;
+}
+
+.card-header {
+    padding: 15px 20px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.card-header h2 {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-dark);
+    margin: 0;
+}
+
+.card-body {
+    padding: 20px;
+}
+
+/* ฟอร์มข้อมูลส่วนตัว */
+.profile-form {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    font-weight: 500;
+    margin-bottom: 5px;
+    color: var(--text-dark);
+}
+
+.form-group input,
+.form-group select {
+    width: 100%;
+    padding: 10px 15px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 14px;
+    transition: border-color var(--transition-speed);
+}
+
+.form-group input:focus,
+.form-group select:focus {
+    border-color: var(--primary-color);
+    outline: none;
+}
+
+.form-group small {
+    display: block;
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 5px;
+}
+
+.form-actions {
+    grid-column: 1 / -1;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+/* ปุ่มกด */
+.btn-primary,
+.btn-secondary,
+.btn-danger,
+.btn-view {
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-weight: 500;
+    font-size: 14px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    border: none;
+    transition: background-color var(--transition-speed);
+}
+
+.btn-primary {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.btn-primary:hover {
+    background-color: var(--primary-color-dark);
+}
+
+.btn-secondary {
+    background-color: var(--bg-light);
+    color: var(--text-dark);
+}
+
+.btn-secondary:hover {
+    background-color: #e0e0e0;
+}
+
+.btn-danger {
+    background-color: var(--danger-color);
+    color: white;
+}
+
+.btn-danger:hover {
+    background-color: #d32f2f;
+}
+
+.btn-view {
+    background-color: var(--secondary-color-light);
+    color: var(--secondary-color);
+}
+
+.btn-view:hover {
+    background-color: #d2e8fd;
+}
+
+.btn-primary .material-icons,
+.btn-secondary .material-icons,
+.btn-danger .material-icons,
+.btn-view .material-icons {
+    margin-right: 5px;
+    font-size: 18px;
+}
+
+.btn-logout {
+    width: 100%;
+}
+
+/* รายการนักเรียนในความดูแล */
+.children-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.child-item {
+    background-color: var(--bg-light);
+    border-radius: 8px;
+    padding: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.child-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.child-info {
+    flex: 1;
+}
+
+.child-name {
+    font-weight: 600;
+    margin-bottom: 5px;
+}
+
+.child-id, .child-class {
+    font-size: 14px;
+    color: var(--text-light);
+}
+
+.manage-children {
+    margin-top: 20px;
+    text-align: center;
+}
+
+/* ตั้งค่า */
+.settings-section {
+    margin-bottom: 25px;
+}
+
+.settings-section h3 {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 15px;
+    color: var(--text-dark);
+    position: relative;
+    padding-left: 30px;
+}
+
+.settings-section h3::before {
+    font-family: 'Material Icons';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 22px;
+    color: var(--primary-color);
+}
+
+.settings-section:nth-of-type(1) h3::before {
+    content: '\e853'; /* account_circle */
+}
+
+.settings-section:nth-of-type(2) h3::before {
+    content: '\e7f7'; /* notifications */
+}
+
+.settings-section:nth-of-type(3) h3::before {
+    content: '\e8b8'; /* settings */
+}
+
+.line-account-info,
+.notification-settings {
+    background-color: var(--bg-light);
+    border-radius: 8px;
+    padding: 15px;
+}
+
+.info-item {
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+}
+
+.info-label {
+    font-weight: 500;
+    margin-right: 10px;
+    min-width: 80px;
+}
+
+.line-info-message,
+.notification-info-message {
+    margin-top: 15px;
+    font-size: 14px;
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+.form-check {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.form-check input {
+    margin-right: 10px;
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+}
+
+.form-check label {
+    cursor: pointer;
+}
+
+/* กรณีไม่มีข้อมูล */
+.no-data {
+    text-align: center;
+    padding: 40px 20px;
+}
+
+.no-data-icon {
+    margin-bottom: 15px;
+}
+
+.no-data-icon .material-icons {
+    font-size: 48px;
+    color: #e0e0e0;
+}
+
+.no-data-message {
+    font-size: 16px;
+    color: var(--text-light);
+    margin-bottom: 20px;
+}
+
+.no-data-action {
+    margin-top: 15px;
+}
+
+/* ปุ่มกลับด้านบน */
+.back-button {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background: none;
+    border: none;
+    color: var(--primary-color);
+    cursor: pointer;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    padding: 0;
+    z-index: 10;
+}
+
+.back-button .material-icons {
+    font-size: 16px;
+    margin-right: 5px;
+}
+
+/* เอฟเฟกต์เมื่อโฟกัสฟอร์ม */
+.form-group input:focus,
+.form-group select:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px var(--primary-color-light);
+}
+
+/* ตกแต่งช่องอัพโหลดรูป */
+.upload-photo-container {
+    position: relative;
+    margin-top: 20px;
+    text-align: center;
+}
+
+.upload-photo-button {
+    background-color: var(--bg-light);
+    border: 2px dashed var(--border-color);
+    border-radius: 8px;
+    padding: 20px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    transition: all var(--transition-speed);
+}
+
+.upload-photo-button:hover {
+    border-color: var(--primary-color);
+    background-color: var(--primary-color-light);
+}
+
+.upload-photo-button .material-icons {
+    font-size: 32px;
+    margin-bottom: 10px;
+    color: var(--text-light);
+}
+
+.upload-photo-text {
+    font-size: 14px;
+    color: var(--text-light);
+}
+
+.upload-photo-input {
+    position: absolute;
+    width: 0.1px;
+    height: 0.1px;
+    opacity: 0;
+    overflow: hidden;
+    z-index: -1;
+}
+
+/* แถบความก้าวหน้าการอัพโหลด */
+.upload-progress {
+    height: 6px;
+    background-color: var(--bg-light);
+    border-radius: 3px;
+    margin-top: 10px;
+}
+
+.progress-bar {
+    height: 100%;
+    background-color: var(--primary-color);
+    border-radius: 3px;
+    width: 0;
+    transition: width 0.3s;
+}
+
+/* การตอบสนองต่อขนาดหน้าจอ */
+@media (max-width: 768px) {
+    .profile-form {
+        grid-template-columns: 1fr;
+    }
+    
+    .profile-header {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .profile-image {
+        margin-right: 0;
+        margin-bottom: 15px;
+    }
+    
+    .child-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+    
+    .child-actions {
+        width: 100%;
+    }
+    
+    .btn-view {
+        width: 100%;
+    }
+}
+
+@media (max-width: 480px) {
+    .profile-tabs {
+        flex-direction: column;
+        border-radius: 8px;
+    }
+    
+    .tab-button {
+        padding: 12px 0;
+    }
+    
+    .tab-button.active::after {
+        width: 40px;
+        left: 50%;
+        transform: translateX(-50%);
+    }
+    
+    .form-actions {
+        flex-direction: column;
+    }
+    
+    .btn-primary,
+    .btn-secondary,
+    .btn-danger {
+        width: 100%;
+    }
+    
+    .settings-section h3 {
+        font-size: 14px;
+        padding-left: 25px;
+    }
+    
+    .settings-section h3::before {
+        font-size: 18px;
+    }
+    
+    .info-item {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .info-label {
+        margin-bottom: 5px;
+    }
+}

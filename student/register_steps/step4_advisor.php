@@ -57,10 +57,10 @@ try {
     </div>
     <?php endif; ?>
     
-    <div class="text-center mt-30">
+    <!-- <div class="text-center mt-30">
         <p>หากไม่พบครูที่ปรึกษาของคุณ หรือไม่ทราบว่าใครเป็นครูที่ปรึกษา คุณสามารถระบุชั้นเรียนโดยตรงได้</p>
         <a href="register.php?step=55" class="btn secondary mt-10">ระบุชั้นเรียนโดยตรง</a>
-    </div>
+    </div> -->
 </div>
 
 <div class="contact-admin">

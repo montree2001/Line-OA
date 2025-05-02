@@ -343,7 +343,7 @@ $has_teacher = isset($selected_student['teacher']) && $selected_student['teacher
                     <a href="tel:<?php echo $selected_student['teacher']['phone']; ?>" class="contact-button call call-teacher-btn" data-phone="<?php echo $selected_student['teacher']['phone']; ?>">
                         <span class="material-icons">call</span> โทร
                     </a>
-                    <a href="messages.php?teacher=<?php echo $selected_student['teacher']['id']; ?>" class="contact-button message message-teacher-btn" data-teacher-id="<?php echo $selected_student['teacher']['id']; ?>">
+                    <a href="#" class="contact-button message message-teacher-btn" data-teacher-id="<?php echo $selected_student['teacher']['id']; ?>">
                         <span class="material-icons">chat</span> ข้อความ
                     </a>
                 </div>
