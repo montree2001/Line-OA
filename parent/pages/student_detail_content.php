@@ -14,9 +14,8 @@ $class_name = isset($selected_student['level']) ? $selected_student['level'] . '
 // สร้างอักษรนำของชื่อ
 $avatar = mb_substr($selected_student['first_name'], 0, 1, 'UTF-8');
 
-// นับข้อมูลจากฐานข้อมูลที่ถูกต้อง (ใช้ข้อมูลจากตาราง student_academic_records)
-
-
+// ใช้ข้อมูลที่มีอยู่แล้วจาก selected_student ที่ดึงมาจากฐานข้อมูลในไฟล์ students.php
+// การมาถึงบรรทัดนี้แสดงว่า selected_student มีข้อมูลแล้ว เพราะผ่านเงื่อนไข isset ข้างบน
 $total_attendance_days = isset($selected_student['total_attendance_days']) ? (int)$selected_student['total_attendance_days'] : 0;
 $total_absence_days = isset($selected_student['total_absence_days']) ? (int)$selected_student['total_absence_days'] : 0;
 $total_days = $total_attendance_days + $total_absence_days;
@@ -1063,6 +1062,19 @@ $attendance_count = isset($selected_student['attendance_history']) ? count($sele
     animation: fadeIn 0.3s ease-out;
 }
 </style>
+
+<!-- ข้อความแสดงข้อมูล Debug สำหรับช่วยตรวจสอบ -->
+<?php if(false): // เปลี่ยนเป็น true เพื่อแสดงข้อมูล Debug ?>
+<div style="background-color: #f0f0f0; padding: 10px; margin-bottom: 10px; font-family: monospace; font-size: 12px;">
+    <strong>Debug Info:</strong><br>
+    total_attendance_days: <?php echo $total_attendance_days; ?><br>
+    total_absence_days: <?php echo $total_absence_days; ?><br>
+    total_days: <?php echo $total_days; ?><br>
+    attendance_percentage: <?php echo $attendance_percentage; ?><br>
+    <hr>
+    <pre><?php print_r($selected_student); ?></pre>
+</div>
+<?php endif; ?>
 
 <!-- ปุ่มย้อนกลับ -->
 <div class="back-button-container">
