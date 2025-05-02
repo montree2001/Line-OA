@@ -186,12 +186,12 @@ function getStudents($conn, $parent_id) {
             
             switch ($check_data['attendance_status']) {
                 case 'present':
-                    $status = 'มาเรียน';
+                    $status = 'เข้าแถว';
                     $status_class = 'present';
                     $status_icon = 'check_circle';
                     break;
                 case 'absent':
-                    $status = 'ขาดเรียน';
+                    $status = 'ขาดแถว';
                     $status_class = 'absent';
                     $status_icon = 'cancel';
                     break;

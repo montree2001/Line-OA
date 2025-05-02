@@ -76,7 +76,7 @@ function getAllTeachers($conn, $parent_id) {
     if ($result->num_rows > 0) {
         while ($row = $result->fetch_assoc()) {
             $teacher_full_name = $row['title'] . ' ' . $row['first_name'] . ' ' . $row['last_name'];
-            $position = 'ครูประจำชั้น ' . $row['level'] . '/' . $row['group_number'] . ' แผนก' . $row['department_name'];
+            $position = 'ครูที่ปรึกษา ' . $row['level'] . '/' . $row['group_number'] . ' แผนก' . $row['department_name'];
             $student_full_name = $row['student_title'] . ' ' . $row['student_first_name'] . ' ' . $row['student_last_name'];
             
             // ตรวจสอบว่าครูคนนี้มีอยู่ในรายการหรือไม่

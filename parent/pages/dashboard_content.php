@@ -22,6 +22,11 @@
         }
         ?>
     </span>
+
+ 
+
+
+
     <div class="content">
         <div class="title">
             <?php 
@@ -56,7 +61,10 @@
 </div>
 <?php endif; ?>
 
-
+<div class="section-header">
+        <h2>นักเรียนในความดูแล</h2>
+        <a href="students.php" class="view-all">ดูทั้งหมด</a>
+    </div>
 
 <div class="student-cards">
     <?php if(isset($students) && !empty($students)): ?>
@@ -144,10 +152,10 @@
     <?php endif; ?>
 </div>
 
-<!-- ติดต่อครูประจำชั้น -->
+<!-- ครูที่ปรึกษา -->
 <div class="contact-teacher-section">
     <div class="section-header">
-        <h2>ติดต่อครูประจำชั้น</h2>
+        <h2>ติดต่อครูที่ปรึกษา</h2>
         <a href="teachers.php" class="view-all">ดูทั้งหมด</a>
     </div>
     
