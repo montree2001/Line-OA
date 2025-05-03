@@ -315,14 +315,13 @@ function showEditTeacherModal(teacherId) {
 function showImportModal() {
     // รีเซ็ตฟอร์ม
     closeAllModals()
-    const form = document.getElementById('importTeacherForm');
+    const form = document.getElementById('importTeacherFullForm');
     if (form) {
         form.reset();
-        form.classList.remove('was-validated');
     }
     
     // แสดงโมดัล
-    const modal = document.getElementById('importModal');
+    const modal = document.getElementById('importTeacherModal');
     if (modal && typeof bootstrap !== 'undefined') {
         const bsModal = new bootstrap.Modal(modal);
         bsModal.show();

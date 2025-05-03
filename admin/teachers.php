@@ -20,6 +20,7 @@ require_once '../db_connect.php';
 
 // โหลดคลาสสำหรับจัดการข้อมูลครู
 require_once '../models/Teacher.php';
+require_once '../models/import_modal.php';
 $teacherModel = new Teacher();
 
 // กำหนดข้อมูลสำหรับหน้าปัจจุบัน
@@ -54,13 +55,15 @@ $at_risk_count = 12;
 // เพิ่ม Bootstrap CSS แต่ยังคงใช้ CSS หลักของระบบ
 $extra_css = [
     'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css',
-    'assets/css/teachers.css' // CSS เฉพาะสำหรับหน้านี้
+    'assets/css/teachers.css', // CSS เฉพาะสำหรับหน้านี้
+    'assets/css/import.css' // เพิ่ม CSS สำหรับนำเข้าข้อมูล
 ];
 
-// เพิ่ม Bootstrap JS และ JS สำหรับหน้านี้
 $extra_js = [
     'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js',
-    'assets/js/teachers.js' // JS เฉพาะสำหรับหน้านี้
+    'assets/js/teachers.js', // JS เฉพาะสำหรับหน้านี้
+    'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js', // เพิ่ม SheetJS
+    'assets/js/import-teachers.js' // เพิ่ม JS สำหรับนำเข้าข้อมูล
 ];
 
 // กำหนดเส้นทางไปยังไฟล์เนื้อหาเฉพาะหน้า
