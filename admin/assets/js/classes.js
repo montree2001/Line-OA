@@ -208,78 +208,35 @@ function viewDepartmentDetails(departmentId) {
         showNotification('เกิดข้อผิดพลาดในการดึงข้อมูล', 'error');
     });
 }
-
 /**
  * แก้ไขแผนกวิชา
  */
 function editDepartment(departmentId) {
     currentDepartmentId = departmentId;
     
-    // เพิ่มกลไกสำรองโดยหาข้อมูลแผนกวิชาจากตารางก่อน
+    // หาข้อมูลแผนกวิชาจากตาราง
     let departmentName = '';
-    let departmentCode = departmentId;
+    let departmentCode = departmentId; // รหัสแผนกคือ departmentId ที่ส่งมา
     
-    try {
-        const departmentRows = document.querySelectorAll('#departmentTableBody tr');
-        for (const row of departmentRows) {
-            const cells = row.cells;
-            if (cells[0].textContent == departmentId) {
-                departmentCode = cells[0].textContent;
-                departmentName = cells[1].textContent;
-                break;
-            }
+    const departmentRows = document.querySelectorAll('#departmentTableBody tr');
+    for (const row of departmentRows) {
+        if (row.cells[0].textContent === departmentId) {
+            departmentName = row.cells[1].textContent;
+            break;
         }
-    } catch (e) {
-        console.error('Error finding department in table:', e);
     }
     
-    // ส่ง AJAX request เพื่อดึงข้อมูลแผนกวิชา
-    fetch('api/class_manager.php', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: `action=get_department_details&department_id=${departmentId}`
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.status === 'success' && data.department) {
-            document.getElementById('departmentModalTitle').textContent = 'แก้ไขแผนกวิชา';
-            document.getElementById('departmentId').value = data.department.department_id || departmentId;
-            document.getElementById('departmentName').value = data.department.department_name || departmentName;
-            
-            // ในกรณีแก้ไข ไม่อนุญาตให้แก้ไขรหัสแผนกวิชา
-            document.getElementById('departmentCode').value = data.department.department_code || departmentCode;
-            document.getElementById('departmentCode').readOnly = true;
-            
-            showModal('departmentModal');
-        } else {
-            // ใช้ข้อมูลสำรองถ้า API ไม่ส่งข้อมูลที่ถูกต้องกลับมา
-            document.getElementById('departmentModalTitle').textContent = 'แก้ไขแผนกวิชา';
-            document.getElementById('departmentId').value = departmentId;
-            document.getElementById('departmentName').value = departmentName;
-            document.getElementById('departmentCode').value = departmentCode;
-            document.getElementById('departmentCode').readOnly = true;
-            
-            showModal('departmentModal');
-            
-            if (data.message) {
-                showNotification(data.message, 'warning');
-            }
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        // ยังคงแสดงโมดัลพร้อมข้อมูลสำรอง
-        document.getElementById('departmentModalTitle').textContent = 'แก้ไขแผนกวิชา';
-        document.getElementById('departmentId').value = departmentId;
-        document.getElementById('departmentName').value = departmentName;
-        document.getElementById('departmentCode').value = departmentCode;
-        document.getElementById('departmentCode').readOnly = true;
-        
-        showModal('departmentModal');
-        showNotification('เกิดข้อผิดพลาดในการดึงข้อมูล แสดงข้อมูลเท่าที่มี', 'warning');
-    });
+    // ตั้งค่าหัวข้อและข้อมูลในฟอร์ม
+    document.getElementById('departmentModalTitle').textContent = 'แก้ไขแผนกวิชา';
+    document.getElementById('departmentId').value = departmentId;
+    document.getElementById('departmentName').value = departmentName;
+    document.getElementById('departmentCode').value = departmentCode;
+    
+    // ปิดการแก้ไขรหัสแผนกวิชาสำหรับแผนกที่มีอยู่แล้ว
+    document.getElementById('departmentCode').readOnly = true;
+    
+    // แสดงโมดัล
+    showModal('departmentModal');
 }
 
 /**

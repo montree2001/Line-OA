@@ -127,12 +127,12 @@ function saveDepartment() {
     
     if (departmentId) {
         // กรณีแก้ไข
-        formData.append('form_action', 'edit_department');
+        formData.append('action', 'edit_department');
         formData.append('department_id', departmentId);
         formData.append('department_name', departmentName);
     } else {
         // กรณีเพิ่มใหม่
-        formData.append('form_action', 'add_department');
+        formData.append('action', 'add_department');
         formData.append('department_name', departmentName);
         
         if (departmentCode) {
@@ -147,7 +147,7 @@ function saveDepartment() {
     saveBtn.innerHTML = '<span class="material-icons spinning">sync</span> กำลังบันทึก...';
     
     // ส่งข้อมูลไปยังเซิร์ฟเวอร์
-    fetch('departments.php', {
+    fetch('classes.php', {
         method: 'POST',
         body: formData
     })
@@ -155,16 +155,21 @@ function saveDepartment() {
         if (!response.ok) {
             throw new Error('เกิดข้อผิดพลาดในการส่งข้อมูล');
         }
-        return response.text();
+        return response.json();
     })
     .then(data => {
         closeModal('departmentModal');
-        showNotification(departmentId ? 'แก้ไขแผนกวิชาสำเร็จ' : 'เพิ่มแผนกวิชาสำเร็จ', 'success');
         
-        // รีโหลดหน้าเพื่อแสดงข้อมูลล่าสุด
-        setTimeout(() => {
-            window.location.reload();
-        }, 1000);
+        if (data.success) {
+            showNotification(departmentId ? 'แก้ไขแผนกวิชาสำเร็จ' : 'เพิ่มแผนกวิชาสำเร็จ', 'success');
+            
+            // รีโหลดหน้าเพื่อแสดงข้อมูลล่าสุด
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
+        } else {
+            showNotification('เกิดข้อผิดพลาด: ' + data.message, 'error');
+        }
     })
     .catch(error => {
         console.error('Error:', error);
@@ -206,7 +211,7 @@ function deleteDepartment(departmentId) {
     deleteCallback = function() {
         // เตรียมข้อมูลสำหรับส่ง
         const formData = new FormData();
-        formData.append('form_action', 'delete_department');
+        formData.append('action', 'delete_department');
         formData.append('department_id', departmentId);
         
         // แสดงสถานะการลบ
@@ -216,7 +221,7 @@ function deleteDepartment(departmentId) {
         deleteBtn.innerHTML = '<span class="material-icons spinning">sync</span> กำลังลบ...';
         
         // ส่งข้อมูลไปยังเซิร์ฟเวอร์
-        fetch('departments.php', {
+        fetch('classes.php', {
             method: 'POST',
             body: formData
         })
@@ -224,16 +229,25 @@ function deleteDepartment(departmentId) {
             if (!response.ok) {
                 throw new Error('เกิดข้อผิดพลาดในการส่งข้อมูล');
             }
-            return response.text();
+            return response.json();
         })
         .then(data => {
             closeModal('confirmDeleteModal');
-            showNotification('ลบแผนกวิชาสำเร็จ', 'success');
             
-            // รีโหลดหน้าเพื่อแสดงข้อมูลล่าสุด
-            setTimeout(() => {
-                window.location.reload();
-            }, 1000);
+            if (data.success) {
+                showNotification('ลบแผนกวิชาสำเร็จ', 'success');
+                
+                // รีโหลดหน้าเพื่อแสดงข้อมูลล่าสุด
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1000);
+            } else {
+                showNotification('เกิดข้อผิดพลาด: ' + data.message, 'error');
+                
+                // คืนค่าปุ่มลบ
+                deleteBtn.disabled = false;
+                deleteBtn.innerHTML = originalBtnText;
+            }
         })
         .catch(error => {
             console.error('Error:', error);

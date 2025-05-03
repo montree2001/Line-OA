@@ -39,7 +39,7 @@
         <div class="class-info-card">
             <div class="class-selector">
                 <label for="classSelect">ห้องเรียน:</label>
-                <select id="classSelect" onchange="changeClass(this.value)">
+                <select id="classSelect">
                     <?php foreach ($teacher_classes as $class): ?>
                         <option value="<?php echo $class['id']; ?>" <?php echo ($class['id'] == $current_class_id) ? 'selected' : ''; ?>>
                             <?php echo $class['name']; ?> (<?php echo $class['total_students']; ?> คน)
@@ -866,6 +866,46 @@ function enhanceSearchInput() {
         });
     }
 }
+</script>
+
+<script>
+// เมื่อโหลดเอกสารเสร็จ
+document.addEventListener('DOMContentLoaded', function() {
+    // กำหนด event listener สำหรับเลือกห้องเรียน
+    const classSelect = document.getElementById('classSelect');
+    if (classSelect) {
+        classSelect.addEventListener('change', function() {
+            // สร้าง URL สำหรับการเปลี่ยนห้องเรียน
+            let url = `new_check_attendance.php?class_id=${this.value}`;
+            
+            // เพิ่มพารามิเตอร์วันที่ถ้ามี
+            const dateSelect = document.getElementById('dateSelect');
+            if (dateSelect && dateSelect.value) {
+                url += `&date=${dateSelect.value}`;
+            }
+            
+            // นำทางไปยัง URL ใหม่
+            window.location.href = url;
+        });
+    }
+    
+    // กำหนด event listener สำหรับเลือกวันที่
+    const dateSelect = document.getElementById('dateSelect');
+    if (dateSelect) {
+        dateSelect.addEventListener('change', function() {
+            // สร้าง URL สำหรับการเปลี่ยนวันที่
+            let url = `new_check_attendance.php?date=${this.value}`;
+            
+            // เพิ่มพารามิเตอร์ห้องเรียนถ้ามี
+            if (classSelect && classSelect.value) {
+                url += `&class_id=${classSelect.value}`;
+            }
+            
+            // นำทางไปยัง URL ใหม่
+            window.location.href = url;
+        });
+    }
+});
 </script>
 
 <style>

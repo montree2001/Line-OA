@@ -146,13 +146,39 @@ function toggleOptions() {
  * เปลี่ยนห้องเรียน
  * @param {string} classId - รหัสห้องเรียน
  */
+// แก้ไขฟังก์ชันเดิมให้เป็นแบบนี้
 function changeClass(classId) {
-    if (hasChanges) {
+    console.log("เรียกใช้ changeClass ด้วย classId:", classId);
+    
+    // ตรวจสอบว่า classId ไม่เป็นค่าว่าง
+    if (!classId) {
+        console.error('รหัสห้องเรียนไม่ถูกต้อง');
+        return;
+    }
+    
+    // สร้าง URL ที่ถูกต้อง ต้องแน่ใจว่ามีทั้ง class_id และ date
+    let targetUrl = `new_check_attendance.php?class_id=${classId}`;
+    
+    // เพิ่มพารามิเตอร์วันที่ ถ้ามี
+    if (typeof checkDate !== 'undefined' && checkDate) {
+        targetUrl += `&date=${checkDate}`;
+    }
+    
+    // ตรวจสอบว่ามีการเปลี่ยนแปลงข้อมูลหรือไม่
+    if (typeof hasChanges !== 'undefined' && hasChanges) {
         if (confirm('คุณมีข้อมูลที่ยังไม่ได้บันทึก ต้องการออกจากหน้านี้หรือไม่?')) {
-            window.location.href = `new_check_attendance.php?class_id=${classId}&date=${checkDate}`;
+            // นำทางไปยัง URL ที่สร้าง
+            window.location.href = targetUrl;
+        } else {
+            // ถ้ายกเลิก ให้เปลี่ยนค่าของ select กลับเป็นค่าเดิม
+            const selectElement = document.getElementById('classSelect');
+            if (selectElement && typeof currentClassId !== 'undefined') {
+                selectElement.value = currentClassId;
+            }
         }
     } else {
-        window.location.href = `new_check_attendance.php?class_id=${classId}&date=${checkDate}`;
+        // ไม่มีการเปลี่ยนแปลงข้อมูล
+        window.location.href = targetUrl;
     }
 }
 
@@ -160,13 +186,39 @@ function changeClass(classId) {
  * เปลี่ยนวันที่เช็คชื่อ
  * @param {string} date - วันที่ต้องการเช็คชื่อ
  */
+// แก้ไขฟังก์ชันเดิมให้เป็นแบบนี้
 function changeDate(date) {
-    if (hasChanges) {
+    console.log("เรียกใช้ changeDate ด้วย date:", date);
+    
+    // ตรวจสอบความถูกต้องของวันที่
+    if (!date) {
+        console.error('วันที่ไม่ถูกต้อง');
+        return;
+    }
+    
+    // สร้าง URL ที่ถูกต้อง
+    let targetUrl = `new_check_attendance.php?date=${date}`;
+    
+    // เพิ่มพารามิเตอร์ห้องเรียน ถ้ามี
+    if (typeof currentClassId !== 'undefined' && currentClassId) {
+        targetUrl += `&class_id=${currentClassId}`;
+    }
+    
+    // ตรวจสอบว่ามีการเปลี่ยนแปลงข้อมูลหรือไม่
+    if (typeof hasChanges !== 'undefined' && hasChanges) {
         if (confirm('คุณมีข้อมูลที่ยังไม่ได้บันทึก ต้องการออกจากหน้านี้หรือไม่?')) {
-            window.location.href = `new_check_attendance.php?class_id=${currentClassId}&date=${date}`;
+            // นำทางไปยัง URL ที่สร้าง
+            window.location.href = targetUrl;
+        } else {
+            // ถ้ายกเลิก ให้เปลี่ยนค่าของ input กลับเป็นค่าเดิม
+            const dateElement = document.getElementById('dateSelect');
+            if (dateElement && typeof checkDate !== 'undefined') {
+                dateElement.value = checkDate;
+            }
         }
     } else {
-        window.location.href = `new_check_attendance.php?class_id=${currentClassId}&date=${date}`;
+        // ไม่มีการเปลี่ยนแปลงข้อมูล
+        window.location.href = targetUrl;
     }
 }
 
