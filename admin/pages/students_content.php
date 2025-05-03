@@ -488,14 +488,18 @@
                     <div class="col-md-6">
                         <div class="form-group">
                             <label class="form-label">ชั้นเรียน</label>
-                            <div class="class-search-container">
-                                <input type="text" list="editClassList" class="form-control" id="edit_class_search"
-                                    placeholder="เลือกหรือพิมพ์เพื่อค้นหาชั้นเรียน..." autocomplete="off">
-                                <input type="hidden" name="class_id" id="edit_class_id">
-                                <datalist id="editClassList">
-                                    <!-- จะถูกเติมด้วย JavaScript -->
-                                </datalist>
-                            </div>
+                            <select class="form-control" name="class_id" id="edit_class_id">
+                                <option value="">-- เลือกชั้นเรียน --</option>
+                                <?php
+                                foreach ($data['classGroups'] as $level => $classes):
+                                ?>
+                                    <optgroup label="<?php echo $level; ?>">
+                                        <?php foreach ($classes as $class): ?>
+                                            <option value="<?php echo $class['class_id']; ?>"><?php echo $level . '/' . $class['group_number'] . ' ' . $class['department_name']; ?></option>
+                                        <?php endforeach; ?>
+                                    </optgroup>
+                                <?php endforeach; ?>
+                            </select>
                         </div>
                     </div>
                     <div class="col-md-6">

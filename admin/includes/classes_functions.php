@@ -49,31 +49,27 @@ function getClassesFromDB() {
                 $stmt->execute([$class['class_id']]);
                 $class['student_count'] = $stmt->fetch(PDO::FETCH_ASSOC)['count'];
                 
-                // คำนวณอัตราการเข้าแถว - ปรับการตรวจสอบ column is_present ในตาราง attendance
+                // คำนวณอัตราการเข้าแถว - ใช้ attendance_status แทน is_present
                 try {
                     $stmt = $conn->prepare("
                         SELECT 
                             SUM(CASE WHEN a.attendance_status = 'present' THEN 1 ELSE 0 END) as present_days,
-                            SUM(CASE WHEN a.attendance_status = 'absent' THEN 1 ELSE 0 END) as absent_days
+                            SUM(CASE WHEN a.attendance_status IN ('absent', 'late', 'leave') THEN 1 ELSE 0 END) as absent_days
                         FROM attendance a
                         JOIN students s ON a.student_id = s.student_id
                         WHERE s.current_class_id = ?
                     ");
                     $stmt->execute([$class['class_id']]);
                     $result = $stmt->fetch(PDO::FETCH_ASSOC);
+                    
+                    if ($result === false) {
+                        // ถ้าไม่มีข้อมูล ให้กำหนดค่าเริ่มต้น
+                        $result = ['present_days' => 0, 'absent_days' => 0];
+                    }
                 } catch (PDOException $e) {
-                    // ถ้าเกิด error อาจเป็นเพราะโครงสร้างเปลี่ยน ลองใช้ column อื่น
-                    $stmt = $conn->prepare("
-                        SELECT 
-                            COUNT(*) as total_days,
-                            0 as present_days,
-                            0 as absent_days
-                        FROM attendance a
-                        JOIN students s ON a.student_id = s.student_id
-                        WHERE s.current_class_id = ?
-                    ");
-                    $stmt->execute([$class['class_id']]);
-                    $result = $stmt->fetch(PDO::FETCH_ASSOC);
+                    error_log('Error in attendance query: ' . $e->getMessage());
+                    // กำหนดค่าเริ่มต้นในกรณีที่เกิดข้อผิดพลาด
+                    $result = ['present_days' => 0, 'absent_days' => 0];
                 }
                 
                 $presentDays = $result['present_days'] ?? 0;
@@ -101,6 +97,7 @@ function getClassesFromDB() {
         return false;
     }
 }
+
 // ดึงข้อมูลจำนวนนักเรียนที่เสี่ยงตกกิจกรรม
 function getAtRiskStudentCount() {
     $conn = getDB();  // ใช้ getDB() เพื่อรับ connection
@@ -118,7 +115,7 @@ function getAtRiskStudentCount() {
         $stmt->execute();
         return $stmt->fetch(PDO::FETCH_ASSOC)['count'];
     } catch (PDOException $e) {
-        error_log('Database error: ' . $e->getMessage());
+        error_log('Database error in getAtRiskStudentCount: ' . $e->getMessage());
         return 0;
     }
 }
@@ -226,7 +223,7 @@ function getPromotionCounts($activeYearId) {
         
         return $result;
     } catch (PDOException $e) {
-        error_log('Database error: ' . $e->getMessage());
+        error_log('Database error in getPromotionCounts: ' . $e->getMessage());
         return false;
     }
 }

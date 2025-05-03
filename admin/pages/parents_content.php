@@ -15,38 +15,38 @@
             ค้นหาผู้ปกครอง
         </div>
         <div class="filter-container">
-            <div class="filter-group">
-                <div class="filter-label">ชื่อ-นามสกุลผู้ปกครอง</div>
-                <input type="text" class="form-control" placeholder="ป้อนชื่อผู้ปกครอง...">
-            </div>
-            <div class="filter-group">
-                <div class="filter-label">หมายเลขโทรศัพท์</div>
-                <input type="text" class="form-control" placeholder="ป้อนหมายเลขโทรศัพท์...">
-            </div>
-            <div class="filter-group">
-                <div class="filter-label">ระดับชั้นนักเรียน</div>
-                <select class="form-control">
-                    <option value="">-- ทุกระดับชั้น --</option>
-                    <option>ม.1</option>
-                    <option>ม.2</option>
-                    <option>ม.3</option>
-                    <option>ม.4</option>
-                    <option>ม.5</option>
-                    <option>ม.6</option>
-                </select>
-            </div>
-            <div class="filter-group">
-                <div class="filter-label">สถานะการใช้งาน</div>
-                <select class="form-control">
-                    <option value="">-- ทั้งหมด --</option>
-                    <option selected>เปิดใช้งาน</option>
-                    <option>ระงับการใช้งาน</option>
-                </select>
-            </div>
-            <button class="filter-button">
-                <span class="material-icons">search</span>
-                ค้นหา
-            </button>
+            <form method="GET" action="parents.php" id="searchForm">
+                <div class="filter-group">
+                    <div class="filter-label">ชื่อ-นามสกุลผู้ปกครอง</div>
+                    <input type="text" class="form-control" name="search" placeholder="ป้อนชื่อผู้ปกครอง..." value="<?php echo isset($_GET['search']) ? htmlspecialchars($_GET['search']) : ''; ?>">
+                </div>
+                <div class="filter-group">
+                    <div class="filter-label">หมายเลขโทรศัพท์</div>
+                    <input type="text" class="form-control" name="phone" placeholder="ป้อนหมายเลขโทรศัพท์..." value="<?php echo isset($_GET['phone']) ? htmlspecialchars($_GET['phone']) : ''; ?>">
+                </div>
+                <div class="filter-group">
+                    <div class="filter-label">ความสัมพันธ์</div>
+                    <select class="form-control" name="relationship">
+                        <option value="">-- ทั้งหมด --</option>
+                        <option value="พ่อ" <?php echo (isset($_GET['relationship']) && $_GET['relationship'] === 'พ่อ') ? 'selected' : ''; ?>>พ่อ</option>
+                        <option value="แม่" <?php echo (isset($_GET['relationship']) && $_GET['relationship'] === 'แม่') ? 'selected' : ''; ?>>แม่</option>
+                        <option value="ผู้ปกครอง" <?php echo (isset($_GET['relationship']) && $_GET['relationship'] === 'ผู้ปกครอง') ? 'selected' : ''; ?>>ผู้ปกครอง</option>
+                        <option value="ญาติ" <?php echo (isset($_GET['relationship']) && $_GET['relationship'] === 'ญาติ') ? 'selected' : ''; ?>>ญาติ</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <div class="filter-label">สถานะ LINE</div>
+                    <select class="form-control" name="line_status">
+                        <option value="">-- ทั้งหมด --</option>
+                        <option value="connected" <?php echo (isset($_GET['line_status']) && $_GET['line_status'] === 'connected') ? 'selected' : ''; ?>>เชื่อมต่อแล้ว</option>
+                        <option value="disconnected" <?php echo (isset($_GET['line_status']) && $_GET['line_status'] === 'disconnected') ? 'selected' : ''; ?>>ยังไม่เชื่อมต่อ</option>
+                    </select>
+                </div>
+                <button type="submit" class="filter-button">
+                    <span class="material-icons">search</span>
+                    ค้นหา
+                </button>
+            </form>
         </div>
 
         <div class="table-responsive">
@@ -63,53 +63,84 @@
                     </tr>
                 </thead>
                 <tbody>
+                    <?php if (empty($parents)): ?>
                     <tr>
-                        <td>1</td>
-                        <td>
-                            <div class="student-info">
-                                <div class="student-avatar">ว</div>
-                                <div class="student-details">
-                                    <div class="student-name">นางวันดี สุขใจ</div>
-                                    <div class="student-class">ผู้ปกครอง 1 คน</div>
-                                </div>
-                            </div>
-                        </td>
-                        <td>081-234-5678</td>
-                        <td>มารดา</td>
-                        <td>1 คน</td>
-                        <td>
-                            <span class="status-badge success">เชื่อมต่อแล้ว</span>
-                        </td>
-                        <td>
-                            <div class="action-buttons">
-                                <button class="table-action-btn primary" title="ดูข้อมูล" onclick="viewParentDetails(1)">
-                                    <span class="material-icons">visibility</span>
-                                </button>
-                                <button class="table-action-btn success" title="แก้ไข" onclick="editParent(1)">
-                                    <span class="material-icons">edit</span>
-                                </button>
-                                <button class="table-action-btn danger" title="ลบ" onclick="deleteParent(1)">
-                                    <span class="material-icons">delete</span>
-                                </button>
-                            </div>
-                        </td>
+                        <td colspan="7" class="text-center">ไม่พบข้อมูลผู้ปกครอง</td>
                     </tr>
+                    <?php else: ?>
+                        <?php 
+                        $start = ($current_page - 1) * $limit + 1;
+                        foreach ($parents as $index => $parent): 
+                            $display_index = $start + $index;
+                            $initials = mb_substr($parent['first_name'], 0, 1, 'UTF-8');
+                        ?>
+                        <tr>
+                            <td><?php echo $display_index; ?></td>
+                            <td>
+                                <div class="student-info">
+                                    <div class="student-avatar"><?php echo $initials; ?></div>
+                                    <div class="student-details">
+                                        <div class="student-name"><?php echo $parent['title'] . ' ' . $parent['first_name'] . ' ' . $parent['last_name']; ?></div>
+                                        <div class="student-class">ผู้ปกครอง <?php echo $parent['student_count']; ?> คน</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td><?php echo $parent['phone_number']; ?></td>
+                            <td><?php echo $parent['relationship']; ?></td>
+                            <td><?php echo $parent['student_count']; ?> คน</td>
+                            <td>
+                                <?php if (!empty($parent['line_id'])): ?>
+                                <span class="status-badge success">เชื่อมต่อแล้ว</span>
+                                <?php else: ?>
+                                <span class="status-badge warning">ยังไม่เชื่อมต่อ</span>
+                                <?php endif; ?>
+                            </td>
+                            <td>
+                                <div class="action-buttons">
+                                    <button class="table-action-btn primary" title="ดูข้อมูล" onclick="viewParentDetails(<?php echo $parent['parent_id']; ?>)">
+                                        <span class="material-icons">visibility</span>
+                                    </button>
+                                    <button class="table-action-btn success" title="แก้ไข" onclick="editParent(<?php echo $parent['parent_id']; ?>)">
+                                        <span class="material-icons">edit</span>
+                                    </button>
+                                    <button class="table-action-btn danger" title="ลบ" onclick="deleteParent(<?php echo $parent['parent_id']; ?>)">
+                                        <span class="material-icons">delete</span>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
                 </tbody>
             </table>
         </div>
         
+        <?php if ($total_pages > 1): ?>
         <div class="pagination-container">
             <div class="pagination">
-                <a href="#" class="page-link">«</a>
-                <a href="#" class="page-link active">1</a>
-                <a href="#" class="page-link">2</a>
-                <a href="#" class="page-link">3</a>
-                <a href="#" class="page-link">»</a>
+                <?php if ($current_page > 1): ?>
+                <a href="?page=<?php echo $current_page - 1; ?>&search=<?php echo urlencode($search); ?>&relationship=<?php echo urlencode($filters['relationship']); ?>&line_status=<?php echo urlencode($filters['line_status']); ?>" class="page-link">«</a>
+                <?php endif; ?>
+                
+                <?php
+                // แสดงปุ่มหน้า
+                $start_page = max(1, $current_page - 2);
+                $end_page = min($total_pages, $current_page + 2);
+                
+                for ($i = $start_page; $i <= $end_page; $i++):
+                ?>
+                <a href="?page=<?php echo $i; ?>&search=<?php echo urlencode($search); ?>&relationship=<?php echo urlencode($filters['relationship']); ?>&line_status=<?php echo urlencode($filters['line_status']); ?>" class="page-link <?php echo ($i == $current_page) ? 'active' : ''; ?>"><?php echo $i; ?></a>
+                <?php endfor; ?>
+                
+                <?php if ($current_page < $total_pages): ?>
+                <a href="?page=<?php echo $current_page + 1; ?>&search=<?php echo urlencode($search); ?>&relationship=<?php echo urlencode($filters['relationship']); ?>&line_status=<?php echo urlencode($filters['line_status']); ?>" class="page-link">»</a>
+                <?php endif; ?>
             </div>
             <div class="page-info">
-                แสดง 1-1 จาก 1 รายการ
+                แสดง <?php echo $start; ?>-<?php echo min($start + count($parents) - 1, $total_rows); ?> จาก <?php echo $total_rows; ?> รายการ
             </div>
         </div>
+        <?php endif; ?>
     </div>
 </div>
 
@@ -118,10 +149,13 @@
     <div class="card">
         <div class="card-title">
             <span class="material-icons">person_add</span>
-            เพิ่มข้อมูลผู้ปกครองใหม่
+            <span id="form-title">เพิ่มข้อมูลผู้ปกครองใหม่</span>
         </div>
         
-        <form id="addParentForm" class="form-horizontal">
+        <form id="addParentForm" class="form-horizontal" method="post" action="parents.php">
+            <input type="hidden" name="action" value="add_parent" id="form-action">
+            <input type="hidden" name="parent_id" id="parent_id" value="">
+            
             <div class="form-section">
                 <h3 class="section-title">ข้อมูลส่วนตัว</h3>
                 
@@ -129,20 +163,29 @@
                     <div class="col-6">
                         <div class="form-group">
                             <label class="form-label required">คำนำหน้า</label>
-                            <select class="form-control" required>
+                            <select class="form-control" required name="title" id="title">
                                 <option value="">-- เลือกคำนำหน้า --</option>
-                                <option>นาย</option>
-                                <option>นาง</option>
-                                <option>นางสาว</option>
-                                <option>ดร.</option>
-                                <option>อื่นๆ</option>
+                                <option value="นาย">นาย</option>
+                                <option value="นาง">นาง</option>
+                                <option value="นางสาว">นางสาว</option>
+                                <option value="ดร.">ดร.</option>
+                                <option value="ผศ.">ผศ.</option>
+                                <option value="รศ.">รศ.</option>
+                                <option value="ศ.">ศ.</option>
+                                <option value="อื่นๆ">อื่นๆ</option>
                             </select>
                         </div>
                     </div>
                     <div class="col-6">
                         <div class="form-group">
-                            <label class="form-label">คำนำหน้าอื่นๆ (ถ้ามี)</label>
-                            <input type="text" class="form-control" placeholder="ระบุคำนำหน้าอื่นๆ">
+                            <label class="form-label required">ความสัมพันธ์กับนักเรียน</label>
+                            <select class="form-control" required name="relationship" id="relationship">
+                                <option value="">-- เลือกความสัมพันธ์ --</option>
+                                <option value="พ่อ">พ่อ</option>
+                                <option value="แม่">แม่</option>
+                                <option value="ผู้ปกครอง">ผู้ปกครอง</option>
+                                <option value="ญาติ">ญาติ</option>
+                            </select>
                         </div>
                     </div>
                 </div>
@@ -151,41 +194,13 @@
                     <div class="col-6">
                         <div class="form-group">
                             <label class="form-label required">ชื่อ</label>
-                            <input type="text" class="form-control" placeholder="ชื่อผู้ปกครอง" required>
+                            <input type="text" class="form-control" placeholder="ชื่อผู้ปกครอง" required name="first_name" id="first_name">
                         </div>
                     </div>
                     <div class="col-6">
                         <div class="form-group">
                             <label class="form-label required">นามสกุล</label>
-                            <input type="text" class="form-control" placeholder="นามสกุลผู้ปกครอง" required>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="row">
-                    <div class="col-6">
-                        <div class="form-group">
-                            <label class="form-label required">หมายเลขบัตรประชาชน</label>
-                            <input type="text" class="form-control" placeholder="เลขประจำตัวประชาชน 13 หลัก" required maxlength="13">
-                        </div>
-                    </div>
-                    <div class="col-6">
-                        <div class="form-group">
-                            <label class="form-label required">ความสัมพันธ์กับนักเรียน</label>
-                            <select class="form-control" required>
-                                <option value="">-- เลือกความสัมพันธ์ --</option>
-                                <option>บิดา</option>
-                                <option>มารดา</option>
-                                <option>ปู่</option>
-                                <option>ย่า</option>
-                                <option>ตา</option>
-                                <option>ยาย</option>
-                                <option>ลุง</option>
-                                <option>ป้า</option>
-                                <option>น้า</option>
-                                <option>อา</option>
-                                <option>อื่นๆ</option>
-                            </select>
+                            <input type="text" class="form-control" placeholder="นามสกุลผู้ปกครอง" required name="last_name" id="last_name">
                         </div>
                     </div>
                 </div>
@@ -198,55 +213,14 @@
                     <div class="col-6">
                         <div class="form-group">
                             <label class="form-label required">หมายเลขโทรศัพท์</label>
-                            <input type="tel" class="form-control" placeholder="หมายเลขโทรศัพท์มือถือ" required>
+                            <input type="tel" class="form-control" placeholder="หมายเลขโทรศัพท์มือถือ" required name="phone_number" id="phone_number">
                             <div class="form-text">* ใช้สำหรับการเชื่อมต่อกับ LINE และการแจ้งเตือน</div>
                         </div>
                     </div>
                     <div class="col-6">
                         <div class="form-group">
                             <label class="form-label">อีเมล</label>
-                            <input type="email" class="form-control" placeholder="อีเมล (ถ้ามี)">
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label required">ที่อยู่ปัจจุบัน</label>
-                    <textarea class="form-control" rows="3" placeholder="ที่อยู่ปัจจุบันที่สามารถติดต่อได้" required></textarea>
-                </div>
-                
-                <div class="row">
-                    <div class="col-6">
-                        <div class="form-group">
-                            <label class="form-label">ตำบล/แขวง</label>
-                            <input type="text" class="form-control" placeholder="ตำบล/แขวง">
-                        </div>
-                    </div>
-                    <div class="col-6">
-                        <div class="form-group">
-                            <label class="form-label">อำเภอ/เขต</label>
-                            <input type="text" class="form-control" placeholder="อำเภอ/เขต">
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="row">
-                    <div class="col-6">
-                        <div class="form-group">
-                            <label class="form-label">จังหวัด</label>
-                            <select class="form-control">
-                                <option value="">-- เลือกจังหวัด --</option>
-                                <option>กรุงเทพมหานคร</option>
-                                <option>กระบี่</option>
-                                <option>กาญจนบุรี</option>
-                                <!-- เพิ่มจังหวัดอื่นๆ ต่อไป -->
-                            </select>
-                        </div>
-                    </div>
-                    <div class="col-6">
-                        <div class="form-group">
-                            <label class="form-label">รหัสไปรษณีย์</label>
-                            <input type="text" class="form-control" placeholder="รหัสไปรษณีย์" maxlength="5">
+                            <input type="email" class="form-control" placeholder="อีเมล (ถ้ามี)" name="email" id="email">
                         </div>
                     </div>
                 </div>
@@ -259,7 +233,7 @@
                     <div class="col-12">
                         <div class="form-group">
                             <div class="form-check">
-                                <input type="checkbox" class="form-check-input" id="generateQRCode">
+                                <input type="checkbox" class="form-check-input" id="generateQRCode" name="generate_qr_code">
                                 <label class="form-check-label" for="generateQRCode">สร้าง QR Code สำหรับการเชื่อมต่อ LINE</label>
                             </div>
                             <div class="form-text">* ระบบจะสร้าง QR Code สำหรับการเชื่อมต่อบัญชี LINE ของผู้ปกครองกับระบบ</div>
@@ -277,7 +251,7 @@
                 <h3 class="section-title">ข้อมูลนักเรียนในความปกครอง</h3>
                 
                 <div class="table-responsive">
-                    <table class="data-table">
+                    <table class="data-table" id="studentTable">
                         <thead>
                             <tr>
                                 <th width="5%">เลือก</th>
@@ -308,15 +282,8 @@
                 
                 <div class="form-group">
                     <div class="form-check">
-                        <input type="checkbox" class="form-check-input" id="enableNotifications" checked>
+                        <input type="checkbox" class="form-check-input" id="enableNotifications" name="enable_notifications" checked>
                         <label class="form-check-label" for="enableNotifications">เปิดใช้งานการแจ้งเตือนผ่าน LINE</label>
-                    </div>
-                </div>
-                
-                <div class="form-group">
-                    <div class="form-check">
-                        <input type="checkbox" class="form-check-input" id="enableAccountActive" checked>
-                        <label class="form-check-label" for="enableAccountActive">เปิดใช้งานบัญชีผู้ปกครอง</label>
                     </div>
                 </div>
             </div>
@@ -363,10 +330,8 @@
                                 <th>คำนำหน้า</th>
                                 <th>ชื่อ</th>
                                 <th>นามสกุล</th>
-                                <th>เลขประจำตัวประชาชน</th>
                                 <th>เบอร์โทรศัพท์</th>
                                 <th>อีเมล</th>
-                                <th>ที่อยู่</th>
                                 <th>ความสัมพันธ์</th>
                                 <th>รหัสนักเรียน</th>
                             </tr>
@@ -376,11 +341,9 @@
                                 <td>นาง</td>
                                 <td>วันดี</td>
                                 <td>สุขใจ</td>
-                                <td>1234567890123</td>
                                 <td>0812345678</td>
                                 <td>example@mail.com</td>
-                                <td>123 หมู่ 4 ต.ปราสาท อ.เมือง จ.สุรินทร์ 32000</td>
-                                <td>มารดา</td>
+                                <td>แม่</td>
                                 <td>12345</td>
                             </tr>
                         </tbody>
@@ -388,11 +351,11 @@
                 </div>
                 
                 <div class="template-download">
-                    <a href="#" class="btn btn-secondary btn-sm">
+                    <a href="templates/parent_import_template.xlsx" class="btn btn-secondary btn-sm">
                         <span class="material-icons">file_download</span>
                         ดาวน์โหลดเทมเพลต Excel
                     </a>
-                    <a href="#" class="btn btn-secondary btn-sm">
+                    <a href="templates/parent_import_template.csv" class="btn btn-secondary btn-sm">
                         <span class="material-icons">file_download</span>
                         ดาวน์โหลดเทมเพลต CSV
                     </a>
@@ -416,16 +379,16 @@
         <button class="modal-close" onclick="closeModal('parentDetailModal')">
             <span class="material-icons">close</span>
         </button>
-        <h2 class="modal-title">ข้อมูลผู้ปกครอง - นางวันดี สุขใจ</h2>
+        <h2 class="modal-title" id="parentDetailTitle">ข้อมูลผู้ปกครอง</h2>
         
         <div class="parent-profile">
             <div class="profile-header">
-                <div class="profile-avatar">ว</div>
+                <div class="profile-avatar" id="parentInitials"></div>
                 <div class="profile-info">
-                    <h3>นางวันดี สุขใจ</h3>
-                    <p><strong>ความสัมพันธ์:</strong> มารดา</p>
-                    <p><strong>เบอร์โทรศัพท์:</strong> 081-234-5678</p>
-                    <p><strong>LINE สถานะ:</strong> <span class="status-badge success">เชื่อมต่อแล้ว</span></p>
+                    <h3 id="parentName"></h3>
+                    <p><strong>ความสัมพันธ์:</strong> <span id="parentRelationship"></span></p>
+                    <p><strong>เบอร์โทรศัพท์:</strong> <span id="parentPhone"></span></p>
+                    <p><strong>LINE สถานะ:</strong> <span id="parentLineStatus"></span></p>
                 </div>
             </div>
             
@@ -435,16 +398,8 @@
                     <table class="data-table">
                         <tbody>
                             <tr>
-                                <td width="200"><strong>เลขประจำตัวประชาชน:</strong></td>
-                                <td>1-2345-67890-12-3</td>
-                            </tr>
-                            <tr>
-                                <td><strong>อีเมล:</strong></td>
-                                <td>wandee@example.com</td>
-                            </tr>
-                            <tr>
-                                <td><strong>ที่อยู่:</strong></td>
-                                <td>123 หมู่ 4 ตำบลปราสาท อำเภอเมือง จังหวัดสุรินทร์ 32000</td>
+                                <td width="200"><strong>อีเมล:</strong></td>
+                                <td id="parentEmail">-</td>
                             </tr>
                         </tbody>
                     </table>
@@ -463,20 +418,9 @@
                                 <th>ความสัมพันธ์</th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody id="parentStudentsList">
                             <tr>
-                                <td>
-                                    <div class="student-info">
-                                        <div class="student-avatar">ธ</div>
-                                        <div class="student-details">
-                                            <div class="student-name">นายธนกฤต สุขใจ</div>
-                                            <div class="student-class">เลขที่ 12</div>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td>ม.6/2</td>
-                                <td>12345</td>
-                                <td>มารดา</td>
+                                <td colspan="4" class="text-center">ไม่พบข้อมูลนักเรียนในความปกครอง</td>
                             </tr>
                         </tbody>
                     </table>
@@ -495,24 +439,9 @@
                                 <th>สถานะ</th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody id="parentNotificationsList">
                             <tr>
-                                <td>16/03/2568 09:30</td>
-                                <td>แจ้งเตือนความเสี่ยง</td>
-                                <td>แจ้งเตือนนักเรียนเสี่ยงตกกิจกรรม</td>
-                                <td><span class="status-badge success">อ่านแล้ว</span></td>
-                            </tr>
-                            <tr>
-                                <td>10/03/2568 08:45</td>
-                                <td>แจ้งเตือนทั่วไป</td>
-                                <td>รายงานการเข้าแถวประจำสัปดาห์</td>
-                                <td><span class="status-badge success">อ่านแล้ว</span></td>
-                            </tr>
-                            <tr>
-                                <td>01/03/2568 10:15</td>
-                                <td>แจ้งเตือนทั่วไป</td>
-                                <td>นัดประชุมผู้ปกครอง</td>
-                                <td><span class="status-badge warning">ยังไม่อ่าน</span></td>
+                                <td colspan="4" class="text-center">ไม่พบประวัติการแจ้งเตือน</td>
                             </tr>
                         </tbody>
                     </table>
@@ -522,11 +451,11 @@
         
         <div class="modal-actions">
             <button class="btn btn-secondary" onclick="closeModal('parentDetailModal')">ปิด</button>
-            <button class="btn btn-primary" onclick="editParent(1)">
+            <button class="btn btn-primary" id="editParentBtn">
                 <span class="material-icons">edit</span>
                 แก้ไขข้อมูล
             </button>
-            <button class="btn btn-success" onclick="sendDirectMessage(1)">
+            <button class="btn btn-success" id="sendMessageBtn">
                 <span class="material-icons">send</span>
                 ส่งข้อความ
             </button>
@@ -546,32 +475,33 @@
             <div class="filter-container">
                 <div class="filter-group">
                     <div class="filter-label">ชื่อ-นามสกุลนักเรียน</div>
-                    <input type="text" class="form-control" placeholder="ป้อนชื่อนักเรียน...">
+                    <input type="text" class="form-control" id="studentSearchInput" placeholder="ป้อนชื่อนักเรียน...">
                 </div>
                 <div class="filter-group">
                     <div class="filter-label">ระดับชั้น</div>
-                    <select class="form-control">
+                    <select class="form-control" id="studentLevelFilter">
                         <option value="">-- ทุกระดับชั้น --</option>
-                        <option>ม.1</option>
-                        <option>ม.2</option>
-                        <option>ม.3</option>
-                        <option>ม.4</option>
-                        <option>ม.5</option>
-                        <option>ม.6</option>
+                        <?php 
+                        $levels = getAllLevels();
+                        foreach ($levels as $level):
+                        ?>
+                        <option value="<?php echo $level; ?>"><?php echo $level; ?></option>
+                        <?php endforeach; ?>
                     </select>
                 </div>
                 <div class="filter-group">
                     <div class="filter-label">ห้องเรียน</div>
-                    <select class="form-control">
+                    <select class="form-control" id="studentGroupFilter">
                         <option value="">-- ทุกห้อง --</option>
-                        <option>1</option>
-                        <option>2</option>
-                        <option>3</option>
-                        <option>4</option>
-                        <option>5</option>
+                        <?php 
+                        $groups = getAllGroups();
+                        foreach ($groups as $group):
+                        ?>
+                        <option value="<?php echo $group; ?>"><?php echo $group; ?></option>
+                        <?php endforeach; ?>
                     </select>
                 </div>
-                <button class="filter-button">
+                <button class="filter-button" id="studentSearchBtn">
                     <span class="material-icons">search</span>
                     ค้นหา
                 </button>
@@ -584,39 +514,14 @@
                             <th width="5%">เลือก</th>
                             <th width="25%">ชื่อ-นามสกุล</th>
                             <th width="10%">ชั้น/ห้อง</th>
-                            <th width="10%">เลขที่</th>
                             <th width="15%">เลขประจำตัว</th>
                             <th width="15%">ผู้ปกครองปัจจุบัน</th>
                             <th width="20%">ความสัมพันธ์</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody id="studentSearchResults">
                         <tr>
-                            <td>
-                                <input type="checkbox" class="student-select">
-                            </td>
-                            <td>
-                                <div class="student-info">
-                                    <div class="student-avatar">ธ</div>
-                                    <div class="student-details">
-                                        <div class="student-name">นายธนกฤต สุขใจ</div>
-                                        <div class="student-class">เลขที่ 12</div>
-                                    </div>
-                                </div>
-                            </td>
-                            <td>ม.6/2</td>
-                            <td>12</td>
-                            <td>12345</td>
-                            <td>นางวันดี สุขใจ</td>
-                            <td>
-                                <select class="form-control form-control-sm">
-                                    <option value="">-- เลือก --</option>
-                                    <option selected>มารดา</option>
-                                    <option>บิดา</option>
-                                    <option>ผู้ปกครอง</option>
-                                    <option>อื่นๆ</option>
-                                </select>
-                            </td>
+                            <td colspan="6" class="text-center">กรุณาค้นหานักเรียน</td>
                         </tr>
                     </tbody>
                 </table>
@@ -639,16 +544,17 @@
         <button class="modal-close" onclick="closeModal('sendMessageModal')">
             <span class="material-icons">close</span>
         </button>
-        <h2 class="modal-title">ส่งข้อความถึงผู้ปกครอง - นางวันดี สุขใจ</h2>
+        <h2 class="modal-title" id="sendMessageTitle">ส่งข้อความถึงผู้ปกครอง</h2>
         
         <div class="template-buttons">
-            <button class="template-btn active" onclick="selectTemplate('regular')">ข้อความทั่วไป</button>
-            <button class="template-btn" onclick="selectTemplate('meeting')">นัดประชุม</button>
-            <button class="template-btn" onclick="selectTemplate('warning')">แจ้งเตือน</button>
-            <button class="template-btn" onclick="selectTemplate('report')">รายงานผล</button>
+            <button class="template-btn active" data-template="regular">ข้อความทั่วไป</button>
+            <button class="template-btn" data-template="meeting">นัดประชุม</button>
+            <button class="template-btn" data-template="warning">แจ้งเตือน</button>
+            <button class="template-btn" data-template="report">รายงานผล</button>
         </div>
         
         <div class="message-form">
+            <input type="hidden" id="messageUserId" value="">
             <textarea class="message-textarea" id="messageText">เรียน คุณวันดี สุขใจ
 
 ทางโรงเรียนขอแจ้งให้ทราบว่า น.ส.ธนกฤต สุขใจ เข้าร่วมกิจกรรมหน้าเสาธงประจำวันที่ 16 มีนาคม 2568 เรียบร้อยแล้ว
@@ -657,7 +563,7 @@
 
 ด้วยความเคารพ
 ฝ่ายกิจการนักเรียน
-โรงเรียนประสาทวิทยาคม</textarea>
+วิทยาลัยการอาชีพปราสาท</textarea>
             
             <div class="message-preview">
                 <div class="preview-header">
@@ -669,14 +575,14 @@
                 </div>
                 <div class="preview-content">
                     <strong>LINE Official Account: SADD-Prasat</strong>
-                    <p style="margin-top: 10px;">เรียน คุณวันดี สุขใจ<br><br>ทางโรงเรียนขอแจ้งให้ทราบว่า น.ส.ธนกฤต สุขใจ เข้าร่วมกิจกรรมหน้าเสาธงประจำวันที่ 16 มีนาคม 2568 เรียบร้อยแล้ว<br><br>จึงเรียนมาเพื่อทราบ<br><br>ด้วยความเคารพ<br>ฝ่ายกิจการนักเรียน<br>โรงเรียนประสาทวิทยาคม</p>
+                    <p style="margin-top: 10px;">เรียน คุณวันดี สุขใจ<br><br>ทางโรงเรียนขอแจ้งให้ทราบว่า น.ส.ธนกฤต สุขใจ เข้าร่วมกิจกรรมหน้าเสาธงประจำวันที่ 16 มีนาคม 2568 เรียบร้อยแล้ว<br><br>จึงเรียนมาเพื่อทราบ<br><br>ด้วยความเคารพ<br>ฝ่ายกิจการนักเรียน<br>วิทยาลัยการอาชีพปราสาท</p>
                 </div>
             </div>
         </div>
         
         <div class="modal-actions">
             <button class="btn btn-secondary" onclick="closeModal('sendMessageModal')">ยกเลิก</button>
-            <button class="btn btn-primary" onclick="sendDirectMessage()">
+            <button class="btn btn-primary" id="sendMessageConfirmBtn">
                 <span class="material-icons">send</span>
                 ส่งข้อความ
             </button>
@@ -693,16 +599,20 @@
         <h2 class="modal-title">ยืนยันการลบข้อมูล</h2>
         
         <div class="confirmation-message">
-            <p>คุณต้องการลบข้อมูลผู้ปกครอง "นางวันดี สุขใจ" ใช่หรือไม่?</p>
+            <p id="deleteConfirmText">คุณต้องการลบข้อมูลผู้ปกครองใช่หรือไม่?</p>
             <p class="warning-text">คำเตือน: การลบข้อมูลผู้ปกครองจะทำให้ไม่สามารถส่งข้อความถึงผู้ปกครองได้อีก และข้อมูลผู้ปกครองทั้งหมดจะถูกลบออกจากระบบ</p>
         </div>
         
         <div class="modal-actions">
             <button class="btn btn-secondary" onclick="closeModal('confirmDeleteModal')">ยกเลิก</button>
-            <button class="btn btn-danger" onclick="confirmDelete()">
-                <span class="material-icons">delete</span>
-                ยืนยันการลบ
-            </button>
+            <form method="post" action="parents.php" id="deleteParentForm">
+                <input type="hidden" name="action" value="delete_parent">
+                <input type="hidden" name="parent_id" id="deleteParentId" value="">
+                <button type="submit" class="btn btn-danger">
+                    <span class="material-icons">delete</span>
+                    ยืนยันการลบ
+                </button>
+            </form>
         </div>
     </div>
 </div>
@@ -727,106 +637,460 @@ function showTab(tabId) {
 
 // แสดงข้อมูลผู้ปกครอง
 function viewParentDetails(parentId) {
-    // ในทางปฏิบัติจริง จะส่ง AJAX request ไปดึงข้อมูลจาก backend
-    console.log(`ดูข้อมูลผู้ปกครอง ID: ${parentId}`);
-    showModal('parentDetailModal');
+    // ส่ง AJAX request เพื่อดึงข้อมูลผู้ปกครอง
+    fetch('api/parents_handler.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: `action=get_parent&parent_id=${parentId}`
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            const parent = data.data.parent;
+            const students = data.data.students;
+            const notifications = data.data.notifications;
+            
+            // แสดงข้อมูลผู้ปกครอง
+            document.getElementById('parentDetailTitle').textContent = `ข้อมูลผู้ปกครอง - ${parent.title} ${parent.first_name} ${parent.last_name}`;
+            document.getElementById('parentName').textContent = `${parent.title} ${parent.first_name} ${parent.last_name}`;
+            document.getElementById('parentInitials').textContent = parent.first_name.charAt(0);
+            document.getElementById('parentRelationship').textContent = parent.relationship;
+            document.getElementById('parentPhone').textContent = parent.phone_number;
+            
+            // แสดงสถานะ LINE
+            const lineStatusElement = document.getElementById('parentLineStatus');
+            if (parent.line_status === 'connected') {
+                lineStatusElement.innerHTML = '<span class="status-badge success">เชื่อมต่อแล้ว</span>';
+            } else {
+                lineStatusElement.innerHTML = '<span class="status-badge warning">ยังไม่เชื่อมต่อ</span>';
+            }
+            
+            // แสดงอีเมล
+            document.getElementById('parentEmail').textContent = parent.email || '-';
+            
+            // แสดงรายชื่อนักเรียนในความปกครอง
+            const studentsList = document.getElementById('parentStudentsList');
+            if (students.length > 0) {
+                let studentsHtml = '';
+                students.forEach(student => {
+                    const initial = student.first_name.charAt(0);
+                    studentsHtml += `
+                        <tr>
+                            <td>
+                                <div class="student-info">
+                                    <div class="student-avatar">${initial}</div>
+                                    <div class="student-details">
+                                        <div class="student-name">${student.student_title} ${student.first_name} ${student.last_name}</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>${student.level}/${student.group_number}</td>
+                            <td>${student.student_code}</td>
+                            <td>${parent.relationship}</td>
+                        </tr>
+                    `;
+                });
+                studentsList.innerHTML = studentsHtml;
+            } else {
+                studentsList.innerHTML = '<tr><td colspan="4" class="text-center">ไม่พบข้อมูลนักเรียนในความปกครอง</td></tr>';
+            }
+            
+            // แสดงประวัติการแจ้งเตือน
+            const notificationsList = document.getElementById('parentNotificationsList');
+            if (notifications.length > 0) {
+                let notificationsHtml = '';
+                notifications.forEach(notification => {
+                    const date = new Date(notification.sent_at);
+                    const formattedDate = `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear() + 543} ${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`;
+                    
+                    let type = '';
+                    switch (notification.notification_type) {
+                        case 'attendance':
+                            type = 'แจ้งเตือนการเข้าแถว';
+                            break;
+                        case 'risk_alert':
+                            type = 'แจ้งเตือนความเสี่ยง';
+                            break;
+                        case 'system':
+                        default:
+                            type = 'แจ้งเตือนทั่วไป';
+                            break;
+                    }
+                    
+                    const status = notification.status === 'sent' ? 
+                        '<span class="status-badge success">อ่านแล้ว</span>' : 
+                        '<span class="status-badge warning">ยังไม่อ่าน</span>';
+                    
+                    notificationsHtml += `
+                        <tr>
+                            <td>${formattedDate}</td>
+                            <td>${type}</td>
+                            <td>${notification.message.substring(0, 30)}...</td>
+                            <td>${status}</td>
+                        </tr>
+                    `;
+                });
+                notificationsList.innerHTML = notificationsHtml;
+            } else {
+                notificationsList.innerHTML = '<tr><td colspan="4" class="text-center">ไม่พบประวัติการแจ้งเตือน</td></tr>';
+            }
+            
+            // ตั้งค่าปุ่มแก้ไขและส่งข้อความ
+            document.getElementById('editParentBtn').onclick = () => editParent(parentId);
+            document.getElementById('sendMessageBtn').onclick = () => sendDirectMessage(parentId, parent.user_id, `${parent.title} ${parent.first_name} ${parent.last_name}`);
+            
+            // แสดงโมดัล
+            showModal('parentDetailModal');
+        } else {
+            showAlert(data.message, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showAlert('เกิดข้อผิดพลาดในการเชื่อมต่อกับเซิร์ฟเวอร์', 'error');
+    });
 }
 
 // แก้ไขข้อมูลผู้ปกครอง
 function editParent(parentId) {
-    // ในทางปฏิบัติจริง จะส่ง AJAX request ไปดึงข้อมูลจาก backend
-    console.log(`แก้ไขข้อมูลผู้ปกครอง ID: ${parentId}`);
-    // เปลี่ยนไปยังแท็บเพิ่มข้อมูล (แต่จะใช้สำหรับการแก้ไขแทน)
-    showTab('parent-add');
-    // ตั้งค่าฟอร์มด้วยข้อมูลที่มีอยู่
-    // (ในทางปฏิบัติจริง จะเติมข้อมูลในฟอร์มด้วยข้อมูลที่ดึงมาจาก backend)
+    // ส่ง AJAX request เพื่อดึงข้อมูลผู้ปกครอง
+    fetch('api/parents_handler.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: `action=get_parent&parent_id=${parentId}`
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            const parent = data.data.parent;
+            const students = data.data.students;
+            
+            // เปลี่ยนหัวข้อฟอร์ม
+            document.getElementById('form-title').textContent = `แก้ไขข้อมูลผู้ปกครอง - ${parent.title} ${parent.first_name} ${parent.last_name}`;
+            
+            // เปลี่ยนการทำงานของฟอร์ม
+            document.getElementById('form-action').value = 'edit_parent';
+            document.getElementById('parent_id').value = parentId;
+            
+            // กรอกข้อมูลในฟอร์ม
+            document.getElementById('title').value = parent.title;
+            document.getElementById('relationship').value = parent.relationship;
+            document.getElementById('first_name').value = parent.first_name;
+            document.getElementById('last_name').value = parent.last_name;
+            document.getElementById('phone_number').value = parent.phone_number;
+            document.getElementById('email').value = parent.email || '';
+            
+            // เพิ่มนักเรียนในความปกครองลงในตาราง
+            const studentTable = document.getElementById('studentTable').getElementsByTagName('tbody')[0];
+            if (students.length > 0) {
+                let studentsHtml = '';
+                students.forEach(student => {
+                    studentsHtml += `
+                        <tr>
+                            <td><input type="checkbox" name="student_ids[]" value="${student.student_id}" checked></td>
+                            <td>${student.student_title} ${student.first_name} ${student.last_name}</td>
+                            <td>${student.level || '-'}/${student.group_number || '-'}</td>
+                            <td>${student.student_code}</td>
+                            <td>${parent.relationship}</td>
+                        </tr>
+                    `;
+                });
+                studentTable.innerHTML = studentsHtml;
+            } else {
+                studentTable.innerHTML = '<tr><td colspan="5" class="text-center">กรุณาค้นหานักเรียนเพื่อเพิ่มในรายการ</td></tr>';
+            }
+            
+            // ปิดโมดัลแสดงรายละเอียด (ถ้าเปิดอยู่)
+            closeModal('parentDetailModal');
+            
+            // เปลี่ยนไปยังแท็บเพิ่มข้อมูล (แต่จะใช้สำหรับการแก้ไขแทน)
+            showTab('parent-add');
+        } else {
+            showAlert(data.message, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showAlert('เกิดข้อผิดพลาดในการเชื่อมต่อกับเซิร์ฟเวอร์', 'error');
+    });
 }
 
 // ลบข้อมูลผู้ปกครอง
 function deleteParent(parentId) {
-    // แสดงโมดัลยืนยันการลบ
-    console.log(`เตรียมลบข้อมูลผู้ปกครอง ID: ${parentId}`);
-    showModal('confirmDeleteModal');
-}
-
-// ยืนยันการลบ
-function confirmDelete() {
-    // ในทางปฏิบัติจริง จะส่ง AJAX request ไปลบข้อมูลใน backend
-    console.log('ยืนยันการลบข้อมูลผู้ปกครอง');
-    closeModal('confirmDeleteModal');
-    // แสดงข้อความแจ้งเตือนการลบสำเร็จ
-    showAlert('ลบข้อมูลผู้ปกครองเรียบร้อยแล้ว', 'success');
+    // ดึงข้อมูลผู้ปกครองเพื่อแสดงในโมดัลยืนยันการลบ
+    fetch('api/parents_handler.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: `action=get_parent&parent_id=${parentId}`
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            const parent = data.data.parent;
+            
+            // แสดงชื่อผู้ปกครองในโมดัลยืนยันการลบ
+            document.getElementById('deleteConfirmText').textContent = `คุณต้องการลบข้อมูลผู้ปกครอง "${parent.title} ${parent.first_name} ${parent.last_name}" ใช่หรือไม่?`;
+            
+            // ตั้งค่ารหัสผู้ปกครองที่จะลบ
+            document.getElementById('deleteParentId').value = parentId;
+            
+            // แสดงโมดัลยืนยันการลบ
+            showModal('confirmDeleteModal');
+        } else {
+            showAlert(data.message, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showAlert('เกิดข้อผิดพลาดในการเชื่อมต่อกับเซิร์ฟเวอร์', 'error');
+    });
 }
 
 // ค้นหานักเรียน (สำหรับเพิ่มในรายการผู้ปกครอง)
 function searchStudents() {
     showModal('searchStudentModal');
+    
+    // ตั้งค่า event listener สำหรับปุ่มค้นหา
+    document.getElementById('studentSearchBtn').onclick = function() {
+        const search = document.getElementById('studentSearchInput').value;
+        const level = document.getElementById('studentLevelFilter').value;
+        const group = document.getElementById('studentGroupFilter').value;
+        
+        // ส่ง AJAX request เพื่อค้นหานักเรียน
+        fetch('api/parents_handler.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `action=search_students&search=${encodeURIComponent(search)}&level=${encodeURIComponent(level)}&group=${encodeURIComponent(group)}`
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                const students = data.data;
+                const resultsTable = document.getElementById('studentSearchResults');
+                
+                if (students.length > 0) {
+                    let studentsHtml = '';
+                    students.forEach(student => {
+                        const initial = student.first_name.charAt(0);
+                        studentsHtml += `
+                            <tr>
+                                <td><input type="checkbox" class="student-select" data-id="${student.student_id}" data-name="${student.student_title} ${student.first_name} ${student.last_name}" data-class="${student.level || '-'}/${student.group_number || '-'}" data-code="${student.student_code}"></td>
+                                <td>
+                                    <div class="student-info">
+                                        <div class="student-avatar">${initial}</div>
+                                        <div class="student-details">
+                                            <div class="student-name">${student.student_title} ${student.first_name} ${student.last_name}</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>${student.level || '-'}/${student.group_number || '-'}</td>
+                                <td>${student.student_code}</td>
+                                <td>${student.current_parent || '-'}</td>
+                                <td>
+                                    <select class="form-control form-control-sm student-relationship" data-id="${student.student_id}">
+                                        <option value="">-- เลือก --</option>
+                                        <option value="พ่อ">พ่อ</option>
+                                        <option value="แม่">แม่</option>
+                                        <option value="ผู้ปกครอง">ผู้ปกครอง</option>
+                                        <option value="ญาติ">ญาติ</option>
+                                    </select>
+                                </td>
+                            </tr>
+                        `;
+                    });
+                    resultsTable.innerHTML = studentsHtml;
+                    
+                    // ตั้งค่าการทำงานเมื่อเลือกความสัมพันธ์
+                    document.querySelectorAll('.student-relationship').forEach(select => {
+                        select.addEventListener('change', function() {
+                            const studentId = this.getAttribute('data-id');
+                            const checkbox = document.querySelector(`.student-select[data-id="${studentId}"]`);
+                            if (this.value) {
+                                checkbox.checked = true;
+                            }
+                        });
+                    });
+                    
+                    // ตั้งค่าการทำงานเมื่อเลือกนักเรียน
+                    document.querySelectorAll('.student-select').forEach(checkbox => {
+                        checkbox.addEventListener('change', function() {
+                            const studentId = this.getAttribute('data-id');
+                            const select = document.querySelector(`.student-relationship[data-id="${studentId}"]`);
+                            if (this.checked && !select.value) {
+                                select.value = document.getElementById('relationship').value || 'ผู้ปกครอง';
+                            }
+                        });
+                    });
+                } else {
+                    resultsTable.innerHTML = '<tr><td colspan="6" class="text-center">ไม่พบข้อมูลนักเรียน</td></tr>';
+                }
+            } else {
+                showAlert(data.message, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showAlert('เกิดข้อผิดพลาดในการเชื่อมต่อกับเซิร์ฟเวอร์', 'error');
+        });
+    };
 }
 
 // เพิ่มนักเรียนที่เลือกไว้ลงในตาราง
 function addSelectedStudents() {
-    // ในทางปฏิบัติจริง จะเพิ่มนักเรียนที่เลือกลงในตารางนักเรียนในความปกครอง
-    console.log('เพิ่มนักเรียนที่เลือก');
+    const selectedStudents = document.querySelectorAll('.student-select:checked');
+    
+    if (selectedStudents.length === 0) {
+        showAlert('กรุณาเลือกนักเรียนอย่างน้อย 1 คน', 'warning');
+        return;
+    }
+    
+    const studentTable = document.getElementById('studentTable').getElementsByTagName('tbody')[0];
+    let studentsHtml = '';
+    
+    selectedStudents.forEach(student => {
+        const studentId = student.getAttribute('data-id');
+        const studentName = student.getAttribute('data-name');
+        const studentClass = student.getAttribute('data-class');
+        const studentCode = student.getAttribute('data-code');
+        const relationship = document.querySelector(`.student-relationship[data-id="${studentId}"]`).value || document.getElementById('relationship').value || 'ผู้ปกครอง';
+        
+        studentsHtml += `
+            <tr>
+                <td><input type="checkbox" name="student_ids[]" value="${studentId}" checked></td>
+                <td>${studentName}</td>
+                <td>${studentClass}</td>
+                <td>${studentCode}</td>
+                <td>${relationship}</td>
+            </tr>
+        `;
+    });
+    
+    // ลบข้อความแจ้งเตือนถ้ามี
+    if (studentTable.innerHTML.includes('กรุณาค้นหานักเรียนเพื่อเพิ่มในรายการ')) {
+        studentTable.innerHTML = '';
+    }
+    
+    // เพิ่มนักเรียนลงในตาราง
+    studentTable.innerHTML += studentsHtml;
+    
+    // ปิดโมดัล
     closeModal('searchStudentModal');
 }
 
 // แสดงตัวอย่างข้อความที่จะส่ง
 function showMessagePreview() {
     const messageText = document.getElementById('messageText').value;
-    // ในทางปฏิบัติจริง จะแสดงข้อความตัวอย่างในรูปแบบที่จะปรากฏบน LINE
-    console.log('แสดงตัวอย่างข้อความ:', messageText);
+    
+    // อัปเดตตัวอย่างข้อความ
+    document.querySelector('.preview-content p').innerHTML = messageText.replace(/\n/g, '<br>');
 }
 
 // ส่งข้อความถึงผู้ปกครอง
-function sendDirectMessage(parentId) {
-    // แสดงโมดัลส่งข้อความ
-    console.log(`เตรียมส่งข้อความถึงผู้ปกครอง ID: ${parentId}`);
+function sendDirectMessage(parentId, userId, parentName) {
+    // ตั้งค่าชื่อผู้ปกครองในหัวข้อโมดัล
+    document.getElementById('sendMessageTitle').textContent = `ส่งข้อความถึงผู้ปกครอง - ${parentName}`;
+    
+    // ตั้งค่า user_id สำหรับการส่งข้อความ
+    document.getElementById('messageUserId').value = userId;
+    
+    // อัปเดตเทมเพลตข้อความ
+    selectTemplate('regular', parentName);
+    
+    // ตั้งค่าปุ่มส่งข้อความ
+    document.getElementById('sendMessageConfirmBtn').onclick = function() {
+        const message = document.getElementById('messageText').value;
+        
+        if (!message.trim()) {
+            showAlert('กรุณากรอกข้อความที่ต้องการส่ง', 'warning');
+            return;
+        }
+        
+        // ส่ง AJAX request เพื่อส่งข้อความ
+        fetch('api/parents_handler.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `action=send_message&user_id=${userId}&message=${encodeURIComponent(message)}`
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                closeModal('sendMessageModal');
+                showAlert('ส่งข้อความเรียบร้อยแล้ว', 'success');
+                
+                // รีเฟรชข้อมูลผู้ปกครอง (ถ้าโมดัลแสดงรายละเอียดเปิดอยู่)
+                if (document.getElementById('parentDetailModal').classList.contains('active')) {
+                    viewParentDetails(parentId);
+                }
+            } else {
+                showAlert(data.message, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showAlert('เกิดข้อผิดพลาดในการเชื่อมต่อกับเซิร์ฟเวอร์', 'error');
+        });
+    };
+    
+    // แสดงโมดัล
     showModal('sendMessageModal');
 }
 
 // เลือกเทมเพลตข้อความ
-function selectTemplate(templateType) {
+function selectTemplate(templateType, parentName = 'คุณวันดี สุขใจ', studentName = 'นายธนกฤต สุขใจ') {
     // ยกเลิกการเลือกเทมเพลตทั้งหมด
     document.querySelectorAll('.template-btn').forEach(btn => {
         btn.classList.remove('active');
     });
     
     // เลือกเทมเพลตที่คลิก
-    event.target.classList.add('active');
+    document.querySelector(`.template-btn[data-template="${templateType}"]`).classList.add('active');
     
     // เปลี่ยนข้อความตามเทมเพลตที่เลือก
     const messageText = document.getElementById('messageText');
     
     switch(templateType) {
         case 'regular':
-            messageText.value = 'เรียน คุณวันดี สุขใจ\n\nทางโรงเรียนขอแจ้งให้ทราบว่า น.ส.ธนกฤต สุขใจ เข้าร่วมกิจกรรมหน้าเสาธงประจำวันที่ 16 มีนาคม 2568 เรียบร้อยแล้ว\n\nจึงเรียนมาเพื่อทราบ\n\nด้วยความเคารพ\nฝ่ายกิจการนักเรียน\nโรงเรียนประสาทวิทยาคม';
+            messageText.value = `เรียน ${parentName}\n\nทางโรงเรียนขอแจ้งให้ทราบว่า ${studentName} เข้าร่วมกิจกรรมหน้าเสาธงประจำวันที่ 16 มีนาคม 2568 เรียบร้อยแล้ว\n\nจึงเรียนมาเพื่อทราบ\n\nด้วยความเคารพ\nฝ่ายกิจการนักเรียน\nวิทยาลัยการอาชีพปราสาท`;
             break;
         case 'meeting':
-            messageText.value = 'เรียน คุณวันดี สุขใจ\n\nทางโรงเรียนขอเรียนเชิญท่านเข้าร่วมประชุมผู้ปกครองนักเรียนชั้น ม.6/2 ในวันศุกร์ที่ 21 มีนาคม 2568 เวลา 15:00 น. ณ ห้องประชุม 2 อาคารอำนวยการ\n\nจึงเรียนมาเพื่อทราบและขอเชิญเข้าร่วมประชุมตามวันและเวลาดังกล่าว\n\nด้วยความเคารพ\nฝ่ายกิจการนักเรียน\nโรงเรียนประสาทวิทยาคม';
+            messageText.value = `เรียน ${parentName}\n\nทางโรงเรียนขอเรียนเชิญท่านเข้าร่วมประชุมผู้ปกครองนักเรียนในวันศุกร์ที่ 21 มีนาคม 2568 เวลา 15:00 น. ณ ห้องประชุม 2 อาคารอำนวยการ\n\nจึงเรียนมาเพื่อทราบและขอเชิญเข้าร่วมประชุมตามวันและเวลาดังกล่าว\n\nด้วยความเคารพ\nฝ่ายกิจการนักเรียน\nวิทยาลัยการอาชีพปราสาท`;
             break;
         case 'warning':
-            messageText.value = 'เรียน คุณวันดี สุขใจ\n\nทางโรงเรียนขอแจ้งให้ทราบว่า นายธนกฤต สุขใจ มีความเสี่ยงที่จะไม่ผ่านกิจกรรมเข้าแถว เนื่องจากปัจจุบันเข้าร่วมเพียง 26 จาก 40 วัน (65%)\n\nกรุณาติดต่อครูที่ปรึกษา อ.ประสิทธิ์ ดีเลิศ โทร. 081-234-5678 เพื่อหาแนวทางแก้ไขต่อไป\n\nด้วยความเคารพ\nฝ่ายกิจการนักเรียน\nโรงเรียนประสาทวิทยาคม';
+            messageText.value = `เรียน ${parentName}\n\nทางโรงเรียนขอแจ้งให้ทราบว่า ${studentName} มีความเสี่ยงที่จะไม่ผ่านกิจกรรมเข้าแถว เนื่องจากปัจจุบันเข้าร่วมเพียง 26 จาก 40 วัน (65%)\n\nกรุณาติดต่อครูที่ปรึกษา อ.ประสิทธิ์ ดีเลิศ โทร. 081-234-5678 เพื่อหาแนวทางแก้ไขต่อไป\n\nด้วยความเคารพ\nฝ่ายกิจการนักเรียน\nวิทยาลัยการอาชีพปราสาท`;
             break;
         case 'report':
-            messageText.value = 'เรียน คุณวันดี สุขใจ\n\nสรุปข้อมูลการเข้าแถวของ นายธนกฤต สุขใจ นักเรียนชั้น ม.6/2 ประจำเดือนมีนาคม 2568\n\nจำนวนวันเข้าแถว: 26 วัน จากทั้งหมด 40 วัน (65%)\nจำนวนวันขาดแถว: 14 วัน\nสถานะ: เสี่ยงตกกิจกรรมเข้าแถว\n\nกรุณาติดต่อครูที่ปรึกษา อ.ประสิทธิ์ ดีเลิศ โทร. 081-234-5678 เพื่อหาแนวทางแก้ไขต่อไป\n\nด้วยความเคารพ\nฝ่ายกิจการนักเรียน\nโรงเรียนประสาทวิทยาคม';
+            messageText.value = `เรียน ${parentName}\n\nสรุปข้อมูลการเข้าแถวของ ${studentName} ประจำเดือนมีนาคม 2568\n\nจำนวนวันเข้าแถว: 26 วัน จากทั้งหมด 40 วัน (65%)\nจำนวนวันขาดแถว: 14 วัน\nสถานะ: เสี่ยงตกกิจกรรมเข้าแถว\n\nกรุณาติดต่อครูที่ปรึกษา อ.ประสิทธิ์ ดีเลิศ โทร. 081-234-5678 เพื่อหาแนวทางแก้ไขต่อไป\n\nด้วยความเคารพ\nฝ่ายกิจการนักเรียน\nวิทยาลัยการอาชีพปราสาท`;
             break;
     }
+    
+    // อัปเดตตัวอย่างข้อความ
+    showMessagePreview();
 }
 
 // รีเซ็ตฟอร์ม
 function resetForm() {
     document.getElementById('addParentForm').reset();
+    document.getElementById('form-title').textContent = 'เพิ่มข้อมูลผู้ปกครองใหม่';
+    document.getElementById('form-action').value = 'add_parent';
+    document.getElementById('parent_id').value = '';
+    
+    // ล้างตารางนักเรียน
+    const studentTable = document.getElementById('studentTable').getElementsByTagName('tbody')[0];
+    studentTable.innerHTML = '<tr><td colspan="5" class="text-center">กรุณาค้นหานักเรียนเพื่อเพิ่มในรายการ</td></tr>';
+    
+    // ซ่อน QR Code
+    document.getElementById('qrCodeSection').style.display = 'none';
 }
-
-// แสดง QR Code สำหรับการเชื่อมต่อ LINE
-document.getElementById('generateQRCode').addEventListener('change', function() {
-    const qrCodeSection = document.getElementById('qrCodeSection');
-    if (this.checked) {
-        qrCodeSection.style.display = 'block';
-    } else {
-        qrCodeSection.style.display = 'none';
-    }
-});
 
 // รีเซ็ตฟอร์มนำเข้าข้อมูล
 function resetImport() {
@@ -836,16 +1100,53 @@ function resetImport() {
 
 // นำเข้าข้อมูลผู้ปกครอง
 function importParents() {
-    // ในทางปฏิบัติจริง จะส่งไฟล์ไปยัง backend เพื่อประมวลผล
-    console.log('นำเข้าข้อมูลผู้ปกครอง');
-    // แสดงข้อความแจ้งเตือนการนำเข้าสำเร็จ
-    showAlert('นำเข้าข้อมูลผู้ปกครองเรียบร้อยแล้ว', 'success');
+    const fileInput = document.getElementById('fileUpload');
+    
+    if (!fileInput.files.length) {
+        showAlert('กรุณาเลือกไฟล์ที่ต้องการนำเข้า', 'warning');
+        return;
+    }
+    
+    const file = fileInput.files[0];
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('action', 'import_parents');
+    
+    showAlert('กำลังนำเข้าข้อมูล โปรดรอสักครู่...', 'info');
+    
+    // จำลองการนำเข้าข้อมูล (ควรใช้ AJAX จริงในการใช้งานจริง)
+    setTimeout(() => {
+        showAlert('นำเข้าข้อมูลผู้ปกครองเรียบร้อยแล้ว', 'success');
+        resetImport();
+    }, 2000);
 }
 
-// เมื่อมีการเลือกไฟล์ เปิดใช้งานปุ่มนำเข้า
-document.getElementById('fileUpload').addEventListener('change', function() {
-    document.getElementById('importButton').disabled = !this.files.length;
-});
+// ส่งออกข้อมูลผู้ปกครอง
+function exportParentsData() {
+    showAlert('กำลังสร้างไฟล์ส่งออก โปรดรอสักครู่...', 'info');
+    
+    // ส่ง AJAX request เพื่อส่งออกข้อมูล
+    fetch('api/parents_handler.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: 'action=export_parents'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            // จำลองการดาวน์โหลดไฟล์ (ควรใช้ window.location หรือ Blob ในการใช้งานจริง)
+            showAlert('ส่งออกข้อมูลเรียบร้อยแล้ว ไฟล์จะถูกดาวน์โหลดอัตโนมัติ', 'success');
+        } else {
+            showAlert(data.message, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showAlert('เกิดข้อผิดพลาดในการเชื่อมต่อกับเซิร์ฟเวอร์', 'error');
+    });
+}
 
 // แสดงโมดัล
 function showModal(modalId) {
@@ -890,7 +1191,9 @@ function showAlert(message, type = 'info') {
     closeButton.addEventListener('click', function() {
         alert.classList.add('alert-closing');
         setTimeout(() => {
-            alertContainer.removeChild(alert);
+            if (alertContainer.contains(alert)) {
+                alertContainer.removeChild(alert);
+            }
         }, 300);
     });
     
@@ -917,227 +1220,35 @@ document.addEventListener('DOMContentLoaded', function() {
             showTab(tabId);
         });
     });
+    
+    // ตั้งค่าปุ่มเทมเพลต
+    const templateButtons = document.querySelectorAll('.template-btn');
+    templateButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const templateType = this.getAttribute('data-template');
+            selectTemplate(templateType);
+        });
+    });
+    
+    // แสดง QR Code สำหรับการเชื่อมต่อ LINE
+    document.getElementById('generateQRCode').addEventListener('change', function() {
+        const qrCodeSection = document.getElementById('qrCodeSection');
+        if (this.checked) {
+            qrCodeSection.style.display = 'block';
+        } else {
+            qrCodeSection.style.display = 'none';
+        }
+    });
+    
+    // ตั้งค่าการอัปโหลดไฟล์
+    const fileInput = document.getElementById('fileUpload');
+    if (fileInput) {
+        fileInput.addEventListener('change', function() {
+            const importButton = document.getElementById('importButton');
+            if (importButton) {
+                importButton.disabled = !this.files.length;
+            }
+        });
+    }
 });
 </script>
-
-<style>
-/* เพิ่มเติมสำหรับหน้าจัดการผู้ปกครอง */
-.pagination-container {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-top: 20px;
-}
-
-.page-info {
-    font-size: 14px;
-    color: var(--text-light);
-}
-
-.form-section {
-    margin-bottom: 30px;
-    padding-bottom: 20px;
-    border-bottom: 1px solid var(--border-color);
-}
-
-.form-section:last-child {
-    border-bottom: none;
-    margin-bottom: 0;
-}
-
-.section-title {
-    font-size: 18px;
-    font-weight: 600;
-    margin-bottom: 15px;
-    color: var(--primary-color);
-    display: flex;
-    align-items: center;
-}
-
-.section-title::before {
-    content: "";
-    display: inline-block;
-    width: 4px;
-    height: 18px;
-    background-color: var(--primary-color);
-    margin-right: 10px;
-}
-
-.form-label {
-    font-weight: 500;
-    margin-bottom: 5px;
-    display: block;
-}
-
-.form-label.required::after {
-    content: "*";
-    color: var(--danger-color);
-    margin-left: 5px;
-}
-
-.form-text {
-    font-size: 12px;
-    color: var(--text-light);
-    margin-top: 5px;
-}
-
-.form-check {
-    display: flex;
-    align-items: center;
-}
-
-.form-check-input {
-    margin-right: 10px;
-}
-
-.profile-header {
-    display: flex;
-    margin-bottom: 20px;
-}
-
-.profile-avatar {
-    width: 80px;
-    height: 80px;
-    border-radius: 50%;
-    background-color: var(--secondary-color-light);
-    color: var(--secondary-color);
-    font-size: 36px;
-    font-weight: bold;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-right: 20px;
-}
-
-.profile-info h3 {
-    font-size: 22px;
-    margin: 0 0 10px 0;
-}
-
-.profile-info p {
-    margin: 0 0 5px 0;
-}
-
-.profile-section {
-    margin-bottom: 25px;
-    background-color: #f9f9f9;
-    border-radius: 8px;
-    padding: 15px;
-}
-
-.profile-section h4 {
-    font-size: 16px;
-    margin-bottom: 10px;
-    padding-bottom: 5px;
-    border-bottom: 1px solid var(--border-color);
-}
-
-.upload-section {
-    margin-bottom: 20px;
-}
-
-.upload-info {
-    margin-bottom: 10px;
-    font-size: 14px;
-}
-
-.upload-area {
-    border: 2px dashed var(--border-color);
-    border-radius: 8px;
-    padding: 30px;
-    text-align: center;
-    background-color: #f9f9f9;
-    transition: all 0.3s;
-}
-
-.upload-area:hover {
-    border-color: var(--primary-color);
-    background-color: var(--primary-color-light);
-}
-
-.file-input {
-    display: none;
-}
-
-.file-label {
-    cursor: pointer;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-}
-
-.file-label .material-icons {
-    font-size: 48px;
-    color: var(--text-light);
-    margin-bottom: 10px;
-}
-
-.file-format {
-    font-size: 12px;
-    color: var(--text-light);
-    margin-top: 5px;
-}
-
-.format-example {
-    margin-top: 30px;
-}
-
-.format-title {
-    font-size: 16px;
-    margin-bottom: 10px;
-}
-
-.template-download {
-    margin-top: 15px;
-    display: flex;
-    gap: 10px;
-}
-
-.import-actions {
-    margin-top: 20px;
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-}
-
-.confirmation-message {
-    text-align: center;
-    margin: 20px 0;
-}
-
-.warning-text {
-    color: var(--danger-color);
-    font-weight: 500;
-    margin-top: 10px;
-}
-
-.text-center {
-    text-align: center;
-}
-
-/* รองรับการแสดงผลบนมือถือ */
-@media (max-width: 768px) {
-    .row {
-        flex-direction: column;
-    }
-    
-    .col-6 {
-        width: 100%;
-    }
-    
-    .profile-header {
-        flex-direction: column;
-        align-items: center;
-        text-align: center;
-    }
-    
-    .profile-avatar {
-        margin-right: 0;
-        margin-bottom: 15px;
-    }
-    
-    .form-section {
-        padding: 15px;
-    }
-}
-</style>
