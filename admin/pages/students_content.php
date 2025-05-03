@@ -176,7 +176,7 @@
     <div class="card-title">
         <span class="material-icons">people</span>
         รายชื่อนักเรียน
-            <span class="badge"><?php echo count($data['students']); ?> รายการ</span>
+        <span class="badge"><?php echo count($data['students']); ?> รายการ</span>
     </div>
 
     <div class="bulk-actions">
@@ -214,16 +214,16 @@
                 </tr>
             </thead>
             <tbody>
-                <?php 
+                <?php
                 // ใช้ student_id เป็นรหัสที่ไม่ซ้ำกัน
                 $displayed_student_ids = [];
-                
+
                 foreach ($data['students'] as $student):
                     // ข้ามถ้ามี student_id นี้แล้ว
                     if (in_array($student['student_id'], $displayed_student_ids)) {
                         continue;
                     }
-                    
+
                     // เพิ่ม student_id ที่กำลังแสดงเข้าไปในอาร์เรย์
                     $displayed_student_ids[] = $student['student_id'];
                 ?>
@@ -232,15 +232,21 @@
                         <td>
                             <div class="student-info">
                                 <div class="student-avatar">
-                                    <?php echo strtoupper(substr($student['first_name'] ?? '', 0, 1)); ?>
+                                    <?php if (!empty($student['profile_picture']) && $student['line_connected']): ?>
+                                        <img src="<?php echo htmlspecialchars($student['profile_picture']); ?>" alt="<?php echo htmlspecialchars($student['first_name']); ?>" class="profile-image">
+                                    <?php else: ?>
+                                        <?php echo strtoupper(substr($student['first_name'] ?? '', 0, 1)); ?>
+                                    <?php endif; ?>
                                 </div>
-                                <div class="student-name">
-                                    <?php
-                                    echo htmlspecialchars(($student['title'] ?? '') . ' ' .
-                                        ($student['first_name'] ?? '') . ' ' .
-                                        ($student['last_name'] ?? ''));
-                                    ?>
-                                    <div class="student-status"><?php echo htmlspecialchars($student['status'] ?? 'กำลังศึกษา'); ?></div>
+                                <div class="student-details">
+                                    <div class="student-name">
+                                        <?php
+                                        echo htmlspecialchars(($student['title'] ?? '') . ' ' .
+                                            ($student['first_name'] ?? '') . ' ' .
+                                            ($student['last_name'] ?? ''));
+                                        ?>
+                                    </div>
+                                    <div class="student-class"><?php echo htmlspecialchars($student['status'] ?? 'กำลังศึกษา'); ?></div>
                                 </div>
                             </div>
                         </td>
@@ -257,10 +263,10 @@
                         </td>
                         <td>
                             <div class="attendance-rate">
-                            <?php
+                                <?php
                                 $attendanceRate = isset($student['attendance_rate']) ? $student['attendance_rate'] : 0;
                                 $rateClass = '';
-                                
+
                                 if ($attendanceRate >= 90) {
                                     $rateClass = 'success';
                                 } elseif ($attendanceRate >= 75) {
@@ -295,11 +301,11 @@
                         </td>
                     </tr>
                 <?php endforeach; ?>
-                
+
                 <?php if (empty($data['students'])): ?>
-                <tr>
-                    <td colspan="8" class="text-center">ไม่พบข้อมูลนักเรียน</td>
-                </tr>
+                    <tr>
+                        <td colspan="8" class="text-center">ไม่พบข้อมูลนักเรียน</td>
+                    </tr>
                 <?php endif; ?>
             </tbody>
         </table>
@@ -377,12 +383,12 @@
                         <div class="form-group">
                             <label class="form-label">ชั้นเรียน</label>
                             <div class="class-search-container">
-                            <input type="text" list="classList" class="form-control" id="class_search"
-                                placeholder="เลือกหรือพิมพ์เพื่อค้นหาชั้นเรียน..." autocomplete="off">
-                            <input type="hidden" name="class_id" id="class_id">
-                            <datalist id="classList">
-                                <!-- จะถูกเติมด้วย JavaScript -->
-                            </datalist>
+                                <input type="text" list="classList" class="form-control" id="class_search"
+                                    placeholder="เลือกหรือพิมพ์เพื่อค้นหาชั้นเรียน..." autocomplete="off">
+                                <input type="hidden" name="class_id" id="class_id">
+                                <datalist id="classList">
+                                    <!-- จะถูกเติมด้วย JavaScript -->
+                                </datalist>
                             </div>
                         </div>
                     </div>
@@ -482,18 +488,14 @@
                     <div class="col-md-6">
                         <div class="form-group">
                             <label class="form-label">ชั้นเรียน</label>
-                            <select class="form-control" name="class_id" id="edit_class_id">
-                                <option value="">-- เลือกชั้นเรียน --</option>
-                                <?php
-                                foreach ($data['classGroups'] as $level => $classes):
-                                ?>
-                                    <optgroup label="<?php echo $level; ?>">
-                                        <?php foreach ($classes as $class): ?>
-                                            <option value="<?php echo $class['class_id']; ?>"><?php echo $level . '/' . $class['group_number'] . ' ' . $class['department_name']; ?></option>
-                                        <?php endforeach; ?>
-                                    </optgroup>
-                                <?php endforeach; ?>
-                            </select>
+                            <div class="class-search-container">
+                                <input type="text" list="editClassList" class="form-control" id="edit_class_search"
+                                    placeholder="เลือกหรือพิมพ์เพื่อค้นหาชั้นเรียน..." autocomplete="off">
+                                <input type="hidden" name="class_id" id="edit_class_id">
+                                <datalist id="editClassList">
+                                    <!-- จะถูกเติมด้วย JavaScript -->
+                                </datalist>
+                            </div>
                         </div>
                     </div>
                     <div class="col-md-6">
@@ -531,7 +533,9 @@
 
         <div class="student-profile">
             <div class="student-profile-header">
-                <div class="student-profile-avatar" id="view_avatar"></div>
+                <div class="student-profile-avatar" id="view_avatar">
+                    <!-- รูปโปรไฟล์จะถูกเพิ่มโดย JavaScript -->
+                </div>
                 <div class="student-profile-info">
                     <h3 id="view_full_name"></h3>
                     <p id="view_student_code"></p>
@@ -650,7 +654,7 @@
             <div class="import-step" id="step1">
                 <div class="form-section">
                     <h3 class="section-title">เลือกไฟล์นำเข้า</h3>
-                    
+
                     <div class="file-upload-container">
                         <div class="file-upload-area">
                             <input type="file" class="file-input" id="import_file" name="import_file" accept=".xlsx,.xls,.csv">
@@ -662,13 +666,13 @@
                         </div>
                         <div class="file-info">
                             <p>ไฟล์ที่เลือก: <span id="fileLabel">ยังไม่ได้เลือกไฟล์</span></p>
-            </div>
-            </div>
+                        </div>
+                    </div>
 
-            <div class="import-options">
+                    <div class="import-options">
                         <div class="checkbox-wrapper">
-                    <input type="checkbox" id="skip_header" name="skip_header" checked>
-                    <label for="skip_header">ข้ามแถวแรก (หัวตาราง)</label>
+                            <input type="checkbox" id="skip_header" name="skip_header" checked>
+                            <label for="skip_header">ข้ามแถวแรก (หัวตาราง)</label>
                         </div>
                         <div class="checkbox-wrapper">
                             <input type="checkbox" id="update_existing" name="update_existing" checked>
@@ -680,22 +684,22 @@
                 <div class="form-section">
                     <h3 class="section-title">เลือกชั้นเรียนปลายทาง</h3>
                     <p class="section-desc">หากต้องการนำเข้านักเรียนเข้าชั้นเรียนเดียวกันทั้งหมด ให้เลือกชั้นเรียนที่นี่</p>
-                    
+
                     <div class="form-group">
                         <select class="form-control" name="import_class_id" id="import_class_id">
                             <option value="">-- ไม่ระบุชั้นเรียน (ใช้ข้อมูลจากไฟล์) --</option>
-                        <?php
+                            <?php
                             // แสดงรายการชั้นเรียนจากฐานข้อมูล
                             if (isset($data['classGroups']) && is_array($data['classGroups'])):
                                 foreach ($data['classGroups'] as $level => $classes):
-                        ?>
-                            <optgroup label="<?php echo $level; ?>">
-                                <?php foreach ($classes as $class): ?>
-                                        <option value="<?php echo $class['class_id']; ?>">
-                                            <?php echo $level . '/' . $class['group_number'] . ' ' . $class['department_name']; ?>
-                                        </option>
-                                <?php endforeach; ?>
-                            </optgroup>
+                            ?>
+                                    <optgroup label="<?php echo $level; ?>">
+                                        <?php foreach ($classes as $class): ?>
+                                            <option value="<?php echo $class['class_id']; ?>">
+                                                <?php echo $level . '/' . $class['group_number'] . ' ' . $class['department_name']; ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </optgroup>
                             <?php
                                 endforeach;
                             endif;
@@ -724,14 +728,14 @@
                 <div class="form-section">
                     <h3 class="section-title">ตัวอย่างข้อมูล</h3>
                     <p class="section-desc">ตัวอย่าง 5 รายการแรกจากไฟล์ที่อัปโหลด (พบข้อมูลทั้งหมด <span id="totalRecords">0</span> รายการ)</p>
-                    
+
                     <div id="dataPreview" class="data-preview"></div>
                 </div>
 
                 <div class="form-section">
                     <h3 class="section-title">แม็ปฟิลด์ข้อมูล</h3>
                     <p class="section-desc">โปรดเลือกว่าคอลัมน์ใดในไฟล์ตรงกับข้อมูลชนิดใด</p>
-                    
+
                     <div class="field-mapping-container">
                         <div class="field-mapping-group">
                             <h4>ข้อมูลสำคัญ <span class="text-danger">*</span></h4>
@@ -829,7 +833,7 @@
                                         <label>สถานะการศึกษา</label>
                                         <select id="map_status" name="map_status" class="form-control" data-field="status">
                                             <option value="-1">-- เลือกคอลัมน์ --</option>
-                    </select>
+                                        </select>
                                     </div>
                                 </div>
                             </div>
@@ -846,9 +850,9 @@
             <div class="import-step" id="step3" style="display: none;">
                 <div class="form-section">
                     <h3 class="section-title">ตรวจสอบข้อมูลก่อนนำเข้า</h3>
-                    
+
                     <div id="importSummary" class="import-summary"></div>
-                    
+
                     <div class="destination-class">
                         <h4>ชั้นเรียนปลายทาง</h4>
                         <p id="selected_class_text" style="display: none;"></p>
@@ -861,7 +865,7 @@
                             <?php endif; ?>
                         </p>
                     </div>
-                    
+
                     <div class="import-confirmation">
                         <p class="warning-text">
                             <span class="material-icons">warning</span>
@@ -890,11 +894,7 @@
     </div>
 </div>
 
-<!-- Loading Overlay -->
-<div id="loadingOverlay" class="loading-overlay">
-    <div class="loading-spinner"></div>
-    <div class="loading-text">กำลังประมวลผล...</div>
-</div>
+
 
 <!-- ต้องเพิ่ม CSS ไฟล์นี้ไว้ใน header.php -->
 <!-- <link href="assets/css/import.css" rel="stylesheet"> -->

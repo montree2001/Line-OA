@@ -141,7 +141,7 @@
                 <?php if (!empty($advisor_info['line_id'])): ?>
                 <div class="advisor-contact">
                     <span class="material-icons">chat</span>
-                    <?php echo $advisor_info['line_id']; ?>
+                    #
                 </div>
                 <?php endif; ?>
             </div>
@@ -180,7 +180,7 @@
                 <?php if (!empty($parent_info['line_id'])): ?>
                 <div class="parent-contact">
                     <span class="material-icons">chat</span>
-                    <?php echo $parent_info['line_id']; ?>
+                   #
                 </div>
                 <?php endif; ?>
                 <?php if (!empty($parent_info['address'])): ?>

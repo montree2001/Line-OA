@@ -113,6 +113,9 @@ function getAllStudents($filters = []) {
     try {
         $conn = getDB();
         
+        // ดึงข้อมูลปีการศึกษาปัจจุบัน
+        $current_academic_year_id = getCurrentAcademicYearId();
+        
         // สร้างเงื่อนไขการค้นหา
         $where_conditions = [];
         $params = [];
@@ -129,7 +132,33 @@ function getAllStudents($filters = []) {
             $params[] = '%' . $filters['student_code'] . '%';
         }
         
-        // เพิ่มเงื่อนไขอื่นๆ ตามความเหมาะสม
+        if (isset($filters['level']) && !empty($filters['level'])) {
+            $where_conditions[] = "c.level = ?";
+            $params[] = $filters['level'];
+        }
+        
+        if (isset($filters['group_number']) && !empty($filters['group_number'])) {
+            $where_conditions[] = "c.group_number = ?";
+            $params[] = $filters['group_number'];
+        }
+        
+        if (isset($filters['department_id']) && !empty($filters['department_id'])) {
+            $where_conditions[] = "c.department_id = ?";
+            $params[] = $filters['department_id'];
+        }
+        
+        if (isset($filters['status']) && !empty($filters['status'])) {
+            $where_conditions[] = "s.status = ?";
+            $params[] = $filters['status'];
+        }
+        
+        if (isset($filters['line_status']) && !empty($filters['line_status'])) {
+            if ($filters['line_status'] === 'connected') {
+                $where_conditions[] = "u.line_id IS NOT NULL AND u.line_id != '' AND u.line_id NOT LIKE 'TEMP_%'";
+            } else if ($filters['line_status'] === 'not_connected') {
+                $where_conditions[] = "(u.line_id IS NULL OR u.line_id = '' OR u.line_id LIKE 'TEMP_%')";
+            }
+        }
         
         // สร้าง SQL condition
         $sql_condition = "";
@@ -147,14 +176,24 @@ function getAllStudents($filters = []) {
                   JOIN teachers t ON ca.teacher_id = t.teacher_id 
                   WHERE ca.class_id = c.class_id AND ca.is_primary = 1
                   LIMIT 1) as advisor_name,
-                 IFNULL((SELECT COUNT(*) FROM attendance a WHERE a.student_id = s.student_id AND a.is_present = 1), 0) as attendance_days,
-                 IFNULL((SELECT COUNT(*) FROM attendance a WHERE a.student_id = s.student_id AND a.is_present = 0), 0) as absence_days
+                 IFNULL((SELECT COUNT(*) FROM attendance a 
+                         WHERE a.student_id = s.student_id 
+                         AND a.academic_year_id = ? 
+                         AND a.attendance_status = 'present'), 0) as attendance_days,
+                 IFNULL((SELECT COUNT(*) FROM attendance a 
+                         WHERE a.student_id = s.student_id 
+                         AND a.academic_year_id = ? 
+                         AND a.attendance_status = 'absent'), 0) as absence_days
                  FROM students s
                  JOIN users u ON s.user_id = u.user_id
                  LEFT JOIN classes c ON s.current_class_id = c.class_id
                  LEFT JOIN departments d ON c.department_id = d.department_id
                  $sql_condition
                  ORDER BY s.student_code";
+        
+        // เพิ่มพารามิเตอร์สำหรับคำสั่ง SQL
+        array_unshift($params, $current_academic_year_id);
+        array_unshift($params, $current_academic_year_id);
         
         if (!empty($params)) {
             $stmt = $conn->prepare($query);
@@ -192,6 +231,9 @@ function getStudent() {
     try {
         $conn = getDB();
         
+        // ดึงข้อมูลปีการศึกษาปัจจุบัน
+        $current_academic_year_id = getCurrentAcademicYearId();
+        
         // ดึงข้อมูลนักเรียน
         $query = "SELECT s.student_id, s.student_code, s.current_class_id as class_id, s.status, 
                 u.title, u.first_name, u.last_name, u.line_id, u.phone_number, u.email, u.user_id,
@@ -202,8 +244,14 @@ function getStudent() {
                  JOIN teachers t ON ca.teacher_id = t.teacher_id 
                  WHERE ca.class_id = c.class_id AND ca.is_primary = 1
                  LIMIT 1) as advisor_name,
-                IFNULL((SELECT COUNT(*) FROM attendance a WHERE a.student_id = s.student_id AND a.is_present = 1), 0) as attendance_days,
-                IFNULL((SELECT COUNT(*) FROM attendance a WHERE a.student_id = s.student_id AND a.is_present = 0), 0) as absence_days
+                IFNULL((SELECT COUNT(*) FROM attendance a 
+                        WHERE a.student_id = s.student_id 
+                        AND a.academic_year_id = ? 
+                        AND a.attendance_status = 'present'), 0) as attendance_days,
+                IFNULL((SELECT COUNT(*) FROM attendance a 
+                        WHERE a.student_id = s.student_id 
+                        AND a.academic_year_id = ? 
+                        AND a.attendance_status = 'absent'), 0) as absence_days
                 FROM students s
                 JOIN users u ON s.user_id = u.user_id
                 LEFT JOIN classes c ON s.current_class_id = c.class_id
@@ -211,7 +259,7 @@ function getStudent() {
                 WHERE s.student_id = ?";
         
         $stmt = $conn->prepare($query);
-        $stmt->execute([$student_id]);
+        $stmt->execute([$current_academic_year_id, $current_academic_year_id, $student_id]);
         $student = $stmt->fetch(PDO::FETCH_ASSOC);
         
         if (!$student) {
@@ -243,7 +291,7 @@ function getStudent() {
         }
         
         // ตรวจสอบการเชื่อมต่อกับ LINE
-        $student['line_connected'] = !empty($student['line_id']);
+        $student['line_connected'] = !empty($student['line_id']) && strpos($student['line_id'], 'TEMP_') !== 0;
         
         echo json_encode([
             'success' => true,
@@ -352,6 +400,9 @@ function getDepartments() {
 function getStatistics() {
     try {
         $conn = getDB();
+        
+        // ดึงข้อมูลปีการศึกษาปัจจุบัน
+        $current_academic_year_id = getCurrentAcademicYearId();
         
         // ดึงจำนวนนักเรียนทั้งหมด
         $queryTotal = "SELECT COUNT(*) as total FROM students WHERE status = 'กำลังศึกษา'";
@@ -472,8 +523,8 @@ function getDetailedStatistics() {
         $attendanceQuery = "SELECT 
                           YEAR(a.date) as year,
                           MONTH(a.date) as month,
-                          SUM(CASE WHEN a.is_present = 1 THEN 1 ELSE 0 END) as present_count,
-                          COUNT(*) - SUM(CASE WHEN a.is_present = 1 THEN 1 ELSE 0 END) as absent_count
+                          SUM(CASE WHEN a.attendance_status = 'present' THEN 1 ELSE 0 END) as present_count,
+                          COUNT(*) - SUM(CASE WHEN a.attendance_status = 'present' THEN 1 ELSE 0 END) as absent_count
                           FROM attendance a
                           GROUP BY YEAR(a.date), MONTH(a.date)
                           ORDER BY YEAR(a.date), MONTH(a.date)";
@@ -621,7 +672,7 @@ function notifyRiskStudentParents() {
             $studentQuery = "SELECT s.student_id, s.student_code, u.title, u.first_name, u.last_name,
                             rs.risk_level, rs.absence_count,
                             (SELECT a.date FROM attendance a 
-                             WHERE a.student_id = s.student_id AND a.is_present = 0
+                             WHERE a.student_id = s.student_id AND a.attendance_status = 'absent'
                              ORDER BY a.date DESC LIMIT 1) as last_absence,
                             ay.required_attendance_days
                             FROM students s
@@ -1036,4 +1087,30 @@ function importStudents() {
         'updated_count' => 5,
         'skipped_count' => 2
     ]);
+}
+
+function getCurrentAcademicYearId() {
+    try {
+        $conn = getDB();
+        
+        $query = "SELECT academic_year_id FROM academic_years WHERE is_active = 1 LIMIT 1";
+        $stmt = $conn->query($query);
+        
+        if ($stmt->rowCount() > 0) {
+            return $stmt->fetchColumn();
+        }
+        
+        // กรณีไม่พบปีการศึกษาที่เปิดใช้งาน ให้ใช้ปีการศึกษาล่าสุด
+        $query = "SELECT academic_year_id FROM academic_years ORDER BY year DESC, semester DESC LIMIT 1";
+        $stmt = $conn->query($query);
+        
+        if ($stmt->rowCount() > 0) {
+            return $stmt->fetchColumn();
+        }
+        
+        return 1; // ค่าเริ่มต้นหากไม่พบปีการศึกษาใดๆ
+    } catch (PDOException $e) {
+        error_log("Error getting current academic year: " . $e->getMessage());
+        return 1;
+    }
 }

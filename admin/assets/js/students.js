@@ -3,9 +3,11 @@
  * ระบบ STUDENT-Prasat
  */
 
-// เรียกใช้เมื่อโหลด DOM เสร็จสมบูรณ์
+// เพิ่มการเรียกใช้ฟังก์ชัน initAllClassDataLists เมื่อโหลด DOM เสร็จสมบูรณ์
 document.addEventListener('DOMContentLoaded', function() {
-    // เริ่มต้น DataTable
+    console.log("เริ่มต้นระบบค้นหาชั้นเรียน...");
+    
+    // เริ่มต้น DataTable และเพิ่ม event listener อื่นๆ ที่มีอยู่เดิม
     if (document.getElementById('studentDataTable')) {
         $('#studentDataTable').DataTable({
             "language": {
@@ -13,16 +15,16 @@ document.addEventListener('DOMContentLoaded', function() {
             },
             "responsive": true,
             "order": [
-                    [0, "asc"]
-                ] // เรียงตามรหัสนักเรียน
+                [0, "asc"]
+            ]
         });
     }
-
-    // เพิ่ม event listener สำหรับปุ่มต่างๆ
+    
+    // ตั้งค่า event listener สำหรับปุ่มต่างๆ
     setupButtonListeners();
-
-    // เริ่มต้นดาต้าลิสต์สำหรับช่องค้นหาห้องเรียน
-    initClassDatalist();
+    
+    // เริ่มต้นดาต้าลิสต์สำหรับการค้นหาชั้นเรียน
+    initAllClassDataLists();
 });
 
 
@@ -221,8 +223,6 @@ function showAddStudentModal() {
     }
 }
 
-
-
 /**
  * ตั้งค่า event listeners สำหรับปุ่มต่างๆ
  */
@@ -328,7 +328,76 @@ function showImportModal() {
     // แสดง Modal
     showModal('importModal');
 }
+/**
+ * เริ่มต้นดาต้าลิสต์สำหรับช่องค้นหาห้องเรียนทั้งในโมดัลเพิ่มและแก้ไข
+ */
+function initAllClassDataLists() {
+    // ดึงข้อมูลห้องเรียน
+    fetch('api/classes_api.php?action=get_classes_with_advisors')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.classes) {
+                console.log("ได้รับข้อมูลชั้นเรียน:", data.classes.length, "รายการ");
+                
+                // เตรียมข้อมูลสำหรับ add student modal
+                initClassDatalistWithData(data.classes, 'class_search', 'class_id', 'classList');
+                
+                // เตรียมข้อมูลสำหรับ edit student modal
+                initClassDatalistWithData(data.classes, 'edit_class_search', 'edit_class_id', 'editClassList');
+            } else {
+                console.error("ไม่สามารถดึงข้อมูลชั้นเรียนได้:", data.message || "ไม่ทราบสาเหตุ");
+            }
+        })
+        .catch(error => {
+            console.error('เกิดข้อผิดพลาดในการดึงข้อมูลชั้นเรียน:', error);
+        });
+}
 
+/**
+ * เริ่มต้นดาต้าลิสต์ด้วยข้อมูลที่มี
+ */
+function initClassDatalistWithData(classesData, searchInputId, hiddenInputId, datalistId) {
+    const searchInput = document.getElementById(searchInputId);
+    const hiddenInput = document.getElementById(hiddenInputId);
+    const datalist = document.getElementById(datalistId);
+    
+    if (!searchInput || !hiddenInput || !datalist) {
+        console.log(`ไม่พบองค์ประกอบที่จำเป็น: ${searchInputId}, ${hiddenInputId}, ${datalistId}`);
+        return;
+    }
+    
+    // ล้างข้อมูลเดิม
+    datalist.innerHTML = '';
+    
+    // เติมข้อมูลในดาต้าลิสต์
+    classesData.forEach(cls => {
+        const option = document.createElement('option');
+        const levelName = cls.level || cls.levelName;
+        const groupNumber = cls.groupNumber || cls.group_number;
+        const departmentName = cls.departmentName || cls.department_name;
+        const displayText = `${levelName}/${groupNumber} ${departmentName}`;
+        
+        option.value = displayText;
+        option.setAttribute('data-id', cls.classId || cls.class_id);
+        datalist.appendChild(option);
+    });
+    
+    // เพิ่ม event listener
+    searchInput.addEventListener('input', function() {
+        // ค้นหาห้องเรียนจากข้อความที่ป้อน
+        const options = Array.from(datalist.options);
+        const found = options.find(option => option.value === this.value);
+        
+        if (found) {
+            hiddenInput.value = found.getAttribute('data-id');
+            console.log(`เลือกชั้นเรียน ID: ${hiddenInput.value}`);
+        } else {
+            hiddenInput.value = '';
+        }
+    });
+    
+    console.log(`เริ่มต้น datalist ${datalistId} สำเร็จ`);
+}
 /**
  * ดูข้อมูลนักเรียน
  * 
@@ -343,14 +412,33 @@ function viewStudent(studentId) {
                 const student = data.student;
 
                 // แสดงข้อมูลใน Modal
-                document.getElementById('view_avatar').innerText = student.first_name.charAt(0).toUpperCase();
+                // ตรวจสอบว่ามีรูปโปรไฟล์ LINE หรือไม่
+                const avatarContainer = document.getElementById('view_avatar');
+                
+                if (student.line_connected && student.profile_picture) {
+                    // ถ้ามีรูปโปรไฟล์ LINE ให้แสดงรูป
+                    avatarContainer.innerHTML = `<img src="${student.profile_picture}" alt="${student.first_name}" class="profile-image">`;
+                    avatarContainer.classList.add('has-profile-image');
+                } else {
+                    // ถ้าไม่มีรูปโปรไฟล์ LINE ให้แสดงตัวอักษรตัวแรกของชื่อ
+                    avatarContainer.textContent = student.first_name.charAt(0).toUpperCase();
+                    avatarContainer.classList.remove('has-profile-image');
+                }
+                
                 document.getElementById('view_full_name').innerText = `${student.title}${student.first_name} ${student.last_name}`;
                 document.getElementById('view_student_code').innerText = student.student_code;
                 document.getElementById('view_class').innerText = student.class || '-';
 
                 document.querySelector('#view_phone span').innerText = student.phone_number || '-';
                 document.querySelector('#view_email span').innerText = student.email || '-';
-                document.querySelector('#view_line span').innerText = student.line_connected ? 'เชื่อมต่อแล้ว' : 'ยังไม่ได้เชื่อมต่อ';
+                
+                // แสดงสถานะการเชื่อมต่อ LINE และลิงก์ไปยังโปรไฟล์
+                const lineStatusElement = document.querySelector('#view_line span');
+                if (student.line_connected) {
+                    lineStatusElement.innerHTML = '<span class="line-status connected"><span class="material-icons">check_circle</span> เชื่อมต่อแล้ว</span>';
+                } else {
+                    lineStatusElement.innerHTML = '<span class="line-status not-connected"><span class="material-icons">highlight_off</span> ยังไม่ได้เชื่อมต่อ</span>';
+                }
 
                 document.querySelector('#view_advisor span').innerText = student.advisor_name || '-';
                 document.querySelector('#view_department span').innerText = student.department_name || '-';
@@ -367,10 +455,17 @@ function viewStudent(studentId) {
                     editStudent(studentId);
                 };
 
-                document.getElementById('generate_qr_btn').onclick = () => {
-                    closeModal('viewStudentModal');
-                    generateLineQR(studentId);
-                };
+                // ซ่อนหรือแสดงปุ่มสร้าง QR LINE ตามสถานะการเชื่อมต่อ LINE
+                const generateQrBtn = document.getElementById('generate_qr_btn');
+                if (student.line_connected) {
+                    generateQrBtn.style.display = 'none';
+                } else {
+                    generateQrBtn.style.display = 'block';
+                    generateQrBtn.onclick = () => {
+                        closeModal('viewStudentModal');
+                        generateLineQR(studentId);
+                    };
+                }
 
                 // แสดง Modal
                 showModal('viewStudentModal');
@@ -384,10 +479,9 @@ function viewStudent(studentId) {
         });
 }
 
+
 /**
- * แก้ไขข้อมูลนักเรียน
- * 
- * @param {string} studentId รหัสนักเรียน
+ * แก้ไขฟังก์ชัน editStudent เพื่อเติมข้อมูลชั้นเรียนใน input ค้นหา
  */
 function editStudent(studentId) {
     // ดึงข้อมูลนักเรียน
@@ -405,7 +499,29 @@ function editStudent(studentId) {
                 document.getElementById('edit_student_code').value = student.student_code;
                 document.getElementById('edit_phone_number').value = student.phone_number || '';
                 document.getElementById('edit_email').value = student.email || '';
+                
+                // เติมข้อมูลชั้นเรียน
                 document.getElementById('edit_class_id').value = student.class_id || '';
+                
+                // ถ้ามีชั้นเรียน พยายามเติมชื่อชั้นเรียนในช่องค้นหา
+                if (student.class_id) {
+                    const editClassList = document.getElementById('editClassList');
+                    if (editClassList) {
+                        const options = Array.from(editClassList.options);
+                        const found = options.find(option => option.getAttribute('data-id') === String(student.class_id));
+                        
+                        if (found) {
+                            document.getElementById('edit_class_search').value = found.value;
+                        } else {
+                            // ถ้าไม่พบใน datalist ใช้ข้อมูลจาก student โดยตรง
+                            const className = student.class || `${student.level || ''}/${student.group_number || ''} ${student.department_name || ''}`;
+                            document.getElementById('edit_class_search').value = className;
+                        }
+                    }
+                } else {
+                    document.getElementById('edit_class_search').value = '';
+                }
+                
                 document.getElementById('edit_status').value = student.status;
 
                 // แสดง Modal
@@ -795,10 +911,4 @@ function showAlert(message, type = 'info') {
             alert.remove();
         }
     }, 5000);
-
-
-
-
-
-
 }

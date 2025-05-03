@@ -78,6 +78,7 @@ function getAllStudents($filters = []) {
             u.line_id,
             u.phone_number,
             u.email,
+            u.profile_picture,
             c.level,
             c.group_number,
             c.class_id,
@@ -157,6 +158,54 @@ function getAllStudents($filters = []) {
 }
 
 /**
+ * อัพเดทข้อมูลผู้ใช้ด้วยข้อมูลจาก LINE
+ * 
+ * @param int $user_id รหัสผู้ใช้
+ * @param string $line_id รหัส LINE
+ * @param array $profile_data ข้อมูลโปรไฟล์จาก LINE API
+ * @return bool สถานะการดำเนินการ
+ */
+function updateUserLineInfo($user_id, $line_id, $profile_data) {
+    try {
+        $conn = getDB();
+        
+        // อัพเดทข้อมูล LINE และรูปโปรไฟล์
+        $query = "UPDATE users 
+                 SET line_id = ?, 
+                     profile_picture = ?,
+                     updated_at = CURRENT_TIMESTAMP 
+                 WHERE user_id = ?";
+        
+        $stmt = $conn->prepare($query);
+        $stmt->execute([
+            $line_id,
+            $profile_data['pictureUrl'] ?? null,
+            $user_id
+        ]);
+        
+        // บันทึกการเชื่อมต่อ LINE ลงในประวัติ
+        $logQuery = "INSERT INTO line_connection_logs 
+                    (user_id, line_id, connection_type, status, details) 
+                    VALUES (?, ?, 'connect', 'success', ?)";
+        
+        $logStmt = $conn->prepare($logQuery);
+        $logStmt->execute([
+            $user_id,
+            $line_id,
+            json_encode($profile_data)
+        ]);
+        
+        return true;
+    } catch (PDOException $e) {
+        error_log("Error updating LINE info: " . $e->getMessage());
+        return false;
+    }
+}
+
+
+
+
+/**
  * ดึงข้อมูลนักเรียนตาม ID
  * 
  * @param int $student_id รหัสนักเรียน
@@ -171,7 +220,7 @@ function getStudentById($student_id) {
         
         // ดึงข้อมูลนักเรียน
         $query = "SELECT s.student_id, s.student_code, s.current_class_id as class_id, s.status, 
-                  u.title, u.first_name, u.last_name, u.line_id, u.phone_number, u.email, u.user_id,
+                  u.title, u.first_name, u.last_name, u.line_id, u.phone_number, u.email, u.user_id, u.profile_picture,
                   c.level, c.group_number, c.academic_year_id,
                   d.department_name, d.department_id,
                   (SELECT CONCAT(t.title, ' ', t.first_name, ' ', t.last_name) 
