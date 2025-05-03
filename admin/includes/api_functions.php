@@ -191,7 +191,7 @@ function getClassAdvisors($classId) {
     // ตรวจสอบการเชื่อมต่อฐานข้อมูล
     if (!$conn) {
         return [
-            'success' => false,
+            'status' => 'error',
             'message' => 'ไม่สามารถเชื่อมต่อฐานข้อมูลได้'
         ];
     }
@@ -199,7 +199,7 @@ function getClassAdvisors($classId) {
     // ตรวจสอบค่า parameter
     if (empty($classId)) {
         return [
-            'success' => false,
+            'status' => 'error',
             'message' => 'ไม่ได้ระบุรหัสชั้นเรียน'
         ];
     }
@@ -221,7 +221,7 @@ function getClassAdvisors($classId) {
         
         if (!$class) {
             return [
-                'success' => false,
+                'status' => 'error',
                 'message' => 'ไม่พบข้อมูลชั้นเรียน'
             ];
         }
@@ -245,20 +245,20 @@ function getClassAdvisors($classId) {
         $advisors = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
         return [
-            'success' => true,
+            'status' => 'success',
             'class_name' => $className,
             'advisors' => $advisors
         ];
     } catch (PDOException $e) {
         error_log("Error in getClassAdvisors: " . $e->getMessage());
         return [
-            'success' => false,
+            'status' => 'error',
             'message' => 'เกิดข้อผิดพลาดในการดึงข้อมูล: ' . $e->getMessage()
         ];
     } catch (Exception $e) {
         error_log("Unexpected error in getClassAdvisors: " . $e->getMessage());
         return [
-            'success' => false,
+            'status' => 'error',
             'message' => 'เกิดข้อผิดพลาดที่ไม่คาดคิด: ' . $e->getMessage()
         ];
     }

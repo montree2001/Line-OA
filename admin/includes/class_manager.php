@@ -61,7 +61,29 @@ if (isset($_POST['action']) || isset($_GET['action'])) {
             
         // === ครูที่ปรึกษา ===
         case 'get_class_advisors':
-            handleGetClassAdvisors();
+            // ดึงข้อมูลครูที่ปรึกษาของชั้นเรียน
+            $class_id = isset($_POST['class_id']) ? $_POST['class_id'] : (isset($_GET['class_id']) ? $_GET['class_id'] : '');
+            
+            if (empty($class_id)) {
+                echo json_encode([
+                    'status' => 'error',
+                    'message' => 'ไม่ระบุรหัสชั้นเรียน'
+                ]);
+                break;
+            }
+            
+            $result = getClassAdvisors($class_id);
+            
+            // ตรวจสอบว่าผลลัพธ์เป็น array หรือไม่
+            if (!is_array($result)) {
+                echo json_encode([
+                    'status' => 'error',
+                    'message' => 'เกิดข้อผิดพลาดในการดึงข้อมูล: ผลลัพธ์ไม่ถูกต้อง'
+                ]);
+                break;
+            }
+            
+            echo json_encode($result);
             break;
             
         case 'manage_advisors':

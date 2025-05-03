@@ -819,30 +819,40 @@ function manageAdvisors(classId) {
         },
         body: `action=get_class_advisors&class_id=${classId}`
     })
-    .then(response => response.json())
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.json();
+    })
     .then(data => {
-        if (data.status === 'success') {
-            document.getElementById('advisorsClassTitle').textContent = data.class_name;
+        if (data.status === 'success' || data.success === true) {
+            const classTitle = data.class_name || '';
+            document.getElementById('advisorsClassTitle').textContent = classTitle;
             
             // เติมข้อมูลครูที่ปรึกษาปัจจุบัน
-            renderCurrentAdvisors(data.advisors);
+            renderCurrentAdvisors(data.advisors || []);
             
             // รีเซ็ตการแสดงการเปลี่ยนแปลง
             document.getElementById('changesLog').innerHTML = '<div class="text-muted">ยังไม่มีการเปลี่ยนแปลง</div>';
             
             // รีเซ็ตฟอร์มเพิ่มครูที่ปรึกษา
-            document.getElementById('advisorSelect').value = '';
-            document.getElementById('isPrimaryAdvisor').checked = false;
+            if (document.getElementById('advisorSelect')) {
+                document.getElementById('advisorSelect').value = '';
+            }
+            if (document.getElementById('isPrimaryAdvisor')) {
+                document.getElementById('isPrimaryAdvisor').checked = false;
+            }
             
             // แสดงโมดัล
             showModal('advisorsModal');
         } else {
-            showNotification(data.message, 'error');
+            showNotification(data.message || 'เกิดข้อผิดพลาดในการดึงข้อมูล', 'error');
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        showNotification('เกิดข้อผิดพลาดในการดึงข้อมูล', 'error');
+        showNotification('เกิดข้อผิดพลาดในการดึงข้อมูล: ' + error.message, 'error');
     });
 }
 
@@ -862,11 +872,14 @@ function manageAdvisorsFromDetails() {
 }
 
 /**
- * แสดงรายการครูที่ปรึกษาปัจจุบัน
+ * เติมข้อมูลครูที่ปรึกษาปัจจุบัน
  */
 function renderCurrentAdvisors(advisors) {
     const currentAdvisorsList = document.getElementById('currentAdvisorsList');
-    if (!currentAdvisorsList) return;
+    if (!currentAdvisorsList) {
+        console.error('Element #currentAdvisorsList not found');
+        return;
+    }
     
     currentAdvisorsList.innerHTML = '';
     
@@ -896,6 +909,67 @@ function renderCurrentAdvisors(advisors) {
         `;
         currentAdvisorsList.appendChild(advisorEl);
     });
+}
+
+/**
+ * แสดงข้อความแจ้งเตือน
+ * @param {string} message ข้อความ
+ * @param {string} type ประเภท (success, info, warning, error)
+ */
+function showNotification(message, type = 'info') {
+    // สร้าง container ถ้ายังไม่มี
+    let notificationContainer = document.querySelector('.notification-container');
+    if (!notificationContainer) {
+        notificationContainer = document.createElement('div');
+        notificationContainer.className = 'notification-container';
+        document.body.appendChild(notificationContainer);
+    }
+    
+    // สร้างการแจ้งเตือน
+    const notification = document.createElement('div');
+    notification.className = `notification notification-${type}`;
+    
+    // เลือกไอคอนตามประเภท
+    let icon = 'info';
+    switch (type) {
+        case 'success': icon = 'check_circle'; break;
+        case 'warning': icon = 'warning'; break;
+        case 'error': icon = 'error'; break;
+    }
+    
+    notification.innerHTML = `
+        <span class="material-icons notification-icon">${icon}</span>
+        <div class="notification-message">${message}</div>
+        <button class="notification-close"><span class="material-icons">close</span></button>
+    `;
+    
+    // เพิ่มลงใน container
+    notificationContainer.appendChild(notification);
+    
+    // ตั้งค่าปุ่มปิด
+    const closeButton = notification.querySelector('.notification-close');
+    if (closeButton) {
+        closeButton.addEventListener('click', () => {
+            notification.classList.add('notification-closing');
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.parentNode.removeChild(notification);
+                }
+            }, 300);
+        });
+    }
+    
+    // ปิดอัตโนมัติหลังจาก 5 วินาที
+    setTimeout(() => {
+        if (notification.parentNode) {
+            notification.classList.add('notification-closing');
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.parentNode.removeChild(notification);
+                }
+            }, 300);
+        }
+    }, 5000);
 }
 
 /**
