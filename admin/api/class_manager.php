@@ -34,7 +34,8 @@ foreach ($required_files as $file) {
 }
 
 try {
-    $db = getDB();
+    global $conn;
+    $conn = getDB();
     
     // ตรวจสอบว่าเป็นการร้องขอแบบ GET หรือ POST
     if ($_SERVER['REQUEST_METHOD'] === 'GET') {

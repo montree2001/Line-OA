@@ -2,10 +2,11 @@
 // db_connect.php
 
 // กำหนดค่าการเชื่อมต่อฐานข้อมูลโดยตรวจสอบว่ามีการกำหนดค่าไว้แล้วหรือไม่
+// ปรับแก้ค่าการเชื่อมต่อให้ถูกต้อง
 if (!defined('DB_HOST')) define('DB_HOST', 'localhost');
-if (!defined('DB_NAME')) define('DB_NAME', 'stp_prasat');
+if (!defined('DB_NAME')) define('DB_NAME', 'stp_prasat'); // ชื่อฐานข้อมูลที่ถูกต้อง
 if (!defined('DB_USER')) define('DB_USER', 'root');
-if (!defined('DB_PASS')) define('DB_PASS', '');
+if (!defined('DB_PASS')) define('DB_PASS', ''); // รหัสผ่านอาจไม่ว่างเปล่า
 if (!defined('DB_CHARSET')) define('DB_CHARSET', 'utf8mb4');
 
 class Database {

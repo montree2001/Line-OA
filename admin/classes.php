@@ -38,6 +38,7 @@ try {
     }
     
     // ดึงข้อมูลที่จำเป็น
+    global $conn;
     $conn = getDB();
     if (!$conn) {
         throw new Exception("ไม่สามารถเชื่อมต่อฐานข้อมูลได้");
