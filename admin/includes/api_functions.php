@@ -100,7 +100,25 @@ function getDetailedClassInfo($classId) {
         $stmt->execute([$class['academic_year_id'], $classId]);
         $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
-        // เตรียมข้อมูลสถิติการเข้าแถว
+        // แปลงค่า percent เป็นตัวเลขที่ถูกต้อง
+        foreach ($students as &$student) {
+            // ตรวจสอบว่า percent เป็นตัวเลข และถ้าไม่ใช่ให้แปลงเป็น 0
+            if (isset($student['percent'])) {
+                $student['percent'] = floatval($student['percent']);
+            } else {
+                $student['percent'] = 0;
+            }
+            
+            // ตรวจสอบค่าอื่นๆ ให้แน่ใจว่าไม่เป็น null
+            $student['attendance'] = intval($student['attendance'] ?? 0);
+            $student['absence'] = intval($student['absence'] ?? 0);
+            $student['total'] = intval($student['total'] ?? 0);
+            $student['code'] = $student['code'] ?? '';
+            $student['name'] = $student['name'] ?? '';
+            $student['status'] = $student['status'] ?? 'รอประเมิน';
+        }
+        
+        // ข้อมูลสถิติการเข้าแถว
         $attendanceStats = [
             'present_days' => 0,
             'absent_days' => 0,
@@ -124,8 +142,8 @@ function getDetailedClassInfo($classId) {
                 $stats = $stmt->fetch(PDO::FETCH_ASSOC);
                 
                 if ($stats) {
-                    $attendanceStats['present_days'] = (int)($stats['present_days'] ?? 0);
-                    $attendanceStats['absent_days'] = (int)($stats['absent_days'] ?? 0);
+                    $attendanceStats['present_days'] = intval($stats['present_days'] ?? 0);
+                    $attendanceStats['absent_days'] = intval($stats['absent_days'] ?? 0);
                     
                     // คำนวณอัตราการเข้าแถวโดยรวม
                     $totalDays = $attendanceStats['present_days'] + $attendanceStats['absent_days'];
@@ -147,10 +165,17 @@ function getDetailedClassInfo($classId) {
                         ORDER BY month_year
                     ");
                     $stmt->execute([$classId, $class['academic_year_id']]);
-                    $attendanceStats['monthly'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                    $monthlyStats = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                    
+                    // แปลงค่าให้เป็นตัวเลขทั้งหมด
+                    foreach ($monthlyStats as &$month) {
+                        $month['present'] = intval($month['present'] ?? 0);
+                        $month['absent'] = intval($month['absent'] ?? 0);
+                    }
+                    
+                    $attendanceStats['monthly'] = $monthlyStats;
                 }
             } catch (PDOException $e) {
-                // ถ้าเกิดข้อผิดพลาดในการดึงข้อมูลสถิติ เราจะไม่ให้มันทำให้ทั้ง API ล้มเหลว
                 error_log("Error fetching attendance stats: " . $e->getMessage());
             }
         }
@@ -179,7 +204,6 @@ function getDetailedClassInfo($classId) {
         ];
     }
 }
-
 /**
  * ดึงข้อมูลครูที่ปรึกษาของชั้นเรียน
  * @param int $classId รหัสชั้นเรียน

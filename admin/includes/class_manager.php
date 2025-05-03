@@ -60,31 +60,31 @@ if (isset($_POST['action']) || isset($_GET['action'])) {
             break;
             
         // === ครูที่ปรึกษา ===
-        case 'get_class_advisors':
-            // ดึงข้อมูลครูที่ปรึกษาของชั้นเรียน
-            $class_id = isset($_POST['class_id']) ? $_POST['class_id'] : (isset($_GET['class_id']) ? $_GET['class_id'] : '');
-            
-            if (empty($class_id)) {
-                echo json_encode([
-                    'status' => 'error',
-                    'message' => 'ไม่ระบุรหัสชั้นเรียน'
-                ]);
-                break;
-            }
-            
-            $result = getClassAdvisors($class_id);
-            
-            // ตรวจสอบว่าผลลัพธ์เป็น array หรือไม่
-            if (!is_array($result)) {
-                echo json_encode([
-                    'status' => 'error',
-                    'message' => 'เกิดข้อผิดพลาดในการดึงข้อมูล: ผลลัพธ์ไม่ถูกต้อง'
-                ]);
-                break;
-            }
-            
-            echo json_encode($result);
-            break;
+      case 'get_class_advisors':
+    // ดึงข้อมูลครูที่ปรึกษาของชั้นเรียน
+    $class_id = isset($_POST['class_id']) ? $_POST['class_id'] : (isset($_GET['class_id']) ? $_GET['class_id'] : '');
+    
+    if (empty($class_id)) {
+        echo json_encode([
+            'status' => 'error',
+            'message' => 'ไม่ระบุรหัสชั้นเรียน'
+        ]);
+        break;
+    }
+    
+    $result = getClassAdvisors($class_id);
+    
+    // ตรวจสอบว่าผลลัพธ์เป็น array หรือไม่
+    if (!is_array($result)) {
+        echo json_encode([
+            'status' => 'error',
+            'message' => 'เกิดข้อผิดพลาดในการดึงข้อมูล: ผลลัพธ์ไม่ถูกต้อง'
+        ]);
+        break;
+    }
+    
+    echo json_encode($result);
+    break;
             
         case 'manage_advisors':
             handleManageAdvisors();
@@ -165,6 +165,11 @@ function handleGetDepartmentDetails() {
             return;
         }
         
+        // ตรวจสอบว่าข้อมูลมีครบถ้วนหรือไม่ ถ้าไม่ใส่ค่าเริ่มต้น
+        if (!isset($department['department_id'])) $department['department_id'] = $departmentId;
+        if (!isset($department['department_code'])) $department['department_code'] = $departmentId;
+        if (!isset($department['department_name'])) $department['department_name'] = '';
+        
         // ดึงจำนวนชั้นเรียนในแผนกวิชา
         $stmt = $conn->prepare("
             SELECT COUNT(*) as class_count
@@ -194,9 +199,9 @@ function handleGetDepartmentDetails() {
         $teacherCount = $stmt->fetch(PDO::FETCH_ASSOC)['teacher_count'];
         
         // เพิ่มข้อมูลสถิติลงในผลลัพธ์
-        $department['class_count'] = $classCount;
-        $department['student_count'] = $studentCount;
-        $department['teacher_count'] = $teacherCount;
+        $department['class_count'] = $classCount ?? 0;
+        $department['student_count'] = $studentCount ?? 0;
+        $department['teacher_count'] = $teacherCount ?? 0;
         
         header('Content-Type: application/json');
         echo json_encode([
@@ -204,6 +209,7 @@ function handleGetDepartmentDetails() {
             'department' => $department
         ]);
     } catch (PDOException $e) {
+        error_log("Error in handleGetDepartmentDetails: " . $e->getMessage());
         header('Content-Type: application/json');
         echo json_encode([
             'status' => 'error',

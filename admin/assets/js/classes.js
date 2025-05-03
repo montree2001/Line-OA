@@ -215,6 +215,24 @@ function viewDepartmentDetails(departmentId) {
 function editDepartment(departmentId) {
     currentDepartmentId = departmentId;
     
+    // เพิ่มกลไกสำรองโดยหาข้อมูลแผนกวิชาจากตารางก่อน
+    let departmentName = '';
+    let departmentCode = departmentId;
+    
+    try {
+        const departmentRows = document.querySelectorAll('#departmentTableBody tr');
+        for (const row of departmentRows) {
+            const cells = row.cells;
+            if (cells[0].textContent == departmentId) {
+                departmentCode = cells[0].textContent;
+                departmentName = cells[1].textContent;
+                break;
+            }
+        }
+    } catch (e) {
+        console.error('Error finding department in table:', e);
+    }
+    
     // ส่ง AJAX request เพื่อดึงข้อมูลแผนกวิชา
     fetch('api/class_manager.php', {
         method: 'POST',
@@ -225,23 +243,42 @@ function editDepartment(departmentId) {
     })
     .then(response => response.json())
     .then(data => {
-        if (data.status === 'success') {
+        if (data.status === 'success' && data.department) {
             document.getElementById('departmentModalTitle').textContent = 'แก้ไขแผนกวิชา';
-            document.getElementById('departmentId').value = data.department.department_id;
-            document.getElementById('departmentName').value = data.department.department_name;
+            document.getElementById('departmentId').value = data.department.department_id || departmentId;
+            document.getElementById('departmentName').value = data.department.department_name || departmentName;
             
             // ในกรณีแก้ไข ไม่อนุญาตให้แก้ไขรหัสแผนกวิชา
-            document.getElementById('departmentCode').value = data.department.department_code;
+            document.getElementById('departmentCode').value = data.department.department_code || departmentCode;
             document.getElementById('departmentCode').readOnly = true;
             
             showModal('departmentModal');
         } else {
-            showNotification(data.message, 'error');
+            // ใช้ข้อมูลสำรองถ้า API ไม่ส่งข้อมูลที่ถูกต้องกลับมา
+            document.getElementById('departmentModalTitle').textContent = 'แก้ไขแผนกวิชา';
+            document.getElementById('departmentId').value = departmentId;
+            document.getElementById('departmentName').value = departmentName;
+            document.getElementById('departmentCode').value = departmentCode;
+            document.getElementById('departmentCode').readOnly = true;
+            
+            showModal('departmentModal');
+            
+            if (data.message) {
+                showNotification(data.message, 'warning');
+            }
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        showNotification('เกิดข้อผิดพลาดในการดึงข้อมูล', 'error');
+        // ยังคงแสดงโมดัลพร้อมข้อมูลสำรอง
+        document.getElementById('departmentModalTitle').textContent = 'แก้ไขแผนกวิชา';
+        document.getElementById('departmentId').value = departmentId;
+        document.getElementById('departmentName').value = departmentName;
+        document.getElementById('departmentCode').value = departmentCode;
+        document.getElementById('departmentCode').readOnly = true;
+        
+        showModal('departmentModal');
+        showNotification('เกิดข้อผิดพลาดในการดึงข้อมูล แสดงข้อมูลเท่าที่มี', 'warning');
     });
 }
 
@@ -654,16 +691,18 @@ function populateStudentsList(students) {
     }
     
     students.forEach(student => {
-        const statusClass = student.percent > 90 ? 'success' : (student.percent > 75 ? 'warning' : 'danger');
+        // แก้ไข: ตรวจสอบให้แน่ใจว่า percent เป็นตัวเลขหรือแปลงเป็น 0
+        const percent = typeof student.percent === 'number' ? student.percent : 0;
+        const statusClass = percent > 90 ? 'success' : (percent > 75 ? 'warning' : 'danger');
         const row = document.createElement('tr');
         row.innerHTML = `
-            <td>${student.code}</td>
-            <td>${student.name}</td>
-            <td class="text-center">${student.attendance}/${student.total} วัน</td>
-            <td class="text-center">${student.percent.toFixed(1)}%</td>
+            <td>${student.code || ''}</td>
+            <td>${student.name || ''}</td>
+            <td class="text-center">${student.attendance || 0}/${student.total || 0} วัน</td>
+            <td class="text-center">${percent.toFixed(1)}%</td>
             <td>
                 <span class="status-badge ${statusClass}">
-                    ${student.status}
+                    ${student.status || 'รอประเมิน'}
                 </span>
             </td>
         `;
