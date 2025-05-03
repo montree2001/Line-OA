@@ -14,7 +14,8 @@ ini_set('display_errors', 1);
 
 // เริ่ม session
 session_start();
-$adminId = $_SESSION['user_id'] ?? 1; // ใช้ ID 1 เป็นค่าเริ่มต้นถ้าไม่มี session
+$_SESSION['user_id']=109; // ใช้ ID 1 เป็นค่าเริ่มต้นถ้าไม่มี session
+$adminId = $_SESSION['user_id'] ?? 109; // ใช้ ID 1 เป็นค่าเริ่มต้นถ้าไม่มี session
 
 // นำเข้าไฟล์เชื่อมต่อฐานข้อมูล
 require_once '../db_connect.php';
