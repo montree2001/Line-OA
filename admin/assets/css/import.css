@@ -449,3 +449,61 @@
 }
 
 
+/* เพิ่ม CSS นี้ที่ไฟล์ assets/css/import.css หรือเพิ่มเป็น <style> ในไฟล์ footer.php */
+
+/* ปรับขนาดของ Modal ใหญ่ขึ้น */
+.modal-dialog.modal-lg {
+    max-width: 90%;
+    width: 1200px;
+    margin: 1.75rem auto;
+}
+
+/* ทำให้ Modal อยู่ตรงกลางหน้าจอแบบสมบูรณ์ */
+.modal-dialog-centered {
+    display: flex;
+    align-items: center;
+    min-height: calc(100% - 3.5rem);
+}
+
+/* ปรับความสูงของ Modal Content ไม่ให้เกินหน้าจอ */
+.modal-content {
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+/* ปรับขนาดของ Modal Body */
+.modal-body {
+    padding: 1.5rem;
+    overflow-y: auto;
+    max-height: calc(90vh - 120px); /* ลบส่วนหัวและส่วนท้ายของ Modal */
+}
+
+/* ทำให้การเลื่อนภายใน Modal นุ่มนวล */
+.modal-body {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
+}
+
+.modal-body::-webkit-scrollbar {
+    width: 8px;
+}
+
+.modal-body::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.modal-body::-webkit-scrollbar-thumb {
+    background-color: rgba(0, 0, 0, 0.2);
+    border-radius: 4px;
+}
+
+/* กำหนดสไตล์เมื่อเปิด Modal */
+body.modal-open {
+    overflow: hidden;
+    padding-right: 0 !important;
+}
+
+/* ปรับแต่ง backdrop ให้ทึบขึ้น */
+.modal-backdrop.show {
+    opacity: 0.7;
+}

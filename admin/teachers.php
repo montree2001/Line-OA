@@ -239,8 +239,7 @@ require_once 'templates/sidebar.php';
 // โหลดเทมเพลตเนื้อหาหลัก
 require_once 'templates/main_content.php';
 
-// โหลดโมดัลนำเข้าข้อมูลครูที่ปรึกษา
-require_once '../models/import_teachers_modal.php';
+
 
 // โหลดเทมเพลตส่วนท้าย
 require_once 'templates/footer.php';
