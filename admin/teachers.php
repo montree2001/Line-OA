@@ -20,7 +20,6 @@ require_once '../db_connect.php';
 
 // โหลดคลาสสำหรับจัดการข้อมูลครู
 require_once '../models/Teacher.php';
-require_once '../models/import_modal.php';
 $teacherModel = new Teacher();
 
 // กำหนดข้อมูลสำหรับหน้าปัจจุบัน
@@ -240,6 +239,32 @@ require_once 'templates/sidebar.php';
 // โหลดเทมเพลตเนื้อหาหลัก
 require_once 'templates/main_content.php';
 
+// โหลดโมดัลนำเข้าข้อมูลครูที่ปรึกษา
+require_once '../models/import_teachers_modal.php';
+
 // โหลดเทมเพลตส่วนท้าย
 require_once 'templates/footer.php';
 ?>
+<script>
+    /**
+ * แสดงโมดัลนำเข้าข้อมูล
+ */
+function showImportModal() {
+    // รีเซ็ตฟอร์ม
+    closeAllModals();
+    
+    const form = document.getElementById('importTeacherFullForm');
+    if (form) {
+        form.reset();
+    }
+    
+    // แสดงโมดัล
+    const modal = document.getElementById('importTeacherModal');
+    if (modal && typeof bootstrap !== 'undefined') {
+        const bsModal = new bootstrap.Modal(modal);
+        bsModal.show();
+    } else {
+        console.error("ไม่พบโมดัลสำหรับนำเข้าข้อมูลครู");
+    }
+}
+</script>

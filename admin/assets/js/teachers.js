@@ -309,24 +309,7 @@ function showEditTeacherModal(teacherId) {
     }
 }
 
-/**
- * แสดงโมดัลนำเข้าข้อมูล
- */
-function showImportModal() {
-    // รีเซ็ตฟอร์ม
-    closeAllModals()
-    const form = document.getElementById('importTeacherFullForm');
-    if (form) {
-        form.reset();
-    }
-    
-    // แสดงโมดัล
-    const modal = document.getElementById('importTeacherModal');
-    if (modal && typeof bootstrap !== 'undefined') {
-        const bsModal = new bootstrap.Modal(modal);
-        bsModal.show();
-    }
-}
+
 
 /**
  * แสดงยืนยันการลบ
