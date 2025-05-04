@@ -68,17 +68,17 @@ function initDatePickers() {
     // ถ้ามี date picker elements
     const datePickers = document.querySelectorAll('.date-picker');
     if (datePickers.length > 0) {
-        // ตั้งค่า date pickers (จำลอง - ในทางปฏิบัติอาจใช้ library เช่น flatpickr หรือ datepicker)
+        // ตั้งค่า date pickers
         datePickers.forEach(picker => {
             picker.type = 'date';  // เปลี่ยนเป็น HTML5 date input
             
             // กำหนดค่าเริ่มต้น
-            if (picker.id === 'start-date') {
+            if (picker.id === 'start-date' || picker.id === 'start-date-group') {
                 // กำหนดค่าเริ่มต้นเป็นวันแรกของเดือนปัจจุบัน
                 const now = new Date();
                 const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
                 picker.valueAsDate = firstDay;
-            } else if (picker.id === 'end-date') {
+            } else if (picker.id === 'end-date' || picker.id === 'end-date-group') {
                 // กำหนดค่าเริ่มต้นเป็นวันปัจจุบัน
                 const now = new Date();
                 picker.valueAsDate = now;
@@ -93,16 +93,70 @@ function initDatePickers() {
 function initCharts() {
     // ตั้งค่ากราฟตัวอย่าง (ถ้ามี)
     const chartCanvas = document.getElementById('attendance-chart');
-    if (chartCanvas) {
+    if (chartCanvas && typeof Chart !== 'undefined') {
         // สร้างกราฟตัวอย่างด้วย Chart.js
         const ctx = chartCanvas.getContext('2d');
         new Chart(ctx, {
             type: 'line',
             data: {
-                labels: ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม'],
+                labels: ['1 เม.ย.', '8 เม.ย.', '15 เม.ย.', '22 เม.ย.', '29 เม.ย.'],
                 datasets: [{
                     label: 'อัตราการเข้าแถว (%)',
                     data: [85, 78, 65, 72, 80],
+                    fill: false,
+                    borderColor: 'rgb(75, 192, 192)',
+                    tension: 0.1
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 100
+                    }
+                }
+            }
+        });
+    }
+    
+    // ตั้งค่ากราฟตัวอย่างสำหรับกลุ่ม
+    const groupChartCtx = document.getElementById('group-attendance-chart');
+    if (groupChartCtx && typeof Chart !== 'undefined') {
+        new Chart(groupChartCtx, {
+            type: 'bar',
+            data: {
+                labels: ['1-7 เม.ย.', '8-14 เม.ย.', '15-21 เม.ย.', '22-28 เม.ย.', '29-30 เม.ย.'],
+                datasets: [{
+                    label: 'อัตราการเข้าแถวเฉลี่ย (%)',
+                    data: [63, 65, 66, 68, 69],
+                    backgroundColor: 'rgba(75, 192, 192, 0.5)',
+                    borderColor: 'rgb(75, 192, 192)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 100
+                    }
+                }
+            }
+        });
+    }
+    
+    // ตั้งค่ากราฟตัวอย่างในโมดัลตัวอย่าง
+    const previewChartCtx = document.getElementById('preview-attendance-chart');
+    if (previewChartCtx && typeof Chart !== 'undefined') {
+        new Chart(previewChartCtx, {
+            type: 'line',
+            data: {
+                labels: ['1 เม.ย.', '8 เม.ย.', '15 เม.ย.', '22 เม.ย.', '29 เม.ย.'],
+                datasets: [{
+                    label: 'อัตราการเข้าแถว (%)',
+                    data: [65, 62, 68, 65, 70],
                     fill: false,
                     borderColor: 'rgb(75, 192, 192)',
                     tension: 0.1
@@ -129,7 +183,7 @@ function initTemplates() {
     const templateButtons = document.querySelectorAll('.template-btn');
     templateButtons.forEach(btn => {
         btn.addEventListener('click', function() {
-            const templateType = this.getAttribute('data-template') || btn.textContent.trim().toLowerCase();
+            const templateType = this.getAttribute('data-template') || this.textContent.trim().toLowerCase();
             
             // เทมเพลตรายบุคคล
             if (document.getElementById('messageText')) {
@@ -155,8 +209,7 @@ function selectTemplate(templateType) {
     });
     
     // เลือกเทมเพลตที่คลิก
-    const selectedButton = document.querySelector(`.template-btn[onclick*="${templateType}"]`) || 
-                           document.querySelector(`.template-btn[data-template="${templateType}"]`);
+    const selectedButton = document.querySelector(`.template-btn[data-template="${templateType}"]`);
     if (selectedButton) {
         selectedButton.classList.add('active');
     }
@@ -167,7 +220,7 @@ function selectTemplate(templateType) {
     
     // ดึงข้อมูลนักเรียน (ในเหตุการณ์จริงควรดึงจาก DOM หรือ API)
     const studentName = document.querySelector('.student-name-display')?.textContent || 'นายธนกฤต สุขใจ';
-    const studentClass = document.querySelector('.student-class-display')?.textContent || 'ม.6/2';
+    const studentClass = document.querySelector('.student-class-display')?.textContent || 'ปวช.1/1';
     const attendanceDays = document.querySelector('.attendance-days-display')?.textContent || '26/40';
     const attendanceRate = document.querySelector('.attendance-rate-display')?.textContent || '65';
     const advisorName = document.querySelector('.advisor-name-display')?.textContent || 'อ.ประสิทธิ์ ดีเลิศ';
@@ -175,13 +228,13 @@ function selectTemplate(templateType) {
     
     switch(templateType) {
         case 'regular':
-            messageText.value = `เรียน ผู้ปกครองของ ${studentName}\n\nทางโรงเรียนขอแจ้งความคืบหน้าเกี่ยวกับการเข้าแถวของนักเรียน ${studentName} นักเรียนชั้น ${studentClass} ปัจจุบันเข้าร่วม ${attendanceDays} (${attendanceRate}%)\n\nจึงเรียนมาเพื่อทราบ\n\nด้วยความเคารพ\nฝ่ายกิจการนักเรียน\nวิทยาลัยการอาชีพปราสาท`;
+            messageText.value = `เรียน ผู้ปกครองของ {{ชื่อนักเรียน}}\n\nทางวิทยาลัยขอแจ้งความคืบหน้าเกี่ยวกับการเข้าแถวของนักเรียน {{ชื่อนักเรียน}} นักเรียนชั้น {{ชั้นเรียน}} ปัจจุบันเข้าร่วม {{จำนวนวันเข้าแถว}} วัน จากทั้งหมด {{จำนวนวันทั้งหมด}} วัน ({{ร้อยละการเข้าแถว}}%)\n\nจึงเรียนมาเพื่อทราบ\n\nด้วยความเคารพ\nฝ่ายกิจการนักเรียน\nวิทยาลัยการอาชีพปราสาท`;
             break;
         case 'warning':
-            messageText.value = `เรียน ผู้ปกครองของ ${studentName}\n\nทางโรงเรียนขอแจ้งว่า ${studentName} นักเรียนชั้น ${studentClass} มีความเสี่ยงที่จะไม่ผ่านกิจกรรมเข้าแถว เนื่องจากปัจจุบันเข้าร่วมเพียง ${attendanceDays} (${attendanceRate}%)\n\nกรุณาติดต่อครูที่ปรึกษา ${advisorName} โทร. ${advisorPhone} เพื่อหาแนวทางแก้ไขต่อไป\n\nด้วยความเคารพ\nฝ่ายกิจการนักเรียน\nวิทยาลัยการอาชีพปราสาท`;
+            messageText.value = `เรียน ผู้ปกครองของ {{ชื่อนักเรียน}}\n\nทางวิทยาลัยขอแจ้งว่า {{ชื่อนักเรียน}} นักเรียนชั้น {{ชั้นเรียน}} มีความเสี่ยงที่จะไม่ผ่านกิจกรรมเข้าแถว เนื่องจากปัจจุบันเข้าร่วมเพียง {{จำนวนวันเข้าแถว}} วัน จากทั้งหมด {{จำนวนวันทั้งหมด}} วัน ({{ร้อยละการเข้าแถว}}%)\n\nกรุณาติดต่อครูที่ปรึกษา {{ชื่อครูที่ปรึกษา}} โทร. {{เบอร์โทรครู}} เพื่อหาแนวทางแก้ไขต่อไป\n\nด้วยความเคารพ\nฝ่ายกิจการนักเรียน\nวิทยาลัยการอาชีพปราสาท`;
             break;
         case 'critical':
-            messageText.value = `เรียน ผู้ปกครองของ ${studentName}\n\n[ข้อความด่วน] ทางโรงเรียนขอแจ้งว่า ${studentName} นักเรียนชั้น ${studentClass} มีความเสี่ยงสูงที่จะไม่ผ่านกิจกรรมเข้าแถว ซึ่งมีผลต่อการจบการศึกษา เนื่องจากปัจจุบันเข้าร่วมเพียง ${attendanceDays} (${attendanceRate}%)\n\nขอความกรุณาท่านผู้ปกครองติดต่อครูที่ปรึกษา ${advisorName} โทร. ${advisorPhone} ภายในวันนี้หรืออย่างช้าในวันพรุ่งนี้ เพื่อหาแนวทางแก้ไขอย่างเร่งด่วน\n\nด้วยความเคารพ\nฝ่ายกิจการนักเรียน\nวิทยาลัยการอาชีพปราสาท`;
+            messageText.value = `เรียน ผู้ปกครองของ {{ชื่อนักเรียน}}\n\n[ข้อความด่วน] ทางวิทยาลัยขอแจ้งว่า {{ชื่อนักเรียน}} นักเรียนชั้น {{ชั้นเรียน}} มีความเสี่ยงสูงที่จะไม่ผ่านกิจกรรมเข้าแถว ซึ่งมีผลต่อการจบการศึกษา เนื่องจากปัจจุบันเข้าร่วมเพียง {{จำนวนวันเข้าแถว}} วัน จากทั้งหมด {{จำนวนวันทั้งหมด}} วัน ({{ร้อยละการเข้าแถว}}%)\n\nขอความกรุณาท่านผู้ปกครองติดต่อครูที่ปรึกษา {{ชื่อครูที่ปรึกษา}} โทร. {{เบอร์โทรครู}} ภายในวันนี้หรืออย่างช้าในวันพรุ่งนี้ เพื่อหาแนวทางแก้ไขอย่างเร่งด่วน\n\nด้วยความเคารพ\nฝ่ายกิจการนักเรียน\nวิทยาลัยการอาชีพปราสาท`;
             break;
         case 'summary':
             // สร้างเดือนปัจจุบันเป็นภาษาไทย
@@ -189,7 +242,10 @@ function selectTemplate(templateType) {
             const currentMonth = months[new Date().getMonth()];
             const currentYear = new Date().getFullYear() + 543; // พ.ศ.
             
-            messageText.value = `เรียน ผู้ปกครองของ ${studentName}\n\nสรุปข้อมูลการเข้าแถวของ ${studentName} นักเรียนชั้น ${studentClass} ประจำเดือน${currentMonth} ${currentYear}\n\nจำนวนวันเข้าแถว: ${attendanceDays.split('/')[0]} วัน จากทั้งหมด ${attendanceDays.split('/')[1]} วัน (${attendanceRate}%)\nจำนวนวันขาดแถว: ${attendanceDays.split('/')[1] - attendanceDays.split('/')[0]} วัน\nสถานะ: ${attendanceRate < 60 ? 'เสี่ยงตกกิจกรรมเข้าแถว' : attendanceRate < 80 ? 'ต้องระวัง' : 'ปกติ'}\n\nหมายเหตุ: นักเรียนต้องมีอัตราการเข้าแถวไม่ต่ำกว่า 80% จึงจะผ่านกิจกรรม\n\nกรุณาติดต่อครูที่ปรึกษา ${advisorName} โทร. ${advisorPhone} เพื่อหาแนวทางแก้ไขต่อไป\n\nด้วยความเคารพ\nฝ่ายกิจการนักเรียน\nวิทยาลัยการอาชีพปราสาท`;
+            messageText.value = `เรียน ผู้ปกครองของ {{ชื่อนักเรียน}}\n\nสรุปข้อมูลการเข้าแถวของ {{ชื่อนักเรียน}} นักเรียนชั้น {{ชั้นเรียน}} ประจำเดือน${currentMonth} ${currentYear}\n\nจำนวนวันเข้าแถว: {{จำนวนวันเข้าแถว}} วัน จากทั้งหมด {{จำนวนวันทั้งหมด}} วัน ({{ร้อยละการเข้าแถว}}%)\nจำนวนวันขาดแถว: {{จำนวนวันขาด}} วัน\nสถานะ: {{สถานะการเข้าแถว}}\n\nหมายเหตุ: นักเรียนต้องมีอัตราการเข้าแถวไม่ต่ำกว่า 80% จึงจะผ่านกิจกรรม\n\nกรุณาติดต่อครูที่ปรึกษา {{ชื่อครูที่ปรึกษา}} โทร. {{เบอร์โทรครู}} เพื่อหาแนวทางแก้ไขต่อไป\n\nด้วยความเคารพ\nฝ่ายกิจการนักเรียน\nวิทยาลัยการอาชีพปราสาท`;
+            break;
+        case 'custom':
+            messageText.value = `เรียน ผู้ปกครองของ {{ชื่อนักเรียน}}\n\n[ข้อความของท่าน] กรุณาพิมพ์ข้อความที่ต้องการส่งที่นี่\n\nท่านสามารถใช้ตัวแปรต่างๆ เช่น:\n- {{ชื่อนักเรียน}} - ชื่อของนักเรียน\n- {{ชั้นเรียน}} - ชั้นเรียนของนักเรียน\n- {{จำนวนวันเข้าแถว}} - จำนวนวันที่นักเรียนเข้าแถว\n- {{จำนวนวันทั้งหมด}} - จำนวนวันทั้งหมดในช่วงเวลาที่เลือก\n- {{ร้อยละการเข้าแถว}} - อัตราการเข้าแถวเป็นเปอร์เซ็นต์\n- {{ชื่อครูที่ปรึกษา}} - ชื่อครูที่ปรึกษา\n- {{เบอร์โทรครู}} - เบอร์โทรของครูที่ปรึกษา\n\nด้วยความเคารพ\nฝ่ายกิจการนักเรียน\nวิทยาลัยการอาชีพปราสาท`;
             break;
     }
     
@@ -209,8 +265,7 @@ function selectGroupTemplate(templateType) {
     });
     
     // เลือกเทมเพลตที่คลิก
-    const selectedButton = document.querySelector(`.template-btn[onclick*="${templateType}"]`) || 
-                         document.querySelector(`.template-btn[data-template="${templateType}"]`);
+    const selectedButton = document.querySelector(`.template-btn[data-template="${templateType}"]`);
     if (selectedButton) {
         selectedButton.classList.add('active');
     }
@@ -219,24 +274,24 @@ function selectGroupTemplate(templateType) {
     const messageText = document.getElementById('groupMessageText');
     if (!messageText) return;
     
-    const classInfo = document.querySelector('.class-info-display')?.textContent || "ม.5/1";
+    const classInfo = document.querySelector('.class-info-display')?.textContent || "ปวช.1/1";
     const advisorName = document.querySelector('.advisor-name-display')?.textContent || "ครูอิศรา สุขใจ";
     const advisorPhone = document.querySelector('.advisor-phone-display')?.textContent || "081-234-5678";
     
     switch(templateType) {
         case 'regular':
         case 'reminder':
-            messageText.value = `เรียน ท่านผู้ปกครองนักเรียนชั้น ${classInfo}\n\nทางโรงเรียนขอแจ้งว่าในวันศุกร์ที่ 21 มีนาคม 2568 นักเรียนชั้น ${classInfo} จะต้องมาวิทยาลัยก่อนเวลา 07:30 น. เพื่อเตรียมความพร้อมในการเข้าแถวพิเศษสำหรับกิจกรรมวันภาษาไทย\n\nจึงเรียนมาเพื่อทราบ\n\nด้วยความเคารพ\nฝ่ายกิจการนักเรียน\nวิทยาลัยการอาชีพปราสาท`;
+            messageText.value = `เรียน ท่านผู้ปกครองนักเรียนชั้น {{ชั้นเรียน}}\n\nทางวิทยาลัยขอแจ้งว่าในวันศุกร์ที่ 21 มีนาคม 2568 นักเรียนชั้น {{ชั้นเรียน}} จะต้องมาวิทยาลัยก่อนเวลา 07:30 น. เพื่อเตรียมความพร้อมในการเข้าแถวพิเศษสำหรับกิจกรรมวันภาษาไทย\n\nจึงเรียนมาเพื่อทราบ\n\nด้วยความเคารพ\nฝ่ายกิจการนักเรียน\nวิทยาลัยการอาชีพปราสาท`;
             break;
         case 'risk-warning':
-            messageText.value = `เรียน ท่านผู้ปกครองนักเรียนชั้น ${classInfo}\n\nทางโรงเรียนขอแจ้งว่า บุตรหลานของท่านมีความเสี่ยงที่จะไม่ผ่านกิจกรรมเข้าแถว เนื่องจากมีจำนวนวันเข้าแถวต่ำกว่าเกณฑ์ที่กำหนด\n\nโดยอัตราการเข้าแถวของนักเรียนอยู่ที่ต่ำกว่า 70% ซึ่งหากต่ำกว่า 80% เมื่อสิ้นภาคเรียน นักเรียนจะไม่ผ่านกิจกรรมเข้าแถว ซึ่งมีผลต่อการจบการศึกษา\n\nกรุณาติดต่อครูที่ปรึกษาประจำชั้น ${classInfo} ${advisorName} โทร. ${advisorPhone} เพื่อหาแนวทางแก้ไขต่อไป\n\nด้วยความเคารพ\nฝ่ายกิจการนักเรียน\nวิทยาลัยการอาชีพปราสาท`;
+            messageText.value = `เรียน ท่านผู้ปกครองนักเรียนชั้น {{ชั้นเรียน}}\n\nทางวิทยาลัยขอแจ้งว่า บุตรหลานของท่านมีความเสี่ยงที่จะไม่ผ่านกิจกรรมเข้าแถว เนื่องจากมีจำนวนวันเข้าแถวต่ำกว่าเกณฑ์ที่กำหนด\n\nโดยอัตราการเข้าแถวของนักเรียนอยู่ที่ต่ำกว่า 70% ซึ่งหากต่ำกว่า 80% เมื่อสิ้นภาคเรียน นักเรียนจะไม่ผ่านกิจกรรมเข้าแถว ซึ่งมีผลต่อการจบการศึกษา\n\nกรุณาติดต่อครูที่ปรึกษาประจำชั้น {{ชั้นเรียน}} {{ชื่อครูที่ปรึกษา}} โทร. {{เบอร์โทรครู}} เพื่อหาแนวทางแก้ไขต่อไป\n\nด้วยความเคารพ\nฝ่ายกิจการนักเรียน\nวิทยาลัยการอาชีพปราสาท`;
             break;
         case 'meeting':
-            messageText.value = `เรียน ท่านผู้ปกครองนักเรียนชั้น ${classInfo}\n\nทางโรงเรียนขอแจ้งว่า บุตรหลานของท่านมีความเสี่ยงที่จะไม่ผ่านกิจกรรมเข้าแถว เนื่องจากมีจำนวนวันเข้าแถวต่ำกว่าเกณฑ์ที่กำหนด\n\nทางโรงเรียนจะจัดประชุมผู้ปกครองกลุ่มเสี่ยงในวันศุกร์ที่ 21 มีนาคม 2568 เวลา 15:00 น. ณ ห้องประชุม 2 อาคารอำนวยการ โดยมีวาระการประชุมดังนี้\n\n1. ชี้แจงกฎระเบียบการเข้าแถวและผลกระทบต่อการจบการศึกษา\n2. ร่วมหาแนวทางแก้ไขปัญหานักเรียนขาดแถว\n3. ปรึกษาหารือเพื่อสนับสนุนนักเรียนในด้านอื่นๆ\n\nกรุณาติดต่อครูที่ปรึกษาประจำชั้น ${classInfo} ${advisorName} โทร. ${advisorPhone} หากมีข้อสงสัยหรือไม่สามารถเข้าร่วมประชุมตามวันเวลาดังกล่าวได้\n\nด้วยความเคารพ\nฝ่ายกิจการนักเรียน\nวิทยาลัยการอาชีพปราสาท`;
+            messageText.value = `เรียน ท่านผู้ปกครองนักเรียนชั้น {{ชั้นเรียน}}\n\nทางวิทยาลัยขอแจ้งว่า บุตรหลานของท่านมีความเสี่ยงที่จะไม่ผ่านกิจกรรมเข้าแถว เนื่องจากมีจำนวนวันเข้าแถวต่ำกว่าเกณฑ์ที่กำหนด\n\nทางวิทยาลัยจะจัดประชุมผู้ปกครองกลุ่มเสี่ยงในวันศุกร์ที่ 21 มีนาคม 2568 เวลา 15:00 น. ณ ห้องประชุม 2 อาคารอำนวยการ โดยมีวาระการประชุมดังนี้\n\n1. ชี้แจงกฎระเบียบการเข้าแถวและผลกระทบต่อการจบการศึกษา\n2. ร่วมหาแนวทางแก้ไขปัญหานักเรียนขาดแถว\n3. ปรึกษาหารือเพื่อสนับสนุนนักเรียนในด้านอื่นๆ\n\nกรุณาติดต่อครูที่ปรึกษาประจำชั้น {{ชั้นเรียน}} {{ชื่อครูที่ปรึกษา}} โทร. {{เบอร์โทรครู}} หากมีข้อสงสัยหรือไม่สามารถเข้าร่วมประชุมตามวันเวลาดังกล่าวได้\n\nด้วยความเคารพ\nฝ่ายกิจการนักเรียน\nวิทยาลัยการอาชีพปราสาท`;
             break;
         case 'custom':
             // เทมเพลตสำหรับเรื่องทั่วไป ไม่เกี่ยวกับการเข้าแถว
-            messageText.value = `เรียน ท่านผู้ปกครองนักเรียนชั้น ${classInfo}\n\nทางวิทยาลัยขอแจ้งให้ทราบว่า วิทยาลัยจะจัดกิจกรรม [ชื่อกิจกรรม] ในวันที่ [วันที่] ณ [สถานที่] เวลา [เวลา] โดยมีวัตถุประสงค์เพื่อ [วัตถุประสงค์]\n\nนักเรียนจะต้อง [รายละเอียดสิ่งที่นักเรียนต้องเตรียม/ปฏิบัติ]\n\nหากท่านมีข้อสงสัยประการใด สามารถติดต่อสอบถามได้ที่ ${advisorName} โทร. ${advisorPhone}\n\nจึงเรียนมาเพื่อทราบ\n\nด้วยความเคารพ\nฝ่ายกิจการนักเรียน\nวิทยาลัยการอาชีพปราสาท`;
+            messageText.value = `เรียน ท่านผู้ปกครองนักเรียนชั้น {{ชั้นเรียน}}\n\n[ข้อความของท่าน] กรุณาพิมพ์ข้อความที่ต้องการส่งที่นี่\n\nท่านสามารถใช้ตัวแปรต่างๆ เช่น:\n- {{ชั้นเรียน}} - ชั้นเรียนของนักเรียน\n- {{ชื่อครูที่ปรึกษา}} - ชื่อครูที่ปรึกษา\n- {{เบอร์โทรครู}} - เบอร์โทรของครูที่ปรึกษา\n\nด้วยความเคารพ\nฝ่ายกิจการนักเรียน\nวิทยาลัยการอาชีพปราสาท`;
             break;
     }
     
@@ -349,8 +404,11 @@ function showHistory() {
     // ดึงข้อมูลรหัสนักเรียนที่เลือก
     const studentId = getSelectedStudentId();
     
+    // สร้าง loading indicator
+    showAlert('กำลังดึงข้อมูลประวัติการส่งข้อความ...', 'info');
+    
     // ใช้ AJAX เพื่อดึงประวัติการส่งข้อความ
-    fetch('send_notification.php', {
+    fetch('send_notification_handler.php', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
@@ -366,30 +424,47 @@ function showHistory() {
             if (historyTable) {
                 historyTable.innerHTML = '';
                 
-                data.history.forEach(item => {
-                    const statusClass = item.status === 'sent' ? 'success' : 'danger';
-                    const statusText = item.status === 'sent' ? 'ส่งสำเร็จ' : 'ส่งไม่สำเร็จ';
-                    
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td>${formatDateTime(item.sent_at)}</td>
-                        <td>${getNotificationTypeName(item.notification_type)}</td>
-                        <td>${item.first_name} ${item.last_name}</td>
-                        <td><span class="status-badge ${statusClass}">${statusText}</span></td>
-                        <td>
-                            <button class="table-action-btn primary" title="ดูข้อความ" onclick="viewNotificationMessage(${item.notification_id})">
-                                <span class="material-icons">visibility</span>
-                            </button>
-                        </td>
+                if (data.history.length === 0) {
+                    historyTable.innerHTML = `
+                        <tr>
+                            <td colspan="5" class="text-center">ไม่พบประวัติการส่งข้อความ</td>
+                        </tr>
                     `;
-                    
-                    historyTable.appendChild(row);
-                });
+                } else {
+                    data.history.forEach(item => {
+                        const statusClass = item.status === 'sent' ? 'success' : 'danger';
+                        const statusText = item.status === 'sent' ? 'ส่งสำเร็จ' : 'ส่งไม่สำเร็จ';
+                        
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${formatDateTime(item.sent_at)}</td>
+                            <td>${getNotificationTypeName(item.notification_type)}</td>
+                            <td>${item.first_name} ${item.last_name}</td>
+                            <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+                            <td>
+                                <button class="table-action-btn primary" title="ดูข้อความ" onclick="viewNotificationMessage(${item.notification_id})">
+                                    <span class="material-icons">visibility</span>
+                                </button>
+                            </td>
+                        `;
+                        
+                        historyTable.appendChild(row);
+                    });
+                }
+            }
+            
+            // อัปเดตชื่อนักเรียนในหัวข้อโมดัล
+            const studentNameElement = document.querySelector('.history-student-name');
+            if (studentNameElement) {
+                const studentNameDisplay = document.querySelector('.student-name-display');
+                if (studentNameDisplay) {
+                    studentNameElement.textContent = studentNameDisplay.textContent;
+                }
             }
             
             showModal('historyModal');
         } else {
-            showAlert('ไม่สามารถดึงข้อมูลประวัติการส่งข้อความได้', 'danger');
+            showAlert('ไม่สามารถดึงข้อมูลประวัติการส่งข้อความได้: ' + (data.message || 'เกิดข้อผิดพลาด'), 'danger');
         }
     })
     .catch(error => {
@@ -440,10 +515,10 @@ function getNotificationTypeName(type) {
  * @param {number} notificationId - รหัสการแจ้งเตือน
  */
 function viewNotificationMessage(notificationId) {
-    // ในทางปฏิบัติจริง จะต้องใช้ AJAX เพื่อดึงข้อมูลข้อความแจ้งเตือน
-    // นี่เป็นตัวอย่างการจำลอง
+    // อาจใช้ AJAX เพื่อดึงข้อมูลข้อความแจ้งเตือนตามรหัส
+    // สำหรับตัวอย่าง ใช้ข้อความจำลอง
     
-    const messageContent = `เรียน ผู้ปกครองของ นายธนกฤต สุขใจ\n\nทางโรงเรียนขอแจ้งว่า นายธนกฤต สุขใจ นักเรียนชั้น ม.6/2 มีความเสี่ยงที่จะไม่ผ่านกิจกรรมเข้าแถว เนื่องจากปัจจุบันเข้าร่วมเพียง 26 จาก 40 วัน (65%)\n\nกรุณาติดต่อครูที่ปรึกษา อ.ประสิทธิ์ ดีเลิศ โทร. 081-234-5678 เพื่อหาแนวทางแก้ไขต่อไป\n\nด้วยความเคารพ\nฝ่ายกิจการนักเรียน\nโรงเรียนประสาทวิทยาคม`;
+    const messageContent = `เรียน ผู้ปกครองของ นายธนกฤต สุขใจ\n\nทางวิทยาลัยขอแจ้งว่า นายธนกฤต สุขใจ นักเรียนชั้น ปวช.1/1 มีความเสี่ยงที่จะไม่ผ่านกิจกรรมเข้าแถว เนื่องจากปัจจุบันเข้าร่วมเพียง 26 จาก 40 วัน (65%)\n\nกรุณาติดต่อครูที่ปรึกษา อ.ประสิทธิ์ ดีเลิศ โทร. 081-234-5678 เพื่อหาแนวทางแก้ไขต่อไป\n\nด้วยความเคารพ\nฝ่ายกิจการนักเรียน\nวิทยาลัยการอาชีพปราสาท`;
     
     const previewText = document.getElementById('previewText');
     if (previewText) {
@@ -470,6 +545,8 @@ function selectAllRecipients() {
     
     // อัปเดตจำนวนผู้รับในปุ่มส่ง
     updateRecipientCount();
+    // อัปเดตค่าใช้จ่าย
+    updateGroupMessageCost();
 }
 
 /**
@@ -482,6 +559,8 @@ function clearAllRecipients() {
     
     // อัปเดตจำนวนผู้รับในปุ่มส่ง
     updateRecipientCount();
+    // อัปเดตค่าใช้จ่าย
+    updateGroupMessageCost();
 }
 
 /**
@@ -490,11 +569,91 @@ function clearAllRecipients() {
 function updateRecipientCount() {
     const selectedCount = document.querySelectorAll('.recipients-container input[type="checkbox"]:checked').length;
     const sendButton = document.querySelector('#group-tab .form-actions .btn-primary');
+    const recipientCountElement = document.querySelector('.recipient-count');
     
     if (sendButton) {
         const buttonText = sendButton.innerHTML.replace(/\(\d+.*\)/g, '');
         sendButton.innerHTML = `${buttonText} (${selectedCount} ราย)`;
     }
+    
+    if (recipientCountElement) {
+        recipientCountElement.textContent = selectedCount;
+    }
+}
+
+/**
+ * อัปเดตค่าใช้จ่ายในการส่งข้อความกลุ่ม
+ */
+function updateGroupMessageCost() {
+    const includeChart = document.getElementById('include-chart-group')?.checked || false;
+    const includeLink = document.getElementById('include-link-group')?.checked || false;
+    
+    const messageCost = 0.075; // บาทต่อข้อความ
+    const chartCost = 0.15; // บาทต่อรูปภาพ
+    const linkCost = 0.075; // บาทต่อลิงก์
+    
+    const selectedCount = document.querySelectorAll('.recipients-container input[type="checkbox"]:checked').length;
+    
+    let costPerRecipient = messageCost;
+    
+    if (includeChart) {
+        costPerRecipient += chartCost;
+    }
+    
+    if (includeLink) {
+        costPerRecipient += linkCost;
+    }
+    
+    const totalCost = costPerRecipient * selectedCount;
+    
+    // อัปเดตการแสดงผล
+    const costValueElements = document.querySelectorAll('#group-tab .message-cost .cost-item.total .cost-value');
+    costValueElements.forEach(element => {
+        element.textContent = totalCost.toFixed(2) + ' บาท';
+    });
+    
+    // อัปเดตรายละเอียดค่าใช้จ่าย
+    document.querySelector('#group-tab .cost-item:nth-child(1) .cost-label').textContent = `ข้อความ (${selectedCount} คน):`;
+    document.querySelector('#group-tab .cost-item:nth-child(1) .cost-value').textContent = (messageCost * selectedCount).toFixed(2) + ' บาท';
+    
+    document.querySelector('#group-tab .cost-item:nth-child(2) .cost-label').textContent = `รูปภาพกราฟ (${includeChart ? selectedCount : 0} รูป):`;
+    document.querySelector('#group-tab .cost-item:nth-child(2) .cost-value').textContent = (chartCost * (includeChart ? selectedCount : 0)).toFixed(2) + ' บาท';
+    
+    document.querySelector('#group-tab .cost-item:nth-child(3) .cost-label').textContent = `ลิงก์ (${includeLink ? selectedCount : 0} ลิงก์):`;
+    document.querySelector('#group-tab .cost-item:nth-child(3) .cost-value').textContent = (linkCost * (includeLink ? selectedCount : 0)).toFixed(2) + ' บาท';
+}
+
+/**
+ * อัปเดตค่าใช้จ่ายในการส่งข้อความรายบุคคล
+ */
+function updateMessageCost() {
+    const includeChart = document.getElementById('include-chart')?.checked || false;
+    const includeLink = document.getElementById('include-link')?.checked || false;
+    
+    const messageCost = 0.075; // บาทต่อข้อความ
+    const chartCost = 0.15; // บาทต่อรูปภาพ
+    const linkCost = 0.075; // บาทต่อลิงก์
+    
+    let totalCost = messageCost;
+    
+    if (includeChart) {
+        totalCost += chartCost;
+    }
+    
+    if (includeLink) {
+        totalCost += linkCost;
+    }
+    
+    // อัปเดตการแสดงผล
+    const costValueElements = document.querySelectorAll('#individual-tab .message-cost .cost-item.total .cost-value');
+    costValueElements.forEach(element => {
+        element.textContent = totalCost.toFixed(2) + ' บาท';
+    });
+    
+    // อัปเดตรายละเอียดค่าใช้จ่าย
+    document.querySelector('#individual-tab .cost-item:nth-child(1) .cost-value').textContent = messageCost.toFixed(2) + ' บาท';
+    document.querySelector('#individual-tab .cost-item:nth-child(2) .cost-value').textContent = (includeChart ? chartCost : 0).toFixed(2) + ' บาท';
+    document.querySelector('#individual-tab .cost-item:nth-child(3) .cost-value').textContent = (includeLink ? linkCost : 0).toFixed(2) + ' บาท';
 }
 
 /**
@@ -524,10 +683,10 @@ function sendMessage() {
     const includeLink = document.getElementById('include-link')?.checked || false;
     
     // แสดงการกำลังส่ง
-    showAlert('กำลังส่งข้อความ...', 'info');
+    showLoading('กำลังส่งข้อความ...');
     
     // ส่งข้อมูลผ่าน AJAX
-    fetch('send_notification.php', {
+    fetch('send_notification_handler.php', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
@@ -537,6 +696,8 @@ function sendMessage() {
     })
     .then(response => response.json())
     .then(data => {
+        hideLoading();
+        
         if (data.success) {
             // แสดงผลลัพธ์การส่งสำเร็จ
             showSendResults([{
@@ -551,9 +712,89 @@ function sendMessage() {
         }
     })
     .catch(error => {
+        hideLoading();
         console.error('Error:', error);
         showAlert('เกิดข้อผิดพลาดในการส่งข้อความ', 'danger');
     });
+}
+
+/**
+ * แสดงหน้าต่างโหลดระหว่างดำเนินการ
+ * 
+ * @param {string} message - ข้อความที่แสดงระหว่างโหลด
+ */
+function showLoading(message = 'กำลังดำเนินการ...') {
+    // ตรวจสอบว่ามีโมดัลโหลดอยู่แล้วหรือไม่
+    let loadingModal = document.getElementById('loadingModal');
+    
+    if (!loadingModal) {
+        // สร้างโมดัลโหลด
+        loadingModal = document.createElement('div');
+        loadingModal.id = 'loadingModal';
+        loadingModal.className = 'modal loading-modal';
+        loadingModal.innerHTML = `
+            <div class="loading-content">
+                <div class="loading-spinner"></div>
+                <div class="loading-message">${message}</div>
+            </div>
+        `;
+        document.body.appendChild(loadingModal);
+        
+        // เพิ่ม CSS สำหรับโมดัลโหลด
+        const style = document.createElement('style');
+        style.textContent = `
+            .loading-modal {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background-color: rgba(0, 0, 0, 0.5);
+                z-index: 2000;
+            }
+            .loading-content {
+                background-color: white;
+                padding: 30px;
+                border-radius: 10px;
+                text-align: center;
+                box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            }
+            .loading-spinner {
+                width: 50px;
+                height: 50px;
+                border: 5px solid #f3f3f3;
+                border-top: 5px solid var(--primary-color, #06c755);
+                border-radius: 50%;
+                margin: 0 auto 20px;
+                animation: spin 1s linear infinite;
+            }
+            .loading-message {
+                font-size: 18px;
+                font-weight: 600;
+            }
+            @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+        `;
+        document.head.appendChild(style);
+    } else {
+        // อัปเดตข้อความ
+        loadingModal.querySelector('.loading-message').textContent = message;
+    }
+    
+    // แสดงโมดัล
+    loadingModal.classList.add('active');
+    document.body.style.overflow = 'hidden';
+}
+
+/**
+ * ซ่อนหน้าต่างโหลด
+ */
+function hideLoading() {
+    const loadingModal = document.getElementById('loadingModal');
+    if (loadingModal) {
+        loadingModal.classList.remove('active');
+        document.body.style.overflow = '';
+    }
 }
 
 /**
@@ -586,10 +827,10 @@ function sendGroupMessage() {
     const studentIds = Array.from(selectedCheckboxes).map(checkbox => checkbox.value);
     
     // แสดงการกำลังส่ง
-    showAlert(`กำลังส่งข้อความไปยังผู้ปกครอง ${studentIds.length} คน...`, 'info');
+    showLoading(`กำลังส่งข้อความไปยังผู้ปกครอง ${studentIds.length} คน... (0/${studentIds.length})`);
     
     // ส่งข้อมูลผ่าน AJAX
-    fetch('send_notification.php', {
+    fetch('send_notification_handler.php', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
@@ -599,6 +840,8 @@ function sendGroupMessage() {
     })
     .then(response => response.json())
     .then(data => {
+        hideLoading();
+        
         if (data.success) {
             // แสดงผลลัพธ์การส่ง
             showSendResults(data.results, data.total_cost, data.success_count, data.error_count);
@@ -608,6 +851,7 @@ function sendGroupMessage() {
         }
     })
     .catch(error => {
+        hideLoading();
         console.error('Error:', error);
         showAlert('เกิดข้อผิดพลาดในการส่งข้อความ', 'danger');
     });
@@ -622,81 +866,88 @@ function sendGroupMessage() {
  * @param {number} errorCount - จำนวนการส่งล้มเหลว
  */
 function showSendResults(results, totalCost = null, successCount = null, errorCount = null) {
-    // สร้างโมดัลผลลัพธ์การส่ง
-    let modalContent = `
-        <div class="modal" id="resultModal">
-            <div class="modal-content">
-                <button class="modal-close" onclick="closeModal('resultModal')">
-                    <span class="material-icons">close</span>
-                </button>
-                <h2 class="modal-title">ผลลัพธ์การส่งข้อความ</h2>
-                
-                <div class="result-summary">
-                    <div class="result-item success">
-                        <span class="material-icons">check_circle</span>
-                        <div class="result-value">${successCount !== null ? successCount : results.filter(r => r.success).length}</div>
-                        <div class="result-label">สำเร็จ</div>
-                    </div>
-                    <div class="result-item error">
-                        <span class="material-icons">error</span>
-                        <div class="result-value">${errorCount !== null ? errorCount : results.filter(r => !r.success).length}</div>
-                        <div class="result-label">ล้มเหลว</div>
-                    </div>
-                    <div class="result-item cost">
-                        <span class="material-icons">payments</span>
-                        <div class="result-value">${formatCurrency(totalCost || results.reduce((sum, r) => sum + (r.cost || 0), 0))}</div>
-                        <div class="result-label">ค่าใช้จ่าย</div>
-                    </div>
+    // ตรวจสอบว่ามีโมดัลผลลัพธ์อยู่แล้วหรือไม่
+    let resultModal = document.getElementById('resultModal');
+    
+    if (!resultModal) {
+        // สร้างโมดัลผลลัพธ์
+        resultModal = document.createElement('div');
+        resultModal.id = 'resultModal';
+        resultModal.className = 'modal';
+        document.body.appendChild(resultModal);
+    }
+    
+    // คำนวณผลลัพธ์
+    const success = successCount !== null ? successCount : results.filter(r => r.success).length;
+    const error = errorCount !== null ? errorCount : results.filter(r => !r.success).length;
+    const cost = totalCost !== null ? totalCost : results.reduce((sum, r) => sum + (r.cost || 0), 0);
+    
+    // สร้างเนื้อหาโมดัล
+    resultModal.innerHTML = `
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal('resultModal')">
+                <span class="material-icons">close</span>
+            </button>
+            <h2 class="modal-title">ผลลัพธ์การส่งข้อความ</h2>
+            
+            <div class="result-summary">
+                <div class="result-item success">
+                    <span class="material-icons">check_circle</span>
+                    <div class="result-value">${success}</div>
+                    <div class="result-label">สำเร็จ</div>
                 </div>
+                <div class="result-item error">
+                    <span class="material-icons">error</span>
+                    <div class="result-value">${error}</div>
+                    <div class="result-label">ล้มเหลว</div>
+                </div>
+                <div class="result-item cost">
+                    <span class="material-icons">payments</span>
+                    <div class="result-value">${formatCurrency(cost)}</div>
+                    <div class="result-label">ค่าใช้จ่าย</div>
+                </div>
+            </div>
     `;
     
-    // แสดงรายละเอียดการส่งแต่ละรายการ
+    // เพิ่มรายละเอียดการส่งแต่ละรายการ (ถ้ามีมากกว่า 1 รายการ)
     if (results.length > 1) {
-        modalContent += `
-                <div class="table-responsive">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>นักเรียน</th>
-                                <th>สถานะ</th>
-                                <th>จำนวนข้อความ</th>
-                                <th>ค่าใช้จ่าย</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-        `;
-        
-        results.forEach(result => {
-            const statusClass = result.success ? 'success' : 'danger';
-            const statusText = result.success ? 'ส่งสำเร็จ' : 'ส่งไม่สำเร็จ';
-            
-            modalContent += `
-                            <tr>
-                                <td>${result.student_name}</td>
-                                <td><span class="status-badge ${statusClass}">${statusText}</span></td>
-                                <td>${result.message_count || 1}</td>
-                                <td>${formatCurrency(result.cost || 0)}</td>
-                            </tr>
-            `;
-        });
-        
-        modalContent += `
-                        </tbody>
-                    </table>
-                </div>
+        resultModal.querySelector('.modal-content').innerHTML += `
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>นักเรียน</th>
+                            <th>สถานะ</th>
+                            <th>จำนวนข้อความ</th>
+                            <th>ค่าใช้จ่าย</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${results.map(result => {
+                            const statusClass = result.success ? 'success' : 'danger';
+                            const statusText = result.success ? 'ส่งสำเร็จ' : 'ส่งไม่สำเร็จ';
+                            
+                            return `
+                                <tr>
+                                    <td>${result.student_name}</td>
+                                    <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+                                    <td>${result.message_count || 1}</td>
+                                    <td>${formatCurrency(result.cost || 0)}</td>
+                                </tr>
+                            `;
+                        }).join('')}
+                    </tbody>
+                </table>
+            </div>
         `;
     }
     
-    modalContent += `
-                <div class="modal-actions">
-                    <button class="btn btn-primary" onclick="closeModal('resultModal')">ตกลง</button>
-                </div>
-            </div>
+    // เพิ่มปุ่มปิด
+    resultModal.querySelector('.modal-content').innerHTML += `
+        <div class="modal-actions">
+            <button class="btn btn-primary" onclick="closeModal('resultModal')">ตกลง</button>
         </div>
     `;
-    
-    // เพิ่มโมดัลไปยัง DOM
-    document.body.insertAdjacentHTML('beforeend', modalContent);
     
     // แสดงโมดัล
     showModal('resultModal');
@@ -755,6 +1006,9 @@ function resetForm() {
     if (document.getElementById('include-link')) {
         document.getElementById('include-link').checked = true;
     }
+    
+    // อัปเดตค่าใช้จ่าย
+    updateMessageCost();
 }
 
 /**
@@ -787,6 +1041,9 @@ function resetGroupForm() {
     if (document.getElementById('include-link-group')) {
         document.getElementById('include-link-group').checked = true;
     }
+    
+    // อัปเดตค่าใช้จ่าย
+    updateGroupMessageCost();
 }
 
 /**
@@ -860,29 +1117,16 @@ function showAlert(message, type = 'info') {
 }
 
 /**
- * แสดงแผนที่แบบจำลองในโมดัล
- */
-function showMapModal(studentId) {
-    // ในทางปฏิบัติจริง จะมีการโหลดข้อมูลตำแหน่งของนักเรียนมาแสดง
-    showModal('mapModal');
-}
-
-/**
- * สร้างเทมเพลตข้อความใหม่
- */
-function createNewTemplate() {
-    // แสดงโมดัลสร้างเทมเพลตใหม่
-    showModal('templateModal');
-}
-
-/**
  * ตั้งค่า event listeners ต่างๆ
  */
 function setupEventListeners() {
     // ติดตามการเปลี่ยนแปลงของ checkboxes ในรายการผู้รับข้อความ
     const recipientCheckboxes = document.querySelectorAll('.recipients-container input[type="checkbox"]');
     recipientCheckboxes.forEach(checkbox => {
-        checkbox.addEventListener('change', updateRecipientCount);
+        checkbox.addEventListener('change', function() {
+            updateRecipientCount();
+            updateGroupMessageCost();
+        });
     });
     
     // ติดตามการเปลี่ยนแปลงของ textarea เพื่ออัปเดตตัวอย่าง
@@ -897,6 +1141,51 @@ function setupEventListeners() {
     if (groupTextarea) {
         groupTextarea.addEventListener('input', function() {
             updateGroupPreview(this.value);
+        });
+    }
+    
+    // ติดตามการเปลี่ยนแปลงของ checkbox ตัวเลือกการส่ง
+    const includeChartCheckbox = document.getElementById('include-chart');
+    if (includeChartCheckbox) {
+        includeChartCheckbox.addEventListener('change', function() {
+            updateMessageCost();
+            const chartPreview = document.querySelector('#individual-tab .chart-preview');
+            if (chartPreview) {
+                chartPreview.style.display = this.checked ? 'block' : 'none';
+            }
+        });
+    }
+    
+    const includeLinkCheckbox = document.getElementById('include-link');
+    if (includeLinkCheckbox) {
+        includeLinkCheckbox.addEventListener('change', function() {
+            updateMessageCost();
+            const linkPreview = document.querySelector('#individual-tab .link-preview');
+            if (linkPreview) {
+                linkPreview.style.display = this.checked ? 'block' : 'none';
+            }
+        });
+    }
+    
+    const includeChartGroupCheckbox = document.getElementById('include-chart-group');
+    if (includeChartGroupCheckbox) {
+        includeChartGroupCheckbox.addEventListener('change', function() {
+            updateGroupMessageCost();
+            const chartPreview = document.querySelector('#group-tab .chart-preview');
+            if (chartPreview) {
+                chartPreview.style.display = this.checked ? 'block' : 'none';
+            }
+        });
+    }
+    
+    const includeLinkGroupCheckbox = document.getElementById('include-link-group');
+    if (includeLinkGroupCheckbox) {
+        includeLinkGroupCheckbox.addEventListener('change', function() {
+            updateGroupMessageCost();
+            const linkPreview = document.querySelector('#group-tab .link-preview');
+            if (linkPreview) {
+                linkPreview.style.display = this.checked ? 'block' : 'none';
+            }
         });
     }
     
@@ -915,6 +1204,9 @@ function setupEventListeners() {
             const radio = row.querySelector('input[type="radio"]');
             if (radio) {
                 radio.checked = true;
+                
+                // อัปเดตข้อมูลนักเรียนในส่วนหัวของฟอร์มส่งข้อความ
+                updateSelectedStudent(row);
             }
             
             // เลื่อนไปยังส่วนข้อความ
@@ -925,51 +1217,118 @@ function setupEventListeners() {
         });
     });
     
-    // ปุ่มกรอง
+    // ปุ่มกรองนักเรียน
     const filterButton = document.querySelector('.filter-button');
     if (filterButton) {
         filterButton.addEventListener('click', applyFilters);
     }
     
-    // การเปลี่ยนแปลงของตัวเลือกการแสดงกราฟและลิงก์
-    const chartCheckbox = document.getElementById('include-chart');
-    if (chartCheckbox) {
-        chartCheckbox.addEventListener('change', function() {
-            // อัปเดตการแสดงกราฟในส่วนตัวอย่าง
-            const chartContainer = document.querySelector('.chart-preview');
-            if (chartContainer) {
-                chartContainer.style.display = this.checked ? 'block' : 'none';
-            }
-        });
+    // ปุ่มส่งข้อความในฟอร์ม
+    const sendMessageButton = document.querySelector('#individual-tab .btn-primary');
+    if (sendMessageButton) {
+        sendMessageButton.addEventListener('click', sendMessage);
     }
     
-    const linkCheckbox = document.getElementById('include-link');
-    if (linkCheckbox) {
-        linkCheckbox.addEventListener('change', function() {
-            // อัปเดตการแสดงลิงก์ในส่วนตัวอย่าง
-            const linkContainer = document.querySelector('.link-preview');
-            if (linkContainer) {
-                linkContainer.style.display = this.checked ? 'block' : 'none';
+    const sendGroupMessageButton = document.querySelector('#group-tab .btn-primary');
+    if (sendGroupMessageButton) {
+        sendGroupMessageButton.addEventListener('click', sendGroupMessage);
+    }
+    
+    // ปุ่มรีเซ็ตฟอร์ม
+    const resetFormButton = document.querySelector('#individual-tab .btn-secondary');
+    if (resetFormButton) {
+        resetFormButton.addEventListener('click', resetForm);
+    }
+    
+    const resetGroupFormButton = document.querySelector('#group-tab .btn-secondary');
+    if (resetGroupFormButton) {
+        resetGroupFormButton.addEventListener('click', resetGroupForm);
+    }
+    
+    // ปุ่มเลือกทั้งหมด/ยกเลิกการเลือกทั้งหมด
+    const selectAllButton = document.querySelector('.batch-actions .btn:first-child');
+    if (selectAllButton) {
+        selectAllButton.addEventListener('click', selectAllRecipients);
+    }
+    
+    const clearAllButton = document.querySelector('.batch-actions .btn:last-child');
+    if (clearAllButton) {
+        clearAllButton.addEventListener('click', clearAllRecipients);
+    }
+    
+    // radio buttons นักเรียน
+    const studentRadios = document.querySelectorAll('input[name="student_select"]');
+    studentRadios.forEach(radio => {
+        radio.addEventListener('change', function() {
+            if (this.checked) {
+                updateSelectedStudent(this.closest('tr'));
             }
         });
+    });
+    
+    // อัปเดตค่าใช้จ่ายครั้งแรก
+    updateMessageCost();
+    updateGroupMessageCost();
+}
+
+/**
+ * อัปเดตข้อมูลนักเรียนที่เลือกในฟอร์มส่งข้อความ
+ * 
+ * @param {Element} row - แถวของนักเรียนที่เลือก
+ */
+function updateSelectedStudent(row) {
+    if (!row) return;
+    
+    const studentName = row.querySelector('.student-name')?.textContent;
+    const studentClass = row.querySelector('td:nth-child(3)')?.textContent;
+    const attendanceDays = row.querySelector('td:nth-child(4)')?.textContent;
+    const studentStatus = row.querySelector('.status-badge')?.textContent;
+    
+    // อัปเดตข้อมูลในส่วนหัวของฟอร์มส่งข้อความ
+    const nameDisplay = document.querySelector('.student-name-display');
+    const classDisplay = document.querySelector('.student-class-display');
+    const daysDisplay = document.querySelector('.attendance-days-display');
+    const statusDisplay = document.querySelector('.attendance-status-display');
+    
+    if (nameDisplay && studentName) {
+        nameDisplay.textContent = studentName;
+    }
+    
+    if (classDisplay && studentClass) {
+        classDisplay.textContent = studentClass;
+    }
+    
+    if (daysDisplay && attendanceDays) {
+        daysDisplay.textContent = attendanceDays;
+    }
+    
+    if (statusDisplay && studentStatus) {
+        statusDisplay.textContent = studentStatus;
+    }
+    
+    // อัปเดตข้อความตามเทมเพลตที่เลือก
+    const activeTemplateBtn = document.querySelector('#individual-tab .template-btn.active');
+    if (activeTemplateBtn) {
+        const templateType = activeTemplateBtn.getAttribute('data-template');
+        selectTemplate(templateType);
     }
 }
 
 /**
- * ใช้ตัวกรองเพื่อค้นหานักเรียนที่ต้องการ
+ * กรองข้อมูลนักเรียน
  */
 function applyFilters() {
     // ดึงค่าตัวกรอง
-    const studentName = document.querySelector('input[placeholder="ป้อนชื่อนักเรียน..."]')?.value || '';
+    const studentName = document.querySelector('input[name="student_name"]')?.value || '';
     const classLevel = document.querySelector('select[name="class_level"]')?.value || '';
     const classGroup = document.querySelector('select[name="class_group"]')?.value || '';
     const riskStatus = document.querySelector('select[name="risk_status"]')?.value || '';
     
     // แสดงการกำลังโหลด
-    showAlert('กำลังค้นหานักเรียน...', 'info');
+    showLoading('กำลังค้นหานักเรียน...');
     
     // ส่งข้อมูลผ่าน AJAX
-    fetch('send_notification.php', {
+    fetch('send_notification_handler.php', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
@@ -979,14 +1338,17 @@ function applyFilters() {
     })
     .then(response => response.json())
     .then(data => {
+        hideLoading();
+        
         if (data.success) {
             // อัปเดตตารางนักเรียน
             updateStudentTable(data.students, data.total);
         } else {
-            showAlert('เกิดข้อผิดพลาดในการค้นหานักเรียน', 'danger');
+            showAlert('เกิดข้อผิดพลาดในการค้นหานักเรียน: ' + (data.message || 'เกิดข้อผิดพลาด'), 'danger');
         }
     })
     .catch(error => {
+        hideLoading();
         console.error('Error:', error);
         showAlert('เกิดข้อผิดพลาดในการค้นหานักเรียน', 'danger');
     });
@@ -1032,7 +1394,7 @@ function updateStudentTable(students, total) {
                     <div class="student-avatar">${student.initial}</div>
                     <div class="student-details">
                         <div class="student-name">${student.title} ${student.first_name} ${student.last_name}</div>
-                        <div class="student-class">เลขที่ ${student.class_number || '-'}</div>
+                        <div class="student-class">รหัส ${student.student_code || '-'}</div>
                     </div>
                 </div>
             </td>
@@ -1066,6 +1428,12 @@ function updateStudentTable(students, total) {
     
     // ตั้งค่า event listeners สำหรับปุ่มในตารางใหม่
     setupEventListeners();
+    
+    // อัปเดตข้อมูลนักเรียนในฟอร์มส่งข้อความ (จากนักเรียนคนแรก)
+    if (students.length > 0) {
+        const firstRow = tableBody.querySelector('tr');
+        updateSelectedStudent(firstRow);
+    }
 }
 
 /**
@@ -1087,6 +1455,16 @@ function checkUrlParameters() {
         const studentId = params.get('student_id');
         selectStudentById(studentId);
     }
+    
+    // ตรวจสอบว่ามีการระบุห้องเรียนหรือไม่
+    if (params.has('class_level') || params.has('class_group') || params.has('risk_status')) {
+        document.querySelector('select[name="class_level"]').value = params.get('class_level') || '';
+        document.querySelector('select[name="class_group"]').value = params.get('class_group') || '';
+        document.querySelector('select[name="risk_status"]').value = params.get('risk_status') || '';
+        
+        // ใช้ตัวกรองอัตโนมัติ
+        applyFilters();
+    }
 }
 
 /**
@@ -1096,11 +1474,26 @@ function checkUrlParameters() {
  */
 function selectStudentById(studentId) {
     const studentRadios = document.querySelectorAll('input[name="student_select"]');
+    let found = false;
+    
     studentRadios.forEach(radio => {
         if (radio.value === studentId) {
             radio.checked = true;
+            found = true;
+            
+            // อัปเดตข้อมูลนักเรียนในฟอร์ม
+            updateSelectedStudent(radio.closest('tr'));
         }
     });
+    
+    if (!found) {
+        // ถ้าไม่พบนักเรียน อาจต้องทำการค้นหาจากฐานข้อมูล
+        // หรือเลือกนักเรียนคนแรกในรายการ
+        if (studentRadios.length > 0) {
+            studentRadios[0].checked = true;
+            updateSelectedStudent(studentRadios[0].closest('tr'));
+        }
+    }
 }
 
 /**
