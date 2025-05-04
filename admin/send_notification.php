@@ -91,50 +91,53 @@ $content_path = 'pages/notification_content.php';
  * @return array ข้อมูลนักเรียน
  */
 function getAtRiskStudents($conn, $limit = 10, $offset = 0, $filters = []) {
+    // Validasi dan sanitasi input
+    $limit = max(1, intval($limit));
+    $offset = max(0, intval($offset));
+    
     $params = [];
-    $where_clauses = ["s.status = 'กำลังศึกษา'", "ay.is_active = 1"];
-    
-    // เพิ่มเงื่อนไขการกรอง
+    $where_clauses = [];
+
+    // Tambahkan kondisi default
+    $where_clauses[] = "s.status = 'กำลังศึกษา'";
+    $where_clauses[] = "ay.is_active = 1";
+
+    // Tambahkan filter dengan pemeriksaan yang ketat
     if (!empty($filters['class_level'])) {
-        $where_clauses[] = "c.level = ?";
-        $params[] = $filters['class_level'];
+        $where_clauses[] = "c.level = :level";
+        $params[':level'] = $filters['class_level'];
     }
-    
+
     if (!empty($filters['class_group'])) {
-        $where_clauses[] = "c.group_number = ?";
-        $params[] = $filters['class_group'];
+        $where_clauses[] = "c.group_number = :group";
+        $params[':group'] = $filters['class_group'];
     }
-    
+
+    // Filter status risiko
     if (!empty($filters['risk_status'])) {
-        if ($filters['risk_status'] == 'เสี่ยงตกกิจกรรม') {
-            $where_clauses[] = "(sar.total_attendance_days / (sar.total_attendance_days + sar.total_absence_days)) * 100 < 70";
-        } elseif ($filters['risk_status'] == 'ต้องระวัง') {
-            $where_clauses[] = "(sar.total_attendance_days / (sar.total_attendance_days + sar.total_absence_days)) * 100 BETWEEN 70 AND 80";
-        } elseif ($filters['risk_status'] == 'ปกติ') {
-            $where_clauses[] = "(sar.total_attendance_days / (sar.total_attendance_days + sar.total_absence_days)) * 100 > 80";
+        switch ($filters['risk_status']) {
+            case 'เสี่ยงตกกิจกรรม':
+                $where_clauses[] = "(sar.total_attendance_days / (sar.total_attendance_days + sar.total_absence_days)) * 100 < 60";
+                break;
+            case 'ต้องระวัง':
+                $where_clauses[] = "(sar.total_attendance_days / (sar.total_attendance_days + sar.total_absence_days)) * 100 BETWEEN 60 AND 80";
+                break;
+            case 'ปกติ':
+                $where_clauses[] = "(sar.total_attendance_days / (sar.total_attendance_days + sar.total_absence_days)) * 100 > 80";
+                break;
         }
     }
-    
-    if (!empty($filters['attendance_rate'])) {
-        if ($filters['attendance_rate'] == 'น้อยกว่า 70%') {
-            $where_clauses[] = "(sar.total_attendance_days / (sar.total_attendance_days + sar.total_absence_days)) * 100 < 70";
-        } elseif ($filters['attendance_rate'] == '70% - 80%') {
-            $where_clauses[] = "(sar.total_attendance_days / (sar.total_attendance_days + sar.total_absence_days)) * 100 BETWEEN 70 AND 80";
-        } elseif ($filters['attendance_rate'] == '80% - 90%') {
-            $where_clauses[] = "(sar.total_attendance_days / (sar.total_attendance_days + sar.total_absence_days)) * 100 BETWEEN 80 AND 90";
-        } elseif ($filters['attendance_rate'] == 'มากกว่า 90%') {
-            $where_clauses[] = "(sar.total_attendance_days / (sar.total_attendance_days + sar.total_absence_days)) * 100 > 90";
-        }
-    }
-    
+
+    // Filter nama
     if (!empty($filters['student_name'])) {
-        $where_clauses[] = "(u.first_name LIKE ? OR u.last_name LIKE ?)";
-        $params[] = "%" . $filters['student_name'] . "%";
-        $params[] = "%" . $filters['student_name'] . "%";
+        $where_clauses[] = "(u.first_name LIKE :name OR u.last_name LIKE :name)";
+        $params[':name'] = '%' . $filters['student_name'] . '%';
     }
-    
-    $where_clause = implode(" AND ", $where_clauses);
-    
+
+    // Gabungkan klausa WHERE
+    $where_sql = implode(" AND ", $where_clauses);
+
+    // Query utama dengan prepared statement
     $query = "
         SELECT 
             s.student_id,
@@ -144,67 +147,99 @@ function getAtRiskStudents($conn, $limit = 10, $offset = 0, $filters = []) {
             u.last_name,
             c.level,
             c.group_number,
-            (SELECT GROUP_CONCAT(CONCAT(pu.first_name, ' ', pu.last_name, ' (', p.relationship, ')'))
-             FROM parent_student_relation psr
-             JOIN parents p ON psr.parent_id = p.parent_id
-             JOIN users pu ON p.user_id = pu.user_id
-             WHERE psr.student_id = s.student_id) as parents_info,
+            (
+                SELECT GROUP_CONCAT(CONCAT(pu.first_name, ' ', pu.last_name, ' (', p.relationship, ')'))
+                FROM parent_student_relation psr
+                JOIN parents p ON psr.parent_id = p.parent_id
+                JOIN users pu ON p.user_id = pu.user_id
+                WHERE psr.student_id = s.student_id
+            ) as parents_info,
             sar.total_attendance_days,
             sar.total_absence_days,
-            (sar.total_attendance_days / (sar.total_attendance_days + sar.total_absence_days)) * 100 as attendance_rate,
-            (SELECT LINE_id FROM users WHERE user_id IN 
-                (SELECT user_id FROM parents WHERE parent_id IN 
-                    (SELECT parent_id FROM parent_student_relation WHERE student_id = s.student_id)
-                )
-            ) as parent_line_id
+            CASE 
+                WHEN (sar.total_attendance_days + sar.total_absence_days) > 0 
+                THEN ROUND((sar.total_attendance_days / (sar.total_attendance_days + sar.total_absence_days)) * 100, 2)
+                ELSE 0 
+            END as attendance_rate
         FROM 
             students s
             JOIN users u ON s.user_id = u.user_id
             JOIN classes c ON s.current_class_id = c.class_id
-            JOIN student_academic_records sar ON s.student_id = sar.student_id AND sar.academic_year_id = c.academic_year_id
+            JOIN student_academic_records sar ON s.student_id = sar.student_id 
+                AND sar.academic_year_id = c.academic_year_id
             JOIN academic_years ay ON sar.academic_year_id = ay.academic_year_id
         WHERE 
-            $where_clause
+            $where_sql
         ORDER BY 
             attendance_rate ASC
-        LIMIT ?, ?
+        LIMIT :offset, :limit
     ";
-    
-    $params[] = (int)$offset;
-    $params[] = (int)$limit;
-    
-    $stmt = $conn->prepare($query);
-    $stmt->execute($params);
-    $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    
-    // เพิ่มข้อมูลสถานะความเสี่ยง
-    foreach ($students as &$student) {
-        $rate = $student['attendance_rate'];
-        if ($rate < 60) {
-            $student['status'] = 'เสี่ยงตกกิจกรรม';
-            $student['status_class'] = 'danger';
-        } elseif ($rate < 80) {
-            $student['status'] = 'ต้องระวัง';
-            $student['status_class'] = 'warning';
-        } else {
-            $student['status'] = 'ปกติ';
-            $student['status_class'] = 'success';
+
+    // Tambahkan parameter limit dan offset
+    $params[':offset'] = $offset;
+    $params[':limit'] = $limit;
+
+    try {
+        // Siapkan dan jalankan pernyataan
+        $stmt = $conn->prepare($query);
+        
+        // Bind parameter dengan tipe yang tepat
+        foreach ($params as $key => &$value) {
+            if (strpos($key, ':limit') !== false || strpos($key, ':offset') !== false) {
+                $stmt->bindValue($key, $value, PDO::PARAM_INT);
+            } else {
+                $stmt->bindValue($key, $value);
+            }
         }
         
-        // คำนวณจำนวนวันทั้งหมด
-        $total_days = $student['total_attendance_days'] + $student['total_absence_days'];
-        $student['attendance_days'] = $student['total_attendance_days'] . '/' . $total_days . ' วัน (' . round($rate) . '%)';
-        
-        // รหัสห้องเรียน
-        $student['class'] = $student['level'] . '/' . $student['group_number'];
-        
-        // ตัวอักษรแรกของชื่อ
-        $student['initial'] = mb_substr($student['first_name'], 0, 1, 'UTF-8');
+        $stmt->execute();
+        $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // Proses tambahan untuk setiap siswa
+        foreach ($students as &$student) {
+            $rate = $student['attendance_rate'];
+            
+            // Tentukan status risiko
+            if ($rate < 60) {
+                $student['status'] = 'เสี่ยงตกกิจกรรม';
+                $student['status_class'] = 'danger';
+            } elseif ($rate < 80) {
+                $student['status'] = 'ต้องระวัง';
+                $student['status_class'] = 'warning';
+            } else {
+                $student['status'] = 'ปกติ';
+                $student['status_class'] = 'success';
+            }
+            
+            // Format attendance days
+            $total_days = $student['total_attendance_days'] + $student['total_absence_days'];
+            $student['attendance_days'] = "{$student['total_attendance_days']}/$total_days วัน (" . round($rate) . '%)';
+            
+            // Class information
+            $student['class'] = $student['level'] . '/' . $student['group_number'];
+            
+            // Initial name
+            $student['initial'] = mb_substr($student['first_name'], 0, 1, 'UTF-8');
+        }
+
+        return $students;
+
+    } catch (PDOException $e) {
+        // Log error untuk debugging
+        error_log("Error in getAtRiskStudents: " . $e->getMessage());
+        return [];
     }
-    
-    return $students;
 }
 
+// Di bagian pemanggilan fungsi
+$filters = array_filter([
+    'class_level' => $_POST['class_level'] ?? null,
+    'class_group' => $_POST['class_group'] ?? null,
+    'risk_status' => $_POST['risk_status'] ?? null,
+    'student_name' => $_POST['student_name'] ?? null
+]);
+
+$students = getAtRiskStudents($conn, 10, 0, $filters);
 /**
  * ฟังก์ชันนับจำนวนนักเรียนที่เสี่ยงตกกิจกรรมทั้งหมด
  * 
