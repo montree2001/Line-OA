@@ -50,13 +50,13 @@
                     <option>ปกติ</option>
                 </select>
             </div>
-            <button class="filter-button" onclick="applyFilters()">
+            <button class="filter-button">
                 <span class="material-icons">search</span>
                 ค้นหา
             </button>
         </div>
 
-        <div class="filter-result-count">พบนักเรียนทั้งหมด <span id="student-count">0</span> คน</div>
+        <div class="filter-result-count">พบนักเรียนทั้งหมด <?php echo count($students); ?> คน</div>
 
         <div class="table-responsive">
             <table class="data-table">
@@ -71,24 +71,46 @@
                         <th width="15%">จัดการ</th>
                     </tr>
                 </thead>
-                <tbody id="student-list">
-                    <!-- ข้อมูลนักเรียนจะถูกเพิ่มที่นี่ด้วย JavaScript -->
-                    <tr>
-                        <td colspan="7" class="text-center">ไม่พบข้อมูลนักเรียน กรุณาค้นหาด้วยเงื่อนไขด้านบน</td>
+                <tbody>
+                    <?php foreach ($students as $index => $student): ?>
+                    <tr data-student-id="<?php echo $student['student_id']; ?>">
+                        <td>
+                            <input type="radio" name="student_select" value="<?php echo $student['student_id']; ?>" <?php echo ($index === 0) ? 'checked' : ''; ?>>
+                        </td>
+                        <td>
+                            <div class="student-info">
+                                <div class="student-avatar"><?php echo mb_substr($student['first_name'], 0, 1, 'UTF-8'); ?></div>
+                                <div class="student-details">
+                                    <div class="student-name"><?php echo $student['title'] . ' ' . $student['first_name'] . ' ' . $student['last_name']; ?></div>
+                                    <div class="student-class">เลขที่ <?php echo $student['class_number'] ?? '-'; ?></div>
+                                </div>
+                            </div>
+                        </td>
+                        <td><?php echo $student['class']; ?></td>
+                        <td><?php echo $student['attendance_days']; ?></td>
+                        <td><span class="status-badge <?php echo $student['status_class']; ?>"><?php echo $student['status']; ?></span></td>
+                        <td><?php echo $student['parents_info'] ?? '-'; ?></td>
+                        <td>
+                            <div class="action-buttons">
+                                <button class="table-action-btn primary" title="ดูประวัติการส่ง" onclick="showHistory()">
+                                    <span class="material-icons">history</span>
+                                </button>
+                                <button class="table-action-btn success" title="ส่งข้อความ">
+                                    <span class="material-icons">send</span>
+                                </button>
+                            </div>
+                        </td>
                     </tr>
+                    <?php endforeach; ?>
                 </tbody>
             </table>
         </div>
     </div>
 
-    <div class="card" id="message-card">
+    <div class="card">
         <div class="card-title">
             <span class="material-icons">message</span>
-            ส่งข้อความถึงผู้ปกครอง - <span class="student-name-display">-</span> (<span class="student-class-display">-</span>)
-            <span style="display:none" class="attendance-days-display">0/0</span>
-            <span style="display:none" class="attendance-rate-display">0</span>
-            <span style="display:none" class="advisor-name-display">-</span>
-            <span style="display:none" class="advisor-phone-display">-</span>
+            ส่งข้อความถึงผู้ปกครอง - <span class="student-name-display"><?php echo $students[0]['title'] . ' ' . $students[0]['first_name'] . ' ' . $students[0]['last_name']; ?></span> (<span class="student-class-display"><?php echo $students[0]['class']; ?></span>)
         </div>
 
         <div class="date-range-selector">
@@ -117,9 +139,9 @@
         </div>
 
         <div class="message-form">
-            <textarea class="message-textarea" id="messageText" placeholder="พิมพ์ข้อความที่ต้องการส่ง...">เรียน ผู้ปกครองของ {{ชื่อนักเรียน}}
+            <textarea class="message-textarea" id="messageText" placeholder="พิมพ์ข้อความที่ต้องการส่ง...">เรียน ผู้ปกครองของ <?php echo $students[0]['title'] . ' ' . $students[0]['first_name'] . ' ' . $students[0]['last_name']; ?>
 
-ทางวิทยาลัยขอแจ้งความคืบหน้าเกี่ยวกับการเข้าแถวของนักเรียน {{ชื่อนักเรียน}} นักเรียนชั้น {{ชั้นเรียน}} ปัจจุบันเข้าร่วม {{จำนวนวันเข้าแถว}} วัน จากทั้งหมด {{จำนวนวันทั้งหมด}} วัน ({{ร้อยละการเข้าแถว}}%)
+ทางวิทยาลัยขอแจ้งความคืบหน้าเกี่ยวกับการเข้าแถวของนักเรียน <?php echo $students[0]['title'] . ' ' . $students[0]['first_name'] . ' ' . $students[0]['last_name']; ?> นักเรียนชั้น <?php echo $students[0]['class']; ?> ปัจจุบันเข้าร่วม <?php echo $students[0]['attendance_days']; ?>
 
 จึงเรียนมาเพื่อทราบ
 
@@ -154,7 +176,7 @@
                 </div>
                 <div class="preview-content">
                     <strong>LINE Official Account: SADD-Prasat</strong>
-                    <p style="margin-top: 10px;">เรียน ผู้ปกครองของ {{ชื่อนักเรียน}}<br><br>ทางวิทยาลัยขอแจ้งความคืบหน้าเกี่ยวกับการเข้าแถวของนักเรียน {{ชื่อนักเรียน}} นักเรียนชั้น {{ชั้นเรียน}} ปัจจุบันเข้าร่วม {{จำนวนวันเข้าแถว}} วัน จากทั้งหมด {{จำนวนวันทั้งหมด}} วัน ({{ร้อยละการเข้าแถว}}%)<br><br>จึงเรียนมาเพื่อทราบ<br><br>ด้วยความเคารพ<br>ฝ่ายกิจการนักเรียน<br>วิทยาลัยการอาชีพปราสาท</p>
+                    <p style="margin-top: 10px;">เรียน ผู้ปกครองของ <?php echo $students[0]['title'] . ' ' . $students[0]['first_name'] . ' ' . $students[0]['last_name']; ?><br><br>ทางวิทยาลัยขอแจ้งความคืบหน้าเกี่ยวกับการเข้าแถวของนักเรียน <?php echo $students[0]['title'] . ' ' . $students[0]['first_name'] . ' ' . $students[0]['last_name']; ?> นักเรียนชั้น <?php echo $students[0]['class']; ?> ปัจจุบันเข้าร่วม <?php echo $students[0]['attendance_days']; ?><br><br>จึงเรียนมาเพื่อทราบ<br><br>ด้วยความเคารพ<br>ฝ่ายกิจการนักเรียน<br>วิทยาลัยการอาชีพปราสาท</p>
                     
                     <div class="chart-preview">
                         <canvas id="attendance-chart" width="400" height="200"></canvas>
@@ -258,11 +280,21 @@
             </button>
         </div>
         
-        <div class="filter-group-result">พบนักเรียนที่ตรงตามเงื่อนไข <span class="recipient-count">0</span> คน</div>
+        <div class="filter-group-result">พบนักเรียนที่ตรงตามเงื่อนไข <?php echo count($at_risk_students); ?> คน</div>
         
-        <div class="recipients-container" id="group-recipients">
-            <!-- ข้อมูลนักเรียนจะถูกเพิ่มที่นี่ด้วย JavaScript -->
-            <div class="text-center" style="padding: 20px;">ไม่พบข้อมูลนักเรียน กรุณากรองข้อมูลด้วยเงื่อนไขด้านบน</div>
+        <div class="recipients-container">
+            <?php foreach ($at_risk_students as $student): ?>
+            <div class="recipient-item">
+                <div class="recipient-info">
+                    <input type="checkbox" value="<?php echo $student['student_id']; ?>" checked>
+                    <div class="recipient-details">
+                        <div class="student-name"><?php echo $student['title'] . ' ' . $student['first_name'] . ' ' . $student['last_name']; ?> (<?php echo $student['class']; ?>)</div>
+                        <div class="parent-info">ผู้ปกครอง: <?php echo $student['parents_info'] ?? '-'; ?></div>
+                    </div>
+                </div>
+                <span class="status-badge <?php echo $student['status_class']; ?>"><?php echo round($student['attendance_rate']); ?>%</span>
+            </div>
+            <?php endforeach; ?>
         </div>
         
         <div class="batch-actions">
@@ -274,10 +306,7 @@
     <div class="card">
         <div class="card-title">
             <span class="material-icons">send</span>
-            ส่งข้อความถึงผู้ปกครองกลุ่ม (<span class="recipient-count">0</span> คน)
-            <span style="display:none" class="class-info-display">ปวช.1/1</span>
-            <span style="display:none" class="advisor-name-display">ครูอิศรา สุขใจ</span>
-            <span style="display:none" class="advisor-phone-display">081-234-5678</span>
+            ส่งข้อความถึงผู้ปกครองกลุ่ม (<span class="recipient-count"><?php echo count($at_risk_students); ?></span> คน)
         </div>
 
         <div class="date-range-selector">
@@ -305,11 +334,13 @@
         </div>
 
         <div class="message-form">
-            <textarea class="message-textarea" id="groupMessageText" placeholder="พิมพ์ข้อความที่ต้องการส่ง...">เรียน ท่านผู้ปกครองนักเรียนชั้น {{ชั้นเรียน}}
+            <textarea class="message-textarea" id="groupMessageText" placeholder="พิมพ์ข้อความที่ต้องการส่ง...">เรียน ท่านผู้ปกครองนักเรียนชั้น <?php echo $at_risk_students[0]['class'] ?? 'ปวช.1/1'; ?>
 
-ทางวิทยาลัยขอแจ้งว่าในวันศุกร์ที่ 21 มีนาคม 2568 นักเรียนชั้น {{ชั้นเรียน}} จะต้องมาวิทยาลัยก่อนเวลา 07:30 น. เพื่อเตรียมความพร้อมในการเข้าแถวพิเศษสำหรับกิจกรรมวันภาษาไทย
+ทางวิทยาลัยขอแจ้งว่า บุตรหลานของท่านมีความเสี่ยงที่จะไม่ผ่านกิจกรรมเข้าแถว เนื่องจากมีจำนวนวันเข้าแถวต่ำกว่าเกณฑ์ที่กำหนด
 
-จึงเรียนมาเพื่อทราบ
+โดยอัตราการเข้าแถวของนักเรียนอยู่ที่ต่ำกว่า 70% ซึ่งหากต่ำกว่า 80% เมื่อสิ้นภาคเรียน นักเรียนจะไม่ผ่านกิจกรรมเข้าแถว ซึ่งมีผลต่อการจบการศึกษา
+
+กรุณาติดต่อครูที่ปรึกษาประจำชั้น <?php echo $at_risk_students[0]['class'] ?? 'ปวช.1/1'; ?> ครูอิศรา สุขใจ โทร. 081-234-5678 เพื่อหาแนวทางแก้ไขต่อไป
 
 ด้วยความเคารพ
 ฝ่ายกิจการนักเรียน
@@ -342,7 +373,7 @@
                 </div>
                 <div class="preview-content">
                     <strong>LINE Official Account: SADD-Prasat</strong>
-                    <p style="margin-top: 10px;">เรียน ท่านผู้ปกครองนักเรียนชั้น {{ชั้นเรียน}}<br><br>ทางวิทยาลัยขอแจ้งว่าในวันศุกร์ที่ 21 มีนาคม 2568 นักเรียนชั้น {{ชั้นเรียน}} จะต้องมาวิทยาลัยก่อนเวลา 07:30 น. เพื่อเตรียมความพร้อมในการเข้าแถวพิเศษสำหรับกิจกรรมวันภาษาไทย<br><br>จึงเรียนมาเพื่อทราบ<br><br>ด้วยความเคารพ<br>ฝ่ายกิจการนักเรียน<br>วิทยาลัยการอาชีพปราสาท</p>
+                    <p style="margin-top: 10px;">เรียน ท่านผู้ปกครองนักเรียนชั้น <?php echo $at_risk_students[0]['class'] ?? 'ปวช.1/1'; ?><br><br>ทางวิทยาลัยขอแจ้งว่า บุตรหลานของท่านมีความเสี่ยงที่จะไม่ผ่านกิจกรรมเข้าแถว เนื่องจากมีจำนวนวันเข้าแถวต่ำกว่าเกณฑ์ที่กำหนด<br><br>โดยอัตราการเข้าแถวของนักเรียนอยู่ที่ต่ำกว่า 70% ซึ่งหากต่ำกว่า 80% เมื่อสิ้นภาคเรียน นักเรียนจะไม่ผ่านกิจกรรมเข้าแถว ซึ่งมีผลต่อการจบการศึกษา<br><br>กรุณาติดต่อครูที่ปรึกษาประจำชั้น <?php echo $at_risk_students[0]['class'] ?? 'ปวช.1/1'; ?> ครูอิศรา สุขใจ โทร. 081-234-5678 เพื่อหาแนวทางแก้ไขต่อไป<br><br>ด้วยความเคารพ<br>ฝ่ายกิจการนักเรียน<br>วิทยาลัยการอาชีพปราสาท</p>
                     <div class="chart-preview">
                         <div class="group-chart-note">* แต่ละนักเรียนจะได้รับกราฟข้อมูลการเข้าแถวเฉพาะของตนเอง</div>
                         <canvas id="group-attendance-chart" width="400" height="200"></canvas>
@@ -354,20 +385,20 @@
                 <div class="cost-title">ประมาณการค่าใช้จ่ายในการส่ง</div>
                 <div class="cost-details">
                     <div class="cost-item">
-                        <span class="cost-label">ข้อความ (0 คน):</span>
-                        <span class="cost-value">0.00 บาท</span>
+                        <span class="cost-label">ข้อความ (<?php echo count($at_risk_students); ?> คน):</span>
+                        <span class="cost-value"><?php echo number_format(0.075 * count($at_risk_students), 2); ?> บาท</span>
                     </div>
                     <div class="cost-item">
-                        <span class="cost-label">รูปภาพกราฟ (0 รูป):</span>
-                        <span class="cost-value">0.00 บาท</span>
+                        <span class="cost-label">รูปภาพกราฟ (<?php echo count($at_risk_students); ?> รูป):</span>
+                        <span class="cost-value"><?php echo number_format(0.15 * count($at_risk_students), 2); ?> บาท</span>
                     </div>
                     <div class="cost-item">
-                        <span class="cost-label">ลิงก์ (0 ลิงก์):</span>
-                        <span class="cost-value">0.00 บาท</span>
+                        <span class="cost-label">ลิงก์ (<?php echo count($at_risk_students); ?> ลิงก์):</span>
+                        <span class="cost-value"><?php echo number_format(0.075 * count($at_risk_students), 2); ?> บาท</span>
                     </div>
                     <div class="cost-item total">
                         <span class="cost-label">รวม:</span>
-                        <span class="cost-value">0.00 บาท</span>
+                        <span class="cost-value"><?php echo number_format(0.3 * count($at_risk_students), 2); ?> บาท</span>
                     </div>
                 </div>
             </div>
@@ -376,7 +407,7 @@
                 <button class="btn btn-secondary" onclick="resetGroupForm()">ยกเลิก</button>
                 <button class="btn btn-primary" onclick="sendGroupMessage()">
                     <span class="material-icons">send</span>
-                    ส่งข้อความ (0 ราย)
+                    ส่งข้อความ (<?php echo count($at_risk_students); ?> ราย)
                 </button>
             </div>
         </div>
@@ -419,44 +450,27 @@
                         <th width="10%">จัดการ</th>
                     </tr>
                 </thead>
-                <tbody id="template-list">
-                    <!-- เทมเพลตจะถูกเพิ่มที่นี่ด้วย JavaScript -->
+                <tbody>
+                    <?php foreach ($templates as $template): ?>
                     <tr>
-                        <td>แจ้งเตือนความเสี่ยงรายบุคคล</td>
-                        <td>รายบุคคล</td>
-                        <td>การเข้าแถว</td>
-                        <td>01/03/2568</td>
-                        <td>20/04/2568</td>
-                        <td><span class="status-badge success">ใช้งาน</span></td>
+                        <td><?php echo $template['name']; ?></td>
+                        <td><?php echo $template['type']; ?></td>
+                        <td><?php echo $template['category'] ?? 'การเข้าแถว'; ?></td>
+                        <td><?php echo $template['created_at']; ?></td>
+                        <td><?php echo $template['last_used']; ?></td>
+                        <td><span class="status-badge <?php echo ($template['status'] == 'ใช้งาน') ? 'success' : 'warning'; ?>"><?php echo $template['status']; ?></span></td>
                         <td>
                             <div class="action-buttons">
-                                <button class="table-action-btn primary" title="แก้ไข" onclick="editTemplate(1)">
+                                <button class="table-action-btn primary" title="แก้ไข" onclick="editTemplate(<?php echo $template['id']; ?>)">
                                     <span class="material-icons">edit</span>
                                 </button>
-                                <button class="table-action-btn success" title="ดูตัวอย่าง" onclick="previewTemplate(1)">
+                                <button class="table-action-btn success" title="ดูตัวอย่าง" onclick="previewTemplate(<?php echo $template['id']; ?>)">
                                     <span class="material-icons">visibility</span>
                                 </button>
                             </div>
                         </td>
                     </tr>
-                    <tr>
-                        <td>นัดประชุมผู้ปกครองกลุ่มเสี่ยง</td>
-                        <td>กลุ่ม</td>
-                        <td>การประชุม</td>
-                        <td>01/03/2568</td>
-                        <td>15/04/2568</td>
-                        <td><span class="status-badge success">ใช้งาน</span></td>
-                        <td>
-                            <div class="action-buttons">
-                                <button class="table-action-btn primary" title="แก้ไข" onclick="editTemplate(2)">
-                                    <span class="material-icons">edit</span>
-                                </button>
-                                <button class="table-action-btn success" title="ดูตัวอย่าง" onclick="previewTemplate(2)">
-                                    <span class="material-icons">visibility</span>
-                                </button>
-                            </div>
-                        </td>
-                    </tr>
+                    <?php endforeach; ?>
                 </tbody>
             </table>
         </div>
@@ -543,7 +557,7 @@
         <button class="modal-close" onclick="closeModal('historyModal')">
             <span class="material-icons">close</span>
         </button>
-        <h2 class="modal-title">ประวัติการส่งข้อความ - <span class="history-student-name">-</span></h2>
+        <h2 class="modal-title">ประวัติการส่งข้อความ - <span class="history-student-name">นายธนกฤต สุขใจ</span></h2>
         
         <div class="table-responsive">
             <table class="data-table">
@@ -557,9 +571,38 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <!-- ประวัติการส่งจะถูกเพิ่มที่นี่ด้วย JavaScript -->
                     <tr>
-                        <td colspan="5" class="text-center">ไม่พบประวัติการส่งข้อความ</td>
+                        <td>16/03/2568 08:45</td>
+                        <td>แจ้งเตือนความเสี่ยง</td>
+                        <td>จารุวรรณ บุญมี</td>
+                        <td><span class="status-badge success">ส่งสำเร็จ</span></td>
+                        <td>
+                            <button class="table-action-btn primary" title="ดูข้อความ" onclick="viewNotificationMessage(1)">
+                                <span class="material-icons">visibility</span>
+                            </button>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>10/03/2568 09:30</td>
+                        <td>แจ้งเตือนปกติ</td>
+                        <td>อิศรา สุขใจ</td>
+                        <td><span class="status-badge success">ส่งสำเร็จ</span></td>
+                        <td>
+                            <button class="table-action-btn primary" title="ดูข้อความ" onclick="viewNotificationMessage(2)">
+                                <span class="material-icons">visibility</span>
+                            </button>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>01/03/2568 14:15</td>
+                        <td>แจ้งเตือนปกติ</td>
+                        <td>จารุวรรณ บุญมี</td>
+                        <td><span class="status-badge success">ส่งสำเร็จ</span></td>
+                        <td>
+                            <button class="table-action-btn primary" title="ดูข้อความ" onclick="viewNotificationMessage(3)">
+                                <span class="material-icons">visibility</span>
+                            </button>
+                        </td>
                     </tr>
                 </tbody>
             </table>
@@ -571,6 +614,434 @@
     </div>
 </div>
 
-<!-- เพิ่ม script สำหรับ Chart.js และไฟล์ JavaScript -->
-<script src="assets/js/chart.min.js"></script>
-<script src="assets/js/notification_enhanced.js"></script>
+<!-- โมดัลแสดงผลการส่งข้อความ -->
+<div class="modal" id="resultModal">
+    <div class="modal-content">
+        <button class="modal-close" onclick="closeModal('resultModal')">
+            <span class="material-icons">close</span>
+        </button>
+        <h2 class="modal-title">ผลลัพธ์การส่งข้อความ</h2>
+        
+        <div class="result-summary">
+            <div class="result-item success">
+                <span class="material-icons">check_circle</span>
+                <div class="result-value">0</div>
+                <div class="result-label">สำเร็จ</div>
+            </div>
+            <div class="result-item error">
+                <span class="material-icons">error</span>
+                <div class="result-value">0</div>
+                <div class="result-label">ล้มเหลว</div>
+            </div>
+            <div class="result-item cost">
+                <span class="material-icons">payments</span>
+                <div class="result-value">0.00 บาท</div>
+                <div class="result-label">ค่าใช้จ่าย</div>
+            </div>
+        </div>
+        
+        <div class="result-details">
+            <!-- รายละเอียดการส่งข้อความจะถูกแทรกที่นี่ด้วย JavaScript -->
+        </div>
+        
+        <div class="modal-actions">
+            <button class="btn btn-primary" onclick="closeModal('resultModal')">ตกลง</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// ฟังก์ชันสำหรับจัดการแท็บ
+document.addEventListener('DOMContentLoaded', function() {
+    // สร้างกราฟตัวอย่าง
+    const chartCtx = document.getElementById('attendance-chart').getContext('2d');
+    new Chart(chartCtx, {
+        type: 'line',
+        data: {
+            labels: ['1 เม.ย.', '8 เม.ย.', '15 เม.ย.', '22 เม.ย.', '29 เม.ย.'],
+            datasets: [{
+                label: 'อัตราการเข้าแถว (%)',
+                data: [65, 62, 68, 65, 70],
+                fill: false,
+                borderColor: 'rgb(75, 192, 192)',
+                tension: 0.1
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: 100
+                }
+            }
+        }
+    });
+    
+    // สร้างกราฟตัวอย่างสำหรับกลุ่ม
+    const groupChartCtx = document.getElementById('group-attendance-chart').getContext('2d');
+    new Chart(groupChartCtx, {
+        type: 'bar',
+        data: {
+            labels: ['1-7 เม.ย.', '8-14 เม.ย.', '15-21 เม.ย.', '22-28 เม.ย.', '29-30 เม.ย.'],
+            datasets: [{
+                label: 'อัตราการเข้าแถวเฉลี่ย (%)',
+                data: [63, 65, 66, 68, 69],
+                backgroundColor: 'rgba(75, 192, 192, 0.5)',
+                borderColor: 'rgb(75, 192, 192)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: 100
+                }
+            }
+        }
+    });
+    
+    // สร้างกราฟตัวอย่างสำหรับ preview
+    const previewChartCtx = document.getElementById('preview-attendance-chart').getContext('2d');
+    new Chart(previewChartCtx, {
+        type: 'line',
+        data: {
+            labels: ['1 เม.ย.', '8 เม.ย.', '15 เม.ย.', '22 เม.ย.', '29 เม.ย.'],
+            datasets: [{
+                label: 'อัตราการเข้าแถว (%)',
+                data: [65, 62, 68, 65, 70],
+                fill: false,
+                borderColor: 'rgb(75, 192, 192)',
+                tension: 0.1
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: 100
+                }
+            }
+        }
+    });
+});
+
+// ตั้งค่า event listeners สำหรับแท็บ
+document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', function() {
+        const tabId = this.getAttribute('data-tab');
+        showTab(tabId);
+    });
+});
+
+// ตั้งค่า event listeners สำหรับหมวดหมู่เทมเพลต
+document.querySelectorAll('.category-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        document.querySelectorAll('.category-btn').forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+        filterTemplatesByCategory(this.getAttribute('data-category'));
+    });
+});
+
+// ฟังก์ชันกรองเทมเพลตตามหมวดหมู่
+function filterTemplatesByCategory(category) {
+    const templateRows = document.querySelectorAll('#templates-tab .data-table tbody tr');
+    templateRows.forEach(row => {
+        const categoryCell = row.querySelector('td:nth-child(3)');
+        if (category === 'all' || categoryCell.textContent.toLowerCase() === category) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+}
+
+// ฟังก์ชันแก้ไขเทมเพลต
+function editTemplate(templateId) {
+    // ในทางปฏิบัติจริง ควรดึงข้อมูลเทมเพลตจากฐานข้อมูล
+    // สำหรับตัวอย่าง ใช้ข้อมูลตัวอย่าง
+    const templateModal = document.getElementById('templateModal');
+    const titleInput = templateModal.querySelector('input.form-control');
+    const typeSelect = templateModal.querySelector('select:nth-of-type(1)');
+    const categorySelect = templateModal.querySelector('select:nth-of-type(2)');
+    const contentTextarea = templateModal.querySelector('textarea');
+    
+    // ตั้งค่าข้อมูลตัวอย่าง
+    titleInput.value = 'แจ้งเตือนความเสี่ยงรายบุคคล';
+    typeSelect.value = 'individual';
+    categorySelect.value = 'attendance';
+    contentTextarea.value = 'เรียน ผู้ปกครองของ {{ชื่อนักเรียน}}\n\nทางโรงเรียนขอแจ้งว่า {{ชื่อนักเรียน}} นักเรียนชั้น {{ชั้นเรียน}} มีความเสี่ยงที่จะไม่ผ่านกิจกรรมเข้าแถว เนื่องจากปัจจุบันเข้าร่วมเพียง {{จำนวนวันเข้าแถว}} วัน ({{ร้อยละการเข้าแถว}}%)\n\nกรุณาติดต่อครูที่ปรึกษา {{ชื่อครูที่ปรึกษา}} โทร. {{เบอร์โทรครู}} เพื่อหาแนวทางแก้ไขต่อไป\n\nด้วยความเคารพ\nฝ่ายกิจการนักเรียน\nโรงเรียนประสาทวิทยาคม';
+    
+    // เปลี่ยนชื่อปุ่มบันทึก
+    const saveButton = templateModal.querySelector('.btn-primary');
+    saveButton.innerHTML = '<span class="material-icons">save</span> อัปเดตเทมเพลต';
+    
+    // เปลี่ยนหัวข้อโมดัล
+    templateModal.querySelector('.modal-title').textContent = 'แก้ไขเทมเพลตข้อความ';
+    
+    showModal('templateModal');
+}
+
+// ฟังก์ชันดูตัวอย่างเทมเพลต
+function previewTemplate(templateId) {
+    // ในทางปฏิบัติจริง ควรดึงข้อมูลเทมเพลตจากฐานข้อมูล
+    // สำหรับตัวอย่าง ใช้ข้อมูลตัวอย่าง
+    const previewText = document.getElementById('previewText');
+    
+    const templateContent = 'เรียน ผู้ปกครองของ นายธนกฤต สุขใจ\n\nทางโรงเรียนขอแจ้งว่า นายธนกฤต สุขใจ นักเรียนชั้น ม.6/2 มีความเสี่ยงที่จะไม่ผ่านกิจกรรมเข้าแถว เนื่องจากปัจจุบันเข้าร่วมเพียง 26 จาก 40 วัน (65%)\n\nกรุณาติดต่อครูที่ปรึกษา อ.ประสิทธิ์ ดีเลิศ โทร. 081-234-5678 เพื่อหาแนวทางแก้ไขต่อไป\n\nด้วยความเคารพ\nฝ่ายกิจการนักเรียน\nโรงเรียนประสาทวิทยาคม';
+    
+    if (previewText) {
+        previewText.innerHTML = templateContent.replace(/\n/g, '<br>');
+    }
+    
+    // แสดงกราฟในตัวอย่าง
+    document.getElementById('previewChart').style.display = 'block';
+    
+    showModal('previewModal');
+}
+
+// ฟังก์ชันบันทึกเทมเพลตใหม่
+function saveTemplate() {
+    const templateModal = document.getElementById('templateModal');
+    const titleInput = templateModal.querySelector('input.form-control');
+    const typeSelect = templateModal.querySelector('select:nth-of-type(1)');
+    const categorySelect = templateModal.querySelector('select:nth-of-type(2)');
+    const contentTextarea = templateModal.querySelector('textarea');
+    
+    // ตรวจสอบข้อมูล
+    if (!titleInput.value.trim()) {
+        alert('กรุณากรอกชื่อเทมเพลต');
+        return;
+    }
+    
+    if (!contentTextarea.value.trim()) {
+        alert('กรุณากรอกเนื้อหาข้อความเทมเพลต');
+        return;
+    }
+    
+    // ในทางปฏิบัติจริง ควรส่งข้อมูลไปบันทึกในฐานข้อมูล
+    // สำหรับตัวอย่าง แสดงข้อความสำเร็จและปิดโมดัล
+    
+    closeModal('templateModal');
+    
+    // แสดงข้อความแจ้งเตือน
+    alert('บันทึกเทมเพลตเรียบร้อยแล้ว');
+    
+    // รีเซ็ตฟอร์ม
+    titleInput.value = '';
+    typeSelect.selectedIndex = 0;
+    categorySelect.selectedIndex = 0;
+    contentTextarea.value = '';
+}
+
+// ฟังก์ชันอัปเดตค่าใช้จ่ายในการส่งข้อความ
+function updateMessageCost() {
+    const includeChart = document.getElementById('include-chart').checked;
+    const includeLink = document.getElementById('include-link').checked;
+    
+    const messageCost = 0.075; // บาทต่อข้อความ
+    const chartCost = 0.15; // บาทต่อรูปภาพ
+    const linkCost = 0.075; // บาทต่อลิงก์
+    
+    let totalCost = messageCost;
+    
+    if (includeChart) {
+        totalCost += chartCost;
+    }
+    
+    if (includeLink) {
+        totalCost += linkCost;
+    }
+    
+    // อัปเดตการแสดงผล
+    const costValueElements = document.querySelectorAll('#individual-tab .message-cost .cost-item.total .cost-value');
+    costValueElements.forEach(element => {
+        element.textContent = totalCost.toFixed(2) + ' บาท';
+    });
+}
+
+// ฟังก์ชันอัปเดตค่าใช้จ่ายในการส่งข้อความกลุ่ม
+function updateGroupMessageCost() {
+    const includeChart = document.getElementById('include-chart-group').checked;
+    const includeLink = document.getElementById('include-link-group').checked;
+    
+    const messageCost = 0.075; // บาทต่อข้อความ
+    const chartCost = 0.15; // บาทต่อรูปภาพ
+    const linkCost = 0.075; // บาทต่อลิงก์
+    
+    const selectedCount = document.querySelectorAll('.recipients-container input[type="checkbox"]:checked').length;
+    
+    let costPerRecipient = messageCost;
+    
+    if (includeChart) {
+        costPerRecipient += chartCost;
+    }
+    
+    if (includeLink) {
+        costPerRecipient += linkCost;
+    }
+    
+    const totalCost = costPerRecipient * selectedCount;
+    
+    // อัปเดตการแสดงผล
+    const costValueElements = document.querySelectorAll('#group-tab .message-cost .cost-item.total .cost-value');
+    costValueElements.forEach(element => {
+        element.textContent = totalCost.toFixed(2) + ' บาท';
+    });
+    
+    // อัปเดตรายละเอียดค่าใช้จ่าย
+    document.querySelector('#group-tab .cost-item:nth-child(1) .cost-label').textContent = `ข้อความ (${selectedCount} คน):`;
+    document.querySelector('#group-tab .cost-item:nth-child(1) .cost-value').textContent = (messageCost * selectedCount).toFixed(2) + ' บาท';
+    
+    document.querySelector('#group-tab .cost-item:nth-child(2) .cost-label').textContent = `รูปภาพกราฟ (${includeChart ? selectedCount : 0} รูป):`;
+    document.querySelector('#group-tab .cost-item:nth-child(2) .cost-value').textContent = (chartCost * (includeChart ? selectedCount : 0)).toFixed(2) + ' บาท';
+    
+    document.querySelector('#group-tab .cost-item:nth-child(3) .cost-label').textContent = `ลิงก์ (${includeLink ? selectedCount : 0} ลิงก์):`;
+    document.querySelector('#group-tab .cost-item:nth-child(3) .cost-value').textContent = (linkCost * (includeLink ? selectedCount : 0)).toFixed(2) + ' บาท';
+}
+
+// ตั้งค่า event listeners สำหรับปุ่มในหน้า
+document.addEventListener('DOMContentLoaded', function() {
+    // ตั้งค่า event listeners สำหรับการเลือกนักเรียน
+    document.querySelectorAll('input[name="student_select"]').forEach(radio => {
+        radio.addEventListener('change', function() {
+            if (this.checked) {
+                updateSelectedStudent(this.closest('tr'));
+            }
+        });
+    });
+    
+    // ตั้งค่า event listeners สำหรับการเปลี่ยนแปลงค่าใช้จ่าย
+    const chartCheckbox = document.getElementById('include-chart');
+    const linkCheckbox = document.getElementById('include-link');
+    
+    if (chartCheckbox) {
+        chartCheckbox.addEventListener('change', updateMessageCost);
+    }
+    
+    if (linkCheckbox) {
+        linkCheckbox.addEventListener('change', updateMessageCost);
+    }
+    
+    // ตั้งค่า event listeners สำหรับการเปลี่ยนแปลงค่าใช้จ่ายกลุ่ม
+    const groupChartCheckbox = document.getElementById('include-chart-group');
+    const groupLinkCheckbox = document.getElementById('include-link-group');
+    
+    if (groupChartCheckbox) {
+        groupChartCheckbox.addEventListener('change', updateGroupMessageCost);
+    }
+    
+    if (groupLinkCheckbox) {
+        groupLinkCheckbox.addEventListener('change', updateGroupMessageCost);
+    }
+    
+    // ตั้งค่า event listeners สำหรับการเลือกผู้รับกลุ่ม
+    document.querySelectorAll('.recipients-container input[type="checkbox"]').forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            updateRecipientCount();
+            updateGroupMessageCost();
+        });
+    });
+    
+    // กำหนดค่าเริ่มต้นสำหรับ date pickers
+    const startDate = document.getElementById('start-date');
+    const endDate = document.getElementById('end-date');
+    const startDateGroup = document.getElementById('start-date-group');
+    const endDateGroup = document.getElementById('end-date-group');
+    
+    if (startDate && endDate) {
+        const today = new Date();
+        const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+        
+        startDate.valueAsDate = firstDayOfMonth;
+        endDate.valueAsDate = today;
+    }
+    
+    if (startDateGroup && endDateGroup) {
+        const today = new Date();
+        const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+        
+        startDateGroup.valueAsDate = firstDayOfMonth;
+        endDateGroup.valueAsDate = today;
+    }
+});
+
+// ฟังก์ชันอัปเดตข้อมูลนักเรียนที่เลือก
+function updateSelectedStudent(studentRow) {
+    const studentName = studentRow.querySelector('.student-name').textContent;
+    const studentClass = studentRow.querySelector('td:nth-child(3)').textContent;
+    const attendanceDays = studentRow.querySelector('td:nth-child(4)').textContent;
+    
+    // อัปเดตชื่อนักเรียนในส่วนหัวของฟอร์มส่งข้อความ
+    const studentNameDisplay = document.querySelector('.student-name-display');
+    const studentClassDisplay = document.querySelector('.student-class-display');
+    
+    if (studentNameDisplay) {
+        studentNameDisplay.textContent = studentName;
+    }
+    
+    if (studentClassDisplay) {
+        studentClassDisplay.textContent = studentClass;
+    }
+    
+    // อัปเดตข้อความตามเทมเพลตที่เลือก
+    const activeTemplateBtn = document.querySelector('#individual-tab .template-btn.active');
+    if (activeTemplateBtn) {
+        const templateType = activeTemplateBtn.getAttribute('data-template') || activeTemplateBtn.textContent.trim().toLowerCase();
+        selectTemplate(templateType);
+    }
+}
+
+// ฟังก์ชันอัปเดตจำนวนผู้รับข้อความกลุ่ม
+function updateRecipientCount() {
+    const selectedCount = document.querySelectorAll('.recipients-container input[type="checkbox"]:checked').length;
+    
+    // อัปเดตจำนวนผู้รับในหัวข้อ
+    const recipientCountElement = document.querySelector('.recipient-count');
+    if (recipientCountElement) {
+        recipientCountElement.textContent = selectedCount;
+    }
+    
+    // อัปเดตปุ่มส่งข้อความ
+    const sendButton = document.querySelector('#group-tab .form-actions .btn-primary');
+    if (sendButton) {
+        sendButton.innerHTML = `<span class="material-icons">send</span> ส่งข้อความ (${selectedCount} ราย)`;
+    }
+}
+
+// ฟังก์ชันเลือกผู้รับทั้งหมด
+function selectAllRecipients() {
+    document.querySelectorAll('.recipients-container input[type="checkbox"]').forEach(checkbox => {
+        checkbox.checked = true;
+    });
+    
+    updateRecipientCount();
+    updateGroupMessageCost();
+}
+
+// ฟังก์ชันยกเลิกการเลือกผู้รับทั้งหมด
+function clearAllRecipients() {
+    document.querySelectorAll('.recipients-container input[type="checkbox"]').forEach(checkbox => {
+        checkbox.checked = false;
+    });
+    
+    updateRecipientCount();
+    updateGroupMessageCost();
+}
+
+// ฟังก์ชันใช้ตัวกรองสำหรับแท็บกลุ่ม
+function applyGroupFilters() {
+    // ในทางปฏิบัติจริง ควรใช้ AJAX เพื่อดึงข้อมูลจากเซิร์ฟเวอร์
+    // สำหรับตัวอย่าง แสดงการโหลด
+    
+    alert('กำลังโหลดข้อมูลนักเรียนตามเงื่อนไข...');
+    
+    // จำลองการดึงข้อมูล
+    setTimeout(function() {
+        alert('พบนักเรียนที่ตรงตามเงื่อนไข 8 คน');
+    }, 500);
+}
+</script>
