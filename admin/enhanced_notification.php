@@ -137,7 +137,7 @@ $extra_js = [
 ];
 
 /**
- * ฟังก์ชันดึงข้อมูลนักเรียนตามเงื่อนไข - ทำให้ง่ายที่สุด
+ * ฟังก์ชันดึงข้อมูลนักเรียนตามเงื่อนไข - แก้ไขให้ใช้งานได้จริง
  * 
  * @param PDO $conn เชื่อมต่อฐานข้อมูล
  * @param array $filters เงื่อนไขการกรอง
@@ -147,8 +147,8 @@ $extra_js = [
  */
 function getStudentsByFilters($conn, $filters = [], $limit = 10, $offset = 0) {
     try {
-        // ดึงข้อมูลนักเรียนทั้งหมด - ไม่มีเงื่อนไขใดๆ เพื่อทดสอบ
-        $query = "
+        // สร้างคำสั่ง SQL พื้นฐาน
+        $baseQuery = "
             SELECT 
                 s.student_id,
                 s.student_code,
@@ -156,54 +156,77 @@ function getStudentsByFilters($conn, $filters = [], $limit = 10, $offset = 0) {
                 u.first_name,
                 u.last_name,
                 s.status,
-                s.current_class_id 
+                s.current_class_id,
+                c.level,
+                c.group_number,
+                d.department_name,
+                d.department_id
             FROM 
                 students s
                 JOIN users u ON s.user_id = u.user_id
+                LEFT JOIN classes c ON s.current_class_id = c.class_id
+                LEFT JOIN departments d ON c.department_id = d.department_id
             WHERE 
                 s.status = 'กำลังศึกษา'
-            LIMIT $limit OFFSET $offset
         ";
         
-        $stmt = $conn->query($query);
+        // เพิ่มเงื่อนไขการกรอง
+        $params = [];
+        $whereConditions = [];
+        
+        // กรองตามชื่อหรือรหัสนักเรียน
+        if (!empty($filters['student_name'])) {
+            $searchTerm = '%' . $filters['student_name'] . '%';
+            $whereConditions[] = "(u.first_name LIKE ? OR u.last_name LIKE ? OR s.student_code LIKE ?)";
+            $params[] = $searchTerm;
+            $params[] = $searchTerm;
+            $params[] = $searchTerm;
+        }
+        
+        // กรองตามแผนกวิชา
+        if (!empty($filters['department_id'])) {
+            $whereConditions[] = "d.department_id = ?";
+            $params[] = $filters['department_id'];
+        }
+        
+        // กรองตามระดับชั้น
+        if (!empty($filters['class_level'])) {
+            $whereConditions[] = "c.level = ?";
+            $params[] = $filters['class_level'];
+        }
+        
+        // กรองตามกลุ่ม
+        if (!empty($filters['class_group'])) {
+            $whereConditions[] = "c.group_number = ?";
+            $params[] = $filters['class_group'];
+        }
+        
+        // กรองตามครูที่ปรึกษา
+        if (!empty($filters['advisor_id'])) {
+            $baseQuery .= " JOIN class_advisors ca ON c.class_id = ca.class_id ";
+            $whereConditions[] = "ca.teacher_id = ?";
+            $params[] = $filters['advisor_id'];
+        }
+        
+        // รวมเงื่อนไข WHERE เข้ากับคำสั่ง SQL
+        if (!empty($whereConditions)) {
+            $baseQuery .= " AND " . implode(" AND ", $whereConditions);
+        }
+        
+        // เพิ่ม ORDER BY และ LIMIT
+        $baseQuery .= " ORDER BY c.level, c.group_number, u.first_name LIMIT ? OFFSET ?";
+        $params[] = $limit;
+        $params[] = $offset;
+        
+        // ประมวลผลคำสั่ง SQL
+        $stmt = $conn->prepare($baseQuery);
+        $stmt->execute($params);
         $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
         // เพิ่มข้อมูลเพิ่มเติมสำหรับแต่ละนักเรียน
         foreach ($students as &$student) {
-            // ดึงข้อมูลชั้นเรียน
-            try {
-                $class_stmt = $conn->prepare("
-                    SELECT 
-                        c.level, 
-                        c.group_number, 
-                        d.department_name
-                    FROM 
-                        classes c
-                        JOIN departments d ON c.department_id = d.department_id
-                    WHERE 
-                        c.class_id = ?
-                ");
-                $class_stmt->execute([$student['current_class_id']]);
-                $class_info = $class_stmt->fetch(PDO::FETCH_ASSOC);
-                
-                if ($class_info) {
-                    $student['level'] = $class_info['level'] ?? 'ไม่ระบุ';
-                    $student['group_number'] = $class_info['group_number'] ?? 0;
-                    $student['department_name'] = $class_info['department_name'] ?? 'ไม่ระบุ';
-                    $student['class'] = $student['level'] . '/' . $student['group_number'];
-                } else {
-                    $student['level'] = 'ไม่ระบุ';
-                    $student['group_number'] = 0;
-                    $student['department_name'] = 'ไม่ระบุ';
-                    $student['class'] = 'ไม่ระบุ';
-                }
-            } catch (PDOException $e) {
-                error_log("Error getting class info: " . $e->getMessage());
-                $student['level'] = 'ไม่ระบุ';
-                $student['group_number'] = 0;
-                $student['department_name'] = 'ไม่ระบุ';
-                $student['class'] = 'ไม่ระบุ';
-            }
+            // รวมข้อมูลชั้นเรียน
+            $student['class'] = $student['level'] . '/' . $student['group_number'];
             
             // ดึงข้อมูลการเข้าแถว
             try {
@@ -232,19 +255,25 @@ function getStudentsByFilters($conn, $filters = [], $limit = 10, $offset = 0) {
                         
                         // กำหนดสถานะความเสี่ยง
                         if ($rate < 60) {
-                            $student['status_text'] = 'เสี่ยงตกกิจกรรม';
+                            $student['status'] = 'เสี่ยงตกกิจกรรม';
                             $student['status_class'] = 'danger';
                         } elseif ($rate < 80) {
-                            $student['status_text'] = 'ต้องระวัง';
+                            $student['status'] = 'ต้องระวัง';
                             $student['status_class'] = 'warning';
                         } else {
-                            $student['status_text'] = 'ปกติ';
+                            $student['status'] = 'ปกติ';
                             $student['status_class'] = 'success';
+                        }
+
+                        // กรองตามสถานะความเสี่ยง ถ้ามีการกำหนด
+                        if (!empty($filters['risk_status']) && $student['status'] !== $filters['risk_status']) {
+                            // เราจะกรองนักเรียนในหน่วยความจำ เนื่องจากเราต้องคำนวณสถานะก่อน
+                            $student['filtered_out'] = true;
                         }
                     } else {
                         $student['attendance_rate'] = 0;
                         $student['attendance_days'] = "0/0 วัน (0%)";
-                        $student['status_text'] = 'ไม่มีข้อมูล';
+                        $student['status'] = 'ไม่มีข้อมูล';
                         $student['status_class'] = 'secondary';
                     }
                 } else {
@@ -252,7 +281,7 @@ function getStudentsByFilters($conn, $filters = [], $limit = 10, $offset = 0) {
                     $student['total_absence_days'] = 0;
                     $student['attendance_rate'] = 0;
                     $student['attendance_days'] = "0/0 วัน (0%)";
-                    $student['status_text'] = 'ไม่มีข้อมูล';
+                    $student['status'] = 'ไม่มีข้อมูล';
                     $student['status_class'] = 'secondary';
                 }
             } catch (PDOException $e) {
@@ -261,7 +290,7 @@ function getStudentsByFilters($conn, $filters = [], $limit = 10, $offset = 0) {
                 $student['total_absence_days'] = 0;
                 $student['attendance_rate'] = 0;
                 $student['attendance_days'] = "0/0 วัน (0%)";
-                $student['status_text'] = 'ไม่มีข้อมูล';
+                $student['status'] = 'ไม่มีข้อมูล';
                 $student['status_class'] = 'secondary';
             }
             
@@ -269,14 +298,41 @@ function getStudentsByFilters($conn, $filters = [], $limit = 10, $offset = 0) {
             try {
                 $parent_stmt = $conn->prepare("
                     SELECT COUNT(*) as parent_count
-                    FROM parent_student_relation
-                    WHERE student_id = ?
+                    FROM parent_student_relation psr
+                    JOIN parents p ON psr.parent_id = p.parent_id
+                    JOIN users u ON p.user_id = u.user_id
+                    WHERE psr.student_id = ?
                 ");
                 $parent_stmt->execute([$student['student_id']]);
                 $parent_count = $parent_stmt->fetchColumn();
                 
                 $student['parent_count'] = $parent_count;
-                $student['parents_info'] = $parent_count > 0 ? "$parent_count คน" : "ไม่มีข้อมูล";
+                
+                if ($parent_count > 0) {
+                    // ดึงรายชื่อผู้ปกครอง
+                    $parent_names_stmt = $conn->prepare("
+                        SELECT u.first_name, u.last_name, p.relationship
+                        FROM parent_student_relation psr
+                        JOIN parents p ON psr.parent_id = p.parent_id
+                        JOIN users u ON p.user_id = u.user_id
+                        WHERE psr.student_id = ?
+                        LIMIT 2
+                    ");
+                    $parent_names_stmt->execute([$student['student_id']]);
+                    $parents = $parent_names_stmt->fetchAll(PDO::FETCH_ASSOC);
+                    
+                    $parent_details = [];
+                    foreach ($parents as $parent) {
+                        $parent_details[] = "{$parent['relationship']}: {$parent['first_name']} {$parent['last_name']}";
+                    }
+                    
+                    $student['parents_info'] = implode(", ", $parent_details);
+                    if ($parent_count > 2) {
+                        $student['parents_info'] .= " และอีก " . ($parent_count - 2) . " คน";
+                    }
+                } else {
+                    $student['parents_info'] = "ไม่มีข้อมูล";
+                }
             } catch (PDOException $e) {
                 error_log("Error getting parent info: " . $e->getMessage());
                 $student['parent_count'] = 0;
@@ -286,17 +342,21 @@ function getStudentsByFilters($conn, $filters = [], $limit = 10, $offset = 0) {
             // ข้อมูลอื่นๆ
             $student['initial'] = mb_substr($student['first_name'], 0, 1, 'UTF-8');
         }
+
+        // กรองนักเรียนที่ไม่ตรงตามเงื่อนไขความเสี่ยงออก
+        $students = array_filter($students, function($student) {
+            return empty($student['filtered_out']);
+        });
         
-        return $students;
+        return array_values($students); // ปรับเป็น array เริ่มต้นจาก 0
     } catch (PDOException $e) {
         error_log("Error in getStudentsByFilters: " . $e->getMessage());
-        error_log("Query: $query");
         return [];
     }
 }
 
 /**
- * ฟังก์ชันนับจำนวนนักเรียนที่ตรงตามเงื่อนไข - ทำให้ง่ายที่สุด
+ * ฟังก์ชันนับจำนวนนักเรียนที่ตรงตามเงื่อนไข - แก้ไขให้ตรงกับฟังก์ชัน getStudentsByFilters
  * 
  * @param PDO $conn เชื่อมต่อฐานข้อมูล
  * @param array $filters เงื่อนไขการกรอง
@@ -304,20 +364,74 @@ function getStudentsByFilters($conn, $filters = [], $limit = 10, $offset = 0) {
  */
 function countStudentsByFilters($conn, $filters = []) {
     try {
-        // นับจำนวนนักเรียนทั้งหมด - ไม่มีเงื่อนไขใดๆ เพื่อทดสอบ
-        $query = "
+        // สร้างคำสั่ง SQL สำหรับนับจำนวน
+        $baseQuery = "
             SELECT COUNT(*) as total
-            FROM students
-            WHERE status = 'กำลังศึกษา'
+            FROM students s
+            JOIN users u ON s.user_id = u.user_id
+            LEFT JOIN classes c ON s.current_class_id = c.class_id
+            LEFT JOIN departments d ON c.department_id = d.department_id
+            WHERE s.status = 'กำลังศึกษา'
         ";
         
-        $stmt = $conn->query($query);
+        // เพิ่มเงื่อนไขการกรอง
+        $params = [];
+        $whereConditions = [];
+        
+        // กรองตามชื่อหรือรหัสนักเรียน
+        if (!empty($filters['student_name'])) {
+            $searchTerm = '%' . $filters['student_name'] . '%';
+            $whereConditions[] = "(u.first_name LIKE ? OR u.last_name LIKE ? OR s.student_code LIKE ?)";
+            $params[] = $searchTerm;
+            $params[] = $searchTerm;
+            $params[] = $searchTerm;
+        }
+        
+        // กรองตามแผนกวิชา
+        if (!empty($filters['department_id'])) {
+            $whereConditions[] = "d.department_id = ?";
+            $params[] = $filters['department_id'];
+        }
+        
+        // กรองตามระดับชั้น
+        if (!empty($filters['class_level'])) {
+            $whereConditions[] = "c.level = ?";
+            $params[] = $filters['class_level'];
+        }
+        
+        // กรองตามกลุ่ม
+        if (!empty($filters['class_group'])) {
+            $whereConditions[] = "c.group_number = ?";
+            $params[] = $filters['class_group'];
+        }
+        
+        // กรองตามครูที่ปรึกษา
+        if (!empty($filters['advisor_id'])) {
+            $baseQuery .= " JOIN class_advisors ca ON c.class_id = ca.class_id ";
+            $whereConditions[] = "ca.teacher_id = ?";
+            $params[] = $filters['advisor_id'];
+        }
+        
+        // รวมเงื่อนไข WHERE เข้ากับคำสั่ง SQL
+        if (!empty($whereConditions)) {
+            $baseQuery .= " AND " . implode(" AND ", $whereConditions);
+        }
+        
+        // ประมวลผลคำสั่ง SQL
+        $stmt = $conn->prepare($baseQuery);
+        $stmt->execute($params);
         $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        // สำหรับการกรองตามสถานะความเสี่ยง ต้องดึงข้อมูลทั้งหมดและกรองในหน่วยความจำ
+        if (!empty($filters['risk_status'])) {
+            $studentCount = 0;
+            $students = getStudentsByFilters($conn, $filters, 100000, 0); // ดึงทั้งหมด
+            return count($students);
+        }
         
         return intval($result['total'] ?? 0);
     } catch (PDOException $e) {
         error_log("Error in countStudentsByFilters: " . $e->getMessage());
-        error_log("Query: $query");
         return 0;
     }
 }
@@ -371,9 +485,9 @@ function replaceTemplateVariables($message, $data) {
  * @return string URL รูปภาพกราฟ
  */
 function generateAttendanceChart($conn, $student_id, $start_date, $end_date) {
-    // สร้าง URL จำลองสำหรับกราฟ
-    // ในระบบจริงควรสร้างกราฟและบันทึกเป็นไฟล์ แล้วคืนค่า URL
-    return "https://chart-api.example.com/attendance-chart.php?student_id={$student_id}&start={$start_date}&end={$end_date}";
+    // ในระบบจริง ควรสร้างกราฟและบันทึกเป็นไฟล์ แล้วคืนค่า URL
+    // ตัวอย่างการใช้งานจริง
+    return "chart-api.php?student_id={$student_id}&start={$start_date}&end={$end_date}";
 }
 
 /**
@@ -385,8 +499,8 @@ function generateAttendanceChart($conn, $student_id, $start_date, $end_date) {
  * @return string URL หน้ารายละเอียด
  */
 function generateDetailUrl($student_id, $start_date, $end_date) {
-    // สร้าง URL สำหรับหน้ารายละเอียด
-    return "https://line-oa.example.com/attendance-detail.php?student_id={$student_id}&start={$start_date}&end={$end_date}";
+    // ในระบบจริง ควรสร้าง URL ที่ถูกต้อง
+    return "attendance-detail.php?student_id={$student_id}&start={$start_date}&end={$end_date}";
 }
 
 /**
@@ -398,9 +512,39 @@ function generateDetailUrl($student_id, $start_date, $end_date) {
  * @return array ผลลัพธ์การส่ง
  */
 function sendLineMessage($line_id, $messages, $access_token) {
-    // จำลองการส่งข้อความ (ในระบบจริงต้องใช้ LINE Messaging API)
-    // สำหรับตัวอย่างนี้ให้จำลองการส่งสำเร็จเสมอ
-    return ['success' => true, 'message_id' => uniqid()];
+    // ในระบบจริง ควรใช้ LINE Messaging API
+    if (empty($line_id) || empty($messages) || empty($access_token)) {
+        return ['success' => false, 'message' => 'ข้อมูลไม่ครบถ้วน'];
+    }
+    
+    // สร้างข้อมูลสำหรับส่งไปยัง LINE API
+    $headers = [
+        'Content-Type: application/json',
+        'Authorization: Bearer ' . $access_token
+    ];
+    
+    $data = [
+        'to' => $line_id,
+        'messages' => $messages
+    ];
+    
+    // ส่งข้อมูลไปยัง LINE API
+    $ch = curl_init('https://api.line.me/v2/bot/message/push');
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+    curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    
+    if ($httpCode == 200) {
+        return ['success' => true, 'message_id' => uniqid()];
+    } else {
+        return ['success' => false, 'message' => 'ไม่สามารถส่งข้อความได้: ' . $response];
+    }
 }
 
 // ตรวจสอบการร้องขอผ่าน AJAX
@@ -423,6 +567,26 @@ if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQU
         $offset = $_POST['offset'] ?? 0;
         
         $students = getStudentsByFilters($conn, $filters, $limit, $offset);
+        $total = countStudentsByFilters($conn, $filters);
+        
+        echo json_encode([
+            'success' => true,
+            'students' => $students,
+            'total' => $total
+        ]);
+        exit;
+    }
+    
+    // ดึงข้อมูลนักเรียนที่เสี่ยงตกกิจกรรม
+    if (isset($_POST['get_at_risk_students'])) {
+        $filters = [
+            'student_name' => $_POST['student_name'] ?? '',
+            'class_level' => $_POST['class_level'] ?? '',
+            'class_group' => $_POST['class_group'] ?? '',
+            'risk_status' => $_POST['risk_status'] ?? 'เสี่ยงตกกิจกรรม'
+        ];
+        
+        $students = getStudentsByFilters($conn, $filters, 100, 0);
         $total = countStudentsByFilters($conn, $filters);
         
         echo json_encode([
@@ -590,21 +754,44 @@ if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQU
         exit;
     }
     
-    // ส่งข้อความแจ้งเตือน
-    if (isset($_POST['send_notification'])) {
+    // ส่งข้อความแจ้งเตือน - แก้ไขให้สามารถทำงานร่วมกับ JavaScript ได้ถูกต้อง
+    if (isset($_POST['send_notification']) || isset($_POST['send_individual_message']) || isset($_POST['send_group_message'])) {
         // ตรวจสอบข้อมูลที่จำเป็น
-        if (empty($_POST['student_ids']) || empty($_POST['message'])) {
-            echo json_encode(['success' => false, 'message' => 'กรุณาระบุผู้รับและข้อความ']);
-            exit;
+        $student_ids = [];
+        
+        if (isset($_POST['send_individual_message'])) {
+            // กรณีส่งข้อความรายบุคคล
+            if (empty($_POST['student_id']) || empty($_POST['message'])) {
+                echo json_encode(['success' => false, 'message' => 'กรุณาระบุผู้รับและข้อความ']);
+                exit;
+            }
+            $student_ids = [$_POST['student_id']];
+            $message = $_POST['message'];
+            $is_group = false;
+        } else if (isset($_POST['send_group_message'])) {
+            // กรณีส่งข้อความกลุ่ม
+            if (empty($_POST['student_ids']) || empty($_POST['message'])) {
+                echo json_encode(['success' => false, 'message' => 'กรุณาระบุผู้รับและข้อความ']);
+                exit;
+            }
+            $student_ids = json_decode($_POST['student_ids'], true);
+            $message = $_POST['message'];
+            $is_group = true;
+        } else {
+            // กรณีเรียกจากฟอร์มเดิม
+            if (empty($_POST['student_ids']) || empty($_POST['message'])) {
+                echo json_encode(['success' => false, 'message' => 'กรุณาระบุผู้รับและข้อความ']);
+                exit;
+            }
+            $student_ids = json_decode($_POST['student_ids'], true);
+            $message = $_POST['message'];
+            $is_group = (isset($_POST['is_group']) && $_POST['is_group'] === 'true');
         }
         
-        $student_ids = json_decode($_POST['student_ids'], true);
-        $message = $_POST['message'];
-        $start_date = $_POST['start_date'] ?? null;
-        $end_date = $_POST['end_date'] ?? null;
-        $include_chart = ($_POST['include_chart'] === 'true');
-        $include_link = ($_POST['include_link'] === 'true');
-        $is_group = ($_POST['is_group'] === 'true');
+        $start_date = $_POST['start_date'] ?? date('Y-m-01'); // วันแรกของเดือนปัจจุบัน
+        $end_date = $_POST['end_date'] ?? date('Y-m-d'); // วันปัจจุบัน
+        $include_chart = isset($_POST['include_chart']) && ($_POST['include_chart'] === 'true' || $_POST['include_chart'] === '1');
+        $include_link = isset($_POST['include_link']) && ($_POST['include_link'] === 'true' || $_POST['include_link'] === '1');
         
         // ตรวจสอบว่ามี LINE API Token หรือไม่
         if (empty($line_access_token)) {
@@ -897,26 +1084,6 @@ if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQU
             error_log("Error saving template: " . $e->getMessage());
             echo json_encode(['success' => false, 'message' => 'เกิดข้อผิดพลาดในการบันทึกเทมเพลต']);
         }
-        exit;
-    }
-    
-    // ดึงข้อมูลนักเรียนที่เสี่ยงตกกิจกรรม
-    if (isset($_POST['get_at_risk_students'])) {
-        $filters = [
-            'student_name' => $_POST['student_name'] ?? '',
-            'class_level' => $_POST['class_level'] ?? '',
-            'class_group' => $_POST['class_group'] ?? '',
-            'risk_status' => $_POST['risk_status'] ?? 'เสี่ยงตกกิจกรรม'
-        ];
-        
-        $students = getStudentsByFilters($conn, $filters, 100, 0);
-        $total = countStudentsByFilters($conn, $filters);
-        
-        echo json_encode([
-            'success' => true,
-            'students' => $students,
-            'total' => $total
-        ]);
         exit;
     }
 }
