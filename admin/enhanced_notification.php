@@ -12,6 +12,9 @@ session_start();
 require_once '../db_connect.php';
 $conn = getDB();
 
+// โหลด LINE Notification API
+require_once 'notification_api.php';
+
 /* // ตรวจสอบการล็อกอิน
 if (!isset($_SESSION['user_id']) || !in_array($_SESSION['user_role'], ['admin', 'teacher'])) {
     header('Location: login.php');
@@ -50,6 +53,9 @@ try {
     $primary_color = '#28a745';
     $secondary_color = '#6c757d';
 }
+
+// สร้าง LINE API Object
+$lineAPI = new LineNotificationAPI($line_access_token, $conn);
 
 // ดึงข้อมูลแผนกวิชา
 try {
@@ -214,19 +220,33 @@ function getStudentsByFilters($conn, $filters = [], $limit = 10, $offset = 0) {
         }
         
         // เพิ่ม ORDER BY และ LIMIT
-        $baseQuery .= " ORDER BY c.level, c.group_number, u.first_name LIMIT ? OFFSET ?";
-        $params[] = $limit;
-        $params[] = $offset;
+        $baseQuery .= " ORDER BY c.level, c.group_number, u.first_name";
+
+        // หากมีการกำหนดจำนวนจำกัด
+        if ($limit > 0) {
+            $baseQuery .= " LIMIT ? OFFSET ?";
+            $params[] = $limit;
+            $params[] = $offset;
+        }
         
         // ประมวลผลคำสั่ง SQL
         $stmt = $conn->prepare($baseQuery);
-        $stmt->execute($params);
+        
+        // ถ้ามีการใช้ bindParam ต้องทำทีละตัว
+        if (!empty($params)) {
+            for ($i = 0; $i < count($params); $i++) {
+                $stmt->bindValue($i + 1, $params[$i]);
+            }
+        }
+        
+        $stmt->execute();
         $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
         // เพิ่มข้อมูลเพิ่มเติมสำหรับแต่ละนักเรียน
         foreach ($students as &$student) {
             // รวมข้อมูลชั้นเรียน
-            $student['class'] = $student['level'] . '/' . $student['group_number'];
+            $student['class'] = isset($student['level']) && isset($student['group_number']) ? 
+                $student['level'] . '/' . $student['group_number'] : '';
             
             // ดึงข้อมูลการเข้าแถว
             try {
@@ -340,13 +360,15 @@ function getStudentsByFilters($conn, $filters = [], $limit = 10, $offset = 0) {
             }
             
             // ข้อมูลอื่นๆ
-            $student['initial'] = mb_substr($student['first_name'], 0, 1, 'UTF-8');
+            $student['initial'] = !empty($student['first_name']) ? mb_substr($student['first_name'], 0, 1, 'UTF-8') : '?';
         }
 
         // กรองนักเรียนที่ไม่ตรงตามเงื่อนไขความเสี่ยงออก
-        $students = array_filter($students, function($student) {
-            return empty($student['filtered_out']);
-        });
+        if (!empty($filters['risk_status'])) {
+            $students = array_filter($students, function($student) {
+                return empty($student['filtered_out']);
+            });
+        }
         
         return array_values($students); // ปรับเป็น array เริ่มต้นจาก 0
     } catch (PDOException $e) {
@@ -453,98 +475,225 @@ function getActiveTemplates($templateManager, $type = 'individual') {
 }
 
 /**
- * ฟังก์ชันแทนที่ตัวแปรในข้อความเทมเพลต
- * 
- * @param string $message ข้อความเทมเพลต
- * @param array $data ข้อมูลสำหรับแทนที่
- * @return string ข้อความที่แทนที่ตัวแปรแล้ว
- */
-function replaceTemplateVariables($message, $data) {
-    $patterns = [
-        '/{{ชื่อนักเรียน}}/' => $data['student_name'] ?? '',
-        '/{{ชั้นเรียน}}/' => $data['class'] ?? '',
-        '/{{จำนวนวันเข้าแถว}}/' => $data['attendance_days'] ?? '0',
-        '/{{จำนวนวันทั้งหมด}}/' => $data['total_days'] ?? '0',
-        '/{{ร้อยละการเข้าแถว}}/' => $data['attendance_rate'] ?? '0',
-        '/{{จำนวนวันขาด}}/' => $data['absence_days'] ?? '0',
-        '/{{สถานะการเข้าแถว}}/' => $data['attendance_status'] ?? '',
-        '/{{ชื่อครูที่ปรึกษา}}/' => $data['advisor_name'] ?? '',
-        '/{{เบอร์โทรครู}}/' => $data['advisor_phone'] ?? ''
-    ];
-    
-    return preg_replace(array_keys($patterns), array_values($patterns), $message);
-}
-
-/**
- * ฟังก์ชันสร้าง URL รูปภาพกราฟการเข้าแถว
+ * ฟังก์ชันดึงข้อมูลการเข้าแถวของนักเรียน
  * 
  * @param PDO $conn เชื่อมต่อฐานข้อมูล
  * @param int $student_id รหัสนักเรียน
- * @param string $start_date วันที่เริ่มต้น
- * @param string $end_date วันที่สิ้นสุด
- * @return string URL รูปภาพกราฟ
+ * @param string $start_date วันที่เริ่มต้น (Y-m-d)
+ * @param string $end_date วันที่สิ้นสุด (Y-m-d)
+ * @return array ข้อมูลการเข้าแถว
  */
-function generateAttendanceChart($conn, $student_id, $start_date, $end_date) {
-    // ในระบบจริง ควรสร้างกราฟและบันทึกเป็นไฟล์ แล้วคืนค่า URL
-    // ตัวอย่างการใช้งานจริง
-    return "chart-api.php?student_id={$student_id}&start={$start_date}&end={$end_date}";
+function getStudentAttendanceData($conn, $student_id, $start_date, $end_date) {
+    try {
+        $query = "
+            SELECT 
+                a.date,
+                a.attendance_status,
+                a.check_method,
+                a.check_time
+            FROM 
+                attendance a
+                JOIN academic_years ay ON a.academic_year_id = ay.academic_year_id
+            WHERE 
+                a.student_id = ? 
+                AND a.date BETWEEN ? AND ?
+                AND ay.is_active = 1
+            ORDER BY 
+                a.date ASC
+        ";
+        
+        $stmt = $conn->prepare($query);
+        $stmt->execute([$student_id, $start_date, $end_date]);
+        $attendance_records = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // นับจำนวนวันตามสถานะ
+        $present_count = 0;
+        $absent_count = 0;
+        $late_count = 0;
+        $leave_count = 0;
+        
+        foreach ($attendance_records as $record) {
+            switch ($record['attendance_status']) {
+                case 'present':
+                    $present_count++;
+                    break;
+                case 'absent':
+                    $absent_count++;
+                    break;
+                case 'late':
+                    $late_count++;
+                    break;
+                case 'leave':
+                    $leave_count++;
+                    break;
+            }
+        }
+        
+        // สร้างข้อมูลกราฟ
+        $dates = [];
+        $rates = [];
+        $cumulative_present = 0;
+        
+        foreach ($attendance_records as $index => $record) {
+            $date = date('d/m', strtotime($record['date']));
+            $dates[] = $date;
+            
+            if ($record['attendance_status'] == 'present') {
+                $cumulative_present++;
+            }
+            
+            $current_rate = ($index + 1 > 0) ? round(($cumulative_present / ($index + 1)) * 100) : 0;
+            $rates[] = $current_rate;
+        }
+        
+        $total_days = count($attendance_records);
+        $attendance_rate = ($total_days > 0) ? round(($present_count / $total_days) * 100, 2) : 0;
+        
+        return [
+            'records' => $attendance_records,
+            'present_count' => $present_count,
+            'absent_count' => $absent_count,
+            'late_count' => $late_count,
+            'leave_count' => $leave_count,
+            'total_days' => $total_days,
+            'attendance_rate' => $attendance_rate,
+            'chart_data' => [
+                'dates' => $dates,
+                'rates' => $rates
+            ],
+            'start_date' => $start_date,
+            'end_date' => $end_date
+        ];
+    } catch (PDOException $e) {
+        error_log("Error getting attendance data: " . $e->getMessage());
+        return [
+            'records' => [],
+            'present_count' => 0,
+            'absent_count' => 0,
+            'late_count' => 0,
+            'leave_count' => 0,
+            'total_days' => 0,
+            'attendance_rate' => 0,
+            'chart_data' => [
+                'dates' => [],
+                'rates' => []
+            ],
+            'start_date' => $start_date,
+            'end_date' => $end_date
+        ];
+    }
 }
 
 /**
- * ฟังก์ชันสร้าง URL หน้ารายละเอียดการเข้าแถว
+ * ส่งข้อความแจ้งเตือนผู้ปกครอง
  * 
+ * @param LineNotificationAPI $lineAPI API สำหรับส่งข้อความ
+ * @param PDO $conn เชื่อมต่อฐานข้อมูล
  * @param int $student_id รหัสนักเรียน
- * @param string $start_date วันที่เริ่มต้น
- * @param string $end_date วันที่สิ้นสุด
- * @return string URL หน้ารายละเอียด
- */
-function generateDetailUrl($student_id, $start_date, $end_date) {
-    // ในระบบจริง ควรสร้าง URL ที่ถูกต้อง
-    return "attendance-detail.php?student_id={$student_id}&start={$start_date}&end={$end_date}";
-}
-
-/**
- * ฟังก์ชันส่งข้อความผ่าน LINE
- * 
- * @param string $line_id LINE ID ของผู้รับ
- * @param array $messages ข้อความที่ต้องการส่ง
- * @param string $access_token LINE Access Token
+ * @param string $message_text ข้อความที่ต้องการส่ง
+ * @param string $start_date วันที่เริ่มต้น (Y-m-d)
+ * @param string $end_date วันที่สิ้นสุด (Y-m-d)
+ * @param bool $include_chart แนบกราฟหรือไม่
+ * @param bool $include_link แนบลิงก์หรือไม่
  * @return array ผลลัพธ์การส่ง
  */
-function sendLineMessage($line_id, $messages, $access_token) {
-    // ในระบบจริง ควรใช้ LINE Messaging API
-    if (empty($line_id) || empty($messages) || empty($access_token)) {
-        return ['success' => false, 'message' => 'ข้อมูลไม่ครบถ้วน'];
+function sendParentNotification($lineAPI, $conn, $student_id, $message_text, $start_date, $end_date, $include_chart = true, $include_link = true) {
+    // ดึงข้อมูลนักเรียน
+    $student_info = $lineAPI->getStudentInfo($student_id);
+    if (!$student_info) {
+        return [
+            'success' => false,
+            'message' => 'ไม่พบข้อมูลนักเรียน',
+            'student_id' => $student_id
+        ];
     }
     
-    // สร้างข้อมูลสำหรับส่งไปยัง LINE API
-    $headers = [
-        'Content-Type: application/json',
-        'Authorization: Bearer ' . $access_token
-    ];
-    
-    $data = [
-        'to' => $line_id,
-        'messages' => $messages
-    ];
-    
-    // ส่งข้อมูลไปยัง LINE API
-    $ch = curl_init('https://api.line.me/v2/bot/message/push');
-    curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
-    curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    
-    $response = curl_exec($ch);
-    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
-    
-    if ($httpCode == 200) {
-        return ['success' => true, 'message_id' => uniqid()];
-    } else {
-        return ['success' => false, 'message' => 'ไม่สามารถส่งข้อความได้: ' . $response];
+    // ดึงข้อมูล LINE ID ของผู้ปกครอง
+    $parent_line_ids = $lineAPI->getParentLineIds($student_id);
+    if (empty($parent_line_ids)) {
+        return [
+            'success' => false,
+            'message' => 'ไม่พบข้อมูล LINE ID ของผู้ปกครอง',
+            'student_id' => $student_id,
+            'student_name' => $student_info['full_name']
+        ];
     }
+    
+    // ดึงข้อมูลการเข้าแถว
+    $attendance_data = getStudentAttendanceData($conn, $student_id, $start_date, $end_date);
+    
+    // แทนที่ตัวแปรในข้อความ
+    $message_data = [
+        'student_name' => $student_info['full_name'],
+        'class' => $student_info['class_name'],
+        'attendance_days' => $attendance_data['present_count'],
+        'total_days' => $attendance_data['total_days'],
+        'attendance_rate' => $attendance_data['attendance_rate'],
+        'absence_days' => $attendance_data['absent_count'],
+        'attendance_status' => getAttendanceStatus($attendance_data['attendance_rate']),
+        'advisor_name' => $student_info['advisor_name'] ?? 'ไม่พบข้อมูล',
+        'advisor_phone' => $student_info['advisor_phone'] ?? 'ไม่พบข้อมูล'
+    ];
+    
+    $personalized_message = $lineAPI->replaceTemplateVariables($message_text, $message_data);
+    
+    // สร้างข้อความที่จะส่ง
+    $messages = [];
+    
+    // เพิ่มข้อความหลัก
+    $messages[] = $lineAPI->createTextMessage($personalized_message);
+    
+    // เพิ่มรูปภาพกราฟ (ถ้าต้องการ)
+    if ($include_chart) {
+        $chart_url = $lineAPI->generateAttendanceChart($student_id, $start_date, $end_date);
+        $messages[] = $lineAPI->createImageMessage($chart_url);
+    }
+    
+    // เพิ่มลิงก์ (ถ้าต้องการ)
+    if ($include_link) {
+        $detail_url = $lineAPI->generateDetailUrl($student_id, $start_date, $end_date);
+        $messages[] = $lineAPI->createButtonMessage('ดูข้อมูลโดยละเอียด', 'ดูรายละเอียด', $detail_url);
+    }
+    
+    // ส่งข้อความไปยังผู้ปกครองทุกคน
+    $success = false;
+    $result_details = [];
+    
+    foreach ($parent_line_ids as $line_id) {
+        $result = $lineAPI->sendMessage($line_id, $messages);
+        $result_details[] = $result;
+        
+        if ($result['success']) {
+            $success = true;
+        }
+    }
+    
+    // คำนวณค่าใช้จ่าย
+    $cost_per_parent = $lineAPI->calculateMessageCost(true, $include_chart, $include_link);
+    $total_cost = $cost_per_parent * count($parent_line_ids);
+    
+    return [
+        'success' => $success,
+        'student_id' => $student_id,
+        'student_name' => $student_info['full_name'],
+        'class' => $student_info['class_name'],
+        'parent_count' => count($parent_line_ids),
+        'message_count' => count($messages),
+        'results' => $result_details,
+        'cost' => $total_cost
+    ];
+}
+
+/**
+ * ดึงสถานะการเข้าแถวตามอัตราการเข้าแถว
+ * 
+ * @param float $rate อัตราการเข้าแถว (%)
+ * @return string สถานะการเข้าแถว
+ */
+function getAttendanceStatus($rate) {
+    if ($rate < 60) return 'เสี่ยงตกกิจกรรม';
+    if ($rate < 80) return 'ต้องระวัง';
+    return 'ปกติ';
 }
 
 // ตรวจสอบการร้องขอผ่าน AJAX
@@ -651,143 +800,25 @@ if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQU
         }
         
         // ดึงข้อมูลการเข้าแถว
-        try {
-            $query = "
-                SELECT 
-                    a.date,
-                    a.attendance_status,
-                    a.check_method,
-                    a.check_time
-                FROM 
-                    attendance a
-                    JOIN academic_years ay ON a.academic_year_id = ay.academic_year_id
-                WHERE 
-                    a.student_id = ? 
-                    AND a.date BETWEEN ? AND ?
-                    AND ay.is_active = 1
-                ORDER BY 
-                    a.date ASC
-            ";
-            
-            $stmt = $conn->prepare($query);
-            $stmt->execute([$student_id, $start_date, $end_date]);
-            $attendance_records = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
-            // นับจำนวนวันตามสถานะ
-            $present_count = 0;
-            $absent_count = 0;
-            $late_count = 0;
-            $leave_count = 0;
-            
-            foreach ($attendance_records as $record) {
-                switch ($record['attendance_status']) {
-                    case 'present':
-                        $present_count++;
-                        break;
-                    case 'absent':
-                        $absent_count++;
-                        break;
-                    case 'late':
-                        $late_count++;
-                        break;
-                    case 'leave':
-                        $leave_count++;
-                        break;
-                }
-            }
-            
-            $total_days = $present_count + $absent_count + $late_count + $leave_count;
-            $attendance_rate = ($total_days > 0) ? round(($present_count / $total_days) * 100, 2) : 0;
-            
-            // สร้างข้อมูลกราฟ
-            $dates = [];
-            $rates = [];
-            $cumulative_present = 0;
-            
-            foreach ($attendance_records as $index => $record) {
-                $date = date('d/m', strtotime($record['date']));
-                $dates[] = $date;
-                
-                if ($record['attendance_status'] == 'present') {
-                    $cumulative_present++;
-                }
-                
-                $current_rate = ($index + 1 > 0) ? round(($cumulative_present / ($index + 1)) * 100) : 0;
-                $rates[] = $current_rate;
-            }
-            
-            // ถ้าไม่มีข้อมูล ใช้ข้อมูลตัวอย่าง
-            if (empty($dates)) {
-                $current_date = new DateTime();
-                for ($i = 0; $i < 5; $i++) {
-                    $date = clone $current_date;
-                    $date->modify("-$i day");
-                    $dates[] = $date->format('d/m');
-                    $rates[] = rand(60, 90);
-                }
-                // เรียงลำดับวันที่
-                $dates = array_reverse($dates);
-            }
-            
-            echo json_encode([
-                'success' => true,
-                'attendance' => [
-                    'records' => $attendance_records,
-                    'present_count' => $present_count,
-                    'absent_count' => $absent_count,
-                    'late_count' => $late_count,
-                    'leave_count' => $leave_count,
-                    'total_days' => $total_days,
-                    'attendance_rate' => $attendance_rate,
-                    'chart_data' => [
-                        'dates' => $dates,
-                        'rates' => $rates
-                    ],
-                    'start_date' => $start_date,
-                    'end_date' => $end_date
-                ]
-            ]);
-        } catch (PDOException $e) {
-            error_log("Error fetching attendance: " . $e->getMessage());
-            echo json_encode(['success' => false, 'message' => 'เกิดข้อผิดพลาดในการดึงข้อมูลการเข้าแถว']);
-        }
+        $attendanceData = getStudentAttendanceData($conn, $student_id, $start_date, $end_date);
+        
+        echo json_encode([
+            'success' => true,
+            'attendance' => $attendanceData
+        ]);
         exit;
     }
     
-    // ส่งข้อความแจ้งเตือน - แก้ไขให้สามารถทำงานร่วมกับ JavaScript ได้ถูกต้อง
-    if (isset($_POST['send_notification']) || isset($_POST['send_individual_message']) || isset($_POST['send_group_message'])) {
+    // ส่งข้อความแจ้งเตือนผู้ปกครองรายบุคคล
+    if (isset($_POST['send_individual_message'])) {
         // ตรวจสอบข้อมูลที่จำเป็น
-        $student_ids = [];
-        
-        if (isset($_POST['send_individual_message'])) {
-            // กรณีส่งข้อความรายบุคคล
-            if (empty($_POST['student_id']) || empty($_POST['message'])) {
-                echo json_encode(['success' => false, 'message' => 'กรุณาระบุผู้รับและข้อความ']);
-                exit;
-            }
-            $student_ids = [$_POST['student_id']];
-            $message = $_POST['message'];
-            $is_group = false;
-        } else if (isset($_POST['send_group_message'])) {
-            // กรณีส่งข้อความกลุ่ม
-            if (empty($_POST['student_ids']) || empty($_POST['message'])) {
-                echo json_encode(['success' => false, 'message' => 'กรุณาระบุผู้รับและข้อความ']);
-                exit;
-            }
-            $student_ids = json_decode($_POST['student_ids'], true);
-            $message = $_POST['message'];
-            $is_group = true;
-        } else {
-            // กรณีเรียกจากฟอร์มเดิม
-            if (empty($_POST['student_ids']) || empty($_POST['message'])) {
-                echo json_encode(['success' => false, 'message' => 'กรุณาระบุผู้รับและข้อความ']);
-                exit;
-            }
-            $student_ids = json_decode($_POST['student_ids'], true);
-            $message = $_POST['message'];
-            $is_group = (isset($_POST['is_group']) && $_POST['is_group'] === 'true');
+        if (empty($_POST['student_id']) || empty($_POST['message'])) {
+            echo json_encode(['success' => false, 'message' => 'กรุณาระบุผู้รับและข้อความ']);
+            exit;
         }
         
+        $student_id = $_POST['student_id'];
+        $message = $_POST['message'];
         $start_date = $_POST['start_date'] ?? date('Y-m-01'); // วันแรกของเดือนปัจจุบัน
         $end_date = $_POST['end_date'] ?? date('Y-m-d'); // วันปัจจุบัน
         $include_chart = isset($_POST['include_chart']) && ($_POST['include_chart'] === 'true' || $_POST['include_chart'] === '1');
@@ -799,256 +830,92 @@ if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQU
             exit;
         }
         
+        // ส่งข้อความ
+        $result = sendParentNotification(
+            $lineAPI,
+            $conn,
+            $student_id,
+            $message,
+            $start_date,
+            $end_date,
+            $include_chart,
+            $include_link
+        );
+        
+        // อัปเดตการใช้งานเทมเพลต (ถ้ามีการระบุ ID เทมเพลต)
+        if (!empty($_POST['template_id'])) {
+            $template_manager->updateTemplateLastUsed($_POST['template_id']);
+        }
+        
+        echo json_encode([
+            'success' => $result['success'],
+            'message' => $result['success'] ? 'ส่งข้อความสำเร็จ' : ($result['message'] ?? 'เกิดข้อผิดพลาดในการส่งข้อความ'),
+            'results' => [$result],
+            'total_cost' => $result['cost'] ?? 0,
+            'success_count' => $result['success'] ? 1 : 0,
+            'error_count' => $result['success'] ? 0 : 1
+        ]);
+        exit;
+    }
+    
+    // ส่งข้อความแจ้งเตือนผู้ปกครองแบบกลุ่ม
+    if (isset($_POST['send_group_message'])) {
+        // ตรวจสอบข้อมูลที่จำเป็น
+        if (empty($_POST['student_ids']) || empty($_POST['message'])) {
+            echo json_encode(['success' => false, 'message' => 'กรุณาระบุผู้รับและข้อความ']);
+            exit;
+        }
+        
+        $student_ids = json_decode($_POST['student_ids'], true);
+        if (!is_array($student_ids) || empty($student_ids)) {
+            echo json_encode(['success' => false, 'message' => 'ไม่พบรายการนักเรียนที่ต้องการส่งข้อความ']);
+            exit;
+        }
+        
+        $message = $_POST['message'];
+        $start_date = $_POST['start_date'] ?? date('Y-m-01'); // วันแรกของเดือนปัจจุบัน
+        $end_date = $_POST['end_date'] ?? date('Y-m-d'); // วันปัจจุบัน
+        $include_chart = isset($_POST['include_chart']) && ($_POST['include_chart'] === 'true' || $_POST['include_chart'] === '1');
+        $include_link = isset($_POST['include_link']) && ($_POST['include_link'] === 'true' || $_POST['include_link'] === '1');
+        
+        // ตรวจสอบว่ามี LINE API Token หรือไม่
+        if (empty($line_access_token)) {
+            echo json_encode(['success' => false, 'message' => 'ไม่พบ LINE API Token กรุณาตั้งค่าก่อนส่งข้อความ']);
+            exit;
+        }
+        
+        // ส่งข้อความทีละคน
         $results = [];
         $success_count = 0;
         $error_count = 0;
         $total_cost = 0;
         
         foreach ($student_ids as $student_id) {
-            // ดึงข้อมูลนักเรียน
-            try {
-                $stmt = $conn->prepare("
-                    SELECT 
-                        s.student_id, s.title, u.first_name, u.last_name,
-                        c.level, c.group_number, s.current_class_id,
-                        (
-                            SELECT GROUP_CONCAT(pu.line_id)
-                            FROM parent_student_relation psr
-                            JOIN parents p ON psr.parent_id = p.parent_id
-                            JOIN users pu ON p.user_id = pu.user_id
-                            WHERE psr.student_id = s.student_id
-                        ) as parent_line_ids
-                    FROM 
-                        students s
-                        JOIN users u ON s.user_id = u.user_id
-                        JOIN classes c ON s.current_class_id = c.class_id
-                    WHERE 
-                        s.student_id = ?
-                ");
-                $stmt->execute([$student_id]);
-                $student = $stmt->fetch(PDO::FETCH_ASSOC);
-                
-                if (!$student) {
-                    $results[] = [
-                        'student_id' => $student_id,
-                        'success' => false,
-                        'message' => 'ไม่พบข้อมูลนักเรียน',
-                        'student_name' => "รหัส $student_id"
-                    ];
-                    $error_count++;
-                    continue;
-                }
-                
-                // ตรวจสอบว่ามี LINE ID ของผู้ปกครองหรือไม่
-                if (empty($student['parent_line_ids'])) {
-                    $results[] = [
-                        'student_id' => $student_id,
-                        'success' => false,
-                        'message' => 'ไม่พบ LINE ID ของผู้ปกครอง',
-                        'student_name' => $student['title'] . ' ' . $student['first_name'] . ' ' . $student['last_name']
-                    ];
-                    $error_count++;
-                    continue;
-                }
-                
-                // ดึงข้อมูลครูที่ปรึกษา
-                $stmt = $conn->prepare("
-                    SELECT 
-                        t.title, t.first_name, t.last_name, u.phone_number
-                    FROM 
-                        classes c
-                        JOIN class_advisors ca ON c.class_id = ca.class_id
-                        JOIN teachers t ON ca.teacher_id = t.teacher_id
-                        JOIN users u ON t.user_id = u.user_id
-                    WHERE 
-                        c.class_id = ? AND ca.is_primary = 1
-                ");
-                $stmt->execute([$student['current_class_id']]);
-                $advisor = $stmt->fetch(PDO::FETCH_ASSOC);
-                
-                $advisor_name = $advisor ? $advisor['title'] . ' ' . $advisor['first_name'] . ' ' . $advisor['last_name'] : 'ไม่พบข้อมูล';
-                $advisor_phone = $advisor ? $advisor['phone_number'] : 'ไม่พบข้อมูล';
-                
-                // ดึงข้อมูลการเข้าแถว
-                $stmt = $conn->prepare("
-                    SELECT 
-                        COUNT(CASE WHEN attendance_status = 'present' THEN 1 END) as present_count,
-                        COUNT(CASE WHEN attendance_status = 'absent' THEN 1 END) as absent_count,
-                        COUNT(CASE WHEN attendance_status = 'late' THEN 1 END) as late_count,
-                        COUNT(CASE WHEN attendance_status = 'leave' THEN 1 END) as leave_count
-                    FROM 
-                        attendance a
-                        JOIN academic_years ay ON a.academic_year_id = ay.academic_year_id
-                    WHERE 
-                        a.student_id = ? 
-                        AND a.date BETWEEN ? AND ?
-                        AND ay.is_active = 1
-                ");
-                $stmt->execute([$student_id, $start_date, $end_date]);
-                $attendance = $stmt->fetch(PDO::FETCH_ASSOC);
-                
-                $total_days = $attendance['present_count'] + $attendance['absent_count'] + $attendance['late_count'] + $attendance['leave_count'];
-                $attendance_rate = ($total_days > 0) ? round(($attendance['present_count'] / $total_days) * 100, 2) : 0;
-                
-                // กำหนดสถานะการเข้าแถว
-                $attendance_status = 'ปกติ';
-                if ($attendance_rate < 60) {
-                    $attendance_status = 'เสี่ยงตกกิจกรรม';
-                } elseif ($attendance_rate < 80) {
-                    $attendance_status = 'ต้องระวัง';
-                }
-                
-                // แทนที่ตัวแปรในข้อความ
-                $student_name = $student['title'] . ' ' . $student['first_name'] . ' ' . $student['last_name'];
-                $class_info = $student['level'] . '/' . $student['group_number'];
-                
-                $message_data = [
-                    'student_name' => $student_name,
-                    'class' => $class_info,
-                    'attendance_days' => $attendance['present_count'],
-                    'total_days' => $total_days,
-                    'attendance_rate' => round($attendance_rate),
-                    'absence_days' => $attendance['absent_count'],
-                    'attendance_status' => $attendance_status,
-                    'advisor_name' => $advisor_name,
-                    'advisor_phone' => $advisor_phone,
-                    'month' => date('m'),
-                    'year' => (int)date('Y') + 543 // พ.ศ.
-                ];
-                
-                $personalized_message = replaceTemplateVariables($message, $message_data);
-                
-                // แปลง LINE ID จาก string เป็น array
-                $parent_line_ids = explode(',', $student['parent_line_ids']);
-                
-                // สร้าง chart URL (ถ้าต้องการ)
-                $chart_url = '';
-                if ($include_chart) {
-                    $chart_url = generateAttendanceChart($conn, $student_id, $start_date, $end_date);
-                }
-                
-                // สร้าง detail URL (ถ้าต้องการ)
-                $detail_url = '';
-                if ($include_link) {
-                    $detail_url = generateDetailUrl($student_id, $start_date, $end_date);
-                }
-                
-                // ส่งข้อความแจ้งเตือนไปยังผู้ปกครองทุกคน
-                $student_success = false;
-                
-                foreach ($parent_line_ids as $line_id) {
-                    if (empty($line_id)) continue;
-                    
-                    // สร้างข้อความที่จะส่ง
-                    $messages = [];
-                    
-                    // เพิ่มข้อความหลัก
-                    $messages[] = [
-                        'type' => 'text',
-                        'text' => $personalized_message
-                    ];
-                    
-                    // เพิ่มรูปภาพ (ถ้ามี)
-                    if (!empty($chart_url)) {
-                        $messages[] = [
-                            'type' => 'image',
-                            'originalContentUrl' => $chart_url,
-                            'previewImageUrl' => $chart_url
-                        ];
-                    }
-                    
-                    // เพิ่มลิงก์ (ถ้ามี)
-                    if (!empty($detail_url)) {
-                        $messages[] = [
-                            'type' => 'template',
-                            'altText' => 'ดูรายละเอียดเพิ่มเติม',
-                            'template' => [
-                                'type' => 'buttons',
-                                'text' => 'ต้องการดูข้อมูลโดยละเอียดหรือไม่?',
-                                'actions' => [
-                                    [
-                                        'type' => 'uri',
-                                        'label' => 'ดูรายละเอียด',
-                                        'uri' => $detail_url
-                                    ]
-                                ]
-                            ]
-                        ];
-                    }
-                    
-                    // ส่งข้อความและตรวจสอบผลลัพธ์
-                    $result = sendLineMessage($line_id, $messages, $line_access_token);
-                    
-                    if ($result['success']) {
-                        $student_success = true;
-                    }
-                    
-                    // บันทึกประวัติการส่ง
-                    try {
-                        $stmt = $conn->prepare("
-                            INSERT INTO line_notifications (
-                                user_id, message, sent_at, status, notification_type, error_message
-                            ) VALUES (
-                                (SELECT user_id FROM users WHERE line_id = ?),
-                                ?,
-                                NOW(),
-                                ?,
-                                'attendance',
-                                ?
-                            )
-                        ");
-                        $stmt->execute([
-                            $line_id,
-                            $personalized_message,
-                            $result['success'] ? 'sent' : 'failed',
-                            $result['success'] ? '' : json_encode($result)
-                        ]);
-                    } catch (PDOException $e) {
-                        error_log("Error logging notification: " . $e->getMessage());
-                    }
-                }
-                
-                // คำนวณค่าใช้จ่าย
-                $message_cost = $line_message_cost;
-                $chart_cost = $include_chart ? $line_image_cost : 0;
-                $link_cost = $include_link ? $line_link_cost : 0;
-                $cost_per_parent = $message_cost + $chart_cost + $link_cost;
-                $total_parent_cost = $cost_per_parent * count($parent_line_ids);
-                
-                // เพิ่มค่าใช้จ่ายรวม
-                $total_cost += $total_parent_cost;
-                
-                // เพิ่มผลลัพธ์
-                $results[] = [
-                    'student_id' => $student_id,
-                    'student_name' => $student_name,
-                    'class' => $class_info,
-                    'success' => $student_success,
-                    'cost' => $total_parent_cost,
-                    'message_count' => count($messages),
-                    'parent_count' => count($parent_line_ids)
-                ];
-                
-                if ($student_success) {
-                    $success_count++;
-                } else {
-                    $error_count++;
-                }
-                
-                // อัปเดตการใช้งานเทมเพลต (ถ้ามีการระบุ ID เทมเพลต)
-                if (!empty($_POST['template_id'])) {
-                    $template_manager->updateTemplateLastUsed($_POST['template_id']);
-                }
-            } catch (PDOException $e) {
-                error_log("Error processing student ID $student_id: " . $e->getMessage());
-                $results[] = [
-                    'student_id' => $student_id,
-                    'success' => false,
-                    'message' => 'เกิดข้อผิดพลาดในการประมวลผลข้อมูล',
-                    'student_name' => "รหัส $student_id"
-                ];
+            $result = sendParentNotification(
+                $lineAPI,
+                $conn,
+                $student_id,
+                $message,
+                $start_date,
+                $end_date,
+                $include_chart,
+                $include_link
+            );
+            
+            $results[] = $result;
+            
+            if ($result['success']) {
+                $success_count++;
+            } else {
                 $error_count++;
             }
+            
+            $total_cost += $result['cost'] ?? 0;
+        }
+        
+        // อัปเดตการใช้งานเทมเพลต (ถ้ามีการระบุ ID เทมเพลต)
+        if (!empty($_POST['template_id'])) {
+            $template_manager->updateTemplateLastUsed($_POST['template_id']);
         }
         
         echo json_encode([
@@ -1095,9 +962,60 @@ $initial_filters = [
 $students = getStudentsByFilters($conn, $initial_filters, 20, 0);
 $total_students = countStudentsByFilters($conn, $initial_filters);
 
+// ดึงข้อมูลนักเรียนเริ่มต้น (ไม่กรองตามความเสี่ยง เพื่อดูว่ามีข้อมูลหรือไม่)
+$initial_filters = []; // ไม่กำหนดเงื่อนไขการกรอง จะได้ข้อมูลทั้งหมด
+$students = getStudentsByFilters($conn, $initial_filters, 20, 0);
+$total_students = countStudentsByFilters($conn, $initial_filters);
+
 // ถ้าไม่มีข้อมูลนักเรียน ให้กำหนดค่าเริ่มต้นเป็น array ว่าง
 if (empty($students)) {
-    $students = [];
+    // พยายามดึงข้อมูลนักเรียนทั้งหมดโดยไม่มีเงื่อนไข
+    try {
+        $stmt = $conn->query("
+            SELECT 
+                s.student_id,
+                s.student_code,
+                s.title,
+                u.first_name,
+                u.last_name,
+                s.status
+            FROM 
+                students s
+                JOIN users u ON s.user_id = u.user_id
+            LIMIT 20
+        ");
+        $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // เพิ่มข้อมูลพื้นฐานที่จำเป็น
+        foreach ($students as &$student) {
+            $student['class'] = 'ไม่ระบุ';
+            $student['department_name'] = 'ไม่ระบุ';
+            $student['attendance_days'] = '0/0 วัน (0%)';
+            $student['status_class'] = 'secondary';
+            $student['parent_count'] = 0;
+            $student['parents_info'] = 'ไม่มีข้อมูล';
+            $student['initial'] = !empty($student['first_name']) ? mb_substr($student['first_name'], 0, 1, 'UTF-8') : '?';
+        }
+        
+        // หากยังไม่มีข้อมูล ให้เป็น array ว่าง
+        if (empty($students)) {
+            $students = [];
+        }
+        
+        $total_students = count($students);
+    } catch (PDOException $e) {
+        error_log("Error fetching basic student data: " . $e->getMessage());
+        $students = [];
+        $total_students = 0;
+    }
+}
+
+// บันทึกข้อมูล debug เพื่อตรวจสอบความผิดพลาด
+error_log("Total students found: " . $total_students);
+if ($total_students > 0) {
+    error_log("First student: " . json_encode($students[0]));
+} else {
+    error_log("No students found in database");
 }
 
 // ดึงข้อมูลเทมเพลต

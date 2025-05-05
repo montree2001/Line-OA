@@ -1682,4 +1682,720 @@ function setupEventListeners() {
             const studentId = this.dataset.studentId;
             // เลือก radio ของนักเรียนคนนี้
             const radio = document.querySelector(`input[name="student_select"][value="${studentId}"]`);
-            if (radio
+          // เพิ่มเติมส่วนที่ขาดหายในไฟล์ notification_enhanced.js
+// ต่อจากส่วนสุดท้ายที่มีอยู่ในไฟล์ต้นฉบับ
+
+if (radio) {
+    radio.checked = true;
+    // อัปเดตชื่อนักเรียนในส่วนแสดงผล
+    updateSelectedStudentInfo();
+}
+
+// แสดงโมดัลประวัติการส่ง
+document.querySelector('.history-student-name').textContent = this.closest('tr').querySelector('.student-name').textContent;
+showModal('historyModal');
+
+// จำลองการแสดงข้อมูลประวัติ (ในระบบจริงควรดึงจาก API)
+const historyTable = document.querySelector('#historyTable tbody');
+historyTable.innerHTML = `
+    <tr>
+        <td>${new Date().toLocaleDateString('th-TH')}</td>
+        <td>แจ้งเตือนการเข้าแถว</td>
+        <td>ผู้ดูแลระบบ</td>
+        <td><span class="status-badge success">ส่งสำเร็จ</span></td>
+        <td>
+            <div class="action-buttons">
+                <button class="btn-icon" onclick="viewMessageDetail(1)">
+                    <i class="material-icons">visibility</i>
+                </button>
+            </div>
+        </td>
+    </tr>
+    <tr>
+        <td>${new Date(Date.now() - 86400000).toLocaleDateString('th-TH')}</td>
+        <td>แจ้งเตือนความเสี่ยง</td>
+        <td>ครูที่ปรึกษา</td>
+        <td><span class="status-badge success">ส่งสำเร็จ</span></td>
+        <td>
+            <div class="action-buttons">
+                <button class="btn-icon" onclick="viewMessageDetail(2)">
+                    <i class="material-icons">visibility</i>
+                </button>
+            </div>
+        </td>
+    </tr>
+`;
+});
+});
+
+// ปุ่มส่งข้อความจากหน้ารายการนักเรียน
+document.querySelectorAll('.send-btn').forEach(button => {
+button.addEventListener('click', function() {
+const studentId = this.getAttribute('data-student-id');
+// เลือก radio ของนักเรียนคนนี้
+const radio = document.querySelector(`input[name="student_select"][value="${studentId}"]`);
+if (radio) {
+    radio.checked = true;
+    // อัปเดตชื่อนักเรียนในส่วนแสดงผล
+    updateSelectedStudentInfo();
+    // เลื่อนไปยังส่วนข้อความ
+    document.querySelector('#individual-tab .card:nth-child(2)').scrollIntoView({
+        behavior: 'smooth'
+    });
+}
+});
+});
+
+// การเปลี่ยนแปลงการเลือกนักเรียน
+document.querySelectorAll('input[name="student_select"]').forEach(radio => {
+radio.addEventListener('change', function() {
+updateSelectedStudentInfo();
+
+// ดึงข้อมูลการเข้าแถวของนักเรียนที่เลือก
+const studentId = this.value;
+fetchStudentAttendanceData(studentId);
+});
+});
+
+// อัปเดตการเลือกนักเรียนคนแรกที่โหลดหน้า
+const firstStudentRadio = document.querySelector('input[name="student_select"]:first-child');
+if (firstStudentRadio) {
+firstStudentRadio.checked = true;
+updateSelectedStudentInfo();
+fetchStudentAttendanceData(firstStudentRadio.value);
+}
+
+// ปุ่มอัปเดตข้อมูลตามช่วงวันที่
+const updateDateRangeButton = document.getElementById('btnUpdateDateRange');
+if (updateDateRangeButton) {
+updateDateRangeButton.addEventListener('click', function() {
+const studentId = getSelectedStudentId();
+if (studentId) {
+    fetchStudentAttendanceData(studentId);
+} else {
+    showAlert('กรุณาเลือกนักเรียนก่อนอัปเดตข้อมูล', 'warning');
+}
+});
+}
+
+// ปุ่มดูประวัติการส่งข้อความ
+const historyButton = document.getElementById('btnSendHistory');
+if (historyButton) {
+historyButton.addEventListener('click', function() {
+// ในระบบจริงควรดึงประวัติการส่งข้อความทั้งหมด
+const historyTable = document.querySelector('#historyModal tbody');
+historyTable.innerHTML = `
+    <tr>
+        <td colspan="5" class="text-center">กำลังโหลดข้อมูล...</td>
+    </tr>
+`;
+
+// จำลองการดึงข้อมูล
+setTimeout(() => {
+    historyTable.innerHTML = `
+        <tr>
+            <td>${new Date().toLocaleDateString('th-TH')}</td>
+            <td>ส่งข้อความแบบกลุ่ม</td>
+            <td>แจ้งเตือนการเข้าแถว</td>
+            <td>ปวช.1/1 (24 คน)</td>
+            <td><span class="status-badge success">ส่งสำเร็จ 24/24</span></td>
+        </tr>
+        <tr>
+            <td>${new Date(Date.now() - 86400000).toLocaleDateString('th-TH')}</td>
+            <td>ส่งข้อความแบบกลุ่ม</td>
+            <td>แจ้งเตือนความเสี่ยง</td>
+            <td>ปวช.2/1 (8 คน)</td>
+            <td><span class="status-badge warning">ส่งสำเร็จ 7/8</span></td>
+        </tr>
+    `;
+}, 500);
+
+// แสดงโมดัลประวัติ
+showModal('historyModal');
+});
+}
+}
+
+/**
+* ดูรายละเอียดข้อความแจ้งเตือน
+*/
+function viewMessageDetail(messageId) {
+// ในระบบจริงควรดึงข้อมูลจาก API
+const messages = {
+1: {
+content: `เรียน ผู้ปกครองของ นายธนกฤต สุขใจ\n\nทางวิทยาลัยขอแจ้งความคืบหน้าเกี่ยวกับการเข้าแถวของนักเรียน นายธนกฤต สุขใจ นักเรียนชั้น ปวช.1/1 ปัจจุบันเข้าร่วม 26/40 วัน (65%)\n\nจึงเรียนมาเพื่อทราบ\n\nด้วยความเคารพ\nฝ่ายกิจการนักเรียน\nวิทยาลัยการอาชีพปราสาท`,
+has_chart: true,
+has_link: true
+},
+2: {
+content: `เรียน ผู้ปกครองของ นายธนกฤต สุขใจ\n\nทางวิทยาลัยขอแจ้งว่า นายธนกฤต สุขใจ นักเรียนชั้น ปวช.1/1 มีความเสี่ยงที่จะไม่ผ่านกิจกรรมเข้าแถว เนื่องจากปัจจุบันเข้าร่วมเพียง 26/40 วัน (65%)\n\nกรุณาติดต่อครูที่ปรึกษา อ.ประสิทธิ์ ดีเลิศ โทร. 081-234-5678 เพื่อหาแนวทางแก้ไขต่อไป\n\nด้วยความเคารพ\nฝ่ายกิจการนักเรียน\nวิทยาลัยการอาชีพปราสาท`,
+has_chart: true,
+has_link: true
+}
+};
+
+const message = messages[messageId];
+if (!message) return;
+
+// แสดงเนื้อหาข้อความในโมดัล
+const previewText = document.getElementById('previewText');
+if (previewText) {
+previewText.innerHTML = message.content.replace(/\n/g, '<br>');
+}
+
+// แสดง/ซ่อน กราฟและลิงก์
+const previewChart = document.getElementById('previewChartContainer');
+const previewLink = document.getElementById('previewLinkContainer');
+
+if (previewChart) {
+previewChart.style.display = message.has_chart ? 'block' : 'none';
+}
+
+if (previewLink) {
+previewLink.style.display = message.has_link ? 'block' : 'none';
+}
+
+// ซ่อนโมดัลประวัติ
+closeModal('historyModal');
+// แสดงโมดัลตัวอย่าง
+showModal('previewModal');
+}
+
+/**
+* อัปเดตข้อมูลนักเรียนที่เลือกในส่วนแสดงผล
+*/
+function updateSelectedStudentInfo() {
+const selectedRadio = document.querySelector('input[name="student_select"]:checked');
+if (!selectedRadio) return;
+
+const row = selectedRadio.closest('tr');
+const studentName = row.querySelector('.student-name').textContent;
+const studentNameDisplay = document.querySelector('.student-name-display');
+
+if (studentNameDisplay) {
+studentNameDisplay.textContent = studentName;
+}
+}
+
+/**
+* ดึงข้อมูลการเข้าแถวของนักเรียน
+*/
+function fetchStudentAttendanceData(studentId) {
+if (!studentId) return;
+
+// ดึงช่วงวันที่
+const startDate = document.getElementById('start-date').value;
+const endDate = document.getElementById('end-date').value;
+
+// แสดงการกำลังโหลด
+showAlert('กำลังดึงข้อมูลการเข้าแถว...', 'info');
+
+// สร้างข้อมูลสำหรับส่ง
+const formData = new FormData();
+formData.append('get_student_attendance', '1');
+formData.append('student_id', studentId);
+formData.append('start_date', startDate);
+formData.append('end_date', endDate);
+
+// ส่งข้อมูลผ่าน AJAX
+fetch(window.location.href, {
+method: 'POST',
+body: formData,
+headers: {
+'X-Requested-With': 'XMLHttpRequest'
+}
+})
+.then(response => response.json())
+.then(data => {
+if (data.success) {
+// อัปเดตข้อมูลการเข้าแถวในส่วนแสดงตัวอย่าง
+updateAttendancePreview(data.attendance);
+
+// อัปเดตกราฟ
+updateAttendanceChart(data.attendance.chart_data);
+} else {
+// แสดงข้อผิดพลาด
+showAlert(data.message || 'เกิดข้อผิดพลาดในการดึงข้อมูลการเข้าแถว', 'warning');
+}
+})
+.catch(error => {
+console.error('Error:', error);
+showAlert('เกิดข้อผิดพลาดในการดึงข้อมูลการเข้าแถว: ' + error.message, 'danger');
+});
+}
+
+/**
+* อัปเดตการแสดงข้อมูลการเข้าแถวในส่วนตัวอย่าง
+*/
+function updateAttendancePreview(attendanceData) {
+// อัปเดตตัวอย่างข้อความ
+const messageTemplate = document.getElementById('messageText').value;
+
+// ข้อมูลสำหรับแทนที่ตัวแปรในข้อความ
+const attendanceRate = attendanceData.attendance_rate || 0;
+const presentCount = attendanceData.present_count || 0;
+const totalDays = attendanceData.total_days || 0;
+const absentCount = attendanceData.absent_count || 0;
+
+// ดึงข้อมูลนักเรียนและครูที่ปรึกษา
+const studentName = document.querySelector('.student-name-display')?.textContent || '';
+const classInfo = document.querySelector('input[name="student_select"]:checked')?.closest('tr')?.querySelector('td:nth-child(3)').textContent.trim() || '';
+
+// แทนที่ตัวแปรในข้อความ
+let personalizedMessage = messageTemplate
+.replace(/{{ชื่อนักเรียน}}/g, studentName)
+.replace(/{{ชั้นเรียน}}/g, classInfo)
+.replace(/{{จำนวนวันเข้าแถว}}/g, presentCount)
+.replace(/{{จำนวนวันทั้งหมด}}/g, totalDays)
+.replace(/{{ร้อยละการเข้าแถว}}/g, attendanceRate)
+.replace(/{{จำนวนวันขาด}}/g, absentCount)
+.replace(/{{สถานะการเข้าแถว}}/g, getAttendanceStatus(attendanceRate))
+.replace(/{{ชื่อครูที่ปรึกษา}}/g, 'อ.ประสิทธิ์ ดีเลิศ') // ในระบบจริงควรดึงจากฐานข้อมูล
+.replace(/{{เบอร์โทรครู}}/g, '081-234-5678'); // ในระบบจริงควรดึงจากฐานข้อมูล
+
+// อัปเดตตัวอย่างข้อความ
+updatePreview(personalizedMessage);
+}
+
+/**
+* ดึงสถานะการเข้าแถวตามอัตราการเข้าแถว
+*/
+function getAttendanceStatus(rate) {
+if (rate < 60) return 'เสี่ยงตกกิจกรรม';
+if (rate < 80) return 'ต้องระวัง';
+return 'ปกติ';
+}
+
+/**
+* อัปเดตกราฟการเข้าแถว
+*/
+function updateAttendanceChart(chartData) {
+const chartCanvas = document.getElementById('attendance-chart');
+if (!chartCanvas || !window.Chart) return;
+
+// ถ้ามีข้อมูลกราฟเดิม ให้ทำลายก่อน
+if (chartCanvas.chart) {
+chartCanvas.chart.destroy();
+}
+
+// ถ้าไม่มีข้อมูล ใช้ข้อมูลตัวอย่าง
+const dates = chartData?.dates || ['1 พ.ค.', '8 พ.ค.', '15 พ.ค.', '22 พ.ค.', '29 พ.ค.'];
+const rates = chartData?.rates || [85, 78, 65, 72, 80];
+
+// สร้างกราฟ
+const ctx = chartCanvas.getContext('2d');
+chartCanvas.chart = new Chart(ctx, {
+type: 'line',
+data: {
+labels: dates,
+datasets: [{
+    label: 'อัตราการเข้าแถว (%)',
+    data: rates,
+    fill: false,
+    borderColor: 'rgb(75, 192, 192)',
+    tension: 0.1
+}]
+},
+options: {
+responsive: true,
+scales: {
+    y: {
+        beginAtZero: true,
+        max: 100
+    }
+}
+}
+});
+
+// อัปเดตกราฟในโมดัลตัวอย่าง
+const previewChartCanvas = document.getElementById('preview-attendance-chart');
+if (previewChartCanvas && window.Chart) {
+// ถ้ามีกราฟเดิม ให้ทำลายก่อน
+if (previewChartCanvas.chart) {
+previewChartCanvas.chart.destroy();
+}
+
+// สร้างกราฟในโมดัลตัวอย่าง
+const previewCtx = previewChartCanvas.getContext('2d');
+previewChartCanvas.chart = new Chart(previewCtx, {
+type: 'line',
+data: {
+    labels: dates,
+    datasets: [{
+        label: 'อัตราการเข้าแถว (%)',
+        data: rates,
+        fill: false,
+        borderColor: 'rgb(75, 192, 192)',
+        tension: 0.1
+    }]
+},
+options: {
+    responsive: true,
+    scales: {
+        y: {
+            beginAtZero: true,
+            max: 100
+        }
+    }
+}
+});
+}
+}
+
+/**
+* ตรวจสอบ URL parameters เพื่อเปิดแท็บที่ระบุ
+*/
+function checkUrlParameters() {
+const urlParams = new URLSearchParams(window.location.search);
+const tab = urlParams.get('tab');
+
+if (tab) {
+showTab(tab);
+}
+}
+
+/**
+* อัปเดต URL parameter
+*/
+function updateUrlParameter(param, value) {
+const url = new URL(window.location.href);
+url.searchParams.set(param, value);
+window.history.replaceState({}, '', url);
+}
+
+/**
+* ค้นหานักเรียนตามเงื่อนไข
+*/
+function applyFilters() {
+const searchForm = document.getElementById('studentSearchForm');
+if (!searchForm) return;
+
+// แสดงการกำลังโหลด
+document.querySelector('#studentsTable tbody').innerHTML = `
+<tr>
+<td colspan="7" class="text-center">กำลังโหลดข้อมูล...</td>
+</tr>
+`;
+
+// สร้างข้อมูลสำหรับส่ง
+const formData = new FormData(searchForm);
+formData.append('get_students', '1');
+formData.append('limit', document.getElementById('pageSize')?.value || 20);
+formData.append('offset', 0);
+
+// ส่งข้อมูลผ่าน AJAX
+fetch(window.location.href, {
+method: 'POST',
+body: formData,
+headers: {
+'X-Requested-With': 'XMLHttpRequest'
+}
+})
+.then(response => response.json())
+.then(data => {
+if (data.success) {
+// อัปเดตตารางนักเรียน
+updateStudentsTable(data.students, data.total);
+} else {
+// แสดงข้อผิดพลาด
+document.querySelector('#studentsTable tbody').innerHTML = `
+    <tr>
+        <td colspan="7" class="text-center">เกิดข้อผิดพลาดในการดึงข้อมูล</td>
+    </tr>
+`;
+showAlert(data.message || 'เกิดข้อผิดพลาดในการค้นหานักเรียน', 'danger');
+}
+})
+.catch(error => {
+console.error('Error:', error);
+document.querySelector('#studentsTable tbody').innerHTML = `
+<tr>
+    <td colspan="7" class="text-center">เกิดข้อผิดพลาดในการดึงข้อมูล</td>
+</tr>
+`;
+showAlert('เกิดข้อผิดพลาดในการค้นหานักเรียน: ' + error.message, 'danger');
+});
+}
+
+/**
+* อัปเดตตารางนักเรียน
+*/
+function updateStudentsTable(students, total) {
+const tableBody = document.querySelector('#studentsTable tbody');
+if (!tableBody) return;
+
+// อัปเดตจำนวนนักเรียนที่พบ
+document.getElementById('totalStudents').textContent = total;
+
+// ถ้าไม่มีข้อมูล
+if (!students || students.length === 0) {
+tableBody.innerHTML = `
+<tr>
+    <td colspan="7" class="text-center">ไม่พบข้อมูลนักเรียน</td>
+</tr>
+`;
+return;
+}
+
+// อัปเดตตาราง
+tableBody.innerHTML = '';
+
+students.forEach((student, index) => {
+const initial = student.first_name ? student.first_name.charAt(0) : '?';
+const fullName = `${student.title || ''} ${student.first_name || ''} ${student.last_name || ''}`;
+
+const row = document.createElement('tr');
+row.setAttribute('data-student-id', student.student_id);
+
+row.innerHTML = `
+<td>
+    <input type="radio" name="student_select" value="${student.student_id}" ${index === 0 ? 'checked' : ''}>
+</td>
+<td>
+    <div class="student-info">
+        <div class="student-avatar">${initial}</div>
+        <div class="student-details">
+            <div class="student-name">${fullName}</div>
+            <div class="student-code">รหัส ${student.student_code || ''}</div>
+        </div>
+    </div>
+</td>
+<td>
+    ${student.class || ''}<br>
+    <small class="text-muted">${student.department_name || ''}</small>
+</td>
+<td>${student.attendance_days || '0/0 (0%)'}</td>
+<td><span class="status-badge ${student.status_class || 'secondary'}">${student.status || 'ไม่มีข้อมูล'}</span></td>
+<td>
+    ${student.parents_info ? `
+    <div class="parent-info">
+        <span class="parent-count">${student.parent_count || 0} คน</span>
+        <span class="parent-names">${student.parents_info}</span>
+    </div>
+    ` : '<span class="text-danger">ไม่พบข้อมูลผู้ปกครอง</span>'}
+</td>
+<td>
+    <div class="action-buttons">
+        <button class="btn-icon history-btn" title="ดูประวัติการส่ง" data-student-id="${student.student_id}">
+            <i class="material-icons">history</i>
+        </button>
+        <button class="btn-icon send-btn" title="ส่งข้อความ" data-student-id="${student.student_id}">
+            <i class="material-icons">send</i>
+        </button>
+    </div>
+</td>
+`;
+
+tableBody.appendChild(row);
+});
+
+// ต้องเพิ่ม event listeners ใหม่หลังจากอัปเดตตาราง
+document.querySelectorAll('.history-btn').forEach(button => {
+button.addEventListener('click', function() {
+const studentId = this.getAttribute('data-student-id');
+const radio = document.querySelector(`input[name="student_select"][value="${studentId}"]`);
+if (radio) {
+    radio.checked = true;
+    updateSelectedStudentInfo();
+}
+
+// แสดงประวัติการส่ง
+document.querySelector('.history-student-name').textContent = this.closest('tr').querySelector('.student-name').textContent;
+showModal('historyModal');
+
+const historyTable = document.querySelector('#historyTable tbody');
+historyTable.innerHTML = `
+    <tr>
+        <td colspan="5" class="text-center">กำลังโหลดข้อมูล...</td>
+    </tr>
+`;
+
+// จำลองการดึงข้อมูล
+setTimeout(() => {
+    historyTable.innerHTML = `
+        <tr>
+            <td>${new Date().toLocaleDateString('th-TH')}</td>
+            <td>แจ้งเตือนการเข้าแถว</td>
+            <td>ผู้ดูแลระบบ</td>
+            <td><span class="status-badge success">ส่งสำเร็จ</span></td>
+            <td>
+                <div class="action-buttons">
+                    <button class="btn-icon" onclick="viewMessageDetail(1)">
+                        <i class="material-icons">visibility</i>
+                    </button>
+                </div>
+            </td>
+        </tr>
+    `;
+}, 500);
+});
+});
+
+document.querySelectorAll('.send-btn').forEach(button => {
+button.addEventListener('click', function() {
+const studentId = this.getAttribute('data-student-id');
+const radio = document.querySelector(`input[name="student_select"][value="${studentId}"]`);
+if (radio) {
+    radio.checked = true;
+    updateSelectedStudentInfo();
+    document.querySelector('#individual-tab .card:nth-child(2)').scrollIntoView({
+        behavior: 'smooth'
+    });
+    
+    // ดึงข้อมูลการเข้าแถว
+    fetchStudentAttendanceData(studentId);
+}
+});
+});
+
+document.querySelectorAll('input[name="student_select"]').forEach(radio => {
+radio.addEventListener('change', function() {
+updateSelectedStudentInfo();
+fetchStudentAttendanceData(this.value);
+});
+});
+
+// อัปเดตการเลือกนักเรียนคนแรก
+const firstStudentRadio = document.querySelector('input[name="student_select"]:first-child');
+if (firstStudentRadio) {
+firstStudentRadio.checked = true;
+updateSelectedStudentInfo();
+fetchStudentAttendanceData(firstStudentRadio.value);
+}
+}
+
+/**
+* ดึงข้อมูลนักเรียนสำหรับส่งข้อความกลุ่ม
+*/
+function fetchGroupRecipients() {
+const filterForm = document.getElementById('groupFilterForm');
+if (!filterForm) return;
+
+// แสดงการกำลังโหลด
+const recipientsContainer = document.getElementById('recipientsContainer');
+if (recipientsContainer) {
+recipientsContainer.innerHTML = `
+<div class="text-center p-4">
+    <div class="spinner-border text-primary" role="status">
+        <span class="sr-only">กำลังโหลด...</span>
+    </div>
+    <p class="mt-2">กำลังดึงข้อมูลนักเรียน...</p>
+</div>
+`;
+}
+
+// สร้างข้อมูลสำหรับส่ง
+const formData = new FormData(filterForm);
+formData.append('get_at_risk_students', '1');
+
+// ส่งข้อมูลผ่าน AJAX
+fetch(window.location.href, {
+method: 'POST',
+body: formData,
+headers: {
+'X-Requested-With': 'XMLHttpRequest'
+}
+})
+.then(response => response.json())
+.then(data => {
+if (data.success) {
+// อัปเดตรายการผู้รับกลุ่ม
+updateGroupRecipients(data.students, data.total);
+} else {
+// แสดงข้อผิดพลาด
+if (recipientsContainer) {
+    recipientsContainer.innerHTML = `
+        <div class="text-center p-4">
+            <div class="text-danger">
+                <i class="material-icons">error</i>
+                <p>เกิดข้อผิดพลาดในการดึงข้อมูล</p>
+            </div>
+        </div>
+    `;
+}
+showAlert(data.message || 'เกิดข้อผิดพลาดในการดึงข้อมูลนักเรียน', 'danger');
+}
+})
+.catch(error => {
+console.error('Error:', error);
+if (recipientsContainer) {
+recipientsContainer.innerHTML = `
+    <div class="text-center p-4">
+        <div class="text-danger">
+            <i class="material-icons">error</i>
+            <p>เกิดข้อผิดพลาดในการดึงข้อมูล</p>
+        </div>
+    </div>
+`;
+}
+showAlert('เกิดข้อผิดพลาดในการดึงข้อมูลนักเรียน: ' + error.message, 'danger');
+});
+}
+
+/**
+* อัปเดตรายการผู้รับกลุ่ม
+*/
+function updateGroupRecipients(students, total) {
+const recipientsContainer = document.getElementById('recipientsContainer');
+const totalStudentsElement = document.getElementById('groupTotalStudents');
+
+if (totalStudentsElement) {
+totalStudentsElement.textContent = total;
+}
+
+if (!recipientsContainer) return;
+
+// ถ้าไม่มีข้อมูล
+if (!students || students.length === 0) {
+recipientsContainer.innerHTML = `
+<div class="text-center p-4">
+    <div class="text-warning">
+        <i class="material-icons">info</i>
+        <p>ไม่พบนักเรียนที่ตรงตามเงื่อนไข</p>
+    </div>
+</div>
+`;
+return;
+}
+
+// อัปเดตรายการผู้รับ
+recipientsContainer.innerHTML = '';
+
+students.forEach(student => {
+const initial = student.first_name ? student.first_name.charAt(0) : '?';
+const fullName = `${student.title || ''} ${student.first_name || ''} ${student.last_name || ''}`;
+
+const item = document.createElement('div');
+item.className = 'recipient-item';
+
+item.innerHTML = `
+<div class="form-check">
+    <input type="checkbox" class="form-check-input" id="student-${student.student_id}" value="${student.student_id}" checked>
+    <label class="form-check-label" for="student-${student.student_id}">
+        <div class="recipient-info">
+            <div class="student-avatar">${initial}</div>
+            <div class="recipient-details">
+                <div class="student-name">${fullName}</div>
+                <div class="student-class">${student.class || ''} - ${student.department_name || ''}</div>
+                <div class="student-attendance">การเข้าแถว: ${student.attendance_days || '0/0 (0%)'}</div>
+                <div class="student-status">สถานะ: <span class="status-badge ${student.status_class || 'secondary'}">${student.status || 'ไม่มีข้อมูล'}</span></div>
+            </div>
+        </div>
+    </label>
+</div>
+
+<div class="parent-info">
+    ${student.parent_count ? `
+    <div>ผู้ปกครอง: ${student.parent_count} คน</div>
+    <div class="text-muted">${student.parents_info || ''}</div>
+    ` : '<span class="text-danger">ไม่พบข้อมูลผู้ปกครอง</span>'}
+</div>
+`;
+
+recipientsContainer.appendChild(item);
+});
+
+// อัปเดตจำนวนผู้รับและปุ่มส่ง
+updateRecipientCount();
+updateGroupMessageCost();
+}
