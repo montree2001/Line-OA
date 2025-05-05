@@ -21,7 +21,7 @@
             <span class="material-icons">assessment</span>
             <span class="menu-text">รายงานและสถิติ</span>
         </a>
-        <a href="send_notification.php" class="menu-item <?php echo ($current_page == 'send_notification') ? 'active' : ''; ?>">
+        <a href="enhanced_notification.php" class="menu-item <?php echo ($current_page == 'enhanced_notification') ? 'active' : ''; ?>">
             <span class="material-icons">send</span>
             <span class="menu-text">ส่งรายงานผู้ปกครอง</span>
         </a>
