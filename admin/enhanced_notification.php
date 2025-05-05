@@ -851,31 +851,93 @@ function getAttendanceStatus($rate) {
 if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') {
     header('Content-Type: application/json');
     
-    // ดึงข้อมูลนักเรียนตามเงื่อนไข
-    if (isset($_POST['get_students'])) {
-        $filters = [
-            'department_id' => $_POST['department_id'] ?? '',
-            'class_level' => $_POST['class_level'] ?? '',
-            'class_group' => $_POST['class_group'] ?? '',
-            'advisor_id' => $_POST['advisor_id'] ?? '',
-            'risk_status' => $_POST['risk_status'] ?? '',
-            'attendance_rate' => $_POST['attendance_rate'] ?? '',
-            'student_name' => $_POST['student_name'] ?? ''
-        ];
+// ตรวจสอบการร้องขอผ่าน AJAX - ใช้การดึงข้อมูลอย่างง่าย
+if (isset($_POST['get_students'])) {
+    header('Content-Type: application/json');
+    
+    try {
+        // ดึงข้อมูลนักเรียนทั้งหมดโดยตรงจาก SQL
+        $sql = "
+            SELECT 
+                s.student_id,
+                s.student_code,
+                s.title,
+                u.first_name,
+                u.last_name,
+                s.status,
+                c.level,
+                c.group_number,
+                d.department_name
+            FROM 
+                students s
+                JOIN users u ON s.user_id = u.user_id
+                LEFT JOIN classes c ON s.current_class_id = c.class_id
+                LEFT JOIN departments d ON c.department_id = d.department_id
+            WHERE 
+                s.status = 'กำลังศึกษา'
+            LIMIT 20
+        ";
         
-        $limit = $_POST['limit'] ?? 20;
-        $offset = $_POST['offset'] ?? 0;
+        $stmt = $conn->query($sql);
+        $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
-        $students = getStudentsByFilters($conn, $filters, $limit, $offset);
-        $total = countStudentsByFilters($conn, $filters);
+        // เพิ่มข้อมูลพื้นฐานที่จำเป็น
+        foreach ($students as &$student) {
+            $student['class'] = isset($student['level']) && isset($student['group_number']) ? 
+                $student['level'] . '/' . $student['group_number'] : 'ไม่ระบุ';
+            $student['attendance_days'] = '0/0 วัน (0%)';
+            $student['status'] = 'ไม่มีข้อมูล';
+            $student['status_class'] = 'secondary';
+            $student['parent_count'] = 0;
+            $student['parents_info'] = 'ไม่มีข้อมูล';
+            $student['initial'] = !empty($student['first_name']) ? mb_substr($student['first_name'], 0, 1, 'UTF-8') : '?';
+            
+            // ดึงข้อมูลการเข้าแถว
+            $attend_sql = "
+                SELECT 
+                    COALESCE(SUM(CASE WHEN attendance_status = 'present' THEN 1 ELSE 0 END), 0) AS present,
+                    COUNT(*) AS total
+                FROM attendance
+                WHERE student_id = :student_id
+                AND academic_year_id = (SELECT academic_year_id FROM academic_years WHERE is_active = 1)
+            ";
+            
+            $attend_stmt = $conn->prepare($attend_sql);
+            $attend_stmt->bindParam(':student_id', $student['student_id'], PDO::PARAM_INT);
+            $attend_stmt->execute();
+            $attend_data = $attend_stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if ($attend_data && $attend_data['total'] > 0) {
+                $rate = round(($attend_data['present'] / $attend_data['total']) * 100);
+                $student['attendance_days'] = "{$attend_data['present']}/{$attend_data['total']} วัน ($rate%)";
+                
+                if ($rate < 60) {
+                    $student['status'] = 'เสี่ยงตกกิจกรรม';
+                    $student['status_class'] = 'danger';
+                } elseif ($rate < 80) {
+                    $student['status'] = 'ต้องระวัง';
+                    $student['status_class'] = 'warning';
+                } else {
+                    $student['status'] = 'ปกติ';
+                    $student['status_class'] = 'success';
+                }
+            }
+        }
         
         echo json_encode([
             'success' => true,
             'students' => $students,
-            'total' => $total
+            'total' => count($students)
         ]);
-        exit;
+    } catch (PDOException $e) {
+        error_log('Database error: ' . $e->getMessage());
+        echo json_encode([
+            'success' => false,
+            'message' => 'เกิดข้อผิดพลาดในการดึงข้อมูล: ' . $e->getMessage()
+        ]);
     }
+    exit;
+}
     
     // ดึงข้อมูลนักเรียนที่เสี่ยงตกกิจกรรม
     if (isset($_POST['get_at_risk_students'])) {
@@ -1113,41 +1175,85 @@ $total_students = countStudentsByFilters($conn, $initial_filters);
 
 // ถ้าไม่พบนักเรียน ลองดึงข้อมูลด้วยวิธีอื่น
 if (empty($students)) {
-    try {
-        $stmt = $conn->query("
+// ดึงข้อมูลนักเรียนเริ่มต้น
+try {
+    $sql = "
+        SELECT 
+            s.student_id,
+            s.student_code,
+            s.title,
+            u.first_name,
+            u.last_name,
+            s.status,
+            c.level,
+            c.group_number,
+            d.department_name
+        FROM 
+            students s
+            JOIN users u ON s.user_id = u.user_id
+            LEFT JOIN classes c ON s.current_class_id = c.class_id
+            LEFT JOIN departments d ON c.department_id = d.department_id
+        WHERE 
+            s.status = 'กำลังศึกษา'
+        LIMIT 20
+    ";
+    
+    $stmt = $conn->query($sql);
+    $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $total_students = count($students);
+    
+    // เพิ่มข้อมูลจำเป็น
+    foreach ($students as &$student) {
+        $student['class'] = isset($student['level']) && isset($student['group_number']) ? 
+            $student['level'] . '/' . $student['group_number'] : 'ไม่ระบุ';
+        $student['attendance_days'] = '0/0 วัน (0%)';
+        $student['status'] = 'ไม่มีข้อมูล';
+        $student['status_class'] = 'secondary';
+        $student['parent_count'] = 0;
+        $student['parents_info'] = 'ไม่มีข้อมูล';
+        $student['initial'] = !empty($student['first_name']) ? mb_substr($student['first_name'], 0, 1, 'UTF-8') : '?';
+        
+        // ดึงข้อมูลการเข้าแถว
+        $attend_sql = "
             SELECT 
-                s.student_id,
-                s.student_code,
-                s.title,
-                u.first_name,
-                u.last_name,
-                s.status
-            FROM 
-                students s
-                JOIN users u ON s.user_id = u.user_id
-            WHERE
-                s.status = 'กำลังศึกษา'
-            LIMIT 20
-        ");
-        $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                COALESCE(SUM(CASE WHEN attendance_status = 'present' THEN 1 ELSE 0 END), 0) AS present,
+                COUNT(*) AS total
+            FROM attendance
+            WHERE student_id = :student_id
+            AND academic_year_id = (SELECT academic_year_id FROM academic_years WHERE is_active = 1)
+        ";
         
-        // เพิ่มข้อมูลพื้นฐานที่จำเป็น
-        foreach ($students as &$student) {
-            $student['class'] = 'ไม่ระบุ';
-            $student['department_name'] = 'ไม่ระบุ';
-            $student['attendance_days'] = '0/0 วัน (0%)';
-            $student['status_class'] = 'secondary';
-            $student['parent_count'] = 0;
-            $student['parents_info'] = 'ไม่มีข้อมูล';
-            $student['initial'] = !empty($student['first_name']) ? mb_substr($student['first_name'], 0, 1, 'UTF-8') : '?';
+        $attend_stmt = $conn->prepare($attend_sql);
+        $attend_stmt->bindParam(':student_id', $student['student_id'], PDO::PARAM_INT);
+        $attend_stmt->execute();
+        $attend_data = $attend_stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if ($attend_data && $attend_data['total'] > 0) {
+            $rate = round(($attend_data['present'] / $attend_data['total']) * 100);
+            $student['attendance_days'] = "{$attend_data['present']}/{$attend_data['total']} วัน ($rate%)";
+            
+            if ($rate < 60) {
+                $student['status'] = 'เสี่ยงตกกิจกรรม';
+                $student['status_class'] = 'danger';
+            } elseif ($rate < 80) {
+                $student['status'] = 'ต้องระวัง';
+                $student['status_class'] = 'warning';
+            } else {
+                $student['status'] = 'ปกติ';
+                $student['status_class'] = 'success';
+            }
         }
-        
-        $total_students = count($students);
-    } catch (PDOException $e) {
-        error_log("Error fetching basic student data: " . $e->getMessage());
-        $students = [];
-        $total_students = 0;
     }
+    
+    error_log("Found {$total_students} students for display");
+} catch (PDOException $e) {
+    error_log('Database error: ' . $e->getMessage());
+    $students = [];
+    $total_students = 0;
+}
+} else {
+    // ถ้ามีข้อมูลนักเรียนแล้ว ให้ใช้ข้อมูลที่มีอยู่
+    error_log("Using existing student data");
 }
 
 // บันทึกข้อมูล debug เพื่อตรวจสอบความผิดพลาด
