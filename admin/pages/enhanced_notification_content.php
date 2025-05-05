@@ -147,48 +147,54 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <?php foreach ($students as $index => $student): ?>
-                        <tr data-student-id="<?= $student['student_id'] ?>">
-                            <td>
-                                <input type="radio" name="student_select" value="<?= $student['student_id'] ?>" <?= ($index === 0) ? 'checked' : '' ?>>
-                            </td>
-                            <td>
-                                <div class="student-info">
-                                    <div class="student-avatar"><?= $student['initial'] ?></div>
-                                    <div class="student-details">
-                                        <div class="student-name"><?= $student['title'] . ' ' . $student['first_name'] . ' ' . $student['last_name'] ?></div>
-                                        <div class="student-code">รหัส <?= $student['student_code'] ?></div>
+                        <?php if (!empty($students)): ?>
+                            <?php foreach ($students as $index => $student): ?>
+                            <tr data-student-id="<?= $student['student_id'] ?>">
+                                <td>
+                                    <input type="radio" name="student_select" value="<?= $student['student_id'] ?>" <?= ($index === 0) ? 'checked' : '' ?>>
+                                </td>
+                                <td>
+                                    <div class="student-info">
+                                        <div class="student-avatar"><?= $student['initial'] ?></div>
+                                        <div class="student-details">
+                                            <div class="student-name"><?= $student['title'] . ' ' . $student['first_name'] . ' ' . $student['last_name'] ?></div>
+                                            <div class="student-code">รหัส <?= $student['student_code'] ?></div>
+                                        </div>
                                     </div>
-                                </div>
-                            </td>
-                            <td>
-                                <?= $student['class'] ?><br>
-                                <small class="text-muted"><?= $student['department_name'] ?></small>
-                            </td>
-                            <td><?= $student['attendance_days'] ?></td>
-                            <td><span class="status-badge <?= $student['status_class'] ?>"><?= $student['status'] ?></span></td>
-                            <td>
-                                <?php if (!empty($student['parents_info'])): ?>
-                                <div class="parent-info">
-                                    <span class="parent-count"><?= $student['parent_count'] ?> คน</span>
-                                    <span class="parent-names"><?= $student['parents_info'] ?></span>
-                                </div>
-                                <?php else: ?>
-                                <span class="text-danger">ไม่พบข้อมูลผู้ปกครอง</span>
-                                <?php endif; ?>
-                            </td>
-                            <td>
-                                <div class="action-buttons">
-                                    <button class="btn-icon history-btn" title="ดูประวัติการส่ง" data-student-id="<?= $student['student_id'] ?>">
-                                        <i class="material-icons">history</i>
-                                    </button>
-                                    <button class="btn-icon send-btn" title="ส่งข้อความ" data-student-id="<?= $student['student_id'] ?>">
-                                        <i class="material-icons">send</i>
-                                    </button>
-                                </div>
-                            </td>
-                        </tr>
-                        <?php endforeach; ?>
+                                </td>
+                                <td>
+                                    <?= $student['class'] ?><br>
+                                    <small class="text-muted"><?= $student['department_name'] ?></small>
+                                </td>
+                                <td><?= $student['attendance_days'] ?></td>
+                                <td><span class="status-badge <?= $student['status_class'] ?>"><?= $student['status'] ?></span></td>
+                                <td>
+                                    <?php if (!empty($student['parents_info'])): ?>
+                                    <div class="parent-info">
+                                        <span class="parent-count"><?= $student['parent_count'] ?> คน</span>
+                                        <span class="parent-names"><?= $student['parents_info'] ?></span>
+                                    </div>
+                                    <?php else: ?>
+                                    <span class="text-danger">ไม่พบข้อมูลผู้ปกครอง</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td>
+                                    <div class="action-buttons">
+                                        <button class="btn-icon history-btn" title="ดูประวัติการส่ง" data-student-id="<?= $student['student_id'] ?>">
+                                            <i class="material-icons">history</i>
+                                        </button>
+                                        <button class="btn-icon send-btn" title="ส่งข้อความ" data-student-id="<?= $student['student_id'] ?>">
+                                            <i class="material-icons">send</i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            <?php endforeach; ?>
+                        <?php else: ?>
+                            <tr>
+                                <td colspan="7" class="text-center">ไม่พบข้อมูลนักเรียน</td>
+                            </tr>
+                        <?php endif; ?>
                     </tbody>
                 </table>
             </div>
@@ -199,7 +205,14 @@
         <div class="card-header">
             <div class="card-title">
                 <i class="material-icons">message</i>
-                ส่งข้อความถึงผู้ปกครอง - <span class="student-name-display"><?= $students[0]['title'] . ' ' . $students[0]['first_name'] . ' ' . $students[0]['last_name'] ?></span>
+                ส่งข้อความถึงผู้ปกครอง - 
+                <span class="student-name-display">
+                <?php if (!empty($students)): ?>
+                    <?= $students[0]['title'] . ' ' . $students[0]['first_name'] . ' ' . $students[0]['last_name'] ?>
+                <?php else: ?>
+                    เลือกนักเรียน
+                <?php endif; ?>
+                </span>
             </div>
         </div>
         
@@ -315,7 +328,13 @@
                         <strong>LINE Official Account: SADD-Prasat</strong>
                     </div>
                     <div class="preview-message">
-                        <p>เรียน ผู้ปกครองของ <?= $students[0]['title'] . ' ' . $students[0]['first_name'] . ' ' . $students[0]['last_name'] ?><br><br>ทางวิทยาลัยขอแจ้งความคืบหน้าเกี่ยวกับการเข้าแถวของนักเรียน <?= $students[0]['title'] . ' ' . $students[0]['first_name'] . ' ' . $students[0]['last_name'] ?> นักเรียนชั้น <?= $students[0]['class'] ?> ปัจจุบันเข้าร่วม <?= $students[0]['attendance_days'] ?><br><br>จึงเรียนมาเพื่อทราบ<br><br>ด้วยความเคารพ<br>ฝ่ายกิจการนักเรียน<br><?= $school_name ?></p>
+                        <p>
+                        <?php if (!empty($students)): ?>
+                            เรียน ผู้ปกครองของ <?= $students[0]['title'] . ' ' . $students[0]['first_name'] . ' ' . $students[0]['last_name'] ?><br><br>ทางวิทยาลัยขอแจ้งความคืบหน้าเกี่ยวกับการเข้าแถวของนักเรียน <?= $students[0]['title'] . ' ' . $students[0]['first_name'] . ' ' . $students[0]['last_name'] ?> นักเรียนชั้น <?= $students[0]['class'] ?> ปัจจุบันเข้าร่วม <?= $students[0]['attendance_days'] ?><br><br>จึงเรียนมาเพื่อทราบ<br><br>ด้วยความเคารพ<br>ฝ่ายกิจการนักเรียน<br><?= $school_name ?>
+                        <?php else: ?>
+                            เรียน ผู้ปกครองของ (ชื่อนักเรียน)<br><br>ทางวิทยาลัยขอแจ้งความคืบหน้าเกี่ยวกับการเข้าแถวของนักเรียน (ชื่อนักเรียน) นักเรียนชั้น (ระดับชั้น) ปัจจุบันเข้าร่วม (จำนวนวัน) วัน จากทั้งหมด (จำนวนวันทั้งหมด) วัน ((ร้อยละ)%)<br><br>จึงเรียนมาเพื่อทราบ<br><br>ด้วยความเคารพ<br>ฝ่ายกิจการนักเรียน<br><?= $school_name ?>
+                        <?php endif; ?>
+                        </p>
                     </div>
                     
                     <div class="preview-chart">
@@ -690,11 +709,17 @@
                     </thead>
                     <tbody>
                         <?php 
-                        $all_templates = array_merge(
-                            $template_manager->getTemplatesByTypeAndCategory('individual'), 
-                            $template_manager->getTemplatesByTypeAndCategory('group')
-                        );
-                        foreach ($all_templates as $template): 
+                        $all_templates = [];
+                        if (method_exists($template_manager, 'getTemplatesByTypeAndCategory')) {
+                            $individual = $template_manager->getTemplatesByTypeAndCategory('individual');
+                            $group = $template_manager->getTemplatesByTypeAndCategory('group');
+                            if (is_array($individual) && is_array($group)) {
+                                $all_templates = array_merge($individual, $group);
+                            }
+                        }
+                        
+                        if (!empty($all_templates)):
+                            foreach ($all_templates as $template): 
                         ?>
                         <tr data-template-id="<?= $template['id'] ?>" data-type="<?= $template['type'] ?>" data-category="<?= $template['category'] ?>">
                             <td>
@@ -728,7 +753,14 @@
                                 </div>
                             </td>
                         </tr>
-                        <?php endforeach; ?>
+                        <?php 
+                            endforeach;
+                        else:
+                        ?>
+                        <tr>
+                            <td colspan="6" class="text-center">ไม่พบข้อมูลเทมเพลต</td>
+                        </tr>
+                        <?php endif; ?>
                     </tbody>
                 </table>
             </div>
