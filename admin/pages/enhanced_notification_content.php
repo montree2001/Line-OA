@@ -44,7 +44,7 @@
                 </button>
             </div>
         </div>
-        
+
         <div class="card-body">
             <form id="studentSearchForm" class="filter-form">
                 <div class="filter-container">
@@ -52,47 +52,47 @@
                         <label for="student_name">ชื่อ/รหัสนักเรียน</label>
                         <input type="text" class="form-control" id="student_name" name="student_name" placeholder="ชื่อ / รหัสนักเรียน">
                     </div>
-                    
+
                     <div class="filter-group">
                         <label for="department_id">แผนกวิชา</label>
                         <select class="form-control" id="department_id" name="department_id">
                             <option value="">-- ทุกแผนก --</option>
                             <?php foreach ($departments as $dept): ?>
-                            <option value="<?= $dept['department_id'] ?>"><?= $dept['department_name'] ?></option>
+                                <option value="<?= $dept['department_id'] ?>"><?= $dept['department_name'] ?></option>
                             <?php endforeach; ?>
                         </select>
                     </div>
-                    
+
                     <div class="filter-group">
                         <label for="class_level">ระดับชั้น</label>
                         <select class="form-control" id="class_level" name="class_level">
                             <option value="">-- ทุกระดับชั้น --</option>
                             <?php foreach ($levels as $level): ?>
-                            <option value="<?= $level ?>"><?= $level ?></option>
+                                <option value="<?= $level ?>"><?= $level ?></option>
                             <?php endforeach; ?>
                         </select>
                     </div>
-                    
+
                     <div class="filter-group">
                         <label for="class_group">กลุ่ม</label>
                         <select class="form-control" id="class_group" name="class_group">
                             <option value="">-- ทุกกลุ่ม --</option>
                             <?php for ($i = 1; $i <= 9; $i++): ?>
-                            <option value="<?= $i ?>"><?= $i ?></option>
+                                <option value="<?= $i ?>"><?= $i ?></option>
                             <?php endfor; ?>
                         </select>
                     </div>
-                    
+
                     <div class="filter-group">
                         <label for="advisor_id">ครูที่ปรึกษา</label>
                         <select class="form-control" id="advisor_id" name="advisor_id">
                             <option value="">-- ทุกคน --</option>
                             <?php foreach ($advisors as $advisor): ?>
-                            <option value="<?= $advisor['teacher_id'] ?>"><?= $advisor['title'] . $advisor['first_name'] . ' ' . $advisor['last_name'] ?></option>
+                                <option value="<?= $advisor['teacher_id'] ?>"><?= $advisor['title'] . $advisor['first_name'] . ' ' . $advisor['last_name'] ?></option>
                             <?php endforeach; ?>
                         </select>
                     </div>
-                    
+
                     <div class="filter-group">
                         <label for="risk_status">สถานะความเสี่ยง</label>
                         <select class="form-control" id="risk_status" name="risk_status">
@@ -102,7 +102,7 @@
                             <option value="ปกติ">ปกติ</option>
                         </select>
                     </div>
-                    
+
                     <div class="filter-group filter-action">
                         <button type="submit" class="btn btn-primary">
                             <i class="material-icons">search</i>
@@ -111,7 +111,7 @@
                     </div>
                 </div>
             </form>
-            
+
             <div class="filter-result-info">
                 <div class="filter-result-count">พบนักเรียนทั้งหมด <span id="totalStudents"><?= $total_students ?></span> คน</div>
                 <div class="filter-result-pagination">
@@ -132,7 +132,7 @@
                     </div>
                 </div>
             </div>
-            
+
             <div class="table-responsive">
                 <table class="data-table" id="studentsTable">
                     <thead>
@@ -149,46 +149,46 @@
                     <tbody>
                         <?php if (!empty($students)): ?>
                             <?php foreach ($students as $index => $student): ?>
-                            <tr data-student-id="<?= $student['student_id'] ?>">
-                                <td>
-                                    <input type="radio" name="student_select" value="<?= $student['student_id'] ?>" <?= ($index === 0) ? 'checked' : '' ?>>
-                                </td>
-                                <td>
-                                    <div class="student-info">
-                                        <div class="student-avatar"><?= $student['initial'] ?></div>
-                                        <div class="student-details">
-                                            <div class="student-name"><?= $student['title'] . ' ' . $student['first_name'] . ' ' . $student['last_name'] ?></div>
-                                            <div class="student-code">รหัส <?= $student['student_code'] ?></div>
+                                <tr data-student-id="<?= $student['student_id'] ?>">
+                                    <td>
+                                        <input type="radio" name="student_select" value="<?= $student['student_id'] ?>" <?= ($index === 0) ? 'checked' : '' ?>>
+                                    </td>
+                                    <td>
+                                        <div class="student-info">
+                                            <div class="student-avatar"><?= isset($student['initial']) ? $student['initial'] : '?' ?></div>
+                                            <div class="student-details">
+                                                <div class="student-name"><?= (isset($student['title']) ? $student['title'] : '') . ' ' . (isset($student['first_name']) ? $student['first_name'] : '') . ' ' . (isset($student['last_name']) ? $student['last_name'] : '') ?></div>
+                                                <div class="student-code">รหัส <?= isset($student['student_code']) ? $student['student_code'] : 'ไม่ระบุ' ?></div>
+                                            </div>
                                         </div>
-                                    </div>
-                                </td>
-                                <td>
-                                    <?= $student['class'] ?><br>
-                                    <small class="text-muted"><?= $student['department_name'] ?></small>
-                                </td>
-                                <td><?= $student['attendance_days'] ?></td>
-                                <td><span class="status-badge <?= $student['status_class'] ?>"><?= $student['status'] ?></span></td>
-                                <td>
-                                    <?php if (!empty($student['parents_info'])): ?>
-                                    <div class="parent-info">
-                                        <span class="parent-count"><?= $student['parent_count'] ?> คน</span>
-                                        <span class="parent-names"><?= $student['parents_info'] ?></span>
-                                    </div>
-                                    <?php else: ?>
-                                    <span class="text-danger">ไม่พบข้อมูลผู้ปกครอง</span>
-                                    <?php endif; ?>
-                                </td>
-                                <td>
-                                    <div class="action-buttons">
-                                        <button class="btn-icon history-btn" title="ดูประวัติการส่ง" data-student-id="<?= $student['student_id'] ?>">
-                                            <i class="material-icons">history</i>
-                                        </button>
-                                        <button class="btn-icon send-btn" title="ส่งข้อความ" data-student-id="<?= $student['student_id'] ?>">
-                                            <i class="material-icons">send</i>
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
+                                    </td>
+                                    <td>
+                                        <?= isset($student['class']) ? $student['class'] : 'ไม่ระบุ' ?><br>
+                                        <small class="text-muted"><?= isset($student['department_name']) ? $student['department_name'] : 'ไม่ระบุ' ?></small>
+                                    </td>
+                                    <td><?= isset($student['attendance_days']) ? $student['attendance_days'] : '0/0 (0%)' ?></td>
+                                    <td><span class="status-badge <?= isset($student['status_class']) ? $student['status_class'] : 'secondary' ?>"><?= isset($student['status']) ? $student['status'] : 'ไม่มีข้อมูล' ?></span></td>
+                                    <td>
+                                        <?php if (!empty($student['parents_info'])): ?>
+                                            <div class="parent-info">
+                                                <span class="parent-count"><?= isset($student['parent_count']) ? $student['parent_count'] : 0 ?> คน</span>
+                                                <span class="parent-names"><?= $student['parents_info'] ?></span>
+                                            </div>
+                                        <?php else: ?>
+                                            <span class="text-danger">ไม่พบข้อมูลผู้ปกครอง</span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td>
+                                        <div class="action-buttons">
+                                            <button class="btn-icon history-btn" title="ดูประวัติการส่ง" data-student-id="<?= $student['student_id'] ?>">
+                                                <i class="material-icons">history</i>
+                                            </button>
+                                            <button class="btn-icon send-btn" title="ส่งข้อความ" data-student-id="<?= $student['student_id'] ?>">
+                                                <i class="material-icons">send</i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
                             <?php endforeach; ?>
                         <?php else: ?>
                             <tr>
@@ -205,17 +205,17 @@
         <div class="card-header">
             <div class="card-title">
                 <i class="material-icons">message</i>
-                ส่งข้อความถึงผู้ปกครอง - 
+                ส่งข้อความถึงผู้ปกครอง -
                 <span class="student-name-display">
-                <?php if (!empty($students)): ?>
-                    <?= $students[0]['title'] . ' ' . $students[0]['first_name'] . ' ' . $students[0]['last_name'] ?>
-                <?php else: ?>
-                    เลือกนักเรียน
-                <?php endif; ?>
+                    <?php if (!empty($students)): ?>
+                        <?= $students[0]['title'] . ' ' . $students[0]['first_name'] . ' ' . $students[0]['last_name'] ?>
+                    <?php else: ?>
+                        เลือกนักเรียน
+                    <?php endif; ?>
                 </span>
             </div>
         </div>
-        
+
         <div class="card-body">
             <div class="date-range-selector">
                 <div class="date-range-title">
@@ -236,17 +236,17 @@
                     </button>
                 </div>
             </div>
-            
+
             <div class="template-selector">
                 <label for="templateSelect">เลือกเทมเพลตข้อความ</label>
                 <select id="templateSelect" class="form-control">
                     <option value="">-- เลือกเทมเพลต --</option>
                     <?php foreach ($individual_templates as $template): ?>
-                    <option value="<?= $template['id'] ?>"><?= $template['name'] ?></option>
+                        <option value="<?= $template['id'] ?>"><?= $template['name'] ?></option>
                     <?php endforeach; ?>
                 </select>
             </div>
-            
+
             <div class="message-type-selector">
                 <div class="btn-group template-buttons">
                     <button class="template-btn active" data-template="regular">ข้อความปกติ</button>
@@ -268,7 +268,7 @@
 ด้วยความเคารพ
 ฝ่ายกิจการนักเรียน
 <?= $school_name ?></textarea>
-                
+
                 <div class="variable-helper">
                     <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle" data-toggle="dropdown">
                         <i class="material-icons">code</i> ตัวแปรที่ใช้ได้
@@ -286,7 +286,7 @@
                     </div>
                 </div>
             </div>
-            
+
             <div class="message-options">
                 <div class="card mb-3">
                     <div class="card-body">
@@ -329,18 +329,18 @@
                     </div>
                     <div class="preview-message">
                         <p>
-                        <?php if (!empty($students)): ?>
-                            เรียน ผู้ปกครองของ <?= $students[0]['title'] . ' ' . $students[0]['first_name'] . ' ' . $students[0]['last_name'] ?><br><br>ทางวิทยาลัยขอแจ้งความคืบหน้าเกี่ยวกับการเข้าแถวของนักเรียน <?= $students[0]['title'] . ' ' . $students[0]['first_name'] . ' ' . $students[0]['last_name'] ?> นักเรียนชั้น <?= $students[0]['class'] ?> ปัจจุบันเข้าร่วม <?= $students[0]['attendance_days'] ?><br><br>จึงเรียนมาเพื่อทราบ<br><br>ด้วยความเคารพ<br>ฝ่ายกิจการนักเรียน<br><?= $school_name ?>
-                        <?php else: ?>
-                            เรียน ผู้ปกครองของ (ชื่อนักเรียน)<br><br>ทางวิทยาลัยขอแจ้งความคืบหน้าเกี่ยวกับการเข้าแถวของนักเรียน (ชื่อนักเรียน) นักเรียนชั้น (ระดับชั้น) ปัจจุบันเข้าร่วม (จำนวนวัน) วัน จากทั้งหมด (จำนวนวันทั้งหมด) วัน ((ร้อยละ)%)<br><br>จึงเรียนมาเพื่อทราบ<br><br>ด้วยความเคารพ<br>ฝ่ายกิจการนักเรียน<br><?= $school_name ?>
-                        <?php endif; ?>
+                            <?php if (!empty($students)): ?>
+                                เรียน ผู้ปกครองของ <?= $students[0]['title'] . ' ' . $students[0]['first_name'] . ' ' . $students[0]['last_name'] ?><br><br>ทางวิทยาลัยขอแจ้งความคืบหน้าเกี่ยวกับการเข้าแถวของนักเรียน <?= $students[0]['title'] . ' ' . $students[0]['first_name'] . ' ' . $students[0]['last_name'] ?> นักเรียนชั้น <?= $students[0]['class'] ?> ปัจจุบันเข้าร่วม <?= $students[0]['attendance_days'] ?><br><br>จึงเรียนมาเพื่อทราบ<br><br>ด้วยความเคารพ<br>ฝ่ายกิจการนักเรียน<br><?= $school_name ?>
+                            <?php else: ?>
+                                เรียน ผู้ปกครองของ (ชื่อนักเรียน)<br><br>ทางวิทยาลัยขอแจ้งความคืบหน้าเกี่ยวกับการเข้าแถวของนักเรียน (ชื่อนักเรียน) นักเรียนชั้น (ระดับชั้น) ปัจจุบันเข้าร่วม (จำนวนวัน) วัน จากทั้งหมด (จำนวนวันทั้งหมด) วัน ((ร้อยละ)%)<br><br>จึงเรียนมาเพื่อทราบ<br><br>ด้วยความเคารพ<br>ฝ่ายกิจการนักเรียน<br><?= $school_name ?>
+                            <?php endif; ?>
                         </p>
                     </div>
-                    
+
                     <div class="preview-chart">
                         <canvas id="attendance-chart" width="100%" height="200"></canvas>
                     </div>
-                    
+
                     <div class="preview-link">
                         <a href="#" class="detail-link">
                             <i class="material-icons">open_in_new</i>
@@ -397,7 +397,7 @@
                 ตัวกรองนักเรียนสำหรับส่งข้อความกลุ่ม
             </div>
         </div>
-        
+
         <div class="card-body">
             <form id="groupFilterForm" class="filter-form">
                 <div class="filter-container">
@@ -406,41 +406,41 @@
                         <select class="form-control" id="group_department_id" name="department_id">
                             <option value="">-- ทุกแผนก --</option>
                             <?php foreach ($departments as $dept): ?>
-                            <option value="<?= $dept['department_id'] ?>"><?= $dept['department_name'] ?></option>
+                                <option value="<?= $dept['department_id'] ?>"><?= $dept['department_name'] ?></option>
                             <?php endforeach; ?>
                         </select>
                     </div>
-                    
+
                     <div class="filter-group">
                         <label for="group_class_level">ระดับชั้น</label>
                         <select class="form-control" id="group_class_level" name="class_level">
                             <option value="">-- ทุกระดับชั้น --</option>
                             <?php foreach ($levels as $level): ?>
-                            <option value="<?= $level ?>"><?= $level ?></option>
+                                <option value="<?= $level ?>"><?= $level ?></option>
                             <?php endforeach; ?>
                         </select>
                     </div>
-                    
+
                     <div class="filter-group">
                         <label for="group_class_group">กลุ่ม</label>
                         <select class="form-control" id="group_class_group" name="class_group">
                             <option value="">-- ทุกกลุ่ม --</option>
                             <?php for ($i = 1; $i <= 9; $i++): ?>
-                            <option value="<?= $i ?>"><?= $i ?></option>
+                                <option value="<?= $i ?>"><?= $i ?></option>
                             <?php endfor; ?>
                         </select>
                     </div>
-                    
+
                     <div class="filter-group">
                         <label for="group_advisor_id">ครูที่ปรึกษา</label>
                         <select class="form-control" id="group_advisor_id" name="advisor_id">
                             <option value="">-- ทุกคน --</option>
                             <?php foreach ($advisors as $advisor): ?>
-                            <option value="<?= $advisor['teacher_id'] ?>"><?= $advisor['title'] . $advisor['first_name'] . ' ' . $advisor['last_name'] ?></option>
+                                <option value="<?= $advisor['teacher_id'] ?>"><?= $advisor['title'] . $advisor['first_name'] . ' ' . $advisor['last_name'] ?></option>
                             <?php endforeach; ?>
                         </select>
                     </div>
-                    
+
                     <div class="filter-group">
                         <label for="group_risk_status">สถานะความเสี่ยง</label>
                         <select class="form-control" id="group_risk_status" name="risk_status">
@@ -450,7 +450,7 @@
                             <option value="ปกติ">ปกติ</option>
                         </select>
                     </div>
-                    
+
                     <div class="filter-group">
                         <label for="group_attendance_rate">อัตราการเข้าแถว</label>
                         <select class="form-control" id="group_attendance_rate" name="attendance_rate">
@@ -461,7 +461,7 @@
                             <option value="มากกว่า 90%">มากกว่า 90%</option>
                         </select>
                     </div>
-                    
+
                     <div class="filter-group filter-action">
                         <button type="submit" class="btn btn-primary">
                             <i class="material-icons">filter_list</i>
@@ -470,14 +470,14 @@
                     </div>
                 </div>
             </form>
-            
+
             <div class="filter-group-result">พบนักเรียนที่ตรงตามเงื่อนไข <span id="groupTotalStudents">0</span> คน</div>
-            
+
             <div class="recipients-container" id="recipientsContainer">
                 <!-- รายการนักเรียนที่จะส่งข้อความจะถูกเพิ่มที่นี่ด้วย JavaScript -->
                 <div class="no-recipients">กรุณาใช้ตัวกรองเพื่อค้นหานักเรียน</div>
             </div>
-            
+
             <div class="batch-actions">
                 <button class="btn btn-secondary" id="btnSelectAllRecipients">
                     <i class="material-icons">select_all</i> เลือกทั้งหมด
@@ -488,7 +488,7 @@
             </div>
         </div>
     </div>
-    
+
     <div class="card mt-4">
         <div class="card-header">
             <div class="card-title">
@@ -496,7 +496,7 @@
                 ส่งข้อความถึงผู้ปกครองกลุ่ม (<span class="recipient-count">0</span> คน)
             </div>
         </div>
-        
+
         <div class="card-body">
             <div class="date-range-selector">
                 <div class="date-range-title">
@@ -514,13 +514,13 @@
                     </div>
                 </div>
             </div>
-            
+
             <div class="template-selector">
                 <label for="groupTemplateSelect">เลือกเทมเพลตข้อความ</label>
                 <select id="groupTemplateSelect" class="form-control">
                     <option value="">-- เลือกเทมเพลต --</option>
                     <?php foreach ($group_templates as $template): ?>
-                    <option value="<?= $template['id'] ?>"><?= $template['name'] ?></option>
+                        <option value="<?= $template['id'] ?>"><?= $template['name'] ?></option>
                     <?php endforeach; ?>
                 </select>
             </div>
@@ -547,7 +547,7 @@
 ด้วยความเคารพ
 ฝ่ายกิจการนักเรียน
 <?= $school_name ?></textarea>
-                
+
                 <div class="variable-helper">
                     <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle" data-toggle="dropdown">
                         <i class="material-icons">code</i> ตัวแปรที่ใช้ได้
@@ -565,7 +565,7 @@
                     </div>
                 </div>
             </div>
-            
+
             <div class="message-options">
                 <div class="card mb-3">
                     <div class="card-body">
@@ -609,12 +609,12 @@
                     <div class="preview-message">
                         <p>เรียน ท่านผู้ปกครองนักเรียนชั้น ปวช.1/1<br><br>ทางวิทยาลัยขอแจ้งว่า บุตรหลานของท่านมีความเสี่ยงที่จะไม่ผ่านกิจกรรมเข้าแถว เนื่องจากมีจำนวนวันเข้าแถวต่ำกว่าเกณฑ์ที่กำหนด<br><br>โดยอัตราการเข้าแถวของนักเรียนอยู่ที่ต่ำกว่า 70% ซึ่งหากต่ำกว่า 80% เมื่อสิ้นภาคเรียน นักเรียนจะไม่ผ่านกิจกรรมเข้าแถว ซึ่งมีผลต่อการจบการศึกษา<br><br>กรุณาติดต่อครูที่ปรึกษาประจำชั้น ปวช.1/1 ครูอิศรา สุขใจ โทร. 081-234-5678 เพื่อหาแนวทางแก้ไขต่อไป<br><br>ด้วยความเคารพ<br>ฝ่ายกิจการนักเรียน<br><?= $school_name ?></p>
                     </div>
-                    
+
                     <div class="preview-chart">
                         <div class="group-chart-note">* แต่ละนักเรียนจะได้รับกราฟข้อมูลการเข้าแถวเฉพาะของตนเอง</div>
                         <canvas id="group-attendance-chart" width="100%" height="200"></canvas>
                     </div>
-                    
+
                     <div class="preview-link">
                         <a href="#" class="detail-link">
                             <i class="material-icons">open_in_new</i>
@@ -677,7 +677,7 @@
                 </button>
             </div>
         </div>
-        
+
         <div class="card-body">
             <div class="template-filters">
                 <div class="btn-group template-categories mb-3">
@@ -687,7 +687,7 @@
                     <button class="category-btn" data-category="activity">กิจกรรม</button>
                     <button class="category-btn" data-category="other">อื่นๆ</button>
                 </div>
-                
+
                 <div class="btn-group template-types mb-3 ml-2">
                     <button class="type-btn active" data-type="all">ทุกประเภท</button>
                     <button class="type-btn" data-type="individual">รายบุคคล</button>
@@ -708,7 +708,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <?php 
+                        <?php
                         $all_templates = [];
                         if (method_exists($template_manager, 'getTemplatesByTypeAndCategory')) {
                             $individual = $template_manager->getTemplatesByTypeAndCategory('individual');
@@ -717,49 +717,57 @@
                                 $all_templates = array_merge($individual, $group);
                             }
                         }
-                        
+
                         if (!empty($all_templates)):
-                            foreach ($all_templates as $template): 
+                            foreach ($all_templates as $template):
                         ?>
-                        <tr data-template-id="<?= $template['id'] ?>" data-type="<?= $template['type'] ?>" data-category="<?= $template['category'] ?>">
-                            <td>
-                                <div class="template-name">
-                                    <i class="material-icons template-icon"><?= $template['type'] == 'individual' ? 'person' : 'group' ?></i>
-                                    <span><?= $template['name'] ?></span>
-                                </div>
-                            </td>
-                            <td><?= $template['type'] == 'individual' ? 'รายบุคคล' : 'กลุ่ม' ?></td>
-                            <td>
-                                <?php
-                                switch ($template['category']) {
-                                    case 'attendance': echo 'การเข้าแถว'; break;
-                                    case 'meeting': echo 'การประชุม'; break;
-                                    case 'activity': echo 'กิจกรรม'; break;
-                                    case 'other': 
-                                    default: echo 'อื่นๆ'; break;
-                                }
-                                ?>
-                            </td>
-                            <td><?= date('d/m/Y H:i', strtotime($template['created_at'])) ?></td>
-                            <td><?= $template['last_used'] ? date('d/m/Y H:i', strtotime($template['last_used'])) : '-' ?></td>
-                            <td>
-                                <div class="action-buttons">
-                                    <button class="btn-icon edit-template-btn" title="แก้ไข" data-template-id="<?= $template['id'] ?>">
-                                        <i class="material-icons">edit</i>
-                                    </button>
-                                    <button class="btn-icon preview-template-btn" title="ดูตัวอย่าง" data-template-id="<?= $template['id'] ?>">
-                                        <i class="material-icons">visibility</i>
-                                    </button>
-                                </div>
-                            </td>
-                        </tr>
-                        <?php 
+                                <tr data-template-id="<?= $template['id'] ?>" data-type="<?= $template['type'] ?>" data-category="<?= $template['category'] ?>">
+                                    <td>
+                                        <div class="template-name">
+                                            <i class="material-icons template-icon"><?= $template['type'] == 'individual' ? 'person' : 'group' ?></i>
+                                            <span><?= $template['name'] ?></span>
+                                        </div>
+                                    </td>
+                                    <td><?= $template['type'] == 'individual' ? 'รายบุคคล' : 'กลุ่ม' ?></td>
+                                    <td>
+                                        <?php
+                                        switch ($template['category']) {
+                                            case 'attendance':
+                                                echo 'การเข้าแถว';
+                                                break;
+                                            case 'meeting':
+                                                echo 'การประชุม';
+                                                break;
+                                            case 'activity':
+                                                echo 'กิจกรรม';
+                                                break;
+                                            case 'other':
+                                            default:
+                                                echo 'อื่นๆ';
+                                                break;
+                                        }
+                                        ?>
+                                    </td>
+                                    <td><?= date('d/m/Y H:i', strtotime($template['created_at'])) ?></td>
+                                    <td><?= $template['last_used'] ? date('d/m/Y H:i', strtotime($template['last_used'])) : '-' ?></td>
+                                    <td>
+                                        <div class="action-buttons">
+                                            <button class="btn-icon edit-template-btn" title="แก้ไข" data-template-id="<?= $template['id'] ?>">
+                                                <i class="material-icons">edit</i>
+                                            </button>
+                                            <button class="btn-icon preview-template-btn" title="ดูตัวอย่าง" data-template-id="<?= $template['id'] ?>">
+                                                <i class="material-icons">visibility</i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            <?php
                             endforeach;
                         else:
-                        ?>
-                        <tr>
-                            <td colspan="6" class="text-center">ไม่พบข้อมูลเทมเพลต</td>
-                        </tr>
+                            ?>
+                            <tr>
+                                <td colspan="6" class="text-center">ไม่พบข้อมูลเทมเพลต</td>
+                            </tr>
                         <?php endif; ?>
                     </tbody>
                 </table>
@@ -781,12 +789,12 @@
             <div class="modal-body">
                 <form id="templateForm">
                     <input type="hidden" id="template_id" name="template_id">
-                    
+
                     <div class="form-group">
                         <label for="template_name">ชื่อเทมเพลต</label>
                         <input type="text" class="form-control" id="template_name" name="name" required>
                     </div>
-                    
+
                     <div class="form-row">
                         <div class="form-group col-md-6">
                             <label for="template_type">ประเภท</label>
@@ -795,7 +803,7 @@
                                 <option value="group">กลุ่ม</option>
                             </select>
                         </div>
-                        
+
                         <div class="form-group col-md-6">
                             <label for="template_category">หมวดหมู่</label>
                             <select class="form-control" id="template_category" name="category" required>
@@ -806,7 +814,7 @@
                             </select>
                         </div>
                     </div>
-                    
+
                     <div class="form-group">
                         <label for="template_content">เนื้อหาข้อความ</label>
                         <textarea class="form-control message-textarea" id="template_content" name="content" rows="12" required></textarea>
@@ -814,7 +822,7 @@
                             คุณสามารถใช้ตัวแปรในข้อความได้ เช่น {{ชื่อนักเรียน}}, {{ชั้นเรียน}}, {{ร้อยละการเข้าแถว}}
                         </div>
                     </div>
-                    
+
                     <div class="variable-helper mt-2">
                         <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle" data-toggle="dropdown">
                             <i class="material-icons">code</i> ตัวแปรที่ใช้ได้
@@ -863,11 +871,11 @@
                     <div id="previewText" class="mt-3">
                         <!-- เนื้อหาข้อความจะถูกแทรกที่นี่ด้วย JavaScript -->
                     </div>
-                    
+
                     <div id="previewChartContainer" class="mt-3">
                         <canvas id="preview-attendance-chart" width="100%" height="200"></canvas>
                     </div>
-                    
+
                     <div id="previewLinkContainer" class="mt-3">
                         <a href="#" class="detail-link">
                             <i class="material-icons">open_in_new</i>
@@ -949,7 +957,7 @@
                         <div class="result-label">ค่าใช้จ่าย</div>
                     </div>
                 </div>
-                
+
                 <div class="result-details">
                     <div class="table-responsive">
                         <table class="data-table" id="resultTable">

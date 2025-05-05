@@ -233,18 +233,14 @@ function getStudentsByFilters($conn, $filters = [], $limit = 10, $offset = 0) {
         // หากมีการกำหนดจำนวนจำกัด
         if ($limit > 0) {
             $baseQuery .= " LIMIT ? OFFSET ?";
-            $params[] = (int)$limit;
-            $params[] = (int)$offset;
+            $params[] = $limit;
+            $params[] = $offset;
         }
-        
-        // Debug: บันทึก query และ parameters
-        error_log("Student Query: " . $baseQuery);
-        error_log("Query Params: " . json_encode($params));
         
         // ประมวลผลคำสั่ง SQL
         $stmt = $conn->prepare($baseQuery);
         
-        // ต้องทำ bindParam ทีละตัว
+        // ถ้ามีการใช้ bindParam ต้องทำทีละตัว
         if (!empty($params)) {
             for ($i = 0; $i < count($params); $i++) {
                 $stmt->bindValue($i + 1, $params[$i]);
@@ -254,13 +250,19 @@ function getStudentsByFilters($conn, $filters = [], $limit = 10, $offset = 0) {
         $stmt->execute();
         $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
-        error_log("Raw student count: " . count($students));
+        // บันทึกผลลัพธ์จาก query เพื่อ debug
+        error_log("SQL Query result count: " . count($students));
+        
+        // ถ้าไม่มีนักเรียน ให้ return เลย ไม่ต้องทำส่วนที่เหลือ
+        if (empty($students)) {
+            return [];
+        }
         
         // เพิ่มข้อมูลเพิ่มเติมสำหรับแต่ละนักเรียน
         foreach ($students as &$student) {
             // รวมข้อมูลชั้นเรียน
             $student['class'] = isset($student['level']) && isset($student['group_number']) ? 
-                $student['level'] . '/' . $student['group_number'] : 'ไม่ระบุชั้นเรียน';
+                $student['level'] . '/' . $student['group_number'] : '';
             
             // ดึงข้อมูลการเข้าแถว
             try {
@@ -298,11 +300,6 @@ function getStudentsByFilters($conn, $filters = [], $limit = 10, $offset = 0) {
                             $student['status'] = 'ปกติ';
                             $student['status_class'] = 'success';
                         }
-
-                        // กรองตามสถานะความเสี่ยง ถ้ามีการกำหนด
-                        if (!empty($filters['risk_status']) && $student['status'] !== $filters['risk_status']) {
-                            $student['filtered_out'] = true;
-                        }
                     } else {
                         $student['attendance_rate'] = 0;
                         $student['attendance_days'] = "0/0 วัน (0%)";
@@ -319,7 +316,10 @@ function getStudentsByFilters($conn, $filters = [], $limit = 10, $offset = 0) {
                 }
             } catch (PDOException $e) {
                 error_log("Error getting attendance info: " . $e->getMessage());
-                $student['attendance_days'] = "Error";
+                $student['total_attendance_days'] = 0;
+                $student['total_absence_days'] = 0;
+                $student['attendance_rate'] = 0;
+                $student['attendance_days'] = "0/0 วัน (0%)";
                 $student['status'] = 'ไม่มีข้อมูล';
                 $student['status_class'] = 'secondary';
             }
@@ -374,15 +374,20 @@ function getStudentsByFilters($conn, $filters = [], $limit = 10, $offset = 0) {
         }
 
         // กรองนักเรียนที่ไม่ตรงตามเงื่อนไขความเสี่ยงออก
+        $filtered_students = $students;
         if (!empty($filters['risk_status'])) {
-            $students = array_filter($students, function($student) {
-                return empty($student['filtered_out']);
+            $filtered_students = array_filter($students, function($student) use ($filters) {
+                return isset($student['status']) && $student['status'] === $filters['risk_status'];
             });
-            $students = array_values($students); // ปรับ index ใหม่
+            
+            // ถ้ากรองแล้วไม่มีข้อมูล ไม่ต้องกรอง ให้ใช้ข้อมูลทั้งหมด
+            if (empty($filtered_students)) {
+                error_log("Risk status filter returned empty result, using all students");
+                return array_values($students);
+            }
         }
         
-        error_log("Filtered student count: " . count($students));
-        return $students;
+        return array_values($filtered_students);
     } catch (PDOException $e) {
         error_log("Error in getStudentsByFilters: " . $e->getMessage());
         return [];
@@ -1101,20 +1106,13 @@ if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQU
     }
 }
 
-// ดึงข้อมูลนักเรียนเริ่มต้น
-$initial_filters = []; // ดึงข้อมูลทั้งหมดเริ่มต้น
+// ดึงข้อมูลนักเรียนเริ่มต้น (ไม่ใช้เงื่อนไขการกรอง เพื่อให้แสดงนักเรียนทั้งหมด)
+$initial_filters = [];
 $students = getStudentsByFilters($conn, $initial_filters, 20, 0);
 $total_students = countStudentsByFilters($conn, $initial_filters);
 
-// บันทึกข้อมูล debug เพื่อตรวจสอบความผิดพลาด
-error_log("Total students found: " . $total_students);
-if ($total_students > 0 && !empty($students) && isset($students[0])) {
-    error_log("First student: " . json_encode($students[0]));
-
-} else {
-    error_log("No students found in database");
-    
-    // กรณีไม่พบข้อมูลนักเรียน ลองดึงข้อมูลพื้นฐานเพื่อตรวจสอบ
+// ถ้าไม่พบนักเรียน ลองดึงข้อมูลด้วยวิธีอื่น
+if (empty($students)) {
     try {
         $stmt = $conn->query("
             SELECT 
@@ -1127,6 +1125,8 @@ if ($total_students > 0 && !empty($students) && isset($students[0])) {
             FROM 
                 students s
                 JOIN users u ON s.user_id = u.user_id
+            WHERE
+                s.status = 'กำลังศึกษา'
             LIMIT 20
         ");
         $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -1143,12 +1143,19 @@ if ($total_students > 0 && !empty($students) && isset($students[0])) {
         }
         
         $total_students = count($students);
-        error_log("Found basic student data: " . $total_students);
     } catch (PDOException $e) {
         error_log("Error fetching basic student data: " . $e->getMessage());
         $students = [];
         $total_students = 0;
     }
+}
+
+// บันทึกข้อมูล debug เพื่อตรวจสอบความผิดพลาด
+error_log("Initial students found: " . $total_students);
+if ($total_students > 0) {
+    error_log("First student: " . json_encode($students[0]));
+} else {
+    error_log("No students found in database");
 }
 
 // ดึงข้อมูลเทมเพลต

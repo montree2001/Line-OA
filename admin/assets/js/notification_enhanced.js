@@ -2111,55 +2111,84 @@ window.history.replaceState({}, '', url);
 /**
 * ค้นหานักเรียนตามเงื่อนไข
 */
+/**
+ * ค้นหานักเรียนตามเงื่อนไข
+ */
 function applyFilters() {
-const searchForm = document.getElementById('studentSearchForm');
-if (!searchForm) return;
+    const searchForm = document.getElementById('studentSearchForm');
+    if (!searchForm) return;
 
-// แสดงการกำลังโหลด
-document.querySelector('#studentsTable tbody').innerHTML = `
-<tr>
-<td colspan="7" class="text-center">กำลังโหลดข้อมูล...</td>
-</tr>
-`;
-
-// สร้างข้อมูลสำหรับส่ง
-const formData = new FormData(searchForm);
-formData.append('get_students', '1');
-formData.append('limit', document.getElementById('pageSize')?.value || 20);
-formData.append('offset', 0);
-
-// ส่งข้อมูลผ่าน AJAX
-fetch(window.location.href, {
-method: 'POST',
-body: formData,
-headers: {
-'X-Requested-With': 'XMLHttpRequest'
-}
-})
-.then(response => response.json())
-.then(data => {
-if (data.success) {
-// อัปเดตตารางนักเรียน
-updateStudentsTable(data.students, data.total);
-} else {
-// แสดงข้อผิดพลาด
-document.querySelector('#studentsTable tbody').innerHTML = `
+    // แสดงการกำลังโหลด
+    document.querySelector('#studentsTable tbody').innerHTML = `
     <tr>
-        <td colspan="7" class="text-center">เกิดข้อผิดพลาดในการดึงข้อมูล</td>
+    <td colspan="7" class="text-center">กำลังโหลดข้อมูล...</td>
     </tr>
-`;
-showAlert(data.message || 'เกิดข้อผิดพลาดในการค้นหานักเรียน', 'danger');
-}
-})
-.catch(error => {
-console.error('Error:', error);
-document.querySelector('#studentsTable tbody').innerHTML = `
-<tr>
-    <td colspan="7" class="text-center">เกิดข้อผิดพลาดในการดึงข้อมูล</td>
-</tr>
-`;
-showAlert('เกิดข้อผิดพลาดในการค้นหานักเรียน: ' + error.message, 'danger');
-});
+    `;
+
+    // สร้างข้อมูลสำหรับส่ง
+    const formData = new FormData(searchForm);
+    formData.append('get_students', '1');
+    formData.append('limit', document.getElementById('pageSize')?.value || 20);
+    formData.append('offset', 0);
+
+    // ดูข้อมูลที่จะส่ง
+    console.log('Sending filter request with data:', {
+        department_id: formData.get('department_id'),
+        class_level: formData.get('class_level'),
+        class_group: formData.get('class_group'),
+        advisor_id: formData.get('advisor_id'),
+        risk_status: formData.get('risk_status'),
+        student_name: formData.get('student_name')
+    });
+
+    // ส่งข้อมูลผ่าน AJAX
+    fetch(window.location.href, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok: ' + response.status);
+        }
+        return response.json();
+    })
+    .then(data => {
+        console.log('Received filter response:', data);
+        
+        if (data.success) {
+            if (data.students && data.students.length > 0) {
+                // อัปเดตตารางนักเรียน
+                updateStudentsTable(data.students, data.total);
+            } else {
+                document.querySelector('#studentsTable tbody').innerHTML = `
+                <tr>
+                    <td colspan="7" class="text-center">ไม่พบข้อมูลนักเรียนที่ตรงตามเงื่อนไข</td>
+                </tr>
+                `;
+                showAlert('ไม่พบข้อมูลนักเรียนที่ตรงตามเงื่อนไข', 'warning');
+            }
+        } else {
+            // แสดงข้อผิดพลาด
+            document.querySelector('#studentsTable tbody').innerHTML = `
+                <tr>
+                    <td colspan="7" class="text-center">เกิดข้อผิดพลาดในการดึงข้อมูล</td>
+                </tr>
+            `;
+            showAlert(data.message || 'เกิดข้อผิดพลาดในการค้นหานักเรียน', 'danger');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        document.querySelector('#studentsTable tbody').innerHTML = `
+        <tr>
+            <td colspan="7" class="text-center">เกิดข้อผิดพลาดในการดึงข้อมูล: ${error.message}</td>
+        </tr>
+        `;
+        showAlert('เกิดข้อผิดพลาดในการค้นหานักเรียน: ' + error.message, 'danger');
+    });
 }
 
 /**
