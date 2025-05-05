@@ -1463,38 +1463,78 @@ function showAlert(message, type = 'info') {
         alertContainer.style.top = '20px';
         alertContainer.style.right = '20px';
         alertContainer.style.zIndex = '9999';
+        alertContainer.style.display = 'flex';
+        alertContainer.style.flexDirection = 'column';
+        alertContainer.style.alignItems = 'flex-end';
         document.body.appendChild(alertContainer);
     }
     
     // สร้าง alert element
     const alert = document.createElement('div');
     alert.className = `alert alert-${type}`;
-    alert.style.backgroundColor = type === 'success' ? '#e8f5e9' : 
-                                  type === 'warning' ? '#fff8e1' : 
-                                  type === 'danger' ? '#ffebee' : '#e3f2fd';
-    alert.style.color = type === 'success' ? '#4caf50' : 
-                        type === 'warning' ? '#ff9800' : 
-                        type === 'danger' ? '#f44336' : '#1976d2';
-    alert.style.padding = '15px';
-    alert.style.marginBottom = '10px';
-    alert.style.borderRadius = '5px';
-    alert.style.boxShadow = '0 2px 5px rgba(0,0,0,0.1)';
+    
+    // กำหนดสีและสไตล์แบบพรีเมี่ยม
+    let backgroundColor, textColor, iconColor;
+    switch(type) {
+        case 'success':
+            backgroundColor = 'linear-gradient(to right, #4caf50, #43a047)';
+            textColor = 'white';
+            iconColor = '#e8f5e9';
+            break;
+        case 'warning':
+            backgroundColor = 'linear-gradient(to right, #ff9800, #f57c00)';
+            textColor = 'white';
+            iconColor = '#fff8e1';
+            break;
+        case 'danger':
+            backgroundColor = 'linear-gradient(to right, #f44336, #e53935)';
+            textColor = 'white';
+            iconColor = '#ffebee';
+            break;
+        default:
+            backgroundColor = 'linear-gradient(to right, #2196f3, #1976d2)';
+            textColor = 'white';
+            iconColor = '#e3f2fd';
+    }
+    
+    alert.style.background = backgroundColor;
+    alert.style.color = textColor;
+    alert.style.padding = '15px 20px';
+    alert.style.borderRadius = '8px';
+    alert.style.boxShadow = '0 4px 6px rgba(0,0,0,0.1), 0 1px 3px rgba(0,0,0,0.08)';
     alert.style.position = 'relative';
-    alert.style.transition = 'all 0.3s';
+    alert.style.transition = 'all 0.3s ease';
+    alert.style.transform = 'translateX(110%)';
+    alert.style.maxWidth = '350px';
+    alert.style.width = '100%';
+    alert.style.marginBottom = '10px';
+    alert.style.display = 'flex';
+    alert.style.alignItems = 'center';
     
     // เพิ่มเนื้อหาข้อความและปุ่มปิด
     alert.innerHTML = `
-        <div class="alert-content">${message}</div>
-        <button class="alert-close" style="position: absolute; top: 5px; right: 5px; background: none; border: none; cursor: pointer; font-size: 18px; color: inherit;">&times;</button>
+        <div class="alert-icon" style="margin-right: 15px; display: flex; align-items: center; color: ${iconColor};">
+            ${type === 'success' ? '✓' : type === 'warning' ? '!' : type === 'danger' ? '✘' : 'ℹ️'}
+        </div>
+        <div class="alert-content" style="flex-grow: 1;">${message}</div>
+        <button class="alert-close" style="background: none; border: none; cursor: pointer; color: ${textColor}; opacity: 0.7; transition: opacity 0.3s;">
+            &times;
+        </button>
     `;
     
     // เพิ่ม alert ไปยัง container
     alertContainer.appendChild(alert);
     
+    // แสดง alert ด้วยการเลื่อนเข้ามา
+    requestAnimationFrame(() => {
+        alert.style.transform = 'translateX(0)';
+    });
+    
     // ตั้งค่าปุ่มปิด alert
     const closeButton = alert.querySelector('.alert-close');
     if (closeButton) {
         closeButton.addEventListener('click', function() {
+            alert.style.transform = 'translateX(110%)';
             alert.style.opacity = '0';
             setTimeout(() => {
                 alertContainer.removeChild(alert);
@@ -1503,8 +1543,9 @@ function showAlert(message, type = 'info') {
     }
     
     // ให้ alert ปิดโดยอัตโนมัติหลังจาก 5 วินาที
-    setTimeout(() => {
+    const autoCloseTimer = setTimeout(() => {
         if (alertContainer.contains(alert)) {
+            alert.style.transform = 'translateX(110%)';
             alert.style.opacity = '0';
             setTimeout(() => {
                 if (alertContainer.contains(alert)) {
@@ -1513,8 +1554,12 @@ function showAlert(message, type = 'info') {
             }, 300);
         }
     }, 5000);
+    
+    // หยุดการนับเวลาอัตโนมัติหากปิดก่อนหมดเวลา
+    alert.addEventListener('mouseover', () => {
+        clearTimeout(autoCloseTimer);
+    });
 }
-
 /**
  * ตั้งค่า event listeners ต่างๆ
  */
@@ -2121,147 +2166,125 @@ showAlert('เกิดข้อผิดพลาดในการค้นห
 * อัปเดตตารางนักเรียน
 */
 function updateStudentsTable(students, total) {
-const tableBody = document.querySelector('#studentsTable tbody');
-if (!tableBody) return;
+    const tableBody = document.querySelector('#studentsTable tbody');
+    if (!tableBody) return;
 
-// อัปเดตจำนวนนักเรียนที่พบ
-document.getElementById('totalStudents').textContent = total;
+    // อัปเดตจำนวนนักเรียนที่พบ
+    document.getElementById('totalStudents').textContent = total;
 
-// ถ้าไม่มีข้อมูล
-if (!students || students.length === 0) {
-tableBody.innerHTML = `
-<tr>
-    <td colspan="7" class="text-center">ไม่พบข้อมูลนักเรียน</td>
-</tr>
-`;
-return;
-}
-
-// อัปเดตตาราง
-tableBody.innerHTML = '';
-
-students.forEach((student, index) => {
-const initial = student.first_name ? student.first_name.charAt(0) : '?';
-const fullName = `${student.title || ''} ${student.first_name || ''} ${student.last_name || ''}`;
-
-const row = document.createElement('tr');
-row.setAttribute('data-student-id', student.student_id);
-
-row.innerHTML = `
-<td>
-    <input type="radio" name="student_select" value="${student.student_id}" ${index === 0 ? 'checked' : ''}>
-</td>
-<td>
-    <div class="student-info">
-        <div class="student-avatar">${initial}</div>
-        <div class="student-details">
-            <div class="student-name">${fullName}</div>
-            <div class="student-code">รหัส ${student.student_code || ''}</div>
-        </div>
-    </div>
-</td>
-<td>
-    ${student.class || ''}<br>
-    <small class="text-muted">${student.department_name || ''}</small>
-</td>
-<td>${student.attendance_days || '0/0 (0%)'}</td>
-<td><span class="status-badge ${student.status_class || 'secondary'}">${student.status || 'ไม่มีข้อมูล'}</span></td>
-<td>
-    ${student.parents_info ? `
-    <div class="parent-info">
-        <span class="parent-count">${student.parent_count || 0} คน</span>
-        <span class="parent-names">${student.parents_info}</span>
-    </div>
-    ` : '<span class="text-danger">ไม่พบข้อมูลผู้ปกครอง</span>'}
-</td>
-<td>
-    <div class="action-buttons">
-        <button class="btn-icon history-btn" title="ดูประวัติการส่ง" data-student-id="${student.student_id}">
-            <i class="material-icons">history</i>
-        </button>
-        <button class="btn-icon send-btn" title="ส่งข้อความ" data-student-id="${student.student_id}">
-            <i class="material-icons">send</i>
-        </button>
-    </div>
-</td>
-`;
-
-tableBody.appendChild(row);
-});
-
-// ต้องเพิ่ม event listeners ใหม่หลังจากอัปเดตตาราง
-document.querySelectorAll('.history-btn').forEach(button => {
-button.addEventListener('click', function() {
-const studentId = this.getAttribute('data-student-id');
-const radio = document.querySelector(`input[name="student_select"][value="${studentId}"]`);
-if (radio) {
-    radio.checked = true;
-    updateSelectedStudentInfo();
-}
-
-// แสดงประวัติการส่ง
-document.querySelector('.history-student-name').textContent = this.closest('tr').querySelector('.student-name').textContent;
-showModal('historyModal');
-
-const historyTable = document.querySelector('#historyTable tbody');
-historyTable.innerHTML = `
-    <tr>
-        <td colspan="5" class="text-center">กำลังโหลดข้อมูล...</td>
-    </tr>
-`;
-
-// จำลองการดึงข้อมูล
-setTimeout(() => {
-    historyTable.innerHTML = `
+    // ถ้าไม่มีข้อมูล
+    if (!students || students.length === 0) {
+        tableBody.innerHTML = `
         <tr>
-            <td>${new Date().toLocaleDateString('th-TH')}</td>
-            <td>แจ้งเตือนการเข้าแถว</td>
-            <td>ผู้ดูแลระบบ</td>
-            <td><span class="status-badge success">ส่งสำเร็จ</span></td>
-            <td>
-                <div class="action-buttons">
-                    <button class="btn-icon" onclick="viewMessageDetail(1)">
-                        <i class="material-icons">visibility</i>
-                    </button>
-                </div>
-            </td>
+            <td colspan="7" class="text-center">ไม่พบข้อมูลนักเรียน</td>
         </tr>
-    `;
-}, 500);
-});
-});
+        `;
+        return;
+    }
 
-document.querySelectorAll('.send-btn').forEach(button => {
-button.addEventListener('click', function() {
-const studentId = this.getAttribute('data-student-id');
-const radio = document.querySelector(`input[name="student_select"][value="${studentId}"]`);
-if (radio) {
-    radio.checked = true;
-    updateSelectedStudentInfo();
-    document.querySelector('#individual-tab .card:nth-child(2)').scrollIntoView({
-        behavior: 'smooth'
+    // อัปเดตตาราง
+    tableBody.innerHTML = '';
+
+    students.forEach((student, index) => {
+        const initial = student.first_name ? student.first_name.charAt(0) : '?';
+        const fullName = `${student.title || ''} ${student.first_name || ''} ${student.last_name || ''}`;
+
+        const row = document.createElement('tr');
+        row.setAttribute('data-student-id', student.student_id);
+
+        row.innerHTML = `
+        <td>
+            <input type="radio" name="student_select" value="${student.student_id}" ${index === 0 ? 'checked' : ''}>
+        </td>
+        <td>
+            <div class="student-info">
+                <div class="student-avatar">${initial}</div>
+                <div class="student-details">
+                    <div class="student-name">${fullName}</div>
+                    <div class="student-code">รหัส ${student.student_code || ''}</div>
+                </div>
+            </div>
+        </td>
+        <td>
+            ${student.class || ''}<br>
+            <small class="text-muted">${student.department_name || ''}</small>
+        </td>
+        <td>${student.attendance_days || '0/0 (0%)'}</td>
+        <td><span class="status-badge ${student.status_class || 'secondary'}">${student.status || 'ไม่มีข้อมูล'}</span></td>
+        <td>
+            ${student.parents_info ? `
+            <div class="parent-info">
+                <span class="parent-count">${student.parent_count || 0} คน</span>
+                <span class="parent-names">${student.parents_info}</span>
+            </div>
+            ` : '<span class="text-danger">ไม่พบข้อมูลผู้ปกครอง</span>'}
+        </td>
+        <td>
+            <div class="action-buttons">
+                <button class="btn-icon history-btn" title="ดูประวัติการส่ง" data-student-id="${student.student_id}">
+                    <i class="material-icons">history</i>
+                </button>
+                <button class="btn-icon send-btn" title="ส่งข้อความ" data-student-id="${student.student_id}">
+                    <i class="material-icons">send</i>
+                </button>
+            </div>
+        </td>
+        `;
+
+        tableBody.appendChild(row);
     });
-    
-    // ดึงข้อมูลการเข้าแถว
-    fetchStudentAttendanceData(studentId);
-}
-});
-});
 
-document.querySelectorAll('input[name="student_select"]').forEach(radio => {
-radio.addEventListener('change', function() {
-updateSelectedStudentInfo();
-fetchStudentAttendanceData(this.value);
-});
-});
-
-// อัปเดตการเลือกนักเรียนคนแรก
-const firstStudentRadio = document.querySelector('input[name="student_select"]:first-child');
-if (firstStudentRadio) {
-firstStudentRadio.checked = true;
-updateSelectedStudentInfo();
-fetchStudentAttendanceData(firstStudentRadio.value);
+    // เพิ่ม event listeners ใหม่หลังจากอัปเดตตาราง
+    addTableEventListeners();
 }
+
+// เพิ่มฟังก์ชันเพื่อผูก event listeners กับปุ่มต่างๆ ในตาราง
+function addTableEventListeners() {
+    // ปุ่มดูประวัติการส่งข้อความ
+    document.querySelectorAll('.history-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const studentId = this.getAttribute('data-student-id');
+            const radio = document.querySelector(`input[name="student_select"][value="${studentId}"]`);
+            if (radio) {
+                radio.checked = true;
+                updateSelectedStudentInfo();
+            }
+            showHistory(studentId);
+        });
+    });
+
+    // ปุ่มส่งข้อความ
+    document.querySelectorAll('.send-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const studentId = this.getAttribute('data-student-id');
+            const radio = document.querySelector(`input[name="student_select"][value="${studentId}"]`);
+            if (radio) {
+                radio.checked = true;
+                updateSelectedStudentInfo();
+                fetchStudentAttendanceData(studentId);
+                // เลื่อนไปยังส่วนข้อความ
+                document.querySelector('#individual-tab .card:nth-child(2)').scrollIntoView({
+                    behavior: 'smooth'
+                });
+            }
+        });
+    });
+
+    // การเปลี่ยนการเลือกนักเรียน
+    document.querySelectorAll('input[name="student_select"]').forEach(radio => {
+        radio.addEventListener('change', function() {
+            updateSelectedStudentInfo();
+            fetchStudentAttendanceData(this.value);
+        });
+    });
+
+    // เลือกนักเรียนคนแรก
+    const firstRadio = document.querySelector('input[name="student_select"]:first-child');
+    if (firstRadio) {
+        firstRadio.checked = true;
+        updateSelectedStudentInfo();
+        fetchStudentAttendanceData(firstRadio.value);
+    }
 }
 
 /**
@@ -2399,3 +2422,293 @@ recipientsContainer.appendChild(item);
 updateRecipientCount();
 updateGroupMessageCost();
 }
+
+/**
+ * Floating Alert System
+ * สำหรับระบบน้องชูใจ AI ดูแลผู้เรียน
+ * 
+ * ระบบแจ้งเตือนแบบลอยตัวที่สวยงาม และใช้งานง่าย
+ */
+
+class FloatingAlert {
+    constructor(options = {}) {
+      // ตั้งค่าเริ่มต้น
+      this.options = {
+        container: options.container || document.body,
+        duration: options.duration || 5000, // ระยะเวลาที่แสดง (มิลลิวินาที)
+        maxAlerts: options.maxAlerts || 3, // จำนวนการแจ้งเตือนสูงสุดที่แสดงพร้อมกัน
+        position: options.position || 'top-right',
+        animationDuration: options.animationDuration || 400,
+        showClose: options.showClose !== undefined ? options.showClose : true
+      };
+      
+      this.alerts = [];
+      this.initContainer();
+    }
+    
+    // สร้าง container หลักสำหรับการแจ้งเตือน
+    initContainer() {
+      this.container = document.querySelector('.floating-alert-container');
+      
+      if (!this.container) {
+        this.container = document.createElement('div');
+        this.container.className = 'floating-alert-container';
+        this.options.container.appendChild(this.container);
+      }
+    }
+    
+    // แสดงการแจ้งเตือน
+    show(options) {
+      if (!options || (!options.message && !options.content)) {
+        console.error('Alert message or content is required');
+        return null;
+      }
+      
+      // จำกัดจำนวนการแจ้งเตือนที่แสดงพร้อมกัน
+      if (this.alerts.length >= this.options.maxAlerts) {
+        this.closeOldestAlert();
+      }
+      
+      // สร้างอิลิเมนต์การแจ้งเตือน
+      const alert = this.createAlertElement(options);
+      
+      // เพิ่มเข้าไปใน DOM
+      this.container.appendChild(alert.element);
+      
+      // เพิ่มเข้าไปในรายการการแจ้งเตือน
+      this.alerts.push(alert);
+      
+      // เริ่มนับเวลาปิดอัตโนมัติ (ถ้ากำหนด)
+      if (options.duration !== 0 && (options.duration || this.options.duration)) {
+        alert.autoCloseTimeout = setTimeout(() => {
+          this.close(alert.id);
+        }, options.duration || this.options.duration);
+      }
+      
+      // รีเทิร์นรหัสการแจ้งเตือนเพื่อใช้อ้างอิงต่อไป
+      return alert.id;
+    }
+    
+    // สร้างอิลิเมนต์การแจ้งเตือน
+    createAlertElement(options) {
+      const id = 'alert-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
+      const type = options.type || 'info';
+      const title = options.title || this.getDefaultTitle(type);
+      const icon = options.icon || this.getDefaultIcon(type);
+      
+      const alertElement = document.createElement('div');
+      alertElement.className = `floating-alert ${type}`;
+      alertElement.id = id;
+      
+      // สร้างส่วนหัว
+      const headerElement = document.createElement('div');
+      headerElement.className = 'floating-alert-header';
+      
+      // ส่วนชื่อเรื่อง
+      const titleElement = document.createElement('h3');
+      titleElement.className = 'floating-alert-title';
+      
+      // เพิ่มไอคอน (ถ้ามี)
+      if (icon) {
+        const iconElement = document.createElement('i');
+        iconElement.className = `material-icons floating-alert-icon`;
+        iconElement.textContent = icon;
+        titleElement.appendChild(iconElement);
+      }
+      
+      // เพิ่มข้อความชื่อเรื่อง
+      const titleText = document.createTextNode(title);
+      titleElement.appendChild(titleText);
+      headerElement.appendChild(titleElement);
+      
+      // เพิ่มปุ่มปิด (ถ้ากำหนด)
+      if (this.options.showClose !== false && options.showClose !== false) {
+        const closeButton = document.createElement('button');
+        closeButton.className = 'floating-alert-close';
+        closeButton.innerHTML = '&times;';
+        closeButton.addEventListener('click', () => this.close(id));
+        headerElement.appendChild(closeButton);
+      }
+      
+      alertElement.appendChild(headerElement);
+      
+      // ส่วนเนื้อหา
+      const bodyElement = document.createElement('div');
+      bodyElement.className = 'floating-alert-body';
+      
+      if (options.content) {
+        bodyElement.appendChild(options.content);
+      } else {
+        bodyElement.innerHTML = options.message;
+      }
+      
+      alertElement.appendChild(bodyElement);
+      
+      // ส่วนล่าง (ถ้ามีปุ่มหรือการกระทำเพิ่มเติม)
+      if (options.buttons && options.buttons.length > 0) {
+        const footerElement = document.createElement('div');
+        footerElement.className = 'floating-alert-footer';
+        
+        // เพิ่มปุ่มทั้งหมด
+        options.buttons.forEach(button => {
+          const buttonElement = document.createElement('button');
+          buttonElement.className = `floating-alert-button ${button.type || 'secondary'}`;
+          buttonElement.textContent = button.text;
+          buttonElement.addEventListener('click', () => {
+            if (button.onClick) {
+              button.onClick();
+            }
+            if (button.close !== false) {
+              this.close(id);
+            }
+          });
+          footerElement.appendChild(buttonElement);
+        });
+        
+        alertElement.appendChild(footerElement);
+      }
+      
+      // เริ่มแอนิเมชันแสดง
+      setTimeout(() => {
+        alertElement.classList.add('active');
+      }, 10);
+      
+      return {
+        id,
+        element: alertElement,
+        createdAt: Date.now()
+      };
+    }
+    
+    // ปิดการแจ้งเตือนตามรหัส
+    close(id) {
+      const alertIndex = this.alerts.findIndex(alert => alert.id === id);
+      
+      if (alertIndex === -1) return;
+      
+      const alert = this.alerts[alertIndex];
+      const alertElement = document.getElementById(id);
+      
+      if (!alertElement) return;
+      
+      // ยกเลิกการปิดอัตโนมัติ (ถ้ามี)
+      if (alert.autoCloseTimeout) {
+        clearTimeout(alert.autoCloseTimeout);
+      }
+      
+      // เริ่มแอนิเมชันปิด
+      alertElement.classList.add('removing');
+      
+      // ลบอิลิเมนต์ออกหลังจากแอนิเมชันเสร็จสิ้น
+      setTimeout(() => {
+        if (alertElement.parentNode) {
+          alertElement.parentNode.removeChild(alertElement);
+        }
+        this.alerts.splice(alertIndex, 1);
+      }, 300); // ระยะเวลาของแอนิเมชันปิด
+    }
+    
+    // ปิดการแจ้งเตือนที่เก่าที่สุด
+    closeOldestAlert() {
+      if (this.alerts.length === 0) return;
+      
+      const oldestAlert = this.alerts.reduce((oldest, current) => {
+        return current.createdAt < oldest.createdAt ? current : oldest;
+      }, this.alerts[0]);
+      
+      this.close(oldestAlert.id);
+    }
+    
+    // ปิดการแจ้งเตือนทั้งหมด
+    closeAll() {
+      [...this.alerts].forEach(alert => {
+        this.close(alert.id);
+      });
+    }
+    
+    // ชื่อเรื่องเริ่มต้นสำหรับแต่ละประเภท
+    getDefaultTitle(type) {
+      switch (type) {
+        case 'success': return 'สำเร็จ';
+        case 'warning': return 'คำเตือน';
+        case 'danger': return 'ข้อผิดพลาด';
+        case 'info': 
+        default: return 'ข้อมูล';
+      }
+    }
+    
+    // ไอคอนเริ่มต้นสำหรับแต่ละประเภท
+    getDefaultIcon(type) {
+      switch (type) {
+        case 'success': return 'check_circle';
+        case 'warning': return 'warning';
+        case 'danger': return 'error';
+        case 'info': 
+        default: return 'info';
+      }
+    }
+    
+    // แจ้งเตือนประเภทสำเร็จ
+    success(options) {
+      if (typeof options === 'string') {
+        options = { message: options };
+      }
+      return this.show({ ...options, type: 'success' });
+    }
+    
+    // แจ้งเตือนประเภทข้อมูล
+    info(options) {
+      if (typeof options === 'string') {
+        options = { message: options };
+      }
+      return this.show({ ...options, type: 'info' });
+    }
+    
+    // แจ้งเตือนประเภทคำเตือน
+    warning(options) {
+      if (typeof options === 'string') {
+        options = { message: options };
+      }
+      return this.show({ ...options, type: 'warning' });
+    }
+    
+    // แจ้งเตือนประเภทผิดพลาด/อันตราย
+    danger(options) {
+      if (typeof options === 'string') {
+        options = { message: options };
+      }
+      return this.show({ ...options, type: 'danger' });
+    }
+  }
+  
+  // สร้าง instance สำหรับใช้งานทั่วไป
+  const floatingAlert = new FloatingAlert();
+  
+  // ตัวอย่างการใช้งาน
+  /*
+  // การแจ้งเตือนพื้นฐาน
+  floatingAlert.success('บันทึกข้อมูลสำเร็จ');
+  floatingAlert.info('กำลังโหลดข้อมูล...');
+  floatingAlert.warning('กรุณาตรวจสอบข้อมูลให้ถูกต้อง');
+  floatingAlert.danger('เกิดข้อผิดพลาดในการบันทึกข้อมูล');
+  
+  // การแจ้งเตือนแบบกำหนดค่าเพิ่มเติม
+  floatingAlert.show({
+    type: 'success',
+    title: 'บันทึกข้อมูลสำเร็จ',
+    message: 'ข้อมูลของคุณได้รับการบันทึกลงในระบบเรียบร้อยแล้ว',
+    duration: 8000, // แสดงนานกว่าปกติ
+    buttons: [
+      {
+        text: 'ดูข้อมูล',
+        type: 'primary',
+        onClick: () => { console.log('View data') },
+        close: false // ไม่ปิดหลังคลิก
+      },
+      {
+        text: 'ตกลง',
+        type: 'secondary'
+      }
+    ]
+  });
+  */
