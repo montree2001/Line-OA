@@ -440,9 +440,14 @@ try {
     error_log("Error fetching students: " . $e->getMessage());
 }
 
+// ฟังก์ชันแทนที่ cal_days_in_month() ที่ไม่ต้องใช้ Calendar extension
+function get_days_in_month($month, $year) {
+    return date('t', mktime(0, 0, 0, $month, 1, $year));
+}
+
 // ข้อมูลปฏิทินการเข้าแถว
 $calendar_data = [];
-$days_in_month = cal_days_in_month(CAL_GREGORIAN, $current_month, $current_year);
+$days_in_month = get_days_in_month($current_month, $current_year);
 $first_day = date('N', strtotime("$current_year-$current_month-01"));
 
 // วันเริ่มต้นในปฏิทิน (ถ้าวันที่ 1 ไม่ใช่วันจันทร์)
@@ -452,7 +457,7 @@ if ($prev_month < 1) {
     $prev_month = 12;
     $prev_year--;
 }
-$days_in_prev_month = cal_days_in_month(CAL_GREGORIAN, $prev_month, $prev_year);
+$days_in_prev_month = get_days_in_month($prev_month, $prev_year);
 $start_day = $days_in_prev_month - $first_day + 2;
 
 // ดึงข้อมูลการเข้าแถวในเดือนที่เลือก
