@@ -16,7 +16,7 @@ if (!isset($_SESSION['user_id']) || !isset($_SESSION['role']) || $_SESSION['role
 
 // โหลดไฟล์การเชื่อมต่อฐานข้อมูล
 require_once '../db_connect.php';
-
+$_SESSION['user_role']='admin';
 // โหลดคลาสสำหรับจัดการข้อมูลครู
 require_once '../models/Teacher.php';
 $teacherModel = new Teacher();
