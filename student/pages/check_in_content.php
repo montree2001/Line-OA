@@ -126,6 +126,10 @@
                     <button id="check-in-gps" class="btn primary check-in-btn" disabled>
                         <span class="material-icons">gps_fixed</span> เช็คชื่อด้วย GPS
                     </button>
+                    <!-- สร้างปุ่มรีเฟรชหน้า -->
+                    <button id="refresh-page" class="btn secondary" onclick="location.reload();" style="margin-top: 10px;">
+                        <span class="material-icons">refresh</span> รีเฟรชหน้า
+                    </button>
 
                     <input type="hidden" id="user-lat" value="">
                     <input type="hidden" id="user-lng" value="">
@@ -420,6 +424,12 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
+
+
+
+
+
+
 
 // ฟังก์ชั่นสำหรับการจัดการ PIN input
 function initializePinInputs() {
