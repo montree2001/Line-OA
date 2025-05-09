@@ -9,14 +9,14 @@
 session_start();
 
 // ตรวจสอบการล็อกอิน (แสดงความคิดเห็นออกไปเพื่อการทดสอบ)
-if (!isset($_SESSION['user_id']) || !isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
+if (!isset($_SESSION['user_id']) || !isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'admin') {
     header('Location: ../login.php');
     exit;
 }
 
 // โหลดไฟล์การเชื่อมต่อฐานข้อมูล
 require_once '../db_connect.php';
-$_SESSION['user_role']='admin';
+
 // โหลดคลาสสำหรับจัดการข้อมูลครู
 require_once '../models/Teacher.php';
 $teacherModel = new Teacher();

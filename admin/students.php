@@ -6,7 +6,11 @@
 
 // เริ่ม session
 session_start();
-
+// ตรวจสอบการล็อกอิน (แสดงความคิดเห็นออกไปเพื่อการทดสอบ)
+if (!isset($_SESSION['user_id']) || !isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'admin') {
+    header('Location: ../login.php');
+    exit;
+}
 // เชื่อมต่อฐานข้อมูล
 require_once '../db_connect.php';
 

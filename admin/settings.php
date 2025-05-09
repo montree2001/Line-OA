@@ -12,11 +12,11 @@ session_start();
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-/* // ตรวจสอบการล็อกอิน (หากไม่ได้ล็อกอินให้ redirect ไปหน้า login.php)
-if (!isset($_SESSION['user_id']) || !isset($_SESSION['user_type']) || $_SESSION['user_type'] != 'admin') {
-    header('Location: login.php');
+// ตรวจสอบการล็อกอิน (แสดงความคิดเห็นออกไปเพื่อการทดสอบ)
+if (!isset($_SESSION['user_id']) || !isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'admin') {
+    header('Location: ../login.php');
     exit;
-} */
+}
 
 // กำหนดข้อมูลสำหรับหน้าปัจจุบัน
 $current_page = 'settings';
