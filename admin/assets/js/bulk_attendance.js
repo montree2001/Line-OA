@@ -300,61 +300,7 @@ function searchStudents() {
         });
 }
 
-/**
- * แสดงรายชื่อนักเรียน
- */
-function renderStudentList(students) {
-    console.log('Rendering student list:', students.length, 'students');
-    
-    const studentList = document.getElementById('studentList');
-    if (!studentList) {
-        console.error('Student list container not found');
-        return;
-    }
-    
-    // ล้างรายการเดิม
-    studentList.innerHTML = '';
-    
-    // เพิ่มรายชื่อนักเรียน
-    students.forEach((student, index) => {
-        const row = document.createElement('tr');
-        
-        // สถานะการเช็คชื่อเดิม (ถ้ามี)
-        const checkedAttr = student.attendance_status ? 'checked' : '';
-        const status = student.attendance_status || 'absent';
-        
-        row.innerHTML = `
-            <td>${index + 1}</td>
-            <td>
-                <input type="checkbox" name="attendance[${student.student_id}][check]" value="1" ${checkedAttr} onchange="updateRowHighlight(this)">
-            </td>
-            <td>${student.student_code || ''}</td>
-            <td>${student.title || ''}${student.first_name || ''} ${student.last_name || ''}</td>
-            <td>${student.level || ''}</td>
-            <td>
-                <select class="form-control form-control-sm" name="attendance[${student.student_id}][status]" onchange="updateAttendanceSummary()">
-                    <option value="present" ${status === 'present' ? 'selected' : ''}>มาเรียน</option>
-                    <option value="late" ${status === 'late' ? 'selected' : ''}>มาสาย</option>
-                    <option value="absent" ${status === 'absent' ? 'selected' : ''}>ขาดเรียน</option>
-                    <option value="leave" ${status === 'leave' ? 'selected' : ''}>ลา</option>
-                </select>
-            </td>
-            <td>
-                <input type="text" class="form-control form-control-sm" name="attendance[${student.student_id}][remarks]" 
-                       placeholder="หมายเหตุ" value="${student.remarks || ''}">
-            </td>
-        `;
-        
-        // เพิ่ม highlight ถ้ามีการเช็คชื่อแล้ว
-        if (student.attendance_status) {
-            row.classList.add('selected-row');
-        }
-        
-        studentList.appendChild(row);
-    });
-    
-    console.log('Student list rendered successfully');
-}
+
 
 /**
  * อัปเดต highlight แถวตามการเลือก
@@ -468,12 +414,138 @@ function uncheckAllStudents() {
     // อัปเดตสรุปการเช็คชื่อ
     updateAttendanceSummary();
 }
+/**
+ * function renderStudentList - แสดงรายชื่อนักเรียนพร้อม icon วิธีการเช็คชื่อ
+ */
+function renderStudentList(students) {
+    console.log('Rendering student list:', students.length, 'students');
+    
+    const studentList = document.getElementById('studentList');
+    if (!studentList) {
+        console.error('Student list container not found');
+        return;
+    }
+    
+    // ล้างรายการเดิม
+    studentList.innerHTML = '';
+    
+    // เพิ่มรายชื่อนักเรียน
+    students.forEach((student, index) => {
+        const row = document.createElement('tr');
+        
+        // สถานะการเช็คชื่อเดิม (ถ้ามี)
+        const checkedAttr = student.attendance_status ? 'checked' : '';
+        const status = student.attendance_status || 'absent';
+        
+        // กำหนด icon และสีตามวิธีการเช็คชื่อ
+        let checkMethodIcon = '';
+        let checkMethodColor = '';
+        let checkMethodTitle = '';
+        
+        if (student.attendance_status) {
+            // กำหนด icon ตามวิธีการเช็คชื่อ
+            switch (student.check_method) {
+                case 'GPS':
+                    checkMethodIcon = 'location_on';
+                    checkMethodColor = 'text-success';
+                    checkMethodTitle = 'เช็คชื่อด้วย GPS';
+                    break;
+                case 'QR_Code':
+                    checkMethodIcon = 'qr_code_scanner';
+                    checkMethodColor = 'text-primary';
+                    checkMethodTitle = 'เช็คชื่อด้วย QR Code';
+                    break;
+                case 'PIN':
+                    checkMethodIcon = 'pin';
+                    checkMethodColor = 'text-warning';
+                    checkMethodTitle = 'เช็คชื่อด้วยรหัส PIN';
+                    break;
+                case 'Manual':
+                    checkMethodIcon = 'edit';
+                    checkMethodColor = 'text-info';
+                    checkMethodTitle = 'เช็คชื่อด้วยผู้ดูแลระบบ';
+                    break;
+                default:
+                    checkMethodIcon = 'check_circle';
+                    checkMethodColor = 'text-muted';
+                    checkMethodTitle = 'เช็คชื่อแล้ว';
+            }
+        } else {
+            checkMethodIcon = 'radio_button_unchecked';
+            checkMethodColor = 'text-muted';
+            checkMethodTitle = 'ยังไม่ได้เช็คชื่อ';
+        }
+        
+        // สร้าง HTML สำหรับ icon
+        const methodIconHtml = `
+            <span class="material-icons ${checkMethodColor} check-method-icon" 
+                  title="${checkMethodTitle}" style="font-size: 20px; vertical-align: middle;">
+                ${checkMethodIcon}
+            </span>
+        `;
+        
+        // กำหนดเวลาเช็คชื่อ (ถ้ามี)
+        const checkTime = student.check_time ? `<small class="text-muted">(${student.check_time})</small>` : '';
+        
+        row.innerHTML = `
+            <td>${index + 1}</td>
+            <td>
+                <input type="checkbox" name="attendance[${student.student_id}][check]" value="1" ${checkedAttr} onchange="updateRowHighlight(this)">
+            </td>
+            <td>${student.student_code || ''}</td>
+            <td>${student.title || ''}${student.first_name || ''} ${student.last_name || ''}</td>
+            <td>${student.level || ''}</td>
+            <td class="text-center">${methodIconHtml}</td>
+            <td>
+                <select class="form-control form-control-sm" name="attendance[${student.student_id}][status]" onchange="updateAttendanceSummary()">
+                    <option value="present" ${status === 'present' ? 'selected' : ''}>เข้าแถว</option>
+                    <option value="absent" ${status === 'absent' ? 'selected' : ''}>ขาดแถว</option>
+                    <option value="late" ${status === 'late' ? 'selected' : ''}>สาย</option>
+                    <option value="leave" ${status === 'leave' ? 'selected' : ''}>ลา</option>
+                </select>
+                ${checkTime}
+            </td>
+            <td>
+                <input type="text" class="form-control form-control-sm" name="attendance[${student.student_id}][remarks]" 
+                       placeholder="หมายเหตุ" value="${student.remarks || ''}">
+            </td>
+        `;
+        
+        // เพิ่ม highlight ถ้ามีการเช็คชื่อแล้ว
+        if (student.attendance_status) {
+            row.classList.add('selected-row');
+        }
+        
+        studentList.appendChild(row);
+    });
+    
+    console.log('Student list rendered successfully');
+}
 
 /**
- * กำหนดสถานะการเช็คชื่อทั้งหมด
+ * แก้ไขฟังก์ชัน setAllStatus เพื่อใช้ชื่อตัวเลือกใหม่ในการแสดงข้อความยืนยัน
  */
 function setAllStatus(status) {
-    console.log('Setting all students to status:', status);
+    // แปลงสถานะเป็นข้อความภาษาไทย
+    let statusText = '';
+    switch (status) {
+        case 'present':
+            statusText = 'เข้าแถว';
+            break;
+        case 'absent':
+            statusText = 'ขาดแถว';
+            break;
+        case 'late':
+            statusText = 'สาย';
+            break;
+        case 'leave':
+            statusText = 'ลา';
+            break;
+        default:
+            statusText = status;
+    }
+    
+    console.log('Setting all students to status:', statusText);
     
     // เลือกนักเรียนทั้งหมดก่อน
     checkAllStudents();

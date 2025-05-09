@@ -49,17 +49,20 @@ try {
     $academic_year_id = $academic_year['academic_year_id'];
     
     // สร้าง SQL query ตามเงื่อนไข
-    $sql = "
-        SELECT s.student_id, s.student_code, s.title, s.current_class_id, 
-               u.first_name, u.last_name, 
-               c.level, c.group_number, d.department_name,
-               a.attendance_status, a.check_time, a.remarks
-        FROM students s
-        JOIN users u ON s.user_id = u.user_id
-        LEFT JOIN classes c ON s.current_class_id = c.class_id
-        LEFT JOIN departments d ON c.department_id = d.department_id
-        LEFT JOIN attendance a ON a.student_id = s.student_id AND a.date = :date
-        WHERE s.status = 'กำลังศึกษา'
+    $sql = "SELECT s.student_id, s.student_code, s.title, s.current_class_id, 
+           u.first_name, u.last_name, 
+           c.level, c.group_number, d.department_name,
+           a.attendance_id, a.attendance_status, a.check_time, a.remarks, a.check_method, 
+           a.location_lat, a.location_lng, a.photo_url, a.pin_code, 
+           a.created_at AS attendance_created_at, 
+           u2.first_name AS checker_first_name, u2.last_name AS checker_last_name
+    FROM students s
+    JOIN users u ON s.user_id = u.user_id
+    LEFT JOIN classes c ON s.current_class_id = c.class_id
+    LEFT JOIN departments d ON c.department_id = d.department_id
+    LEFT JOIN attendance a ON a.student_id = s.student_id AND a.date = :date
+    LEFT JOIN users u2 ON a.checker_user_id = u2.user_id
+    WHERE s.status = 'กำลังศึกษา'
     ";
     
     // กำหนดเงื่อนไขเพิ่มเติม
@@ -172,7 +175,44 @@ try {
     
     // บันทึกจำนวนนักเรียนที่พบ
     error_log("get_students_for_attendance.php - Found " . count($students) . " students");
+    // ก่อนส่งข้อมูลกลับ แปลงเวลาให้เป็นรูปแบบที่อ่านได้ง่าย
+// ก่อนส่งข้อมูลกลับ เพิ่มข้อมูลผู้เช็คชื่อและแปลงรูปแบบเวลา
+foreach ($students as &$student) {
+    // แปลงรูปแบบเวลาให้เป็น H:i
+    if (isset($student['check_time']) && $student['check_time']) {
+        $student['check_time'] = date('H:i', strtotime($student['check_time']));
+    }
     
+    // เพิ่มข้อมูลผู้เช็คชื่อ (ถ้ามี)
+    if (isset($student['checker_first_name']) && isset($student['checker_last_name'])) {
+        $student['checker_name'] = $student['checker_first_name'] . ' ' . $student['checker_last_name'];
+    } else {
+        $student['checker_name'] = '';
+    }
+    
+    // ตั้งค่า check_method เป็นค่าว่างหากไม่มีข้อมูล
+    if (!isset($student['check_method']) || !$student['check_method']) {
+        $student['check_method'] = '';
+    }
+    
+    // ตั้งค่า attendance_status เป็นค่าว่างหากไม่มีข้อมูล
+    if (!isset($student['attendance_status']) || !$student['attendance_status']) {
+        $student['attendance_status'] = '';
+    }
+    
+    // เพิ่มข้อมูลเกี่ยวกับการเช็คชื่อผ่าน GPS (ถ้ามี)
+    if (isset($student['location_lat']) && isset($student['location_lng']) && 
+        $student['location_lat'] && $student['location_lng']) {
+        $student['has_location'] = true;
+    } else {
+        $student['has_location'] = false;
+    }
+    
+    // ลบข้อมูลที่ไม่จำเป็นต้องส่งกลับเพื่อลดขนาดข้อมูล
+    unset($student['checker_first_name']);
+    unset($student['checker_last_name']);
+}
+unset($student); // ยกเลิกการอ้างอิง
     // ส่งข้อมูลกลับในรูปแบบ JSON
     echo json_encode([
         'success' => true,

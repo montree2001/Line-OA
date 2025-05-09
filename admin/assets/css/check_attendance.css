@@ -328,3 +328,160 @@
         height: 150px;
     }
 }
+
+/* CSS สำหรับไอคอนวิธีการเช็คชื่อ */
+
+/* ขนาดและการจัดวางของไอคอน */
+.check-method-icon {
+    font-size: 16px !important;
+    vertical-align: middle !important;
+    margin-left: 5px;
+    cursor: help;
+}
+
+/* สีสำหรับแต่ละวิธีการเช็คชื่อ */
+.text-gps {
+    color: #28a745 !important; /* สีเขียวสำหรับ GPS */
+}
+
+.text-qr {
+    color: #007bff !important; /* สีน้ำเงินสำหรับ QR Code */
+}
+
+.text-pin {
+    color: #ffc107 !important; /* สีเหลืองสำหรับ PIN */
+}
+
+.text-manual {
+    color: #17a2b8 !important; /* สีฟ้าสำหรับการเช็คชื่อด้วยผู้ดูแลระบบ */
+}
+
+/* ป้ายบอกวิธีการเช็คชื่อเมื่อเลื่อนเมาส์ผ่าน */
+.tooltip-inner {
+    max-width: 200px;
+    padding: 5px 10px;
+    color: #fff;
+    text-align: center;
+    background-color: #000;
+    border-radius: 4px;
+}
+
+/* ส่วนของคำอธิบาย */
+.legend-list {
+    list-style-type: none;
+    padding-left: 0;
+}
+
+.legend-list li {
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+}
+
+.legend-list .material-icons {
+    margin-right: 8px;
+}
+
+/* ปรับปรุงสีพื้นหลังสำหรับแถวที่มีการเช็คชื่อแล้ว */
+.selected-row {
+    background-color: #f0f9f0 !important; /* สีเขียวอ่อนๆ สำหรับแถวที่เลือก */
+}
+
+/* เพิ่มเอฟเฟกต์เมื่อเลื่อนเมาส์ผ่าน */
+.check-method-icon:hover {
+    opacity: 0.8;
+    transform: scale(1.2);
+    transition: all 0.2s ease;
+}
+
+/* ตกแต่งส่วนแสดงวิธีการเช็คชื่อ */
+#checkMethodLegend {
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    margin-bottom: 20px;
+}
+
+#checkMethodLegend .card-title {
+    display: flex;
+    align-items: center;
+    font-weight: 600;
+}
+
+#checkMethodLegend .card-title .material-icons {
+    margin-right: 8px;
+}
+/* CSS สำหรับไอคอนวิธีการเช็คชื่อในตาราง */
+
+/* ปรับแต่งคอลัมน์วิธีการเช็คชื่อ */
+.data-table td.text-center {
+    text-align: center;
+    vertical-align: middle;
+}
+
+/* ขนาดและการจัดวางของไอคอน */
+.check-method-icon {
+    font-size: 20px !important;
+    vertical-align: middle !important;
+    cursor: help;
+    transition: transform 0.2s, opacity 0.2s;
+}
+
+/* เอฟเฟกต์เมื่อเลื่อนเมาส์ผ่านไอคอน */
+.check-method-icon:hover {
+    transform: scale(1.2);
+    opacity: 0.8;
+}
+
+/* สีสำหรับแต่ละวิธีการเช็คชื่อ */
+.text-success {
+    color: #28a745 !important; /* สีเขียวสำหรับ GPS */
+}
+
+.text-primary {
+    color: #007bff !important; /* สีน้ำเงินสำหรับ QR Code */
+}
+
+.text-warning {
+    color: #ffc107 !important; /* สีเหลืองสำหรับ PIN */
+}
+
+.text-info {
+    color: #17a2b8 !important; /* สีฟ้าสำหรับการเช็คชื่อด้วยผู้ดูแลระบบ */
+}
+
+.text-muted {
+    color: #6c757d !important; /* สีเทาสำหรับยังไม่ได้เช็คชื่อ */
+}
+
+/* ป้ายบอกวิธีการเช็คชื่อเมื่อเลื่อนเมาส์ผ่าน */
+[title] {
+    position: relative;
+}
+
+[title]:hover::after {
+    content: attr(title);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    white-space: nowrap;
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    z-index: 100;
+    pointer-events: none;
+}
+
+/* ปรับปรุงการแสดงผลในหน้าจอขนาดเล็ก */
+@media (max-width: 768px) {
+    .check-method-icon {
+        font-size: 18px !important;
+    }
+    
+    [title]:hover::after {
+        font-size: 10px;
+        padding: 3px 6px;
+    }
+}
