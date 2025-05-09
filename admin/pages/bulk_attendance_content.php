@@ -50,9 +50,16 @@ $alert_error = $save_error ?? false;
                     <label for="filterDepartment" class="form-label">แผนกวิชา</label>
                     <select id="filterDepartment" class="form-control">
                         <option value="">-- ทั้งหมด --</option>
-                        <?php foreach ($departments as $department): ?>
-                        <option value="<?php echo $department['department_id']; ?>"><?php echo $department['department_name']; ?></option>
-                        <?php endforeach; ?>
+                        <?php 
+                        // ตรวจสอบว่า $departments เป็นอาร์เรย์ก่อนใช้งาน
+                        if (isset($departments) && is_array($departments)): 
+                            foreach ($departments as $department): 
+                        ?>
+                        <option value="<?php echo $department['department_id']; ?>"><?php echo htmlspecialchars($department['department_name']); ?></option>
+                        <?php 
+                            endforeach; 
+                        endif; 
+                        ?>
                     </select>
                 </div>
             </div>
@@ -61,9 +68,16 @@ $alert_error = $save_error ?? false;
                     <label for="filterLevel" class="form-label">ระดับชั้น</label>
                     <select id="filterLevel" class="form-control">
                         <option value="">-- ทั้งหมด --</option>
-                        <?php foreach ($levels as $level): ?>
-                        <option value="<?php echo $level; ?>"><?php echo $level; ?></option>
-                        <?php endforeach; ?>
+                        <?php 
+                        // ตรวจสอบว่า $levels เป็นอาร์เรย์ก่อนใช้งาน
+                        if (isset($levels) && is_array($levels)): 
+                            foreach ($levels as $level): 
+                        ?>
+                        <option value="<?php echo htmlspecialchars($level); ?>"><?php echo htmlspecialchars($level); ?></option>
+                        <?php 
+                            endforeach; 
+                        endif; 
+                        ?>
                     </select>
                 </div>
             </div>
@@ -255,25 +269,30 @@ $alert_error = $save_error ?? false;
                             <?php
                             // แสดงรายการห้องเรียน
                             try {
-                                $stmt = $conn->prepare("
-                                    SELECT c.class_id, c.level, c.group_number, d.department_name
-                                    FROM classes c 
-                                    JOIN departments d ON c.department_id = d.department_id
-                                    WHERE c.academic_year_id = ?
-                                    ORDER BY c.level, c.group_number
-                                ");
-                                $stmt->execute([$current_academic_year_id]);
-                                $classes = $stmt->fetchAll(PDO::FETCH_ASSOC);
-                                
-                                foreach ($classes as $class):
-                            ?>
-                            <option value="<?php echo $class['class_id']; ?>">
-                                <?php echo $class['level'] . '/' . $class['group_number'] . ' ' . $class['department_name']; ?>
-                            </option>
-                            <?php
-                                endforeach;
+                                if (isset($current_academic_year_id) && $current_academic_year_id !== null) {
+                                    $stmt = $conn->prepare("
+                                        SELECT c.class_id, c.level, c.group_number, d.department_name
+                                        FROM classes c 
+                                        JOIN departments d ON c.department_id = d.department_id
+                                        WHERE c.academic_year_id = ?
+                                        ORDER BY c.level, c.group_number
+                                    ");
+                                    $stmt->execute([$current_academic_year_id]);
+                                    $classes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                                    
+                                    if (is_array($classes) && count($classes) > 0) {
+                                        foreach ($classes as $class):
+                                    ?>
+                                    <option value="<?php echo $class['class_id']; ?>">
+                                        <?php echo htmlspecialchars($class['level'] . '/' . $class['group_number'] . ' ' . $class['department_name']); ?>
+                                    </option>
+                                    <?php
+                                        endforeach;
+                                    }
+                                }
                             } catch (PDOException $e) {
                                 // ไม่แสดงตัวเลือกเพิ่มเติมหากมีข้อผิดพลาด
+                                error_log("Error loading classes for report: " . $e->getMessage());
                             }
                             ?>
                         </select>
@@ -312,4 +331,7 @@ function downloadAttendanceReport() {
 function closeModal(modalId) {
     document.getElementById(modalId).style.display = 'none';
 }
+
+// เพิ่ม console.log สำหรับตรวจสอบว่า JavaScript โหลดเรียบร้อย
+console.log('Bulk attendance content loaded');
 </script>

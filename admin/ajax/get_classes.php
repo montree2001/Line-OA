@@ -20,6 +20,9 @@ require_once '../../db_connect.php';
 $department_id = isset($_GET['department_id']) ? intval($_GET['department_id']) : 0;
 $level = isset($_GET['level']) ? $_GET['level'] : '';
 
+// บันทึกข้อมูลที่ได้รับสำหรับการตรวจสอบ
+error_log("get_classes.php - Parameters: department_id=$department_id, level=" . urlencode($level));
+
 try {
     // เชื่อมต่อฐานข้อมูล
     $conn = getDB();
@@ -30,6 +33,7 @@ try {
     $academic_year = $stmt->fetch(PDO::FETCH_ASSOC);
     
     if (!$academic_year) {
+        error_log("get_classes.php - No active academic year found");
         echo json_encode(['success' => false, 'error' => 'ไม่พบข้อมูลปีการศึกษาปัจจุบัน']);
         exit;
     }
@@ -58,7 +62,7 @@ try {
     }
     
     // หากเป็นครูที่ปรึกษา ให้ดึงเฉพาะห้องที่เป็นที่ปรึกษา
-    if ($_SESSION['role'] == 'teacher') {
+    if (isset($_SESSION['role']) && $_SESSION['role'] == 'teacher') {
         // ดึงรหัสครู
         $stmt = $conn->prepare("SELECT teacher_id FROM teachers WHERE user_id = ?");
         $stmt->execute([$_SESSION['user_id']]);
@@ -76,20 +80,32 @@ try {
     // เรียงลำดับตามระดับชั้นและกลุ่มเรียน
     $sql .= " ORDER BY c.level, c.group_number";
     
+    // บันทึก SQL query สำหรับการตรวจสอบ
+    error_log("get_classes.php - SQL: " . $sql);
+    
     // เตรียม statement และ execute
     $stmt = $conn->prepare($sql);
     foreach ($params as $key => $value) {
         $stmt->bindValue($key, $value);
+        error_log("get_classes.php - Bind parameter: $key = $value");
     }
     $stmt->execute();
     
     $classes = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
+    // บันทึกจำนวนข้อมูลที่พบ
+    error_log("get_classes.php - Found " . count($classes) . " classes");
+    
     // ส่งข้อมูลกลับในรูปแบบ JSON
     echo json_encode([
         'success' => true,
         'classes' => $classes,
-        'count' => count($classes)
+        'count' => count($classes),
+        'query_info' => [
+            'department_id' => $department_id,
+            'level' => $level,
+            'academic_year_id' => $academic_year_id
+        ]
     ]);
     
 } catch (PDOException $e) {

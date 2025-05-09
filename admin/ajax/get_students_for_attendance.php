@@ -5,7 +5,7 @@
 
 // เริ่ม session และตรวจสอบการเข้าถึง
 session_start();
-header('Content-Type: application/json'); // กำหนด content type เป็น JSON ทุกกรณี
+header('Content-Type: application/json; charset=utf-8'); // กำหนด content type เป็น JSON ทุกกรณี
 
 /* if (!isset($_SESSION['user_id']) || !in_array($_SESSION['user_role'], ['admin', 'teacher'])) {
     echo json_encode(['success' => false, 'error' => 'ไม่มีสิทธิ์เข้าถึงข้อมูล']);
@@ -21,6 +21,10 @@ $department_id = isset($_GET['department_id']) ? intval($_GET['department_id']) 
 $level = isset($_GET['level']) ? $_GET['level'] : '';
 $class_id = isset($_GET['class_id']) ? intval($_GET['class_id']) : 0;
 $date = isset($_GET['date']) ? $_GET['date'] : date('Y-m-d');
+
+// บันทึกข้อมูลพารามิเตอร์สำหรับการตรวจสอบ
+error_log("get_students_for_attendance.php - Parameters: department_id=$department_id, level=" . 
+          urlencode($level) . ", class_id=$class_id, date=$date");
 
 // ตรวจสอบว่ามีเงื่อนไขการค้นหาอย่างน้อย 1 อย่าง
 if (!$department_id && !$level && !$class_id) {
@@ -77,6 +81,8 @@ try {
         
         if ($class_info) {
             $class_display = $class_info['level'] . '/' . $class_info['group_number'] . ' ' . $class_info['department_name'];
+        } else {
+            $class_display = 'ไม่พบข้อมูลห้องเรียน';
         }
     } else {
         if ($department_id) {
@@ -90,6 +96,8 @@ try {
             
             if ($dept_info) {
                 $dept_display = $dept_info['department_name'];
+            } else {
+                $dept_display = 'ไม่พบข้อมูลแผนก';
             }
         }
         
@@ -103,7 +111,7 @@ try {
     }
     
     // หากเป็นครูที่ปรึกษา ให้ดึงเฉพาะห้องที่เป็นที่ปรึกษา
-    if ($_SESSION['role'] == 'teacher') {
+    if (isset($_SESSION['role']) && $_SESSION['role'] == 'teacher' && isset($_SESSION['user_id'])) {
         // ดึงรหัสครู
         $stmt = $conn->prepare("SELECT teacher_id FROM teachers WHERE user_id = ?");
         $stmt->execute([$_SESSION['user_id']]);
@@ -121,6 +129,10 @@ try {
     // เรียงลำดับตามรหัสนักเรียน
     $sql .= " ORDER BY s.student_code";
     
+    // บันทึก SQL query และพารามิเตอร์สำหรับการตรวจสอบ
+    error_log("get_students_for_attendance.php - SQL: " . $sql);
+    error_log("get_students_for_attendance.php - Params: " . json_encode($params));
+    
     // เตรียม statement และ execute
     $stmt = $conn->prepare($sql);
     foreach ($params as $key => $value) {
@@ -129,6 +141,11 @@ try {
     $stmt->execute();
     
     $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    // ตรวจสอบว่า $students เป็นอาร์เรย์หรือไม่
+    if ($students === false) {
+        $students = [];
+    }
     
     // ตรวจสอบว่าพบนักเรียนหรือไม่
     if (count($students) === 0) {
@@ -153,13 +170,17 @@ try {
         $class_info = 'ระดับชั้น ' . $level;
     }
     
+    // บันทึกจำนวนนักเรียนที่พบ
+    error_log("get_students_for_attendance.php - Found " . count($students) . " students");
+    
     // ส่งข้อมูลกลับในรูปแบบ JSON
     echo json_encode([
         'success' => true,
         'students' => $students,
         'class_info' => $class_info,
         'class_id' => $class_id,
-        'date' => $date
+        'date' => $date,
+        'count' => count($students)
     ]);
     
 } catch (PDOException $e) {
@@ -168,7 +189,7 @@ try {
     echo json_encode([
         'success' => false, 
         'error' => 'เกิดข้อผิดพลาดในการดึงข้อมูล: ' . $e->getMessage(),
-        'sql_error' => $e->getMessage()
+        'sql_error' => $e->getCode() . ': ' . $e->getMessage()
     ]);
 }
 ?>
