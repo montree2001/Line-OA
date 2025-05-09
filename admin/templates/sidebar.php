@@ -13,7 +13,7 @@
             <span class="material-icons">dashboard</span>
             <span class="menu-text">แดชบอร์ด</span>
         </a>
-        <a href="check_attendance.php" class="menu-item <?php echo ($current_page == 'check_attendance') ? 'active' : ''; ?>">
+        <a href="bulk_attendance.php" class="menu-item <?php echo ($current_page == 'bulk_attendance') ? 'active' : ''; ?>">
             <span class="material-icons">how_to_reg</span>
             <span class="menu-text">เช็คชื่อนักเรียน</span>
         </a>

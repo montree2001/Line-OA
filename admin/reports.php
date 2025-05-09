@@ -1,29 +1,32 @@
 <?php
 /**
- * reports.php - หน้ารายงานและสถิติ
+ * reports.php - หน้ารายงานและสถิติการเข้าแถว
  * 
  * ส่วนหนึ่งของระบบ STUDENT-Prasat
  */
 
-// เริ่ม session (ใช้สำหรับการเก็บข้อมูลผู้ใช้ที่ล็อกอินและข้อมูลอื่นๆ)
+// เริ่ม session
 session_start();
 
-/* // ตรวจสอบการล็อกอิน (หากไม่ได้ล็อกอินให้ redirect ไปหน้า login.php)
-if (!isset($_SESSION['user_id']) || !isset($_SESSION['user_type']) || ($_SESSION['user_type'] != 'admin' && $_SESSION['user_type'] != 'teacher')) {
+// ตรวจสอบการล็อกอิน
+if (!isset($_SESSION['user_id']) || !isset($_SESSION['user_role']) || ($_SESSION['user_role'] != 'admin' && $_SESSION['user_role'] != 'teacher')) {
     header('Location: login.php');
     exit;
-} */
+}
+
+// เชื่อมต่อฐานข้อมูล
+require_once '../db_connect.php';
 
 // กำหนดข้อมูลสำหรับหน้าปัจจุบัน
 $current_page = 'reports';
-$page_title = 'รายงานและสถิติ';
-$page_header = 'รายงานและสถิติการเข้าแถว';
+$page_title = 'รายงานและสถิติการเข้าแถว';
+$page_header = 'ระบบรายงานและสถิติการเข้าแถว';
 
-// ข้อมูลเกี่ยวกับเจ้าหน้าที่ (จริงๆ ควรดึงจากฐานข้อมูล)
+// ข้อมูลเกี่ยวกับเจ้าหน้าที่ (ในระบบจริงควรดึงจากฐานข้อมูล)
 $admin_info = [
-    'name' => 'จารุวรรณ บุญมี',
-    'role' => 'เจ้าหน้าที่กิจการนักเรียน',
-    'initials' => 'จ'
+    'name' => $_SESSION['user_name'] ?? 'จารุวรรณ บุญมี',
+    'role' => $_SESSION['user_role'] == 'admin' ? 'เจ้าหน้าที่กิจการนักเรียน' : 'ครูที่ปรึกษา',
+    'initials' => mb_substr($_SESSION['user_name'] ?? 'จ', 0, 1, 'UTF-8')
 ];
 
 // ปุ่มบนส่วนหัว
@@ -36,12 +39,9 @@ $header_buttons = [
     [
         'text' => 'พิมพ์รายงาน',
         'icon' => 'print',
-        'onclick' => 'printReport()'
+        'onclick' => 'window.print()'
     ]
 ];
-
-// จำนวนนักเรียนที่เสี่ยงตกกิจกรรม
-$at_risk_count = 12;
 
 // ไฟล์ CSS และ JS เพิ่มเติม
 $extra_css = [
@@ -49,8 +49,8 @@ $extra_css = [
 ];
 
 $extra_js = [
-    'assets/js/reports.js',
-    'assets/js/charts.js'
+    'https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js',
+    'assets/js/reports.js'
 ];
 
 // ซ่อนช่องค้นหาในเฮดเดอร์ (เพราะหน้ารายงานมีแผงค้นหาแบบละเอียดแล้ว)

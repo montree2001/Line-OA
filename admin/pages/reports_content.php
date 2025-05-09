@@ -1,3 +1,352 @@
+<?php
+// เชื่อมต่อกับฐานข้อมูล (ถ้ายังไม่เชื่อมต่อ)
+if (!function_exists('getDB')) {
+    require_once '../db_connect.php';
+}
+
+// ฟังก์ชันสำหรับดึงข้อมูลสถิติภาพรวม
+function getOverallStats() {
+    $conn = getDB();
+    
+    // ดึงปีการศึกษาปัจจุบัน
+    $query = "SELECT academic_year_id, year, semester FROM academic_years WHERE is_active = 1 LIMIT 1";
+    $stmt = $conn->query($query);
+    $academicYear = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    if (!$academicYear) {
+        return array(
+            'total_students' => 0,
+            'attendance_days' => 0,
+            'avg_attendance_rate' => 0,
+            'risk_students' => 0,
+            'academic_year' => 'ไม่พบข้อมูล',
+            'semester' => ''
+        );
+    }
+    
+    $academicYearId = $academicYear['academic_year_id'];
+    
+    // จำนวนนักเรียนทั้งหมด
+    $query = "SELECT COUNT(*) FROM students WHERE status = 'กำลังศึกษา'";
+    $stmt = $conn->query($query);
+    $totalStudents = $stmt->fetchColumn();
+    
+    // จำนวนวันเข้าแถวทั้งหมดในเดือนปัจจุบัน
+    $currentMonth = date('m');
+    $currentYear = date('Y');
+    $query = "SELECT COUNT(DISTINCT date) 
+              FROM attendance 
+              WHERE academic_year_id = ? AND MONTH(date) = ? AND YEAR(date) = ?";
+    $stmt = $conn->prepare($query);
+    $stmt->execute([$academicYearId, $currentMonth, $currentYear]);
+    $attendanceDays = $stmt->fetchColumn();
+    
+    // อัตราการเข้าแถวเฉลี่ย
+    $query = "SELECT 
+                AVG(CASE 
+                    WHEN (sar.total_attendance_days + sar.total_absence_days) > 0 
+                    THEN (sar.total_attendance_days / (sar.total_attendance_days + sar.total_absence_days) * 100) 
+                    ELSE 100 
+                END) as avg_rate
+              FROM student_academic_records sar
+              JOIN students s ON sar.student_id = s.student_id
+              WHERE sar.academic_year_id = ? AND s.status = 'กำลังศึกษา'";
+    $stmt = $conn->prepare($query);
+    $stmt->execute([$academicYearId]);
+    $avgAttendanceRate = $stmt->fetchColumn();
+    
+    // ดึงเกณฑ์ความเสี่ยง
+    $query = "SELECT setting_value FROM system_settings WHERE setting_key = 'risk_threshold_high'";
+    $stmt = $conn->query($query);
+    $riskThreshold = $stmt->fetchColumn() ?: 60;
+    
+    // จำนวนนักเรียนที่เสี่ยงตกกิจกรรม
+    $query = "SELECT COUNT(*) FROM student_academic_records sar
+              JOIN students s ON sar.student_id = s.student_id
+              WHERE sar.academic_year_id = ? AND s.status = 'กำลังศึกษา'
+              AND (
+                CASE 
+                    WHEN (sar.total_attendance_days + sar.total_absence_days) > 0 
+                    THEN (sar.total_attendance_days / (sar.total_attendance_days + sar.total_absence_days) * 100) 
+                    ELSE 100 
+                END
+              ) <= ?";
+    $stmt = $conn->prepare($query);
+    $stmt->execute([$academicYearId, $riskThreshold]);
+    $riskStudents = $stmt->fetchColumn();
+    
+    // อัตราการเข้าแถวเฉลี่ยเดือนที่แล้ว
+    $lastMonth = $currentMonth - 1;
+    $lastMonthYear = $currentYear;
+    if ($lastMonth <= 0) {
+        $lastMonth = 12;
+        $lastMonthYear--;
+    }
+    
+    $query = "SELECT 
+                COUNT(DISTINCT a.student_id) as total_present,
+                (SELECT COUNT(*) FROM students WHERE status = 'กำลังศึกษา') as total_students,
+                COUNT(DISTINCT a.date) as total_days
+              FROM attendance a
+              WHERE a.academic_year_id = ? 
+              AND MONTH(a.date) = ? 
+              AND YEAR(a.date) = ?
+              AND a.attendance_status = 'present'";
+    $stmt = $conn->prepare($query);
+    $stmt->execute([$academicYearId, $lastMonth, $lastMonthYear]);
+    $lastMonthData = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    $lastMonthRate = 0;
+    if ($lastMonthData['total_days'] > 0 && $lastMonthData['total_students'] > 0) {
+        $lastMonthRate = ($lastMonthData['total_present'] / ($lastMonthData['total_students'] * $lastMonthData['total_days'])) * 100;
+    }
+    
+    $rateChange = $avgAttendanceRate - $lastMonthRate;
+    
+    return array(
+        'total_students' => $totalStudents,
+        'attendance_days' => $attendanceDays,
+        'avg_attendance_rate' => $avgAttendanceRate,
+        'rate_change' => $rateChange,
+        'risk_students' => $riskStudents,
+        'academic_year' => $academicYear['year'],
+        'semester' => $academicYear['semester'],
+        'current_month' => getThaiMonth($currentMonth)
+    );
+}
+
+// ฟังก์ชันสำหรับดึงข้อมูลนักเรียนที่เสี่ยงตก
+function getRiskStudents($limit = 5) {
+    $conn = getDB();
+    
+    // ดึงปีการศึกษาปัจจุบัน
+    $query = "SELECT academic_year_id FROM academic_years WHERE is_active = 1 LIMIT 1";
+    $stmt = $conn->query($query);
+    $academicYearId = $stmt->fetchColumn();
+    
+    // ดึงเกณฑ์ความเสี่ยง
+    $query = "SELECT setting_value FROM system_settings WHERE setting_key = 'risk_threshold_high'";
+    $stmt = $conn->query($query);
+    $riskThreshold = $stmt->fetchColumn() ?: 60;
+    
+    // ดึงข้อมูลนักเรียนที่เสี่ยงตก
+    $query = "SELECT 
+                s.student_id,
+                s.student_code,
+                s.title,
+                u.first_name,
+                u.last_name,
+                c.level,
+                c.group_number,
+                CONCAT(c.level, '/', c.group_number) as class_name,
+                (SELECT CONCAT(t.title, ' ', t.first_name, ' ', t.last_name) 
+                 FROM teachers t 
+                 JOIN class_advisors ca ON t.teacher_id = ca.teacher_id 
+                 WHERE ca.class_id = c.class_id AND ca.is_primary = 1 
+                 LIMIT 1) as advisor_name,
+                sar.total_attendance_days,
+                sar.total_absence_days,
+                CASE 
+                    WHEN (sar.total_attendance_days + sar.total_absence_days) > 0 
+                    THEN (sar.total_attendance_days / (sar.total_attendance_days + sar.total_absence_days) * 100) 
+                    ELSE 100 
+                END as attendance_rate
+              FROM students s
+              JOIN users u ON s.user_id = u.user_id
+              JOIN classes c ON s.current_class_id = c.class_id
+              JOIN student_academic_records sar ON s.student_id = sar.student_id
+              WHERE sar.academic_year_id = ? AND s.status = 'กำลังศึกษา'
+              AND (
+                CASE 
+                    WHEN (sar.total_attendance_days + sar.total_absence_days) > 0 
+                    THEN (sar.total_attendance_days / (sar.total_attendance_days + sar.total_absence_days) * 100) 
+                    ELSE 100 
+                END
+              ) <= ?
+              ORDER BY attendance_rate ASC
+              LIMIT ?";
+    $stmt = $conn->prepare($query);
+    $stmt->execute([$academicYearId, $riskThreshold, $limit]);
+    $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    return $students;
+}
+
+// ฟังก์ชันสำหรับดึงข้อมูลอัตราการเข้าแถวตามห้องเรียน
+function getClassAttendanceRates() {
+    $conn = getDB();
+    
+    // ดึงปีการศึกษาปัจจุบัน
+    $query = "SELECT academic_year_id FROM academic_years WHERE is_active = 1 LIMIT 1";
+    $stmt = $conn->query($query);
+    $academicYearId = $stmt->fetchColumn();
+    
+    // ดึงข้อมูลอัตราการเข้าแถวตามห้องเรียน
+    $query = "SELECT 
+                c.class_id,
+                c.level,
+                c.group_number,
+                CONCAT(c.level, '/', c.group_number) as class_name,
+                d.department_name,
+                COUNT(DISTINCT s.student_id) as student_count,
+                SUM(sar.total_attendance_days) as total_attendance,
+                SUM(sar.total_absence_days) as total_absence,
+                (SUM(sar.total_attendance_days) / (SUM(sar.total_attendance_days) + SUM(sar.total_absence_days)) * 100) as attendance_rate
+              FROM classes c
+              JOIN departments d ON c.department_id = d.department_id
+              LEFT JOIN students s ON s.current_class_id = c.class_id AND s.status = 'กำลังศึกษา'
+              LEFT JOIN student_academic_records sar ON s.student_id = sar.student_id AND sar.academic_year_id = ?
+              WHERE c.academic_year_id = ?
+              GROUP BY c.class_id
+              ORDER BY attendance_rate DESC";
+    $stmt = $conn->prepare($query);
+    $stmt->execute([$academicYearId, $academicYearId]);
+    $classes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    return $classes;
+}
+
+// ฟังก์ชันสำหรับดึงข้อมูลอัตราการเข้าแถวตลอดปีการศึกษา
+function getYearlyAttendanceTrends() {
+    $conn = getDB();
+    
+    // ดึงปีการศึกษาปัจจุบัน
+    $query = "SELECT academic_year_id, start_date, end_date FROM academic_years WHERE is_active = 1 LIMIT 1";
+    $stmt = $conn->query($query);
+    $academicYear = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    if (!$academicYear) {
+        return array();
+    }
+    
+    $academicYearId = $academicYear['academic_year_id'];
+    $startDate = $academicYear['start_date'];
+    $endDate = $academicYear['end_date'];
+    
+    // สร้างอาร์เรย์ของเดือน
+    $months = array();
+    $currentDate = new DateTime($startDate);
+    $endDateObj = new DateTime($endDate);
+    
+    while ($currentDate <= $endDateObj) {
+        $month = $currentDate->format('m');
+        $year = $currentDate->format('Y');
+        
+        $months[] = array(
+            'month' => $month,
+            'year' => $year,
+            'month_name' => getThaiMonth($month)
+        );
+        
+        $currentDate->modify('+1 month');
+    }
+    
+    // ดึงข้อมูลอัตราการเข้าแถวรายเดือน
+    $trends = array();
+    
+    foreach ($months as $monthData) {
+        $month = $monthData['month'];
+        $year = $monthData['year'];
+        
+        $query = "SELECT 
+                    COUNT(DISTINCT CASE WHEN a.attendance_status = 'present' THEN a.student_id ELSE NULL END) as present_count,
+                    COUNT(DISTINCT a.student_id) as total_students,
+                    COUNT(DISTINCT a.date) as attendance_days
+                  FROM attendance a
+                  WHERE a.academic_year_id = ? 
+                  AND MONTH(a.date) = ? 
+                  AND YEAR(a.date) = ?";
+        $stmt = $conn->prepare($query);
+        $stmt->execute([$academicYearId, $month, $year]);
+        $data = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        $rate = 0;
+        if ($data['attendance_days'] > 0 && $data['total_students'] > 0) {
+            $rate = ($data['present_count'] / ($data['total_students'] * $data['attendance_days'])) * 100;
+        }
+        
+        $trends[] = array(
+            'month' => $monthData['month_name'],
+            'rate' => $rate
+        );
+    }
+    
+    return $trends;
+}
+
+// ฟังก์ชันสำหรับดึงข้อมูลสาเหตุการขาดแถว
+function getAbsenceReasons() {
+    $conn = getDB();
+    
+    // ดึงปีการศึกษาปัจจุบัน
+    $query = "SELECT academic_year_id FROM academic_years WHERE is_active = 1 LIMIT 1";
+    $stmt = $conn->query($query);
+    $academicYearId = $stmt->fetchColumn();
+    
+    // ในระบบจริงควรมีตารางเก็บสาเหตุการขาด แต่ในตัวอย่างนี้จะใช้ข้อมูลตัวอย่าง
+    // เนื่องจากไม่พบตารางเก็บสาเหตุการขาดในโครงสร้างฐานข้อมูล
+    $reasons = array(
+        array('reason' => 'ป่วย', 'percent' => 42),
+        array('reason' => 'ธุระส่วนตัว', 'percent' => 28),
+        array('reason' => 'มาสาย', 'percent' => 15),
+        array('reason' => 'ไม่ทราบสาเหตุ', 'percent' => 15)
+    );
+    
+    return $reasons;
+}
+
+// ฟังก์ชันสำหรับดึงข้อมูลแผนกวิชา
+function getDepartments() {
+    $conn = getDB();
+    
+    $query = "SELECT department_id, department_name FROM departments WHERE is_active = 1 ORDER BY department_name";
+    $stmt = $conn->query($query);
+    $departments = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    return $departments;
+}
+
+// ฟังก์ชันสำหรับดึงข้อมูลระดับชั้น
+function getClassLevels() {
+    $conn = getDB();
+    
+    $query = "SELECT DISTINCT level FROM classes WHERE is_active = 1 ORDER BY level";
+    $stmt = $conn->query($query);
+    $levels = $stmt->fetchAll(PDO::FETCH_COLUMN);
+    
+    return $levels;
+}
+
+// ฟังก์ชันแปลงเดือนเป็นภาษาไทย
+function getThaiMonth($month) {
+    $thaiMonths = array(
+        1 => 'มกราคม',
+        2 => 'กุมภาพันธ์',
+        3 => 'มีนาคม',
+        4 => 'เมษายน',
+        5 => 'พฤษภาคม',
+        6 => 'มิถุนายน',
+        7 => 'กรกฎาคม',
+        8 => 'สิงหาคม',
+        9 => 'กันยายน',
+        10 => 'ตุลาคม',
+        11 => 'พฤศจิกายน',
+        12 => 'ธันวาคม'
+    );
+    
+    return isset($thaiMonths[$month]) ? $thaiMonths[$month] : '';
+}
+
+// ดึงข้อมูลสำหรับรายงาน
+$stats = getOverallStats();
+$riskStudents = getRiskStudents(5);
+$classRates = getClassAttendanceRates();
+$yearlyTrends = getYearlyAttendanceTrends();
+$absenceReasons = getAbsenceReasons();
+$departments = getDepartments();
+$classLevels = getClassLevels();
+?>
+
 <!-- แผงค้นหาและกรองข้อมูล -->
 <div class="card">
     <div class="card-title">
@@ -19,12 +368,22 @@
         </div>
         
         <div class="filter-group">
+            <div class="filter-label">แผนกวิชา</div>
+            <select class="form-control" id="departmentFilter">
+                <option value="">ทุกแผนก</option>
+                <?php foreach ($departments as $department): ?>
+                <option value="<?php echo $department['department_id']; ?>"><?php echo $department['department_name']; ?></option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+        
+        <div class="filter-group">
             <div class="filter-label">ช่วงเวลา</div>
-            <select class="form-control" id="reportPeriod">
-                <option value="current" selected>เดือนปัจจุบัน (มีนาคม 2568)</option>
-                <option value="prev">เดือนที่แล้ว (กุมภาพันธ์ 2568)</option>
+            <select class="form-control" id="reportPeriod" onchange="toggleDateRange()">
+                <option value="current" selected>เดือนปัจจุบัน (<?php echo $stats['current_month']; ?> <?php echo $stats['academic_year'] + 543; ?>)</option>
+                <option value="prev">เดือนที่แล้ว</option>
                 <option value="last3">3 เดือนย้อนหลัง</option>
-                <option value="semester">ภาคเรียนที่ 2/2568</option>
+                <option value="semester">ภาคเรียนที่ <?php echo $stats['semester']; ?>/<?php echo $stats['academic_year'] + 543; ?></option>
                 <option value="custom">กำหนดเอง</option>
             </select>
         </div>
@@ -43,14 +402,9 @@
             <div class="filter-label">ระดับชั้น</div>
             <select class="form-control" id="classLevel">
                 <option value="">ทุกระดับชั้น</option>
-                <option value="lower">มัธยมต้น</option>
-                <option value="upper" selected>มัธยมปลาย</option>
-                <option value="m1">ม.1</option>
-                <option value="m2">ม.2</option>
-                <option value="m3">ม.3</option>
-                <option value="m4">ม.4</option>
-                <option value="m5">ม.5</option>
-                <option value="m6">ม.6</option>
+                <?php foreach ($classLevels as $level): ?>
+                <option value="<?php echo $level; ?>"><?php echo $level; ?></option>
+                <?php endforeach; ?>
             </select>
         </div>
         
@@ -58,17 +412,13 @@
             <div class="filter-label">ห้องเรียน</div>
             <select class="form-control" id="classRoom">
                 <option value="">ทุกห้อง</option>
-                <option value="1">1</option>
-                <option value="2">2</option>
-                <option value="3">3</option>
-                <option value="4">4</option>
-                <option value="5">5</option>
+                <!-- กลุ่มห้องจะถูกเติมด้วย JavaScript เมื่อเลือกระดับชั้น -->
             </select>
         </div>
         
         <div class="filter-group student-filter" style="display: none;">
             <div class="filter-label">รหัส/ชื่อนักเรียน</div>
-            <input type="text" class="form-control" placeholder="ป้อนรหัสหรือชื่อนักเรียน">
+            <input type="text" class="form-control" id="studentSearch" placeholder="ป้อนรหัสหรือชื่อนักเรียน">
         </div>
         
         <button class="filter-button" onclick="generateReport()">
@@ -82,32 +432,40 @@
 <div class="card">
     <div class="card-title">
         <span class="material-icons">assessment</span>
-        สรุปรายงานประจำเดือนมีนาคม 2568
+        สรุปรายงานประจำเดือน<?php echo $stats['current_month']; ?> <?php echo $stats['academic_year'] + 543; ?>
     </div>
     
     <div class="monthly-summary">
         <div class="monthly-summary-item">
             <div class="monthly-summary-title">จำนวนนักเรียนทั้งหมด</div>
-            <div class="monthly-summary-value">1,250</div>
-            <div class="monthly-summary-subtext">นักเรียนมัธยมปลาย</div>
+            <div class="monthly-summary-value"><?php echo number_format($stats['total_students']); ?></div>
+            <div class="monthly-summary-subtext">นักเรียนทั้งหมดในระบบ</div>
         </div>
         
         <div class="monthly-summary-item">
             <div class="monthly-summary-title">จำนวนวันเข้าแถว</div>
-            <div class="monthly-summary-value">22</div>
-            <div class="monthly-summary-subtext">วันเข้าแถวเดือนมีนาคม</div>
+            <div class="monthly-summary-value"><?php echo $stats['attendance_days']; ?></div>
+            <div class="monthly-summary-subtext">วันเข้าแถวเดือน<?php echo $stats['current_month']; ?></div>
         </div>
         
         <div class="monthly-summary-item">
             <div class="monthly-summary-title">อัตราการเข้าแถวเฉลี่ย</div>
-            <div class="monthly-summary-value success">92.7%</div>
-            <div class="monthly-summary-subtext">เพิ่มขึ้น 1.2% จากเดือนที่แล้ว</div>
+            <div class="monthly-summary-value <?php echo ($stats['rate_change'] >= 0) ? 'success' : 'danger'; ?>">
+                <?php echo number_format($stats['avg_attendance_rate'], 1); ?>%
+            </div>
+            <div class="monthly-summary-subtext">
+                <?php if ($stats['rate_change'] >= 0): ?>
+                    เพิ่มขึ้น <?php echo number_format(abs($stats['rate_change']), 1); ?>% จากเดือนที่แล้ว
+                <?php else: ?>
+                    ลดลง <?php echo number_format(abs($stats['rate_change']), 1); ?>% จากเดือนที่แล้ว
+                <?php endif; ?>
+            </div>
         </div>
         
         <div class="monthly-summary-item">
             <div class="monthly-summary-title">นักเรียนเสี่ยงตกกิจกรรม</div>
-            <div class="monthly-summary-value danger">35</div>
-            <div class="monthly-summary-subtext">ลดลง 5 คนจากเดือนที่แล้ว</div>
+            <div class="monthly-summary-value danger"><?php echo $stats['risk_students']; ?></div>
+            <div class="monthly-summary-subtext">อัตราเข้าแถวต่ำกว่าเกณฑ์</div>
         </div>
     </div>
     
@@ -116,11 +474,11 @@
             <div class="chart-header">
                 <div class="chart-title">แนวโน้มการเข้าแถวตลอดปีการศึกษา</div>
                 <div class="chart-actions">
-                    <button class="chart-action-btn">
+                    <button class="chart-action-btn" onclick="refreshYearlyChart()">
                         <span class="material-icons">refresh</span>
                         รีเฟรช
                     </button>
-                    <button class="chart-action-btn">
+                    <button class="chart-action-btn" onclick="downloadYearlyChart()">
                         <span class="material-icons">download</span>
                         ดาวน์โหลด
                     </button>
@@ -129,75 +487,7 @@
             
             <div class="chart-container" id="yearlyTrendChart">
                 <!-- Chart will be rendered here by JavaScript -->
-                <!-- ในทางปฏิบัติจริง ควรใช้ Chart.js หรือ library อื่นๆ -->
-                <div style="display: flex; height: 250px; align-items: flex-end; justify-content: space-around; padding-bottom: 30px; border-bottom: 1px solid #eee;">
-                    <div style="display: flex; flex-direction: column; align-items: center;">
-                        <div style="height: 200px; width: 30px; background-color: #e3f2fd; border-radius: 5px 5px 0 0; position: relative;">
-                            <div style="position: absolute; top: -25px; width: 100%; text-align: center; font-size: 12px; font-weight: 600; color: #1976d2;">95%</div>
-                        </div>
-                        <div style="margin-top: 10px; font-size: 12px; color: #666;">พ.ค.</div>
-                    </div>
-                    <div style="display: flex; flex-direction: column; align-items: center;">
-                        <div style="height: 195px; width: 30px; background-color: #e3f2fd; border-radius: 5px 5px 0 0; position: relative;">
-                            <div style="position: absolute; top: -25px; width: 100%; text-align: center; font-size: 12px; font-weight: 600; color: #1976d2;">94%</div>
-                        </div>
-                        <div style="margin-top: 10px; font-size: 12px; color: #666;">มิ.ย.</div>
-                    </div>
-                    <div style="display: flex; flex-direction: column; align-items: center;">
-                        <div style="height: 190px; width: 30px; background-color: #e3f2fd; border-radius: 5px 5px 0 0; position: relative;">
-                            <div style="position: absolute; top: -25px; width: 100%; text-align: center; font-size: 12px; font-weight: 600; color: #1976d2;">92%</div>
-                        </div>
-                        <div style="margin-top: 10px; font-size: 12px; color: #666;">ก.ค.</div>
-                    </div>
-                    <div style="display: flex; flex-direction: column; align-items: center;">
-                        <div style="height: 185px; width: 30px; background-color: #e3f2fd; border-radius: 5px 5px 0 0; position: relative;">
-                            <div style="position: absolute; top: -25px; width: 100%; text-align: center; font-size: 12px; font-weight: 600; color: #1976d2;">91%</div>
-                        </div>
-                        <div style="margin-top: 10px; font-size: 12px; color: #666;">ส.ค.</div>
-                    </div>
-                    <div style="display: flex; flex-direction: column; align-items: center;">
-                        <div style="height: 190px; width: 30px; background-color: #e3f2fd; border-radius: 5px 5px 0 0; position: relative;">
-                            <div style="position: absolute; top: -25px; width: 100%; text-align: center; font-size: 12px; font-weight: 600; color: #1976d2;">93%</div>
-                        </div>
-                        <div style="margin-top: 10px; font-size: 12px; color: #666;">ก.ย.</div>
-                    </div>
-                    <div style="display: flex; flex-direction: column; align-items: center;">
-                        <div style="height: 194px; width: 30px; background-color: #e3f2fd; border-radius: 5px 5px 0 0; position: relative;">
-                            <div style="position: absolute; top: -25px; width: 100%; text-align: center; font-size: 12px; font-weight: 600; color: #1976d2;">94%</div>
-                        </div>
-                        <div style="margin-top: 10px; font-size: 12px; color: #666;">ต.ค.</div>
-                    </div>
-                    <div style="display: flex; flex-direction: column; align-items: center;">
-                        <div style="height: 186px; width: 30px; background-color: #e3f2fd; border-radius: 5px 5px 0 0; position: relative;">
-                            <div style="position: absolute; top: -25px; width: 100%; text-align: center; font-size: 12px; font-weight: 600; color: #1976d2;">90%</div>
-                        </div>
-                        <div style="margin-top: 10px; font-size: 12px; color: #666;">พ.ย.</div>
-                    </div>
-                    <div style="display: flex; flex-direction: column; align-items: center;">
-                        <div style="height: 184px; width: 30px; background-color: #e3f2fd; border-radius: 5px 5px 0 0; position: relative;">
-                            <div style="position: absolute; top: -25px; width: 100%; text-align: center; font-size: 12px; font-weight: 600; color: #1976d2;">89%</div>
-                        </div>
-                        <div style="margin-top: 10px; font-size: 12px; color: #666;">ธ.ค.</div>
-                    </div>
-                    <div style="display: flex; flex-direction: column; align-items: center;">
-                        <div style="height: 190px; width: 30px; background-color: #e3f2fd; border-radius: 5px 5px 0 0; position: relative;">
-                            <div style="position: absolute; top: -25px; width: 100%; text-align: center; font-size: 12px; font-weight: 600; color: #1976d2;">92%</div>
-                        </div>
-                        <div style="margin-top: 10px; font-size: 12px; color: #666;">ม.ค.</div>
-                    </div>
-                    <div style="display: flex; flex-direction: column; align-items: center;">
-                        <div style="height: 188px; width: 30px; background-color: #e3f2fd; border-radius: 5px 5px 0 0; position: relative;">
-                            <div style="position: absolute; top: -25px; width: 100%; text-align: center; font-size: 12px; font-weight: 600; color: #1976d2;">91%</div>
-                        </div>
-                        <div style="margin-top: 10px; font-size: 12px; color: #666;">ก.พ.</div>
-                    </div>
-                    <div style="display: flex; flex-direction: column; align-items: center;">
-                        <div style="height: 192px; width: 30px; background-color: #e3f2fd; border-radius: 5px 5px 0 0; position: relative;">
-                            <div style="position: absolute; top: -25px; width: 100%; text-align: center; font-size: 12px; font-weight: 600; color: #1976d2;">93%</div>
-                        </div>
-                        <div style="margin-top: 10px; font-size: 12px; color: #666;">มี.ค.</div>
-                    </div>
-                </div>
+                <canvas id="yearlyAttendanceChart"></canvas>
             </div>
         </div>
         
@@ -208,30 +498,7 @@
             
             <div class="chart-container" id="absenceReasonChart">
                 <!-- Pie chart will be rendered here by JavaScript -->
-                <!-- ในทางปฏิบัติจริง ควรใช้ Chart.js หรือ library อื่นๆ -->
-                <div style="display: flex; flex-direction: column; align-items: center; padding: 20px;">
-                    <div style="position: relative; width: 200px; height: 200px; border-radius: 50%; background: conic-gradient(#2196f3 0% 42%, #ff9800 42% 70%, #9c27b0 70% 85%, #f44336 85% 100%);">
-                        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 100px; height: 100px; background-color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center;"></div>
-                    </div>
-                    <div style="display: flex; flex-wrap: wrap; justify-content: center; margin-top: 20px; gap: 15px;">
-                        <div style="display: flex; align-items: center;">
-                            <div style="width: 16px; height: 16px; margin-right: 8px; background-color: #2196f3; border-radius: 4px;"></div>
-                            <span>ป่วย (42%)</span>
-                        </div>
-                        <div style="display: flex; align-items: center;">
-                            <div style="width: 16px; height: 16px; margin-right: 8px; background-color: #ff9800; border-radius: 4px;"></div>
-                            <span>ธุระส่วนตัว (28%)</span>
-                        </div>
-                        <div style="display: flex; align-items: center;">
-                            <div style="width: 16px; height: 16px; margin-right: 8px; background-color: #9c27b0; border-radius: 4px;"></div>
-                            <span>มาสาย (15%)</span>
-                        </div>
-                        <div style="display: flex; align-items: center;">
-                            <div style="width: 16px; height: 16px; margin-right: 8px; background-color: #f44336; border-radius: 4px;"></div>
-                            <span>ไม่ทราบสาเหตุ (15%)</span>
-                        </div>
-                    </div>
-                </div>
+                <canvas id="absenceReasonsChart"></canvas>
             </div>
         </div>
     </div>
@@ -246,45 +513,7 @@
     
     <div class="chart-container" id="classComparisonChart">
         <!-- Class comparison chart will be rendered here by JavaScript -->
-        <!-- ในทางปฏิบัติจริง ควรใช้ Chart.js หรือ library อื่นๆ -->
-        <div class="class-attendance-chart">
-            <div class="class-bar" style="height: 92%;">
-                <div class="class-bar-value">92%</div>
-                <div class="class-bar-label">ม.4/1</div>
-            </div>
-            <div class="class-bar" style="height: 90%;">
-                <div class="class-bar-value">90%</div>
-                <div class="class-bar-label">ม.4/2</div>
-            </div>
-            <div class="class-bar" style="height: 88%;">
-                <div class="class-bar-value">88%</div>
-                <div class="class-bar-label">ม.4/3</div>
-            </div>
-            <div class="class-bar" style="height: 94%;">
-                <div class="class-bar-value">94%</div>
-                <div class="class-bar-label">ม.5/1</div>
-            </div>
-            <div class="class-bar" style="height: 89%;">
-                <div class="class-bar-value">89%</div>
-                <div class="class-bar-label">ม.5/2</div>
-            </div>
-            <div class="class-bar" style="height: 82%;">
-                <div class="class-bar-value">82%</div>
-                <div class="class-bar-label">ม.5/3</div>
-            </div>
-            <div class="class-bar" style="height: 93%;">
-                <div class="class-bar-value">93%</div>
-                <div class="class-bar-label">ม.6/1</div>
-            </div>
-            <div class="class-bar" style="height: 85%;">
-                <div class="class-bar-value">85%</div>
-                <div class="class-bar-label">ม.6/2</div>
-            </div>
-            <div class="class-bar" style="height: 90%;">
-                <div class="class-bar-value">90%</div>
-                <div class="class-bar-label">ม.6/3</div>
-            </div>
-        </div>
+        <canvas id="classComparisonBarChart"></canvas>
     </div>
 </div>
 
@@ -310,141 +539,47 @@
                 </tr>
             </thead>
             <tbody>
-                <tr>
-                    <td>1</td>
-                    <td>
-                        <div class="student-info">
-                            <div class="student-avatar">ธ</div>
-                            <div class="student-details">
-                                <div class="student-name">นายธนกฤต สุขใจ</div>
-                                <div class="student-class">เลขที่ 12</div>
+                <?php foreach ($riskStudents as $index => $student): ?>
+                    <?php 
+                        $attendanceRate = $student['attendance_rate'];
+                        $statusClass = $attendanceRate < 70 ? 'danger' : 'warning';
+                        $statusText = $attendanceRate < 70 ? 'ตกกิจกรรม' : 'เสี่ยงตกกิจกรรม';
+                        $studentInitial = mb_substr($student['first_name'], 0, 1, 'UTF-8');
+                    ?>
+                    <tr>
+                        <td><?php echo $index + 1; ?></td>
+                        <td>
+                            <div class="student-info">
+                                <div class="student-avatar"><?php echo $studentInitial; ?></div>
+                                <div class="student-details">
+                                    <div class="student-name"><?php echo $student['title'] . ' ' . $student['first_name'] . ' ' . $student['last_name']; ?></div>
+                                    <div class="student-class">เลขที่ <?php echo $student['student_code']; ?></div>
+                                </div>
                             </div>
-                        </div>
-                    </td>
-                    <td>ม.6/2</td>
-                    <td><span class="attendance-percent danger">68.5%</span></td>
-                    <td>15 วัน</td>
-                    <td>อ.ประสิทธิ์ ดีเลิศ</td>
-                    <td><span class="status-badge danger">ตกกิจกรรม</span></td>
-                    <td>
-                        <div class="action-buttons">
-                            <button class="table-action-btn primary" title="ดูรายละเอียด">
-                                <span class="material-icons">visibility</span>
-                            </button>
-                            <button class="table-action-btn success" title="ส่งข้อความ">
-                                <span class="material-icons">send</span>
-                            </button>
-                        </div>
-                    </td>
-                </tr>
-                <tr>
-                    <td>2</td>
-                    <td>
-                        <div class="student-info">
-                            <div class="student-avatar">ส</div>
-                            <div class="student-details">
-                                <div class="student-name">นางสาวสมหญิง มีสุข</div>
-                                <div class="student-class">เลขที่ 8</div>
+                        </td>
+                        <td><?php echo $student['class_name']; ?></td>
+                        <td><span class="attendance-percent <?php echo $statusClass; ?>"><?php echo number_format($attendanceRate, 1); ?>%</span></td>
+                        <td><?php echo $student['total_absence_days']; ?> วัน</td>
+                        <td><?php echo $student['advisor_name']; ?></td>
+                        <td><span class="status-badge <?php echo $statusClass; ?>"><?php echo $statusText; ?></span></td>
+                        <td>
+                            <div class="action-buttons">
+                                <button class="table-action-btn primary" title="ดูรายละเอียด" onclick="viewStudentDetails(<?php echo $student['student_id']; ?>)">
+                                    <span class="material-icons">visibility</span>
+                                </button>
+                                <button class="table-action-btn success" title="ส่งข้อความ" onclick="sendNotificationToParent(<?php echo $student['student_id']; ?>)">
+                                    <span class="material-icons">send</span>
+                                </button>
                             </div>
-                        </div>
-                    </td>
-                    <td>ม.5/3</td>
-                    <td><span class="attendance-percent danger">70.2%</span></td>
-                    <td>14 วัน</td>
-                    <td>อ.วันดี สดใส</td>
-                    <td><span class="status-badge danger">ตกกิจกรรม</span></td>
-                    <td>
-                        <div class="action-buttons">
-                            <button class="table-action-btn primary" title="ดูรายละเอียด">
-                                <span class="material-icons">visibility</span>
-                            </button>
-                            <button class="table-action-btn success" title="ส่งข้อความ">
-                                <span class="material-icons">send</span>
-                            </button>
-                        </div>
-                    </td>
-                </tr>
-                <tr>
-                    <td>3</td>
-                    <td>
-                        <div class="student-info">
-                            <div class="student-avatar">พ</div>
-                            <div class="student-details">
-                                <div class="student-name">นายพิชัย รักเรียน</div>
-                                <div class="student-class">เลขที่ 15</div>
-                            </div>
-                        </div>
-                    </td>
-                    <td>ม.4/1</td>
-                    <td><span class="attendance-percent warning">75.3%</span></td>
-                    <td>12 วัน</td>
-                    <td>อ.ใจดี มากเมตตา</td>
-                    <td><span class="status-badge warning">เสี่ยงตกกิจกรรม</span></td>
-                    <td>
-                        <div class="action-buttons">
-                            <button class="table-action-btn primary" title="ดูรายละเอียด">
-                                <span class="material-icons">visibility</span>
-                            </button>
-                            <button class="table-action-btn success" title="ส่งข้อความ">
-                                <span class="material-icons">send</span>
-                            </button>
-                        </div>
-                    </td>
-                </tr>
-                <tr>
-                    <td>4</td>
-                    <td>
-                        <div class="student-info">
-                            <div class="student-avatar">ว</div>
-                            <div class="student-details">
-                                <div class="student-name">นางสาววรรณา ชาติไทย</div>
-                                <div class="student-class">เลขที่ 10</div>
-                            </div>
-                        </div>
-                    </td>
-                    <td>ม.5/2</td>
-                    <td><span class="attendance-percent warning">73.5%</span></td>
-                    <td>13 วัน</td>
-                    <td>อ.วิชัย สุขสวัสดิ์</td>
-                    <td><span class="status-badge warning">เสี่ยงตกกิจกรรม</span></td>
-                    <td>
-                        <div class="action-buttons">
-                            <button class="table-action-btn primary" title="ดูรายละเอียด">
-                                <span class="material-icons">visibility</span>
-                            </button>
-                            <button class="table-action-btn success" title="ส่งข้อความ">
-                                <span class="material-icons">send</span>
-                            </button>
-                        </div>
-                    </td>
-                </tr>
-                <tr>
-                    <td>5</td>
-                    <td>
-                        <div class="student-info">
-                            <div class="student-avatar">ช</div>
-                            <div class="student-details">
-                                <div class="student-name">นายชาติชาย รักชาติ</div>
-                                <div class="student-class">เลขที่ 7</div>
-                            </div>
-                        </div>
-                    </td>
-                    <td>ม.6/3</td>
-                    <td><span class="attendance-percent warning">76.8%</span></td>
-                    <td>11 วัน</td>
-                    <td>อ.สมใจ นึกแปลก</td>
-                    <td><span class="status-badge warning">เสี่ยงตกกิจกรรม</span></td>
-                    <td>
-                        <div class="action-buttons">
-                            <button class="table-action-btn primary" title="ดูรายละเอียด">
-                                <span class="material-icons">visibility</span>
-                            </button>
-                            <button class="table-action-btn success" title="ส่งข้อความ">
-                                <span class="material-icons">send</span>
-                            </button>
-                        </div>
-                    </td>
-                </tr>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+                
+                <?php if (empty($riskStudents)): ?>
+                    <tr>
+                        <td colspan="8" class="text-center">ไม่พบข้อมูลนักเรียนที่เสี่ยงตกกิจกรรม</td>
+                    </tr>
+                <?php endif; ?>
             </tbody>
         </table>
     </div>
@@ -455,11 +590,11 @@
             <a href="#" class="page-link">2</a>
             <a href="#" class="page-link">3</a>
             <span class="page-separator">...</span>
-            <a href="#" class="page-link">7</a>
+            <a href="#" class="page-link"><?php echo ceil($stats['risk_students'] / 5); ?></a>
         </div>
         
         <div class="page-info">
-            แสดง 1-5 จาก 35 รายการ
+            แสดง 1-<?php echo min(5, $stats['risk_students']); ?> จาก <?php echo $stats['risk_students']; ?> รายการ
         </div>
     </div>
 </div>
@@ -470,37 +605,37 @@
         <button class="modal-close" onclick="closeModal('studentDetailModal')">
             <span class="material-icons">close</span>
         </button>
-        <h2 class="modal-title">ข้อมูลการเข้าแถวละเอียด - นายธนกฤต สุขใจ</h2>
+        <h2 class="modal-title">ข้อมูลการเข้าแถวละเอียด - <span id="studentDetailName"></span></h2>
         
         <div class="student-profile">
             <div class="student-profile-header">
-                <div class="student-profile-avatar">ธ</div>
+                <div class="student-profile-avatar" id="studentDetailInitial"></div>
                 <div class="student-profile-info">
-                    <h3>นายธนกฤต สุขใจ</h3>
-                    <p>รหัสนักเรียน: 16478</p>
-                    <p>ชั้น ม.6/2 เลขที่ 12</p>
-                    <p>อัตราการเข้าแถว: <span class="status-badge danger">68.5%</span></p>
+                    <h3 id="studentDetailFullName"></h3>
+                    <p>รหัสนักเรียน: <span id="studentDetailCode"></span></p>
+                    <p>ชั้น <span id="studentDetailClass"></span></p>
+                    <p>อัตราการเข้าแถว: <span id="studentDetailRate" class="status-badge"></span></p>
                 </div>
             </div>
             
             <div class="student-attendance-summary">
-                <h4>สรุปการเข้าแถวประจำเดือนมีนาคม 2568</h4>
+                <h4>สรุปการเข้าแถวประจำเดือน<?php echo $stats['current_month']; ?> <?php echo $stats['academic_year'] + 543; ?></h4>
                 <div class="row">
                     <div class="col-4">
                         <div class="attendance-stat">
-                            <div class="attendance-stat-value">15</div>
+                            <div class="attendance-stat-value" id="studentDetailPresent"></div>
                             <div class="attendance-stat-label">วันที่เข้าแถว</div>
                         </div>
                     </div>
                     <div class="col-4">
                         <div class="attendance-stat">
-                            <div class="attendance-stat-value">7</div>
+                            <div class="attendance-stat-value" id="studentDetailAbsent"></div>
                             <div class="attendance-stat-label">วันที่ขาดแถว</div>
                         </div>
                     </div>
                     <div class="col-4">
                         <div class="attendance-stat">
-                            <div class="attendance-stat-value">22</div>
+                            <div class="attendance-stat-value" id="studentDetailTotal"></div>
                             <div class="attendance-stat-label">วันทั้งหมด</div>
                         </div>
                     </div>
@@ -519,37 +654,8 @@
                                 <th>หมายเหตุ</th>
                             </tr>
                         </thead>
-                        <tbody>
-                            <tr>
-                                <td>16/03/2568</td>
-                                <td><span class="status-badge success">มา</span></td>
-                                <td>08:02</td>
-                                <td>-</td>
-                            </tr>
-                            <tr>
-                                <td>15/03/2568</td>
-                                <td><span class="status-badge success">มา</span></td>
-                                <td>08:05</td>
-                                <td>-</td>
-                            </tr>
-                            <tr>
-                                <td>14/03/2568</td>
-                                <td><span class="status-badge danger">ขาด</span></td>
-                                <td>-</td>
-                                <td>ไม่มาโรงเรียน</td>
-                            </tr>
-                            <tr>
-                                <td>13/03/2568</td>
-                                <td><span class="status-badge warning">มาสาย</span></td>
-                                <td>08:32</td>
-                                <td>รถติด</td>
-                            </tr>
-                            <tr>
-                                <td>12/03/2568</td>
-                                <td><span class="status-badge success">มา</span></td>
-                                <td>08:10</td>
-                                <td>-</td>
-                            </tr>
+                        <tbody id="studentAttendanceHistory">
+                            <!-- จะถูกเติมด้วย JavaScript -->
                         </tbody>
                     </table>
                 </div>
@@ -559,26 +665,7 @@
                 <h4>แนวโน้มการเข้าแถวรายเดือน</h4>
                 <div class="chart-container" style="height: 250px;">
                     <!-- ในทางปฏิบัติจริง ควรใช้ Chart.js สร้างกราฟเส้น -->
-                    <div style="display: flex; height: 200px; align-items: flex-end; justify-content: space-between; padding-bottom: 30px; border-bottom: 1px solid #eee;">
-                        <div style="display: flex; flex-direction: column; align-items: center;">
-                            <div style="height: 136px; width: 30px; background-color: #ffebee; border-radius: 5px 5px 0 0; position: relative;">
-                                <div style="position: absolute; top: -25px; width: 100%; text-align: center; font-size: 12px; font-weight: 600; color: #f44336;">68%</div>
-                            </div>
-                            <div style="margin-top: 10px; font-size: 12px; color: #666;">ม.ค.</div>
-                        </div>
-                        <div style="display: flex; flex-direction: column; align-items: center;">
-                            <div style="height: 140px; width: 30px; background-color: #ffebee; border-radius: 5px 5px 0 0; position: relative;">
-                                <div style="position: absolute; top: -25px; width: 100%; text-align: center; font-size: 12px; font-weight: 600; color: #f44336;">70%</div>
-                            </div>
-                            <div style="margin-top: 10px; font-size: 12px; color: #666;">ก.พ.</div>
-                        </div>
-                        <div style="display: flex; flex-direction: column; align-items: center;">
-                            <div style="height: 137px; width: 30px; background-color: #ffebee; border-radius: 5px 5px 0 0; position: relative;">
-                                <div style="position: absolute; top: -25px; width: 100%; text-align: center; font-size: 12px; font-weight: 600; color: #f44336;">68.5%</div>
-                            </div>
-                            <div style="margin-top: 10px; font-size: 12px; color: #666;">มี.ค.</div>
-                        </div>
-                    </div>
+                    <canvas id="studentMonthlyChart"></canvas>
                 </div>
             </div>
             
@@ -594,25 +681,8 @@
                                 <th>สถานะ</th>
                             </tr>
                         </thead>
-                        <tbody>
-                            <tr>
-                                <td>16/03/2568</td>
-                                <td>แจ้งเตือนความเสี่ยง</td>
-                                <td>จารุวรรณ บุญมี</td>
-                                <td><span class="status-badge success">ส่งสำเร็จ</span></td>
-                            </tr>
-                            <tr>
-                                <td>01/03/2568</td>
-                                <td>แจ้งเตือนปกติ</td>
-                                <td>อ.ประสิทธิ์ ดีเลิศ</td>
-                                <td><span class="status-badge success">ส่งสำเร็จ</span></td>
-                            </tr>
-                            <tr>
-                                <td>15/02/2568</td>
-                                <td>แจ้งเตือนปกติ</td>
-                                <td>อ.ประสิทธิ์ ดีเลิศ</td>
-                                <td><span class="status-badge success">ส่งสำเร็จ</span></td>
-                            </tr>
+                        <tbody id="studentNotificationHistory">
+                            <!-- จะถูกเติมด้วย JavaScript -->
                         </tbody>
                     </table>
                 </div>
@@ -634,12 +704,16 @@
 </div>
 
 <script>
+// ข้อมูลสำหรับแผนภูมิ
+const yearlyTrendsData = <?php echo json_encode($yearlyTrends); ?>;
+const absenceReasonsData = <?php echo json_encode($absenceReasons); ?>;
+const classRatesData = <?php echo json_encode($classRates); ?>;
+
 // ฟังก์ชันเปลี่ยนประเภทรายงาน
 function changeReportType() {
     const reportType = document.getElementById('reportType').value;
     const studentFilter = document.querySelectorAll('.student-filter');
     const classFilter = document.querySelectorAll('.class-filter');
-    const dateRange = document.querySelectorAll('.date-range');
     
     // แสดง/ซ่อนตัวกรองตามประเภทรายงาน
     if (reportType === 'student') {
@@ -647,10 +721,14 @@ function changeReportType() {
     } else {
         studentFilter.forEach(filter => filter.style.display = 'none');
     }
+}
+
+// ฟังก์ชันแสดง/ซ่อนตัวเลือกช่วงวันที่
+function toggleDateRange() {
+    const reportPeriod = document.getElementById('reportPeriod').value;
+    const dateRange = document.querySelectorAll('.date-range');
     
-    // ซ่อน/แสดงตัวกรองวันที่
-    const reportPeriod = document.getElementById('reportPeriod');
-    if (reportPeriod.value === 'custom') {
+    if (reportPeriod === 'custom') {
         dateRange.forEach(filter => filter.style.display = 'block');
     } else {
         dateRange.forEach(filter => filter.style.display = 'none');
@@ -661,11 +739,15 @@ function changeReportType() {
 function generateReport() {
     const reportType = document.getElementById('reportType').value;
     const reportPeriod = document.getElementById('reportPeriod').value;
+    const departmentId = document.getElementById('departmentFilter').value;
     const classLevel = document.getElementById('classLevel').value;
     const classRoom = document.getElementById('classRoom').value;
+    const startDate = document.getElementById('startDate').value;
+    const endDate = document.getElementById('endDate').value;
+    const studentSearch = document.getElementById('studentSearch')?.value || '';
     
     // ในทางปฏิบัติจริง จะเป็นการส่ง AJAX request ไปยัง backend
-    console.log(`สร้างรายงานประเภท ${reportType} ช่วงเวลา ${reportPeriod} ชั้น ${classLevel} ห้อง ${classRoom}`);
+    console.log(`สร้างรายงานประเภท ${reportType} ช่วงเวลา ${reportPeriod} แผนก ${departmentId} ชั้น ${classLevel} ห้อง ${classRoom}`);
     
     // แสดงข้อความกำลังโหลด
     alert('กำลังสร้างรายงาน...');
@@ -677,9 +759,151 @@ function generateReport() {
 }
 
 // ฟังก์ชันแสดงรายละเอียดนักเรียน
-function showStudentDetail(studentId) {
+function viewStudentDetails(studentId) {
     // ในทางปฏิบัติจริง จะเป็นการส่ง AJAX request ไปขอข้อมูลนักเรียนจาก backend
+    
+    // ข้อมูลตัวอย่างสำหรับการแสดงผล
+    const studentData = {
+        id: studentId,
+        name: 'นายธนกฤต สุขใจ',
+        code: '16478',
+        className: 'ม.6/2 เลขที่ 12',
+        attendanceRate: 68.5,
+        presentDays: 15,
+        absentDays: 7,
+        totalDays: 22,
+        attendanceHistory: [
+            { date: '16/03/2568', status: 'มา', statusClass: 'success', time: '08:02', remark: '-' },
+            { date: '15/03/2568', status: 'มา', statusClass: 'success', time: '08:05', remark: '-' },
+            { date: '14/03/2568', status: 'ขาด', statusClass: 'danger', time: '-', remark: 'ไม่มาโรงเรียน' },
+            { date: '13/03/2568', status: 'มาสาย', statusClass: 'warning', time: '08:32', remark: 'รถติด' },
+            { date: '12/03/2568', status: 'มา', statusClass: 'success', time: '08:10', remark: '-' }
+        ],
+        notificationHistory: [
+            { date: '16/03/2568', type: 'แจ้งเตือนความเสี่ยง', sender: 'จารุวรรณ บุญมี', status: 'ส่งสำเร็จ', statusClass: 'success' },
+            { date: '01/03/2568', type: 'แจ้งเตือนปกติ', sender: 'อ.ประสิทธิ์ ดีเลิศ', status: 'ส่งสำเร็จ', statusClass: 'success' },
+            { date: '15/02/2568', type: 'แจ้งเตือนปกติ', sender: 'อ.ประสิทธิ์ ดีเลิศ', status: 'ส่งสำเร็จ', statusClass: 'success' }
+        ]
+    };
+    
+    // เติมข้อมูลลงใน Modal
+    document.getElementById('studentDetailName').textContent = studentData.name;
+    document.getElementById('studentDetailInitial').textContent = studentData.name.charAt(0);
+    document.getElementById('studentDetailFullName').textContent = studentData.name;
+    document.getElementById('studentDetailCode').textContent = studentData.code;
+    document.getElementById('studentDetailClass').textContent = studentData.className;
+    
+    const rateElement = document.getElementById('studentDetailRate');
+    rateElement.textContent = `${studentData.attendanceRate}%`;
+    rateElement.className = 'status-badge ' + (studentData.attendanceRate < 70 ? 'danger' : 'warning');
+    
+    document.getElementById('studentDetailPresent').textContent = studentData.presentDays;
+    document.getElementById('studentDetailAbsent').textContent = studentData.absentDays;
+    document.getElementById('studentDetailTotal').textContent = studentData.totalDays;
+    
+    // เติมประวัติการเข้าแถว
+    const historyTable = document.getElementById('studentAttendanceHistory');
+    historyTable.innerHTML = '';
+    
+    studentData.attendanceHistory.forEach(record => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${record.date}</td>
+            <td><span class="status-badge ${record.statusClass}">${record.status}</span></td>
+            <td>${record.time}</td>
+            <td>${record.remark}</td>
+        `;
+        historyTable.appendChild(row);
+    });
+    
+    // เติมประวัติการแจ้งเตือน
+    const notificationTable = document.getElementById('studentNotificationHistory');
+    notificationTable.innerHTML = '';
+    
+    studentData.notificationHistory.forEach(record => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${record.date}</td>
+            <td>${record.type}</td>
+            <td>${record.sender}</td>
+            <td><span class="status-badge ${record.statusClass}">${record.status}</span></td>
+        `;
+        notificationTable.appendChild(row);
+    });
+    
+    // สร้างกราฟแนวโน้มการเข้าแถวรายเดือน
+    createStudentMonthlyChart();
+    
+    // แสดง Modal
     showModal('studentDetailModal');
+}
+
+// ฟังก์ชันสร้างกราฟแนวโน้มการเข้าแถวรายเดือนของนักเรียน
+function createStudentMonthlyChart() {
+    const ctx = document.getElementById('studentMonthlyChart');
+    
+    // ข้อมูลตัวอย่าง
+    const data = {
+        labels: ['ม.ค.', 'ก.พ.', 'มี.ค.'],
+        datasets: [{
+            label: 'อัตราการเข้าแถว (%)',
+            data: [68, 70, 68.5],
+            backgroundColor: '#ffebee',
+            borderColor: '#f44336',
+            borderWidth: 2,
+            tension: 0.4
+        }]
+    };
+    
+    // ถ้ามีกราฟเก่าให้ทำลายก่อน
+    if (window.studentChart) {
+        window.studentChart.destroy();
+    }
+    
+    // สร้างกราฟใหม่
+    window.studentChart = new Chart(ctx, {
+        type: 'line',
+        data: data,
+        options: {
+            scales: {
+                y: {
+                    beginAtZero: false,
+                    min: 0,
+                    max: 100,
+                    ticks: {
+                        callback: function(value) {
+                            return value + '%';
+                        }
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            responsive: true,
+            maintainAspectRatio: false
+        }
+    });
+}
+
+// ฟังก์ชันส่งข้อความแจ้งเตือนไปยังผู้ปกครอง
+function sendNotificationToParent(studentId) {
+    // ในทางปฏิบัติจริง จะเป็นการส่ง AJAX request ไปยัง backend
+    alert(`กำลังส่งข้อความแจ้งเตือนไปยังผู้ปกครองของนักเรียนรหัส ${studentId}`);
+}
+
+// ฟังก์ชันเปิดหน้าส่งข้อความ
+function openSendMessageModal() {
+    // ในทางปฏิบัติจริง จะเป็นการนำทางไปยังหน้าส่งข้อความหรือแสดงโมดัลส่งข้อความ
+    window.location.href = 'send_notification.php?student_id=16478';
+}
+
+// ฟังก์ชันพิมพ์รายงานนักเรียน
+function printStudentReport() {
+    // ในทางปฏิบัติจริง จะเป็นการเปิดหน้าต่างพิมพ์หรือดาวน์โหลด PDF
+    window.print();
 }
 
 // ฟังก์ชันแสดงโมดัล
@@ -698,16 +922,184 @@ function closeModal(modalId) {
     }
 }
 
-// ฟังก์ชันเปิดหน้าส่งข้อความ
-function openSendMessageModal() {
-    // ในทางปฏิบัติจริง จะเป็นการนำทางไปยังหน้าส่งข้อความหรือแสดงโมดัลส่งข้อความ
-    window.location.href = 'send_notification.php?student_id=16478';
+// ฟังก์ชันรีเฟรชกราฟรายปี
+function refreshYearlyChart() {
+    createYearlyTrendChart();
 }
 
-// ฟังก์ชันพิมพ์รายงานนักเรียน
-function printStudentReport() {
-    // ในทางปฏิบัติจริง จะเป็นการเปิดหน้าต่างพิมพ์หรือดาวน์โหลด PDF
-    window.print();
+// ฟังก์ชันดาวน์โหลดกราฟรายปี
+function downloadYearlyChart() {
+    // ในทางปฏิบัติจริง จะเป็นการดาวน์โหลดรูปภาพกราฟ
+    alert('กำลังดาวน์โหลดกราฟแนวโน้มการเข้าแถวตลอดปีการศึกษา');
+}
+
+// ฟังก์ชันสร้างกราฟแนวโน้มรายปี
+function createYearlyTrendChart() {
+    const ctx = document.getElementById('yearlyAttendanceChart');
+    
+    const labels = yearlyTrendsData.map(item => item.month);
+    const data = yearlyTrendsData.map(item => item.rate);
+    
+    // ถ้ามีกราฟเก่าให้ทำลายก่อน
+    if (window.yearlyChart) {
+        window.yearlyChart.destroy();
+    }
+    
+    // สร้างกราฟใหม่
+    window.yearlyChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'อัตราการเข้าแถว (%)',
+                data: data,
+                backgroundColor: '#e3f2fd',
+                borderColor: '#1976d2',
+                borderWidth: 2,
+                tension: 0.4,
+                fill: true
+            }]
+        },
+        options: {
+            scales: {
+                y: {
+                    beginAtZero: false,
+                    min: 60,
+                    max: 100,
+                    ticks: {
+                        callback: function(value) {
+                            return value + '%';
+                        }
+                    }
+                }
+            },
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return `อัตราการเข้าแถว: ${context.parsed.y.toFixed(1)}%`;
+                        }
+                    }
+                }
+            },
+            responsive: true,
+            maintainAspectRatio: false
+        }
+    });
+}
+
+// ฟังก์ชันสร้างกราฟวงกลมสาเหตุการขาดแถว
+function createAbsenceReasonsPieChart() {
+    const ctx = document.getElementById('absenceReasonsChart');
+    
+    const labels = absenceReasonsData.map(item => item.reason);
+    const data = absenceReasonsData.map(item => item.percent);
+    
+    // ถ้ามีกราฟเก่าให้ทำลายก่อน
+    if (window.absenceChart) {
+        window.absenceChart.destroy();
+    }
+    
+    // สร้างกราฟใหม่
+    window.absenceChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: data,
+                backgroundColor: [
+                    '#2196f3',  // สีฟ้า
+                    '#ff9800',  // สีส้ม
+                    '#9c27b0',  // สีม่วง
+                    '#f44336'   // สีแดง
+                ],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return `${context.label}: ${context.parsed}%`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+// ฟังก์ชันสร้างกราฟเปรียบเทียบอัตราการเข้าแถวตามชั้นเรียน
+function createClassComparisonChart() {
+    const ctx = document.getElementById('classComparisonBarChart');
+    
+    // เตรียมข้อมูลสำหรับกราฟ
+    const classNames = classRatesData.map(item => item.class_name);
+    const attendanceRates = classRatesData.map(item => item.attendance_rate);
+    
+    // กำหนดสีตามเกณฑ์
+    const barColors = attendanceRates.map(rate => {
+        if (rate >= 90) return '#4caf50';  // สีเขียว (ดี)
+        if (rate >= 80) return '#ff9800';  // สีส้ม (พอใช้)
+        return '#f44336';  // สีแดง (ต้องปรับปรุง)
+    });
+    
+    // ถ้ามีกราฟเก่าให้ทำลายก่อน
+    if (window.classChart) {
+        window.classChart.destroy();
+    }
+    
+    // สร้างกราฟใหม่
+    window.classChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: classNames,
+            datasets: [{
+                label: 'อัตราการเข้าแถว (%)',
+                data: attendanceRates,
+                backgroundColor: barColors,
+                borderWidth: 0,
+                maxBarThickness: 50
+            }]
+        },
+        options: {
+            scales: {
+                y: {
+                    beginAtZero: false,
+                    min: 60,
+                    max: 100,
+                    ticks: {
+                        callback: function(value) {
+                            return value + '%';
+                        }
+                    }
+                }
+            },
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const dataIndex = context.dataIndex;
+                            const classInfo = classRatesData[dataIndex];
+                            return [
+                                `อัตราการเข้าแถว: ${context.parsed.y.toFixed(1)}%`,
+                                `จำนวนนักเรียน: ${classInfo.student_count} คน`,
+                                `แผนกวิชา: ${classInfo.department_name}`
+                            ];
+                        }
+                    }
+                }
+            },
+            responsive: true,
+            maintainAspectRatio: false
+        }
+    });
 }
 
 // ฟังก์ชันดาวน์โหลดรายงาน
@@ -724,14 +1116,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // ตั้งค่าการแสดงผลตัวกรอง
     const reportPeriodSelect = document.getElementById('reportPeriod');
     if (reportPeriodSelect) {
-        reportPeriodSelect.addEventListener('change', function() {
-            const dateRange = document.querySelectorAll('.date-range');
-            if (this.value === 'custom') {
-                dateRange.forEach(filter => filter.style.display = 'block');
-            } else {
-                dateRange.forEach(filter => filter.style.display = 'none');
-            }
-        });
+        reportPeriodSelect.addEventListener('change', toggleDateRange);
     }
     
     // ตั้งค่าการแสดงผลตัวกรองนักเรียน
@@ -745,159 +1130,13 @@ document.addEventListener('DOMContentLoaded', function() {
     detailButtons.forEach(button => {
         button.addEventListener('click', function() {
             // ในทางปฏิบัติจริง จะต้องดึง id ของนักเรียนจากแต่ละแถว
-            showStudentDetail(1);
+            viewStudentDetails(1);
         });
     });
+    
+    // สร้างกราฟต่างๆ
+    createYearlyTrendChart();
+    createAbsenceReasonsPieChart();
+    createClassComparisonChart();
 });
 </script>
-
-<style>
-/* สไตล์เฉพาะสำหรับหน้ารายงาน */
-.charts-row {
-    display: grid;
-    grid-template-columns: 2fr 1fr;
-    gap: 20px;
-    margin-bottom: 20px;
-}
-
-.chart-card {
-    background-color: white;
-    border-radius: 10px;
-    padding: 20px;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-}
-
-.monthly-summary {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 20px;
-    margin-bottom: 20px;
-}
-
-.monthly-summary-item {
-    flex: 1;
-    min-width: 200px;
-    background-color: white;
-    border-radius: 10px;
-    padding: 15px;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-}
-
-.monthly-summary-title {
-    font-weight: 600;
-    margin-bottom: 5px;
-    color: var(--text-dark);
-}
-
-.monthly-summary-value {
-    font-size: 28px;
-    font-weight: 700;
-    margin-bottom: 5px;
-}
-
-.monthly-summary-value.success {
-    color: var(--success-color);
-}
-
-.monthly-summary-value.warning {
-    color: var(--warning-color);
-}
-
-.monthly-summary-value.danger {
-    color: var(--danger-color);
-}
-
-.monthly-summary-subtext {
-    font-size: 12px;
-    color: var(--text-light);
-}
-
-.class-attendance-chart {
-    height: 300px;
-    display: flex;
-    align-items: flex-end;
-    justify-content: space-around;
-    padding: 20px 0;
-    margin-bottom: 20px;
-}
-
-.class-bar {
-    width: 60px;
-    background-color: var(--secondary-color-light);
-    border-radius: 5px 5px 0 0;
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-}
-
-.class-bar-label {
-    position: absolute;
-    bottom: -30px;
-    white-space: nowrap;
-    font-weight: 600;
-}
-
-.class-bar-value {
-    position: absolute;
-    top: -25px;
-    font-weight: 600;
-    color: var(--primary-color);
-}
-
-.attendance-percent {
-    font-weight: 600;
-}
-
-.attendance-percent.good {
-    color: var(--success-color);
-}
-
-.attendance-percent.warning {
-    color: var(--warning-color);
-}
-
-.attendance-percent.danger {
-    color: var(--danger-color);
-}
-
-.attendance-history h4,
-.attendance-chart h4,
-.notification-history h4,
-.student-attendance-summary h4 {
-    font-size: 16px;
-    margin-bottom: 10px;
-    padding-bottom: 5px;
-    border-bottom: 1px solid var(--border-color);
-}
-
-@media (max-width: 992px) {
-    .charts-row {
-        grid-template-columns: 1fr;
-    }
-    
-    .monthly-summary-item {
-        min-width: 100%;
-    }
-}
-
-@media (max-width: 768px) {
-    .monthly-summary {
-        flex-direction: column;
-    }
-    
-    .charts-row {
-        gap: 15px;
-    }
-    
-    .class-attendance-chart {
-        overflow-x: auto;
-        justify-content: flex-start;
-        padding: 20px;
-    }
-    
-    .class-bar {
-        margin: 0 10px;
-    }
-}
-</style>
