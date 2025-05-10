@@ -33,6 +33,17 @@
             <?php endif; ?>
         </a>
 
+        <div class="menu-category">จัดการกิจกรรม</div>
+        <a href="activities.php" class="menu-item <?php echo ($current_page == 'activities') ? 'active' : ''; ?>">
+            <span class="material-icons">event</span>
+            <span class="menu-text">กิจกรรม</span>
+        </a>
+        <a href="activity_attendance.php" class="menu-item <?php echo ($current_page == 'activity_attendance') ? 'active' : ''; ?>">
+            <span class="material-icons">category</span>
+            <span class="menu-text">บันทึกเข้าร่วมกิจกรรม</span>
+        </a>
+
+
         <div class="menu-category">จัดการข้อมูล</div>
         <a href="students.php" class="menu-item <?php echo ($current_page == 'students') ? 'active' : ''; ?>">
             <span class="material-icons">people</span>

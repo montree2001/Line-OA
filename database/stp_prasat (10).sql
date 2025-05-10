@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost
--- Generation Time: May 09, 2025 at 06:47 AM
+-- Generation Time: May 10, 2025 at 04:17 PM
 -- Server version: 10.4.28-MariaDB
 -- PHP Version: 8.0.28
 
@@ -48,6 +48,82 @@ INSERT INTO `academic_years` (`academic_year_id`, `year`, `semester`, `start_dat
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `activities`
+--
+
+CREATE TABLE `activities` (
+  `activity_id` int(11) NOT NULL,
+  `activity_name` varchar(255) NOT NULL COMMENT 'ชื่อกิจกรรม',
+  `activity_date` date NOT NULL COMMENT 'วันที่จัดกิจกรรม',
+  `activity_location` varchar(255) DEFAULT NULL COMMENT 'สถานที่จัดกิจกรรม',
+  `description` text DEFAULT NULL COMMENT 'รายละเอียดกิจกรรม',
+  `required_attendance` tinyint(1) NOT NULL DEFAULT 0 COMMENT 'เป็นกิจกรรมบังคับหรือไม่',
+  `academic_year_id` int(11) NOT NULL COMMENT 'รหัสปีการศึกษา',
+  `created_by` int(11) NOT NULL COMMENT 'ผู้สร้างกิจกรรม',
+  `updated_by` int(11) DEFAULT NULL COMMENT 'ผู้แก้ไขกิจกรรมล่าสุด',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp() COMMENT 'วันที่สร้าง',
+  `updated_at` timestamp NULL DEFAULT NULL ON UPDATE current_timestamp() COMMENT 'วันที่แก้ไขล่าสุด'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `activities`
+--
+
+INSERT INTO `activities` (`activity_id`, `activity_name`, `activity_date`, `activity_location`, `description`, `required_attendance`, `academic_year_id`, `created_by`, `updated_by`, `created_at`, `updated_at`) VALUES
+(2, 'กิจกรรมปฐมนิเทศนักศึกษาใหม่', '2025-05-08', 'หอประชุมวิทยาลัยการอาชีพปราสาท', '', 1, 1, 109, NULL, '2025-05-10 14:13:01', NULL);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `activity_attendance`
+--
+
+CREATE TABLE `activity_attendance` (
+  `attendance_id` int(11) NOT NULL,
+  `activity_id` int(11) NOT NULL COMMENT 'รหัสกิจกรรม',
+  `student_id` int(11) NOT NULL COMMENT 'รหัสนักเรียน',
+  `attendance_status` enum('present','absent') NOT NULL DEFAULT 'absent' COMMENT 'สถานะการเข้าร่วม',
+  `recorder_id` int(11) NOT NULL COMMENT 'ผู้บันทึก',
+  `record_time` timestamp NOT NULL DEFAULT current_timestamp() COMMENT 'เวลาที่บันทึก',
+  `remarks` text DEFAULT NULL COMMENT 'หมายเหตุ'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `activity_attendance`
+--
+
+INSERT INTO `activity_attendance` (`attendance_id`, `activity_id`, `student_id`, `attendance_status`, `recorder_id`, `record_time`, `remarks`) VALUES
+(1, 2, 41, 'absent', 109, '2025-05-10 14:16:06', ''),
+(2, 2, 48, 'absent', 109, '2025-05-10 14:16:06', ''),
+(3, 2, 50, 'absent', 109, '2025-05-10 14:16:06', ''),
+(4, 2, 51, 'absent', 109, '2025-05-10 14:16:06', ''),
+(5, 2, 52, 'absent', 109, '2025-05-10 14:16:06', '');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `activity_target_departments`
+--
+
+CREATE TABLE `activity_target_departments` (
+  `activity_id` int(11) NOT NULL COMMENT 'รหัสกิจกรรม',
+  `department_id` int(11) NOT NULL COMMENT 'รหัสแผนกวิชา'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `activity_target_levels`
+--
+
+CREATE TABLE `activity_target_levels` (
+  `activity_id` int(11) NOT NULL COMMENT 'รหัสกิจกรรม',
+  `level` enum('ปวช.1','ปวช.2','ปวช.3','ปวส.1','ปวส.2') NOT NULL COMMENT 'ระดับชั้น'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `additional_locations`
 --
 
@@ -78,7 +154,7 @@ INSERT INTO `additional_locations` (`id`, `name`, `radius`, `latitude`, `longitu
 CREATE TABLE `admin_actions` (
   `action_id` int(11) NOT NULL,
   `admin_id` int(11) NOT NULL COMMENT 'รหัสผู้ดูแลระบบ',
-  `action_type` enum('add_student','remove_student','assign_teacher','update_student_status','create_academic_year','promote_students','add_department','edit_department','remove_department','add_class','edit_class','remove_class','manage_advisors') NOT NULL COMMENT 'ประเภทการดำเนินการ',
+  `action_type` enum('add_student','remove_student','assign_teacher','update_student_status','create_academic_year','promote_students','add_department','edit_department','remove_department','add_class','edit_class','remove_class','manage_advisors','create_activity','edit_activity','delete_activity','record_activity_attendance') NOT NULL COMMENT 'ประเภทการดำเนินการ',
   `action_details` text DEFAULT NULL COMMENT 'รายละเอียดการดำเนินการ',
   `action_date` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
@@ -96,7 +172,28 @@ INSERT INTO `admin_actions` (`action_id`, `admin_id`, `action_type`, `action_det
 (58, 109, 'manage_advisors', '{\"class_id\":\"12\",\"changes\":[{\"action\":\"add\",\"teacher_id\":\"6\",\"is_primary\":true}]}', '2025-05-04 05:42:14'),
 (59, 109, 'manage_advisors', '{\"class_id\":\"12\",\"changes\":[{\"action\":\"add\",\"teacher_id\":\"7\",\"is_primary\":true}]}', '2025-05-04 05:48:02'),
 (60, 109, 'manage_advisors', '{\"class_id\":\"14\",\"changes\":[{\"action\":\"add\",\"teacher_id\":\"7\",\"is_primary\":true}]}', '2025-05-05 15:45:28'),
-(61, 109, 'add_department', '{\"department_id\":\"13\",\"department_code\":\"TEST\",\"department_name\":\"\\u0e40\\u0e17\\u0e04\\u0e42\\u0e19\\u0e42\\u0e25\\u0e22\\u0e35\\u0e2a\\u0e32\\u0e23\\u0e2a\\u0e19\\u0e40\\u0e17\\u0e282\"}', '2025-05-06 17:07:48');
+(61, 109, 'add_department', '{\"department_id\":\"13\",\"department_code\":\"TEST\",\"department_name\":\"\\u0e40\\u0e17\\u0e04\\u0e42\\u0e19\\u0e42\\u0e25\\u0e22\\u0e35\\u0e2a\\u0e32\\u0e23\\u0e2a\\u0e19\\u0e40\\u0e17\\u0e282\"}', '2025-05-06 17:07:48'),
+(62, 109, 'update_student_status', '{\"type\":\"attendance\",\"date\":\"2025-05-09\",\"student_count\":5,\"method\":\"manual\"}', '2025-05-09 06:32:47'),
+(63, 109, 'update_student_status', '{\"type\":\"attendance\",\"date\":\"2025-05-09\",\"student_count\":1,\"method\":\"manual\"}', '2025-05-09 07:05:18'),
+(64, 109, 'update_student_status', '{\"type\":\"attendance\",\"date\":\"2025-05-09\",\"student_count\":1,\"method\":\"manual\"}', '2025-05-09 07:06:32'),
+(65, 109, 'update_student_status', '{\"type\":\"attendance\",\"date\":\"2025-05-09\",\"student_count\":1,\"method\":\"manual\"}', '2025-05-09 10:53:36'),
+(66, 109, 'update_student_status', '{\"type\":\"attendance\",\"date\":\"2025-05-09\",\"student_count\":1,\"method\":\"manual\"}', '2025-05-09 10:55:05'),
+(67, 109, 'update_student_status', '{\"type\":\"attendance\",\"date\":\"2025-05-09\",\"student_count\":1,\"method\":\"manual\"}', '2025-05-09 10:55:30'),
+(68, 109, 'update_student_status', '{\"type\":\"attendance\",\"date\":\"2025-05-09\",\"student_count\":1,\"method\":\"manual\"}', '2025-05-09 10:55:39'),
+(69, 109, 'update_student_status', '{\"type\":\"attendance\",\"date\":\"2025-05-09\",\"student_count\":1,\"method\":\"manual\"}', '2025-05-09 10:55:40'),
+(70, 109, 'update_student_status', '{\"type\":\"attendance\",\"date\":\"2025-05-09\",\"student_count\":1,\"method\":\"manual\"}', '2025-05-09 10:55:41'),
+(71, 109, 'update_student_status', '{\"type\":\"attendance\",\"date\":\"2025-05-08\",\"student_count\":1,\"method\":\"manual\"}', '2025-05-09 13:53:39'),
+(72, 109, 'update_student_status', '{\"type\":\"attendance\",\"date\":\"2025-05-08\",\"student_count\":1,\"method\":\"manual\"}', '2025-05-09 13:55:44'),
+(73, 109, 'update_student_status', '{\"type\":\"attendance\",\"date\":\"2025-05-08\",\"student_count\":1,\"method\":\"manual\"}', '2025-05-09 13:55:49'),
+(74, 109, 'update_student_status', '{\"type\":\"attendance\",\"date\":\"2025-05-10\",\"student_count\":5,\"method\":\"manual\"}', '2025-05-10 09:03:10'),
+(75, 109, 'update_student_status', '{\"type\":\"attendance\",\"date\":\"2025-05-10\",\"student_count\":5,\"method\":\"manual\"}', '2025-05-10 12:07:21'),
+(76, 109, 'update_student_status', '{\"type\":\"attendance\",\"date\":\"2025-05-10\",\"student_count\":1,\"method\":\"manual\"}', '2025-05-10 12:08:11'),
+(77, 109, 'create_activity', '{\"activity_id\":\"1\",\"activity_name\":\"\\u0e01\\u0e34\\u0e08\\u0e01\\u0e23\\u0e23\\u0e21\\u0e1b\\u0e10\\u0e21\\u0e19\\u0e34\\u0e40\\u0e17\\u0e28\\u0e19\\u0e31\\u0e01\\u0e28\\u0e36\\u0e01\\u0e29\\u0e32\\u0e43\\u0e2b\\u0e21\\u0e48\",\"activity_date\":\"2025-05-09\"}', '2025-05-10 14:10:33'),
+(78, 109, 'edit_activity', '{\"activity_id\":\"1\",\"activity_name\":\"\\u0e01\\u0e34\\u0e08\\u0e01\\u0e23\\u0e23\\u0e21\\u0e1b\\u0e10\\u0e21\\u0e19\\u0e34\\u0e40\\u0e17\\u0e28\\u0e19\\u0e31\\u0e01\\u0e28\\u0e36\\u0e01\\u0e29\\u0e32\\u0e43\\u0e2b\\u0e21\\u0e48\",\"activity_date\":\"2025-05-09\"}', '2025-05-10 14:10:41'),
+(79, 109, 'edit_activity', '{\"activity_id\":\"1\",\"activity_name\":\"\\u0e01\\u0e34\\u0e08\\u0e01\\u0e23\\u0e23\\u0e21\\u0e1b\\u0e10\\u0e21\\u0e19\\u0e34\\u0e40\\u0e17\\u0e28\\u0e19\\u0e31\\u0e01\\u0e28\\u0e36\\u0e01\\u0e29\\u0e32\\u0e43\\u0e2b\\u0e21\\u0e48\",\"activity_date\":\"2025-05-09\"}', '2025-05-10 14:12:31'),
+(80, 109, 'delete_activity', '{\"activity_id\":\"1\",\"activity_name\":\"\\u0e01\\u0e34\\u0e08\\u0e01\\u0e23\\u0e23\\u0e21\\u0e1b\\u0e10\\u0e21\\u0e19\\u0e34\\u0e40\\u0e17\\u0e28\\u0e19\\u0e31\\u0e01\\u0e28\\u0e36\\u0e01\\u0e29\\u0e32\\u0e43\\u0e2b\\u0e21\\u0e48\"}', '2025-05-10 14:12:33'),
+(81, 109, 'create_activity', '{\"activity_id\":\"2\",\"activity_name\":\"\\u0e01\\u0e34\\u0e08\\u0e01\\u0e23\\u0e23\\u0e21\\u0e1b\\u0e10\\u0e21\\u0e19\\u0e34\\u0e40\\u0e17\\u0e28\\u0e19\\u0e31\\u0e01\\u0e28\\u0e36\\u0e01\\u0e29\\u0e32\\u0e43\\u0e2b\\u0e21\\u0e48\",\"activity_date\":\"2025-05-08\"}', '2025-05-10 14:13:01'),
+(82, 109, 'record_activity_attendance', '{\"activity_id\":2,\"activity_name\":\"\\u0e01\\u0e34\\u0e08\\u0e01\\u0e23\\u0e23\\u0e21\\u0e1b\\u0e10\\u0e21\\u0e19\\u0e34\\u0e40\\u0e17\\u0e28\\u0e19\\u0e31\\u0e01\\u0e28\\u0e36\\u0e01\\u0e29\\u0e32\\u0e43\\u0e2b\\u0e21\\u0e48\",\"student_count\":5}', '2025-05-10 14:16:06');
 
 -- --------------------------------------------------------
 
@@ -125,7 +222,7 @@ CREATE TABLE `admin_users` (
 --
 
 INSERT INTO `admin_users` (`admin_id`, `username`, `password`, `title`, `first_name`, `last_name`, `email`, `phone`, `role`, `is_active`, `last_login`, `created_at`, `updated_at`) VALUES
-(1, 'admin', '0192023a7bbd73250516f069df18b500', 'นาย', 'ผู้ดูแล', 'ระบบ', 'admin@prasat.ac.th', '0899999999', 'super_admin', 1, '2025-05-09 11:45:59', '2025-05-09 04:40:20', '2025-05-09 04:45:59');
+(1, 'admin', '0192023a7bbd73250516f069df18b500', 'นาย', 'ผู้ดูแล', 'ระบบ', 'admin@prasat.ac.th', '0899999999', 'admin', 1, '2025-05-10 20:38:57', '2025-05-09 04:40:20', '2025-05-10 13:38:57');
 
 -- --------------------------------------------------------
 
@@ -189,7 +286,20 @@ INSERT INTO `attendance` (`attendance_id`, `student_id`, `academic_year_id`, `da
 (45, 50, 1, '2025-05-04', 'present', 'Manual', 121, NULL, NULL, NULL, NULL, '12:43:56', '2025-05-04 05:43:56', ''),
 (46, 51, 1, '2025-05-04', 'present', 'Manual', 121, NULL, NULL, NULL, NULL, '12:43:58', '2025-05-04 05:43:58', ''),
 (47, 52, 1, '2025-05-04', 'present', 'Manual', 121, NULL, NULL, NULL, NULL, '12:43:58', '2025-05-04 05:43:58', ''),
-(48, 49, 1, '2025-05-06', 'present', 'GPS', NULL, 14.6160135, 103.3475743, NULL, NULL, '10:54:20', '2025-05-06 03:54:20', NULL);
+(48, 49, 1, '2025-05-06', 'present', 'GPS', NULL, 14.6160135, 103.3475743, NULL, NULL, '10:54:20', '2025-05-06 03:54:20', NULL),
+(49, 41, 1, '2025-05-09', 'present', 'Manual', 109, NULL, NULL, NULL, NULL, '13:32:47', '2025-05-09 06:32:47', ''),
+(50, 48, 1, '2025-05-09', 'present', 'Manual', 109, NULL, NULL, NULL, NULL, '13:32:47', '2025-05-09 06:32:47', ''),
+(51, 50, 1, '2025-05-09', 'present', 'Manual', 109, NULL, NULL, NULL, NULL, '13:32:47', '2025-05-09 06:32:47', ''),
+(52, 51, 1, '2025-05-09', 'present', 'Manual', 109, NULL, NULL, NULL, NULL, '13:32:47', '2025-05-09 06:32:47', ''),
+(53, 52, 1, '2025-05-09', 'present', 'Manual', 109, NULL, NULL, NULL, NULL, '13:32:47', '2025-05-09 06:32:47', ''),
+(54, 49, 1, '2025-05-09', 'present', 'Manual', 109, NULL, NULL, NULL, NULL, '14:05:18', '2025-05-09 07:05:18', ''),
+(55, 49, 1, '2025-05-08', 'present', 'Manual', 109, NULL, NULL, NULL, NULL, '20:53:39', '2025-05-09 13:53:39', ''),
+(56, 41, 1, '2025-05-10', 'absent', 'Manual', 109, NULL, NULL, NULL, NULL, '16:03:10', '2025-05-10 09:03:10', ''),
+(57, 48, 1, '2025-05-10', 'present', 'Manual', 109, NULL, NULL, NULL, NULL, '16:03:10', '2025-05-10 09:03:10', ''),
+(58, 50, 1, '2025-05-10', 'present', 'Manual', 109, NULL, NULL, NULL, NULL, '16:03:10', '2025-05-10 09:03:10', ''),
+(59, 51, 1, '2025-05-10', 'present', 'Manual', 109, NULL, NULL, NULL, NULL, '16:03:10', '2025-05-10 09:03:10', ''),
+(60, 52, 1, '2025-05-10', 'present', 'Manual', 109, NULL, NULL, NULL, NULL, '16:03:10', '2025-05-10 09:03:10', ''),
+(61, 49, 1, '2025-05-10', 'present', 'Manual', 109, NULL, NULL, NULL, NULL, '19:08:11', '2025-05-10 12:08:11', '');
 
 -- --------------------------------------------------------
 
@@ -560,7 +670,7 @@ CREATE TABLE `students` (
 INSERT INTO `students` (`student_id`, `user_id`, `student_code`, `title`, `current_class_id`, `status`, `created_at`, `updated_at`) VALUES
 (41, 99, '17785785786', 'นาย', 12, 'กำลังศึกษา', '2025-04-01 02:39:41', '2025-05-05 15:47:41'),
 (48, 106, '67319010001', 'นาย', 12, 'กำลังศึกษา', '2025-04-01 02:58:16', '2025-04-01 03:02:02'),
-(49, 124, '67319010002', 'นางสาว', 14, 'กำลังศึกษา', '2025-04-01 02:58:16', '2025-05-06 03:43:48'),
+(49, 124, '67319010002', 'นาย', 14, 'กำลังศึกษา', '2025-04-01 02:58:16', '2025-05-09 14:18:24'),
 (50, 108, '67319010003', 'นาย', 12, 'กำลังศึกษา', '2025-04-01 02:58:16', '2025-04-01 03:02:02'),
 (51, 109, '67319010005', 'นางสาว', 12, 'กำลังศึกษา', '2025-04-01 02:58:16', '2025-05-05 15:47:22'),
 (52, 110, '67319010006', 'นาย', 12, 'กำลังศึกษา', '2025-04-01 02:58:16', '2025-05-05 15:46:59');
@@ -588,12 +698,12 @@ CREATE TABLE `student_academic_records` (
 --
 
 INSERT INTO `student_academic_records` (`record_id`, `student_id`, `academic_year_id`, `class_id`, `total_attendance_days`, `total_absence_days`, `passed_activity`, `created_at`, `updated_at`) VALUES
-(34, 41, 1, 12, 1, 0, NULL, '2025-04-01 02:39:41', '2025-05-04 05:43:09'),
-(36, 48, 1, 12, 1, 0, NULL, '2025-04-01 02:58:16', '2025-05-04 05:43:56'),
-(37, 49, 1, 14, 3, 1, NULL, '2025-04-01 02:58:16', '2025-05-06 03:54:20'),
-(38, 50, 1, 12, 1, 0, NULL, '2025-04-01 02:58:16', '2025-05-04 05:43:56'),
-(39, 51, 1, 12, 1, 0, NULL, '2025-04-01 02:58:16', '2025-05-04 05:43:58'),
-(40, 52, 1, 12, 1, 0, NULL, '2025-04-01 02:58:16', '2025-05-04 05:43:58');
+(34, 41, 1, 12, 2, 1, NULL, '2025-04-01 02:39:41', '2025-05-10 12:07:21'),
+(36, 48, 1, 12, 3, 0, NULL, '2025-04-01 02:58:16', '2025-05-10 12:07:21'),
+(37, 49, 1, 14, 4, 0, NULL, '2025-04-01 02:58:16', '2025-05-10 12:08:11'),
+(38, 50, 1, 12, 3, 0, NULL, '2025-04-01 02:58:16', '2025-05-10 12:07:21'),
+(39, 51, 1, 12, 3, 0, NULL, '2025-04-01 02:58:16', '2025-05-10 12:07:21'),
+(40, 52, 1, 12, 3, 0, NULL, '2025-04-01 02:58:16', '2025-05-10 12:07:21');
 
 -- --------------------------------------------------------
 
@@ -895,7 +1005,7 @@ INSERT INTO `users` (`user_id`, `line_id`, `role`, `title`, `first_name`, `last_
 (109, 'TEMP_67319010005_1743476296_f37fc90a', 'student', 'นางสาว', 'สมหญิง', 'รักเรียน', NULL, '0891234570', 'somying@example.com', 1, NULL, '2025-04-01 02:58:16', '2025-05-05 15:47:22', NULL),
 (110, 'TEMP_67319010006_1743476296_58d55de4', 'student', 'นาย', 'สมชาย', 'ใจดี', NULL, '0891234571', 'somchai@example.com', 1, NULL, '2025-04-01 02:58:16', '2025-05-05 15:46:59', NULL),
 (123, 'TEMP_17463376549803', 'teacher', 'นาย', 'MONTREE', 'SRISUK', NULL, '0956313677', '', 1, NULL, '2025-05-04 05:47:34', '2025-05-04 05:47:34', NULL),
-(124, 'Uab9dff8376554a091aa4cfe6cc9791d6', 'student', 'นางสาว', 'สมหญิง', 'รักเรียน', 'https://profile.line-scdn.net/0hG24vO_T7GB0ZDwnP_yJmYmlfG3c6fkEPPWtQeS9bFSskNlpCZmFWeisOFSQkO1hNZ2gEKylcEi4VHG97B1nkKR4_RSwlOV5CPG9W_Q', '0891234568', 'somying@example.com', 1, '2025-05-06 10:43:48', '2025-05-06 03:43:09', '2025-05-09 04:02:47', '2025-05-09 11:02:47');
+(124, 'Uab9dff8376554a091aa4cfe6cc9791d6', 'student', 'นาย', 'สมหญิง', 'รักเรียน', 'https://profile.line-scdn.net/0hG24vO_T7GB0ZDwnP_yJmYmlfG3c6fkEPPWtQeS9bFSskNlpCZmFWeisOFSQkO1hNZ2gEKylcEi4VHG97B1nkKR4_RSwlOV5CPG9W_Q', '0891234568', 'somying@example.com', 1, '2025-05-06 10:43:48', '2025-05-06 03:43:09', '2025-05-09 14:18:24', '2025-05-09 21:16:45');
 
 -- --------------------------------------------------------
 
@@ -1008,6 +1118,38 @@ CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW 
 ALTER TABLE `academic_years`
   ADD PRIMARY KEY (`academic_year_id`),
   ADD UNIQUE KEY `year_semester_unique` (`year`,`semester`);
+
+--
+-- Indexes for table `activities`
+--
+ALTER TABLE `activities`
+  ADD PRIMARY KEY (`activity_id`),
+  ADD KEY `academic_year_id` (`academic_year_id`),
+  ADD KEY `created_by` (`created_by`),
+  ADD KEY `updated_by` (`updated_by`),
+  ADD KEY `activity_date` (`activity_date`);
+
+--
+-- Indexes for table `activity_attendance`
+--
+ALTER TABLE `activity_attendance`
+  ADD PRIMARY KEY (`attendance_id`),
+  ADD UNIQUE KEY `unique_attendance` (`activity_id`,`student_id`),
+  ADD KEY `student_id` (`student_id`),
+  ADD KEY `recorder_id` (`recorder_id`);
+
+--
+-- Indexes for table `activity_target_departments`
+--
+ALTER TABLE `activity_target_departments`
+  ADD PRIMARY KEY (`activity_id`,`department_id`),
+  ADD KEY `department_id` (`department_id`);
+
+--
+-- Indexes for table `activity_target_levels`
+--
+ALTER TABLE `activity_target_levels`
+  ADD PRIMARY KEY (`activity_id`,`level`);
 
 --
 -- Indexes for table `additional_locations`
@@ -1246,6 +1388,18 @@ ALTER TABLE `academic_years`
   MODIFY `academic_year_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
+-- AUTO_INCREMENT for table `activities`
+--
+ALTER TABLE `activities`
+  MODIFY `activity_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+
+--
+-- AUTO_INCREMENT for table `activity_attendance`
+--
+ALTER TABLE `activity_attendance`
+  MODIFY `attendance_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+
+--
 -- AUTO_INCREMENT for table `additional_locations`
 --
 ALTER TABLE `additional_locations`
@@ -1255,7 +1409,7 @@ ALTER TABLE `additional_locations`
 -- AUTO_INCREMENT for table `admin_actions`
 --
 ALTER TABLE `admin_actions`
-  MODIFY `action_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=62;
+  MODIFY `action_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=83;
 
 --
 -- AUTO_INCREMENT for table `admin_users`
@@ -1273,7 +1427,7 @@ ALTER TABLE `announcements`
 -- AUTO_INCREMENT for table `attendance`
 --
 ALTER TABLE `attendance`
-  MODIFY `attendance_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=49;
+  MODIFY `attendance_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=62;
 
 --
 -- AUTO_INCREMENT for table `attendance_retroactive_history`
@@ -1416,6 +1570,32 @@ ALTER TABLE `users`
 --
 -- Constraints for dumped tables
 --
+
+--
+-- Constraints for table `activities`
+--
+ALTER TABLE `activities`
+  ADD CONSTRAINT `activities_academic_year_fk` FOREIGN KEY (`academic_year_id`) REFERENCES `academic_years` (`academic_year_id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `activity_attendance`
+--
+ALTER TABLE `activity_attendance`
+  ADD CONSTRAINT `activity_attendance_activity_fk` FOREIGN KEY (`activity_id`) REFERENCES `activities` (`activity_id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `activity_attendance_student_fk` FOREIGN KEY (`student_id`) REFERENCES `students` (`student_id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `activity_target_departments`
+--
+ALTER TABLE `activity_target_departments`
+  ADD CONSTRAINT `activity_target_departments_activity_fk` FOREIGN KEY (`activity_id`) REFERENCES `activities` (`activity_id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `activity_target_departments_department_fk` FOREIGN KEY (`department_id`) REFERENCES `departments` (`department_id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `activity_target_levels`
+--
+ALTER TABLE `activity_target_levels`
+  ADD CONSTRAINT `activity_target_levels_activity_fk` FOREIGN KEY (`activity_id`) REFERENCES `activities` (`activity_id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `admin_actions`

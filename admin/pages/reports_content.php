@@ -1,8 +1,19 @@
 <?php
+/**
+ * reports_content.php - เนื้อหาหน้าแดชบอร์ดสรุปข้อมูลการเข้าแถว
+ * ระบบน้องสัตบรรณ - ดูแลผู้เรียน
+ * วิทยาลัยการอาชีพปราสาท
+ */
+
 // ตรวจสอบว่ามีตัวแปร $report_data หรือไม่
 if (!isset($report_data)) {
     echo "<div class='alert alert-danger'>ไม่พบข้อมูลสำหรับการแสดงผลรายงาน</div>";
     return;
+}
+
+// ตรวจสอบว่ามีข้อผิดพลาดหรือไม่
+if (isset($report_data['error'])) {
+    echo "<div class='alert alert-danger'>{$report_data['error']}</div>";
 }
 
 // ดึงข้อมูลจาก $report_data
@@ -20,18 +31,6 @@ $current_academic_year = $academic_year['year'] + 543; // แปลงเป็�
 $current_semester = $academic_year['semester'];
 $current_month = date('n');
 $current_year = date('Y') + 543; // แปลงเป็น พ.ศ.
-
-// ฟังก์ชันแปลงเดือนเป็นภาษาไทย
-function getThaiMonth($month) {
-    $thaiMonths = [
-        1 => 'มกราคม', 2 => 'กุมภาพันธ์', 3 => 'มีนาคม', 4 => 'เมษายน',
-        5 => 'พฤษภาคม', 6 => 'มิถุนายน', 7 => 'กรกฎาคม', 8 => 'สิงหาคม',
-        9 => 'กันยายน', 10 => 'ตุลาคม', 11 => 'พฤศจิกายน', 12 => 'ธันวาคม'
-    ];
-    return $thaiMonths[$month] ?? '';
-}
-
-// ชื่อเดือนปัจจุบันภาษาไทย
 $current_thai_month = getThaiMonth($current_month);
 ?>
 
@@ -119,33 +118,37 @@ $current_thai_month = getThaiMonth($current_month);
 
 <!-- Department stats -->
 <div class="department-stats" id="departmentStats">
-    <?php foreach ($department_stats as $dept): ?>
-    <div class="department-card">
-        <div class="department-name">
-            <span><?php echo $dept['department_name']; ?></span>
-            <span class="attendance-rate <?php echo $dept['rate_class']; ?>"><?php echo $dept['attendance_rate']; ?>%</span>
+    <?php if (empty($department_stats)): ?>
+    <div class="empty-data-message">ไม่พบข้อมูลแผนกวิชา</div>
+    <?php else: ?>
+        <?php foreach ($department_stats as $dept): ?>
+        <div class="department-card">
+            <div class="department-name">
+                <span><?php echo $dept['department_name']; ?></span>
+                <span class="attendance-rate <?php echo $dept['rate_class']; ?>"><?php echo $dept['attendance_rate']; ?>%</span>
+            </div>
+            <div class="department-stats-row">
+                <div class="department-stat">
+                    <div class="department-stat-label">นักเรียน</div>
+                    <div class="department-stat-value"><?php echo $dept['student_count']; ?></div>
+                </div>
+                <div class="department-stat">
+                    <div class="department-stat-label">เข้าแถว</div>
+                    <div class="department-stat-value"><?php echo $dept['total_attendance']; ?></div>
+                </div>
+                <div class="department-stat">
+                    <div class="department-stat-label">เสี่ยง</div>
+                    <div class="department-stat-value"><?php echo $dept['risk_count']; ?></div>
+                </div>
+            </div>
+            <div class="department-progress">
+                <div class="progress-bar">
+                    <div class="progress-fill <?php echo $dept['rate_class']; ?>" style="width: <?php echo $dept['attendance_rate']; ?>%;"></div>
+                </div>
+            </div>
         </div>
-        <div class="department-stats-row">
-            <div class="department-stat">
-                <div class="department-stat-label">นักเรียน</div>
-                <div class="department-stat-value"><?php echo $dept['student_count']; ?></div>
-            </div>
-            <div class="department-stat">
-                <div class="department-stat-label">เข้าแถว</div>
-                <div class="department-stat-value"><?php echo $dept['total_attendance']; ?></div>
-            </div>
-            <div class="department-stat">
-                <div class="department-stat-label">เสี่ยง</div>
-                <div class="department-stat-value"><?php echo $dept['risk_count']; ?></div>
-            </div>
-        </div>
-        <div class="department-progress">
-            <div class="progress-bar">
-                <div class="progress-fill <?php echo $dept['rate_class']; ?>" style="width: <?php echo $dept['attendance_rate']; ?>%;"></div>
-            </div>
-        </div>
-    </div>
-    <?php endforeach; ?>
+        <?php endforeach; ?>
+    <?php endif; ?>
 </div>
 
 <!-- Charts Row -->
@@ -254,7 +257,7 @@ $current_thai_month = getThaiMonth($current_month);
                             </div>
                         </td>
                         <td><?php echo $student['class_name']; ?></td>
-                        <td><?php echo $student['advisor_name']; ?></td>
+                        <td><?php echo $student['advisor_name'] ?: 'ไม่ระบุ'; ?></td>
                         <td><span class="attendance-rate <?php echo $student['status']; ?>"><?php echo $student['attendance_rate']; ?>%</span></td>
                         <td><span class="status-badge <?php echo $student['status']; ?>"><?php echo $student['status_text']; ?></span></td>
                         <td>
@@ -316,7 +319,7 @@ $current_thai_month = getThaiMonth($current_month);
                     <?php foreach ($class_ranking as $class): ?>
                     <tr data-class-id="<?php echo $class['class_id']; ?>" data-level="<?php echo $class['level_group']; ?>">
                         <td><?php echo $class['class_name']; ?></td>
-                        <td><?php echo $class['advisor_name']; ?></td>
+                        <td><?php echo $class['advisor_name'] ?: 'ไม่ระบุ'; ?></td>
                         <td><?php echo $class['student_count']; ?></td>
                         <td><?php echo $class['present_count']; ?></td>
                         <td><span class="attendance-rate <?php echo $class['rate_class']; ?>"><?php echo $class['attendance_rate']; ?>%</span></td>
@@ -339,7 +342,7 @@ $current_thai_month = getThaiMonth($current_month);
         <span class="close" id="closeStudentModal">&times;</span>
         <h2 id="modal-student-name">ข้อมูลการเข้าแถว</h2>
         <div id="student-detail-content">
-            <!-- ข้อมูลนักเรียนจะถูกแสดงที่นี่ -->
+            <!-- ข้อมูลนักเรียนจะถูกโหลดผ่าน AJAX -->
             <div class="loading">กำลังโหลดข้อมูล...</div>
         </div>
     </div>
