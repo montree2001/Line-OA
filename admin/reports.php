@@ -2,15 +2,17 @@
 /**
  * reports.php - หน้ารายงานและสถิติการเข้าแถว
  * 
- * ส่วนหนึ่งของระบบ STUDENT-Prasat
+ * ส่วนหนึ่งของระบบ น้องสัตบรรณ ดูแลผู้เรียน
+ * วิทยาลัยการอาชีพปราสาท
  */
 
 // เริ่ม session
 session_start();
 
 // ตรวจสอบการล็อกอิน
-if (!isset($_SESSION['user_id']) || !isset($_SESSION['user_role']) || ($_SESSION['user_role'] != 'admin' && $_SESSION['user_role'] != 'teacher')) {
-    header('Location: login.php');
+if (!isset($_SESSION['user_id']) || !isset($_SESSION['user_role']) || 
+    ($_SESSION['user_role'] != 'admin' && $_SESSION['user_role'] != 'teacher')) {
+    header('Location: ../login.php');
     exit;
 }
 
@@ -22,11 +24,11 @@ $current_page = 'reports';
 $page_title = 'รายงานและสถิติการเข้าแถว';
 $page_header = 'ระบบรายงานและสถิติการเข้าแถว';
 
-// ข้อมูลเกี่ยวกับเจ้าหน้าที่ (ในระบบจริงควรดึงจากฐานข้อมูล)
-$admin_info = [
-    'name' => $_SESSION['user_name'] ?? 'จารุวรรณ บุญมี',
-    'role' => $_SESSION['user_role'] == 'admin' ? 'เจ้าหน้าที่กิจการนักเรียน' : 'ครูที่ปรึกษา',
-    'initials' => mb_substr($_SESSION['user_name'] ?? 'จ', 0, 1, 'UTF-8')
+// ข้อมูลเกี่ยวกับผู้ใช้งาน
+$user_info = [
+    'name' => $_SESSION['user_name'] ?? 'ผู้ใช้งานระบบ',
+    'role' => $_SESSION['user_role'] == 'admin' ? 'ผู้ดูแลระบบ' : 'ครูที่ปรึกษา',
+    'initials' => mb_substr($_SESSION['user_name'] ?? 'ผ', 0, 1, 'UTF-8')
 ];
 
 // ปุ่มบนส่วนหัว
@@ -34,7 +36,7 @@ $header_buttons = [
     [
         'text' => 'ดาวน์โหลดรายงาน',
         'icon' => 'file_download',
-        'onclick' => 'downloadReportData()'
+        'onclick' => 'ReportManager.exportCurrentReport()'
     ],
     [
         'text' => 'พิมพ์รายงาน',
@@ -49,12 +51,10 @@ $extra_css = [
 ];
 
 $extra_js = [
-    'https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js',
+    'https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js',
+    'https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0',
     'assets/js/reports.js'
 ];
-
-// ซ่อนช่องค้นหาในเฮดเดอร์ (เพราะหน้ารายงานมีแผงค้นหาแบบละเอียดแล้ว)
-$hide_search = true;
 
 // กำหนดเส้นทางไปยังไฟล์เนื้อหาเฉพาะหน้า
 $content_path = 'pages/reports_content.php';
