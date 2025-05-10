@@ -1,436 +1,1046 @@
-<?php
-/**
- * admin-dashboard.php - หน้าแดชบอร์ดสำหรับผู้ดูแลระบบ
- * 
- * ส่วนหนึ่งของระบบ น้องสัตบรรณ ดูแลผู้เรียน
- * แสดงภาพรวมสถิติการเข้าแถว นักเรียนที่เสี่ยงตกกิจกรรม และข้อมูลอื่นๆ
- */
-
-// เริ่ม session
-session_start();
-
-// ตรวจสอบการล็อกอิน
-if (!isset($_SESSION['user_id']) || !isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'admin') {
-    header('Location: ../login.php');
-    exit;
-}
-
-// เชื่อมต่อฐานข้อมูล
-require_once '../db_connect.php';
-
-// ฟังก์ชันดึงข้อมูลปีการศึกษาปัจจุบัน
-function getCurrentAcademicYear() {
-    $conn = getDB();
-    
-    $query = "SELECT academic_year_id, year, semester, start_date, end_date, required_attendance_days 
-              FROM academic_years WHERE is_active = 1 LIMIT 1";
-    $stmt = $conn->query($query);
-    return $stmt->fetch(PDO::FETCH_ASSOC);
-}
-
-// ฟังก์ชันดึงข้อมูลสถิติภาพรวม
-function getOverallStats() {
-    $conn = getDB();
-    $academicYear = getCurrentAcademicYear();
-    
-    if (!$academicYear) {
-        return [
-            'total_students' => 0,
-            'average_attendance' => 0,
-            'failed_students' => 0,
-            'risk_students' => 0
-        ];
-    }
-    
-    $academicYearId = $academicYear['academic_year_id'];
-    
-    // จำนวนนักเรียนทั้งหมด
-    $query = "SELECT COUNT(*) FROM students WHERE status = 'กำลังศึกษา'";
-    $stmt = $conn->query($query);
-    $totalStudents = $stmt->fetchColumn();
-    
-    // อัตราการเข้าแถวเฉลี่ย
-    $query = "SELECT AVG(
-                CASE 
-                    WHEN (sar.total_attendance_days + sar.total_absence_days) > 0 
-                    THEN (sar.total_attendance_days / (sar.total_attendance_days + sar.total_absence_days) * 100) 
-                    ELSE 100 
-                END
-              ) as average_rate
-              FROM student_academic_records sar
-              JOIN students s ON sar.student_id = s.student_id
-              WHERE sar.academic_year_id = :academic_year_id AND s.status = 'กำลังศึกษา'";
-    $stmt = $conn->prepare($query);
-    $stmt->execute(['academic_year_id' => $academicYearId]);
-    $averageAttendance = $stmt->fetchColumn();
-    
-    // ดึงค่าเกณฑ์ความเสี่ยง
-    $query = "SELECT setting_value FROM system_settings WHERE setting_key = 'risk_threshold_critical'";
-    $stmt = $conn->query($query);
-    $criticalThreshold = $stmt->fetchColumn() ?: 50;
-    
-    $query = "SELECT setting_value FROM system_settings WHERE setting_key = 'risk_threshold_high'";
-    $stmt = $conn->query($query);
-    $highThreshold = $stmt->fetchColumn() ?: 60;
-    
-    // จำนวนนักเรียนที่ตกกิจกรรม
-    $query = "SELECT COUNT(*) FROM student_academic_records sar
-              JOIN students s ON sar.student_id = s.student_id
-              WHERE sar.academic_year_id = :academic_year_id 
-              AND s.status = 'กำลังศึกษา'
-              AND (
-                CASE 
-                    WHEN (sar.total_attendance_days + sar.total_absence_days) > 0 
-                    THEN (sar.total_attendance_days / (sar.total_attendance_days + sar.total_absence_days) * 100) 
-                    ELSE 100 
-                END
-              ) <= :threshold";
-    $stmt = $conn->prepare($query);
-    $stmt->execute(['academic_year_id' => $academicYearId, 'threshold' => $criticalThreshold]);
-    $failedStudents = $stmt->fetchColumn();
-    
-    // จำนวนนักเรียนที่เสี่ยงตกกิจกรรม
-    $query = "SELECT COUNT(*) FROM student_academic_records sar
-              JOIN students s ON sar.student_id = s.student_id
-              WHERE sar.academic_year_id = :academic_year_id 
-              AND s.status = 'กำลังศึกษา'
-              AND (
-                CASE 
-                    WHEN (sar.total_attendance_days + sar.total_absence_days) > 0 
-                    THEN (sar.total_attendance_days / (sar.total_attendance_days + sar.total_absence_days) * 100) 
-                    ELSE 100 
-                END
-              ) > :critical_threshold
-              AND (
-                CASE 
-                    WHEN (sar.total_attendance_days + sar.total_absence_days) > 0 
-                    THEN (sar.total_attendance_days / (sar.total_attendance_days + sar.total_absence_days) * 100) 
-                    ELSE 100 
-                END
-              ) <= :high_threshold";
-    $stmt = $conn->prepare($query);
-    $stmt->execute([
-        'academic_year_id' => $academicYearId, 
-        'critical_threshold' => $criticalThreshold,
-        'high_threshold' => $highThreshold
-    ]);
-    $riskStudents = $stmt->fetchColumn();
-    
-    // ข้อมูลสำหรับเปรียบเทียบกับเดือนที่แล้ว
-    $prevMonth = date('m') - 1;
-    $year = date('Y');
-    if ($prevMonth <= 0) {
-        $prevMonth = 12;
-        $year--;
-    }
-    
-    return [
-        'total_students' => $totalStudents,
-        'average_attendance' => round($averageAttendance, 1),
-        'failed_students' => $failedStudents,
-        'risk_students' => $riskStudents,
-        // สำหรับการเปรียบเทียบกับช่วงก่อนหน้า (ตัวเลขสมมติเพื่อให้มีการเปลี่ยนแปลง)
-        'students_change' => 2.5,
-        'attendance_change' => 0.6,
-        'failed_change' => -12,
-        'risk_change' => -8
-    ];
-}
-
-// ฟังก์ชันดึงข้อมูลการเข้าแถวย้อนหลัง 7 วัน
-function getLastSevenDaysAttendance() {
-    $conn = getDB();
-    $academicYear = getCurrentAcademicYear();
-    
-    if (!$academicYear) {
-        return [];
-    }
-    
-    $academicYearId = $academicYear['academic_year_id'];
-    $results = [];
-    
-    // วันปัจจุบัน
-    $currentDate = new DateTime();
-    
-    // ดึงข้อมูลการเข้าแถวย้อนหลัง 7 วัน
-    for ($i = 6; $i >= 0; $i--) {
-        $date = clone $currentDate;
-        $date->modify("-$i days");
-        $formattedDate = $date->format('Y-m-d');
-        $displayDate = $date->format('d') . ' ' . getThaiMonth($date->format('m'));
-        
-        $query = "SELECT 
-                    COUNT(DISTINCT CASE WHEN a.attendance_status = 'present' THEN a.student_id END) as present_count,
-                    COUNT(DISTINCT CASE WHEN a.attendance_status = 'late' THEN a.student_id END) as late_count,
-                    COUNT(DISTINCT CASE WHEN a.attendance_status = 'absent' THEN a.student_id END) as absent_count,
-                    COUNT(DISTINCT CASE WHEN a.attendance_status = 'leave' THEN a.student_id END) as leave_count,
-                    (SELECT COUNT(*) FROM students WHERE status = 'กำลังศึกษา') as total_students
-                  FROM attendance a
-                  WHERE a.academic_year_id = :academic_year_id AND a.date = :date";
-        $stmt = $conn->prepare($query);
-        $stmt->execute(['academic_year_id' => $academicYearId, 'date' => $formattedDate]);
-        $data = $stmt->fetch(PDO::FETCH_ASSOC);
-        
-        // คำนวณอัตราการเข้าแถว
-        $totalStudents = $data['total_students'] ?? 0;
-        $presentCount = $data['present_count'] ?? 0;
-        $lateCount = $data['late_count'] ?? 0;
-        $absentCount = $data['absent_count'] ?? 0;
-        $leaveCount = $data['leave_count'] ?? 0;
-        
-        $attendanceRate = 0;
-        if ($totalStudents > 0) {
-            $attendanceRate = (($presentCount + $lateCount) / $totalStudents) * 100;
-        }
-        
-        $results[] = [
-            'date' => $displayDate,
-            'full_date' => $formattedDate,
-            'attendance_rate' => round($attendanceRate, 1),
-            'present_count' => $presentCount,
-            'late_count' => $lateCount,
-            'absent_count' => $absentCount,
-            'leave_count' => $leaveCount,
-            'total_students' => $totalStudents
-        ];
-    }
-    
-    return $results;
-}
-
-// ฟังก์ชันดึงข้อมูลสถานะการเข้าแถวแบบแผนภูมิวงกลม
-function getAttendanceStatusPieChart() {
-    $conn = getDB();
-    $academicYear = getCurrentAcademicYear();
-    
-    if (!$academicYear) {
-        return [
-            'normal' => 75,
-            'late' => 15,
-            'absent' => 10
-        ];
-    }
-    
-    $academicYearId = $academicYear['academic_year_id'];
-    
-    // ดึงข้อมูลสถานะการเข้าแถวในเดือนปัจจุบัน
-    $currentMonth = date('m');
-    $currentYear = date('Y');
-    
-    $query = "SELECT 
-                COUNT(CASE WHEN a.attendance_status = 'present' THEN 1 END) as present_count,
-                COUNT(CASE WHEN a.attendance_status = 'late' THEN 1 END) as late_count,
-                COUNT(CASE WHEN a.attendance_status = 'absent' THEN 1 END) as absent_count,
-                COUNT(CASE WHEN a.attendance_status = 'leave' THEN 1 END) as leave_count,
-                COUNT(*) as total_count
-              FROM attendance a
-              WHERE a.academic_year_id = :academic_year_id
-              AND MONTH(a.date) = :month AND YEAR(a.date) = :year";
-    $stmt = $conn->prepare($query);
-    $stmt->execute([
-        'academic_year_id' => $academicYearId,
-        'month' => $currentMonth,
-        'year' => $currentYear
-    ]);
-    $data = $stmt->fetch(PDO::FETCH_ASSOC);
-    
-    $total = $data['total_count'] ?? 0;
-    if ($total > 0) {
-        $normalPercent = ($data['present_count'] / $total) * 100;
-        $latePercent = ($data['late_count'] / $total) * 100;
-        $absentPercent = ($data['absent_count'] / $total) * 100;
-    } else {
-        $normalPercent = 75; // ค่าเริ่มต้นถ้าไม่มีข้อมูล
-        $latePercent = 15;
-        $absentPercent = 10;
-    }
-    
-    return [
-        'normal' => round($normalPercent),
-        'late' => round($latePercent),
-        'absent' => round($absentPercent)
-    ];
-}
-
-// ฟังก์ชันดึงข้อมูลนักเรียนที่เสี่ยงตกกิจกรรม
-function getRiskStudents($limit = 5) {
-    $conn = getDB();
-    $academicYear = getCurrentAcademicYear();
-    
-    if (!$academicYear) {
-        return [];
-    }
-    
-    $academicYearId = $academicYear['academic_year_id'];
-    
-    // ดึงค่าเกณฑ์ความเสี่ยง
-    $query = "SELECT setting_value FROM system_settings WHERE setting_key = 'risk_threshold_high'";
-    $stmt = $conn->query($query);
-    $highThreshold = $stmt->fetchColumn() ?: 60;
-    
-    // ดึงข้อมูลนักเรียนที่เสี่ยงตกกิจกรรม
-    $query = "SELECT 
-                s.student_id,
-                s.student_code,
-                s.title,
-                u.first_name,
-                u.last_name,
-                c.level,
-                c.group_number,
-                CONCAT(c.level, '/', c.group_number) as class_name,
-                (SELECT CONCAT(t.title, ' ', t.first_name, ' ', t.last_name) 
-                 FROM teachers t 
-                 JOIN class_advisors ca ON t.teacher_id = ca.teacher_id 
-                 WHERE ca.class_id = c.class_id AND ca.is_primary = 1 
-                 LIMIT 1) as advisor_name,
-                sar.total_attendance_days,
-                sar.total_absence_days,
-                CASE 
-                    WHEN (sar.total_attendance_days + sar.total_absence_days) > 0 
-                    THEN (sar.total_attendance_days / (sar.total_attendance_days + sar.total_absence_days) * 100) 
-                    ELSE 100 
-                END as attendance_rate
-              FROM students s
-              JOIN users u ON s.user_id = u.user_id
-              JOIN classes c ON s.current_class_id = c.class_id
-              JOIN student_academic_records sar ON s.student_id = sar.student_id
-              WHERE sar.academic_year_id = :academic_year_id 
-              AND s.status = 'กำลังศึกษา'
-              AND (
-                CASE 
-                    WHEN (sar.total_attendance_days + sar.total_absence_days) > 0 
-                    THEN (sar.total_attendance_days / (sar.total_attendance_days + sar.total_absence_days) * 100) 
-                    ELSE 100 
-                END
-              ) <= :threshold
-              ORDER BY attendance_rate ASC
-              LIMIT :limit";
-    $stmt = $conn->prepare($query);
-    $stmt->bindParam(':academic_year_id', $academicYearId, PDO::PARAM_INT);
-    $stmt->bindParam(':threshold', $highThreshold, PDO::PARAM_INT);
-    $stmt->bindParam(':limit', $limit, PDO::PARAM_INT);
-    $stmt->execute();
-    
-    return $stmt->fetchAll(PDO::FETCH_ASSOC);
-}
-
-// ฟังก์ชันดึงข้อมูลอัตราการเข้าแถวตามชั้นเรียน
-function getClassAttendanceRanking($limit = 5) {
-    $conn = getDB();
-    $academicYear = getCurrentAcademicYear();
-    
-    if (!$academicYear) {
-        return [];
-    }
-    
-    $academicYearId = $academicYear['academic_year_id'];
-    
-    // ดึงข้อมูลอัตราการเข้าแถวตามชั้นเรียน
-    $query = "SELECT 
-                c.class_id,
-                c.level,
-                c.group_number,
-                CONCAT(c.level, '/', c.group_number) as class_name,
-                (SELECT CONCAT(t.title, ' ', t.first_name, ' ', t.last_name) 
-                 FROM teachers t 
-                 JOIN class_advisors ca ON t.teacher_id = ca.teacher_id 
-                 WHERE ca.class_id = c.class_id AND ca.is_primary = 1 
-                 LIMIT 1) as advisor_name,
-                COUNT(DISTINCT s.student_id) as student_count,
-                SUM(sar.total_attendance_days) as total_attendance,
-                SUM(sar.total_absence_days) as total_absence,
-                CASE 
-                    WHEN SUM(sar.total_attendance_days + sar.total_absence_days) > 0 
-                    THEN (SUM(sar.total_attendance_days) / SUM(sar.total_attendance_days + sar.total_absence_days) * 100) 
-                    ELSE 100 
-                END as attendance_rate
-              FROM classes c
-              LEFT JOIN students s ON s.current_class_id = c.class_id AND s.status = 'กำลังศึกษา'
-              LEFT JOIN student_academic_records sar ON s.student_id = sar.student_id AND sar.academic_year_id = :academic_year_id
-              WHERE c.academic_year_id = :academic_year_id
-              GROUP BY c.class_id
-              ORDER BY attendance_rate DESC
-              LIMIT :limit";
-    $stmt = $conn->prepare($query);
-    $stmt->bindParam(':academic_year_id', $academicYearId, PDO::PARAM_INT);
-    $stmt->bindParam(':limit', $limit, PDO::PARAM_INT);
-    $stmt->execute();
-    
-    return $stmt->fetchAll(PDO::FETCH_ASSOC);
-}
-
-// ฟังก์ชันเพื่อแปลงเดือนเป็นภาษาไทย
-function getThaiMonth($month) {
-    $thaiMonths = [
-        '1' => 'ม.ค.',
-        '2' => 'ก.พ.',
-        '3' => 'มี.ค.',
-        '4' => 'เม.ย.',
-        '5' => 'พ.ค.',
-        '6' => 'มิ.ย.',
-        '7' => 'ก.ค.',
-        '8' => 'ส.ค.',
-        '9' => 'ก.ย.',
-        '10' => 'ต.ค.',
-        '11' => 'พ.ย.',
-        '12' => 'ธ.ค.'
-    ];
-    
-    return isset($thaiMonths[$month]) ? $thaiMonths[$month] : '';
-}
-
-// ฟังก์ชันเพื่อคำนวณการเปลี่ยนแปลงเป็นเปอร์เซ็นต์
-function calculatePercentChange($current, $previous) {
-    if ($previous == 0) return 0;
-    return round((($current - $previous) / $previous) * 100, 1);
-}
-
-// ดึงข้อมูลสำหรับแสดงในหน้าแดชบอร์ด
-$academicYear = getCurrentAcademicYear();
-$overallStats = getOverallStats();
-$weeklyAttendance = getLastSevenDaysAttendance();
-$attendancePieChart = getAttendanceStatusPieChart();
-$riskStudents = getRiskStudents(5);
-$classRanking = getClassAttendanceRanking(5);
-
-// ตั้งค่าส่วนหัวของหน้าเว็บ
-$pageTitle = "แดชบอร์ดภาพรวม";
-$currentPage = "dashboard";
-
-// โหลดไฟล์เทมเพลต
-include_once 'templates/header.php';
-?>
-
 <!DOCTYPE html>
 <html lang="th">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ADMIN-Prasat - แดชบอร์ดผู้บริหาร</title>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/material-design-icons/3.0.1/iconfont/material-icons.min.css" rel="stylesheet">
+    <title>น้องสัตบรรณ - แดชบอร์ดผู้บริหาร</title>
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link href="assets/css/dashboard.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/material-design-icons/3.0.1/iconfont/material-icons.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Prompt', sans-serif;
+        }
+        
+        :root {
+            --primary-color: #28a745;
+            --secondary-color: #6c757d;
+            --background-color: #f5f8fa;
+            --warning-color: #ff9800;
+            --danger-color: #f44336;
+            --success-color: #4caf50;
+            --info-color: #1976d2;
+            --card-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            --transition-speed: 0.3s;
+        }
+        
+        body {
+            background-color: var(--background-color);
+            color: #333;
+            font-size: 16px;
+            line-height: 1.5;
+            display: flex;
+            min-height: 100vh;
+        }
+        
+        /* Sidebar styling */
+        .sidebar {
+            width: 280px;
+            background-color: #263238;
+            color: #fff;
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+            transition: all var(--transition-speed);
+            z-index: 1000;
+        }
+        
+        .sidebar-header {
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .sidebar-header img {
+            width: 40px;
+            height: 40px;
+            margin-right: 15px;
+        }
+        
+        .sidebar-header h2 {
+            font-size: 20px;
+            font-weight: 700;
+            color: white;
+        }
+        
+        .sidebar-menu {
+            padding: 20px 0;
+        }
+        
+        .menu-category {
+            color: rgba(255, 255, 255, 0.5);
+            text-transform: uppercase;
+            font-size: 12px;
+            padding: 0 20px;
+            margin: 15px 0 5px;
+            letter-spacing: 0.5px;
+        }
+        
+        .menu-item {
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            color: rgba(255, 255, 255, 0.8);
+            text-decoration: none;
+            transition: all var(--transition-speed);
+            border-left: 3px solid transparent;
+        }
+        
+        .menu-item.active {
+            background-color: rgba(255, 255, 255, 0.05);
+            color: white;
+            border-left-color: var(--primary-color);
+        }
+        
+        .menu-item:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+        
+        .menu-item .material-icons {
+            margin-right: 15px;
+            opacity: 0.8;
+        }
+        
+        .sidebar-footer {
+            padding: 20px;
+            text-align: center;
+            color: rgba(255, 255, 255, 0.5);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 12px;
+        }
+        
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            padding: 20px;
+            margin-left: 280px;
+            transition: all var(--transition-speed);
+        }
+        
+        .main-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            background-color: white;
+            border-radius: 10px;
+            padding: 15px 20px;
+            box-shadow: var(--card-shadow);
+        }
+        
+        .page-title {
+            font-size: 24px;
+            font-weight: 700;
+        }
+        
+        .header-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .filter-group {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .date-filter {
+            display: flex;
+            align-items: center;
+            background-color: var(--background-color);
+            border-radius: 5px;
+            padding: 8px 12px;
+        }
+        
+        .date-filter .material-icons {
+            margin-right: 8px;
+            color: #666;
+        }
+        
+        .date-filter select {
+            border: none;
+            background: none;
+            font-size: 14px;
+            padding: 5px;
+            color: #333;
+            outline: none;
+        }
+        
+        .department-filter {
+            display: flex;
+            align-items: center;
+            background-color: var(--background-color);
+            border-radius: 5px;
+            padding: 8px 12px;
+        }
+        
+        .department-filter .material-icons {
+            margin-right: 8px;
+            color: #666;
+        }
+        
+        .department-filter select {
+            border: none;
+            background: none;
+            font-size: 14px;
+            padding: 5px;
+            color: #333;
+            outline: none;
+        }
+        
+        .header-button {
+            padding: 8px 15px;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            font-weight: 500;
+            transition: background-color 0.2s;
+        }
+        
+        .header-button:hover {
+            background-color: #218838;
+        }
+        
+        .header-button .material-icons {
+            margin-right: 5px;
+            font-size: 18px;
+        }
+        
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-card {
+            background-color: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: var(--card-shadow);
+            transition: transform var(--transition-speed);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+        }
+        
+        .stat-card.blue::before {
+            background-color: var(--info-color);
+        }
+        
+        .stat-card.green::before {
+            background-color: var(--success-color);
+        }
+        
+        .stat-card.red::before {
+            background-color: var(--danger-color);
+        }
+        
+        .stat-card.yellow::before {
+            background-color: var(--warning-color);
+        }
+        
+        .stat-title {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .stat-title .material-icons {
+            margin-right: 5px;
+            font-size: 20px;
+        }
+        
+        .stat-value {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+        
+        .stat-card.blue .stat-value {
+            color: var(--info-color);
+        }
+        
+        .stat-card.green .stat-value {
+            color: var(--success-color);
+        }
+        
+        .stat-card.red .stat-value {
+            color: var(--danger-color);
+        }
+        
+        .stat-card.yellow .stat-value {
+            color: var(--warning-color);
+        }
+        
+        .stat-change {
+            display: flex;
+            align-items: center;
+            font-size: 14px;
+        }
+        
+        .stat-change.positive {
+            color: var(--success-color);
+        }
+        
+        .stat-change.negative {
+            color: var(--danger-color);
+        }
+        
+        .stat-change .material-icons {
+            font-size: 16px;
+            margin-right: 3px;
+        }
+        
+        /* Charts Row */
+        .charts-row {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .chart-card {
+            background-color: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: var(--card-shadow);
+            min-height: 400px;
+        }
+        
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .chart-title {
+            font-size: 18px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+        }
+        
+        .chart-title .material-icons {
+            margin-right: 8px;
+            font-size: 20px;
+            color: var(--info-color);
+        }
+        
+        .chart-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .chart-tab {
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 14px;
+            cursor: pointer;
+            background-color: var(--background-color);
+            color: #666;
+            transition: all 0.2s;
+        }
+        
+        .chart-tab.active {
+            background-color: var(--info-color);
+            color: white;
+        }
+        
+        .chart-tab:hover:not(.active) {
+            background-color: #e0e0e0;
+        }
+        
+        .chart-container {
+            height: 300px;
+            position: relative;
+        }
+        
+        /* Table styling */
+        .card {
+            background-color: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: var(--card-shadow);
+            margin-bottom: 20px;
+        }
+        
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .card-title {
+            font-size: 18px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+        }
+        
+        .card-title .material-icons {
+            margin-right: 8px;
+            color: var(--warning-color);
+        }
+        
+        .card-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .search-box {
+            display: flex;
+            align-items: center;
+            background-color: var(--background-color);
+            border-radius: 5px;
+            padding: 8px 12px;
+            width: 300px;
+        }
+        
+        .search-box .material-icons {
+            margin-right: 8px;
+            color: #666;
+        }
+        
+        .search-box input {
+            border: none;
+            background: none;
+            flex: 1;
+            font-size: 14px;
+            color: #333;
+            outline: none;
+        }
+        
+        .table-responsive {
+            overflow-x: auto;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        thead th {
+            background-color: var(--background-color);
+            text-align: left;
+            padding: 12px 15px;
+            font-size: 14px;
+            color: #666;
+            border-bottom: 1px solid #eee;
+        }
+        
+        tbody td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #eee;
+            vertical-align: middle;
+        }
+        
+        tbody tr:last-child td {
+            border-bottom: none;
+        }
+        
+        tbody tr:hover {
+            background-color: rgba(0, 0, 0, 0.01);
+        }
+        
+        .student-name {
+            display: flex;
+            align-items: center;
+        }
+        
+        .student-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background-color: #e3f2fd;
+            color: var(--info-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            margin-right: 15px;
+        }
+        
+        .student-detail a {
+            font-weight: 600;
+            color: #333;
+            text-decoration: none;
+        }
+        
+        .student-detail a:hover {
+            color: var(--info-color);
+        }
+        
+        .student-detail p {
+            font-size: 13px;
+            color: #666;
+            margin-top: 3px;
+        }
+        
+        .attendance-rate {
+            font-weight: 600;
+        }
+        
+        .attendance-rate.good {
+            color: var(--success-color);
+        }
+        
+        .attendance-rate.warning {
+            color: var(--warning-color);
+        }
+        
+        .attendance-rate.danger {
+            color: var(--danger-color);
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .status-badge.warning {
+            background-color: #fff8e1;
+            color: var(--warning-color);
+        }
+        
+        .status-badge.danger {
+            background-color: #ffebee;
+            color: var(--danger-color);
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 5px;
+        }
+        
+        .action-button {
+            width: 30px;
+            height: 30px;
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: none;
+            cursor: pointer;
+            background-color: var(--background-color);
+            transition: background-color 0.2s;
+        }
+        
+        .action-button:hover {
+            background-color: #e0e0e0;
+        }
+        
+        .action-button.view {
+            color: var(--info-color);
+        }
+        
+        .action-button.message {
+            color: var(--success-color);
+        }
+        
+        /* Class Rankings Table */
+        .class-rank-table td, .class-rank-table th {
+            text-align: center;
+        }
+        
+        .class-rank-table td:first-child, .class-rank-table th:first-child {
+            text-align: left;
+        }
+        
+        .progress-bar {
+            height: 8px;
+            background-color: #f1f1f1;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 5px;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.5s;
+        }
+        
+        .progress-fill.green {
+            background-color: var(--success-color);
+        }
+        
+        .progress-fill.yellow {
+            background-color: var(--warning-color);
+        }
+        
+        .progress-fill.red {
+            background-color: var(--danger-color);
+        }
+        
+        /* Department stats card */
+        .department-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .department-card {
+            background-color: white;
+            border-radius: 10px;
+            padding: 15px;
+            box-shadow: var(--card-shadow);
+        }
+        
+        .department-name {
+            font-weight: 600;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .department-stats-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        
+        .department-stat {
+            text-align: center;
+            flex: 1;
+        }
+        
+        .department-stat-label {
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .department-stat-value {
+            font-weight: 600;
+            font-size: 18px;
+        }
+        
+        .department-progress {
+            margin-top: 10px;
+        }
+        
+        /* Calendar view */
+        .calendar-view {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .calendar-day {
+            background-color: #f9f9f9;
+            border-radius: 5px;
+            padding: 8px;
+            text-align: center;
+        }
+        
+        .calendar-date {
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+        
+        .calendar-stats {
+            font-size: 12px;
+        }
+        
+        .calendar-day.today {
+            background-color: #e3f2fd;
+            border: 1px solid #bbdefb;
+        }
+        
+        .calendar-day.weekend {
+            background-color: #f5f5f5;
+            color: #999;
+        }
+        
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1050;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+        
+        .modal-content {
+            background-color: white;
+            margin: 10% auto;
+            padding: 25px;
+            border-radius: 10px;
+            width: 80%;
+            max-width: 700px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            position: relative;
+            max-height: 80vh;
+            overflow-y: auto;
+            animation: modalFadeIn 0.3s;
+        }
+        
+        @keyframes modalFadeIn {
+            from {opacity: 0; transform: translateY(-50px);}
+            to {opacity: 1; transform: translateY(0);}
+        }
+        
+        .close {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            font-size: 24px;
+            font-weight: bold;
+            color: #aaa;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+        
+        .close:hover {
+            color: #333;
+        }
+        
+        .notification-form {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        
+        .form-group label {
+            font-weight: 500;
+        }
+        
+        .form-group select, .form-group textarea {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        
+        .form-group textarea {
+            resize: vertical;
+            min-height: 150px;
+        }
+        
+        .form-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .btn-cancel, .btn-send {
+            padding: 8px 15px;
+            border-radius: 5px;
+            border: none;
+            font-weight: 500;
+            cursor: pointer;
+        }
+        
+        .btn-cancel {
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        
+        .btn-send {
+            background-color: var(--success-color);
+            color: white;
+        }
+        
+        /* Pie chart legend */
+        .pie-legend {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            font-size: 14px;
+        }
+        
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            margin-right: 8px;
+            border-radius: 4px;
+        }
+        
+        .legend-color.green {
+            background-color: var(--success-color);
+        }
+        
+        .legend-color.yellow {
+            background-color: var(--warning-color);
+        }
+        
+        .legend-color.red {
+            background-color: var(--danger-color);
+        }
+        
+        /* Loading indicator */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1100;
+            display: none;
+        }
+        
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid var(--primary-color);
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* Responsive design */
+        @media (max-width: 1200px) {
+            .charts-row {
+                grid-template-columns: 1fr;
+            }
+            
+            .department-stats {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        
+        @media (max-width: 992px) {
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .search-box {
+                width: 200px;
+            }
+            
+            .department-stats {
+                grid-template-columns: 1fr;
+            }
+            
+            .filter-group {
+                flex-direction: column;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .main-content {
+                margin-left: 0;
+                padding: 10px;
+            }
+            
+            .sidebar {
+                transform: translateX(-100%);
+            }
+            
+            .sidebar.active {
+                transform: translateX(0);
+            }
+            
+            .main-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+            
+            .header-actions {
+                width: 100%;
+                flex-direction: column;
+            }
+            
+            .date-filter, .department-filter {
+                width: 100%;
+            }
+            
+            .header-button {
+                width: 100%;
+                justify-content: center;
+            }
+            
+            .card-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+            
+            .card-actions {
+                width: 100%;
+            }
+            
+            .search-box {
+                width: 100%;
+            }
+            
+            .mobile-menu-toggle {
+                display: block;
+                position: fixed;
+                top: 10px;
+                right: 10px;
+                z-index: 1001;
+                background-color: var(--primary-color);
+                color: white;
+                width: 40px;
+                height: 40px;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                cursor: pointer;
+                box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            }
+            
+            .calendar-view {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .calendar-view {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
 </head>
 <body>
-    <?php include_once 'templates/sidebar.php'; ?>
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <img src="/api/placeholder/40/40" alt="Logo">
+            <h2>น้องสัตบรรณ</h2>
+        </div>
+        
+        <div class="sidebar-menu">
+            <div class="menu-category">หน้าหลัก</div>
+            <a href="#" class="menu-item active">
+                <span class="material-icons">dashboard</span> แดชบอร์ด
+            </a>
+            <a href="#" class="menu-item">
+                <span class="material-icons">trending_down</span> นักเรียนตกกิจกรรม
+            </a>
+            <a href="#" class="menu-item">
+                <span class="material-icons">assessment</span> รายงาน
+            </a>
+            
+            <div class="menu-category">การจัดการ</div>
+            <a href="#" class="menu-item">
+                <span class="material-icons">groups</span> นักเรียน
+            </a>
+            <a href="#" class="menu-item">
+                <span class="material-icons">person</span> ครู
+            </a>
+            <a href="#" class="menu-item">
+                <span class="material-icons">family_restroom</span> ผู้ปกครอง
+            </a>
+            <a href="#" class="menu-item">
+                <span class="material-icons">menu_book</span> ชั้นเรียน
+            </a>
+            
+            <div class="menu-category">ระบบ</div>
+            <a href="#" class="menu-item">
+                <span class="material-icons">notifications</span> การแจ้งเตือน
+            </a>
+            <a href="#" class="menu-item">
+                <span class="material-icons">settings</span> ตั้งค่า
+            </a>
+            <a href="#" class="menu-item">
+                <span class="material-icons">help</span> ช่วยเหลือ
+            </a>
+        </div>
+        
+        <div class="sidebar-footer">
+            <p>ระบบน้องสัตบรรณ v1.0.0</p>
+            <p>© 2025 วิทยาลัยการอาชีพปราสาท</p>
+        </div>
+    </div>
 
     <!-- Main Content -->
     <div class="main-content">
+        <!-- Mobile menu toggle button (visible on small screens) -->
+        <div class="mobile-menu-toggle" id="mobileMenuToggle">
+            <span class="material-icons">menu</span>
+        </div>
+        
         <!-- Main Header -->
         <div class="main-header">
             <h1 class="page-title">แดชบอร์ดภาพรวม</h1>
             <div class="header-actions">
-                <div class="date-filter">
-                    <span class="material-icons">date_range</span>
-                    <select id="period-selector" onchange="changePeriod()">
-                        <option value="day">วันนี้</option>
-                        <option value="week">สัปดาห์นี้</option>
-                        <option value="month" selected>เดือนนี้</option>
-                        <option value="semester">ภาคเรียนที่ <?php echo $academicYear['semester']; ?>/<?php echo $academicYear['year'] + 543; ?></option>
-                        <option value="custom">กำหนดเอง</option>
-                    </select>
+                <div class="filter-group">
+                    <div class="date-filter">
+                        <span class="material-icons">date_range</span>
+                        <select id="period-selector">
+                            <option value="day">วันนี้</option>
+                            <option value="week">สัปดาห์นี้</option>
+                            <option value="month" selected>เดือนนี้</option>
+                            <option value="semester">ภาคเรียนที่ 1/2568</option>
+                            <option value="custom">กำหนดเอง</option>
+                        </select>
+                    </div>
+                    <div class="department-filter">
+                        <span class="material-icons">category</span>
+                        <select id="department-selector">
+                            <option value="all">ทุกแผนก</option>
+                            <option value="AUTO">ช่างยนต์</option>
+                            <option value="ELEC">ช่างไฟฟ้ากำลัง</option>
+                            <option value="ELECT">ช่างอิเล็กทรอนิกส์</option>
+                            <option value="IT">เทคโนโลยีสารสนเทศ</option>
+                            <option value="WELD">ช่างเชื่อมโลหะ</option>
+                        </select>
+                    </div>
                 </div>
-                <button class="header-button" onclick="downloadReport()">
+                <button class="header-button" id="downloadReportBtn">
                     <span class="material-icons">file_download</span> ดาวน์โหลดรายงาน
                 </button>
             </div>
@@ -439,42 +1049,127 @@ include_once 'templates/header.php';
         <!-- Stats Overview -->
         <div class="stats-grid">
             <div class="stat-card blue">
-                <div class="stat-title">จำนวนนักเรียนทั้งหมด</div>
-                <div class="stat-value"><?php echo number_format($overallStats['total_students']); ?></div>
-                <div class="stat-change <?php echo $overallStats['students_change'] >= 0 ? 'positive' : 'negative'; ?>">
-                    <span class="material-icons"><?php echo $overallStats['students_change'] >= 0 ? 'arrow_upward' : 'arrow_downward'; ?></span> 
-                    <?php echo $overallStats['students_change'] >= 0 ? 'เพิ่มขึ้น' : 'ลดลง'; ?> 
-                    <?php echo abs($overallStats['students_change']); ?>%
+                <div class="stat-title">
+                    <span class="material-icons">people</span>
+                    จำนวนนักเรียนทั้งหมด
+                </div>
+                <div class="stat-value">1,250</div>
+                <div class="stat-change positive">
+                    <span class="material-icons">arrow_upward</span> เพิ่มขึ้น 2.5%
                 </div>
             </div>
             
             <div class="stat-card green">
-                <div class="stat-title">เข้าแถวเฉลี่ย</div>
-                <div class="stat-value"><?php echo $overallStats['average_attendance']; ?>%</div>
-                <div class="stat-change <?php echo $overallStats['attendance_change'] >= 0 ? 'positive' : 'negative'; ?>">
-                    <span class="material-icons"><?php echo $overallStats['attendance_change'] >= 0 ? 'arrow_upward' : 'arrow_downward'; ?></span> 
-                    <?php echo $overallStats['attendance_change'] >= 0 ? 'เพิ่มขึ้น' : 'ลดลง'; ?> 
-                    <?php echo abs($overallStats['attendance_change']); ?>%
+                <div class="stat-title">
+                    <span class="material-icons">check_circle</span>
+                    เข้าแถวเฉลี่ย
+                </div>
+                <div class="stat-value">94.8%</div>
+                <div class="stat-change positive">
+                    <span class="material-icons">arrow_upward</span> เพิ่มขึ้น 0.6%
                 </div>
             </div>
             
             <div class="stat-card red">
-                <div class="stat-title">นักเรียนตกกิจกรรม</div>
-                <div class="stat-value"><?php echo $overallStats['failed_students']; ?></div>
-                <div class="stat-change <?php echo $overallStats['failed_change'] >= 0 ? 'positive' : 'negative'; ?>">
-                    <span class="material-icons"><?php echo $overallStats['failed_change'] >= 0 ? 'arrow_upward' : 'arrow_downward'; ?></span> 
-                    <?php echo $overallStats['failed_change'] >= 0 ? 'เพิ่มขึ้น' : 'ลดลง'; ?> 
-                    <?php echo abs($overallStats['failed_change']); ?>%
+                <div class="stat-title">
+                    <span class="material-icons">cancel</span>
+                    นักเรียนตกกิจกรรม
+                </div>
+                <div class="stat-value">35</div>
+                <div class="stat-change negative">
+                    <span class="material-icons">arrow_downward</span> ลดลง 12%
                 </div>
             </div>
             
             <div class="stat-card yellow">
-                <div class="stat-title">นักเรียนเสี่ยงตกกิจกรรม</div>
-                <div class="stat-value"><?php echo $overallStats['risk_students']; ?></div>
-                <div class="stat-change <?php echo $overallStats['risk_change'] >= 0 ? 'positive' : 'negative'; ?>">
-                    <span class="material-icons"><?php echo $overallStats['risk_change'] >= 0 ? 'arrow_upward' : 'arrow_downward'; ?></span> 
-                    <?php echo $overallStats['risk_change'] >= 0 ? 'เพิ่มขึ้น' : 'ลดลง'; ?> 
-                    <?php echo abs($overallStats['risk_change']); ?>%
+                <div class="stat-title">
+                    <span class="material-icons">warning</span>
+                    นักเรียนเสี่ยงตกกิจกรรม
+                </div>
+                <div class="stat-value">62</div>
+                <div class="stat-change negative">
+                    <span class="material-icons">arrow_downward</span> ลดลง 8%
+                </div>
+            </div>
+        </div>
+        
+        <!-- Department stats -->
+        <div class="department-stats" id="departmentStats">
+            <div class="department-card">
+                <div class="department-name">
+                    <span>ช่างยนต์</span>
+                    <span class="attendance-rate good">95.2%</span>
+                </div>
+                <div class="department-stats-row">
+                    <div class="department-stat">
+                        <div class="department-stat-label">นักเรียน</div>
+                        <div class="department-stat-value">350</div>
+                    </div>
+                    <div class="department-stat">
+                        <div class="department-stat-label">เข้าแถว</div>
+                        <div class="department-stat-value">333</div>
+                    </div>
+                    <div class="department-stat">
+                        <div class="department-stat-label">เสี่ยง</div>
+                        <div class="department-stat-value">12</div>
+                    </div>
+                </div>
+                <div class="department-progress">
+                    <div class="progress-bar">
+                        <div class="progress-fill green" style="width: 95.2%;"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="department-card">
+                <div class="department-name">
+                    <span>ช่างไฟฟ้ากำลัง</span>
+                    <span class="attendance-rate good">93.8%</span>
+                </div>
+                <div class="department-stats-row">
+                    <div class="department-stat">
+                        <div class="department-stat-label">นักเรียน</div>
+                        <div class="department-stat-value">290</div>
+                    </div>
+                    <div class="department-stat">
+                        <div class="department-stat-label">เข้าแถว</div>
+                        <div class="department-stat-value">272</div>
+                    </div>
+                    <div class="department-stat">
+                        <div class="department-stat-label">เสี่ยง</div>
+                        <div class="department-stat-value">15</div>
+                    </div>
+                </div>
+                <div class="department-progress">
+                    <div class="progress-bar">
+                        <div class="progress-fill green" style="width: 93.8%;"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="department-card">
+                <div class="department-name">
+                    <span>เทคโนโลยีสารสนเทศ</span>
+                    <span class="attendance-rate good">96.4%</span>
+                </div>
+                <div class="department-stats-row">
+                    <div class="department-stat">
+                        <div class="department-stat-label">นักเรียน</div>
+                        <div class="department-stat-value">165</div>
+                    </div>
+                    <div class="department-stat">
+                        <div class="department-stat-label">เข้าแถว</div>
+                        <div class="department-stat-value">159</div>
+                    </div>
+                    <div class="department-stat">
+                        <div class="department-stat-label">เสี่ยง</div>
+                        <div class="department-stat-value">5</div>
+                    </div>
+                </div>
+                <div class="department-progress">
+                    <div class="progress-bar">
+                        <div class="progress-fill green" style="width: 96.4%;"></div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -483,7 +1178,10 @@ include_once 'templates/header.php';
         <div class="charts-row">
             <div class="chart-card">
                 <div class="chart-header">
-                    <div class="chart-title">อัตราการเข้าแถวตามเวลา</div>
+                    <div class="chart-title">
+                        <span class="material-icons">trending_up</span>
+                        อัตราการเข้าแถวตามเวลา
+                    </div>
                     <div class="chart-actions">
                         <div class="chart-tab active" data-period="week">ย้อนหลัง 7 วัน</div>
                         <div class="chart-tab" data-period="month">รายเดือน</div>
@@ -498,41 +1196,72 @@ include_once 'templates/header.php';
             
             <div class="chart-card">
                 <div class="chart-header">
-                    <div class="chart-title">สถานะการเข้าแถว</div>
+                    <div class="chart-title">
+                        <span class="material-icons">pie_chart</span>
+                        สถานะการเข้าแถว
+                    </div>
                 </div>
                 
-                <div class="pie-chart-container">
-                    <div>
-                        <canvas id="attendancePieChart"></canvas>
-                        <div class="pie-legend">
-                            <div class="legend-item">
-                                <div class="legend-color green"></div>
-                                <span>มาปกติ (<?php echo $attendancePieChart['normal']; ?>%)</span>
-                            </div>
-                            <div class="legend-item">
-                                <div class="legend-color yellow"></div>
-                                <span>มาสาย (<?php echo $attendancePieChart['late']; ?>%)</span>
-                            </div>
-                            <div class="legend-item">
-                                <div class="legend-color red"></div>
-                                <span>ขาด (<?php echo $attendancePieChart['absent']; ?>%)</span>
-                            </div>
+                <div class="chart-container">
+                    <canvas id="attendancePieChart"></canvas>
+                    <div class="pie-legend">
+                        <div class="legend-item">
+                            <div class="legend-color green"></div>
+                            <span>มาปกติ (75%)</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color yellow"></div>
+                            <span>มาสาย (15%)</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color red"></div>
+                            <span>ขาด (10%)</span>
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
+        
+        <!-- Daily Attendance Calendar (for daily view) -->
+        <div class="card" id="dailyAttendanceCard" style="display:none;">
+            <div class="card-header">
+                <div class="card-title">
+                    <span class="material-icons">calendar_today</span>
+                    การเข้าแถวรายวัน - พฤษภาคม 2568
+                </div>
+            </div>
+            
+            <div class="calendar-view" id="calendarView">
+                <!-- Calendar will be populated by JavaScript -->
+                <div class="calendar-day">
+                    <div class="calendar-date">1</div>
+                    <div class="calendar-stats">94.2%</div>
+                </div>
+                <div class="calendar-day">
+                    <div class="calendar-date">2</div>
+                    <div class="calendar-stats">95.1%</div>
+                </div>
+                <div class="calendar-day weekend">
+                    <div class="calendar-date">3</div>
+                    <div class="calendar-stats">-</div>
+                </div>
+                <!-- More days will be added dynamically -->
             </div>
         </div>
 
         <!-- Students at Risk Table -->
         <div class="card">
             <div class="card-header">
-                <div class="card-title">นักเรียนที่ตกกิจกรรมหรือมีความเสี่ยง</div>
+                <div class="card-title">
+                    <span class="material-icons">warning</span>
+                    นักเรียนที่ตกกิจกรรมหรือมีความเสี่ยง
+                </div>
                 <div class="card-actions">
                     <div class="search-box">
                         <span class="material-icons">search</span>
                         <input type="text" id="student-search" placeholder="ค้นหาชื่อหรือรหัสนักเรียน...">
                     </div>
-                    <button class="header-button" onclick="notifyAllRiskStudents()">
+                    <button class="header-button" id="notifyAllBtn">
                         <span class="material-icons">notifications_active</span> แจ้งเตือนทั้งหมด
                     </button>
                 </div>
@@ -551,48 +1280,135 @@ include_once 'templates/header.php';
                         </tr>
                     </thead>
                     <tbody>
-                        <?php foreach ($riskStudents as $student): ?>
-                            <?php 
-                                // กำหนดสถานะตามอัตราการเข้าแถว
-                                $attendanceRate = $student['attendance_rate'];
-                                $statusClass = $attendanceRate < 70 ? 'danger' : 'warning';
-                                $statusText = $attendanceRate < 70 ? 'ตกกิจกรรม' : 'เสี่ยงตกกิจกรรม';
-                                $initial = mb_substr($student['first_name'], 0, 1, 'UTF-8');
-                            ?>
-                            <tr data-student-id="<?php echo $student['student_id']; ?>">
-                                <td>
-                                    <div class="student-name">
-                                        <div class="student-avatar"><?php echo $initial; ?></div>
-                                        <div class="student-detail">
-                                            <a href="student_detail.php?id=<?php echo $student['student_id']; ?>">
-                                                <?php echo $student['title'] . ' ' . $student['first_name'] . ' ' . $student['last_name']; ?>
-                                            </a>
-                                            <p>รหัส: <?php echo $student['student_code']; ?></p>
-                                        </div>
+                        <tr data-student-id="1">
+                            <td>
+                                <div class="student-name">
+                                    <div class="student-avatar">พ</div>
+                                    <div class="student-detail">
+                                        <a href="#" class="student-link" data-student-id="1">นางสาวพิมพ์ใจ ร่าเริง</a>
+                                        <p>รหัส: 67319010001</p>
                                     </div>
-                                </td>
-                                <td><?php echo $student['class_name']; ?></td>
-                                <td><?php echo $student['advisor_name'] ?: 'ไม่มีข้อมูล'; ?></td>
-                                <td><span class="attendance-rate <?php echo $statusClass; ?>"><?php echo number_format($attendanceRate, 1); ?>%</span></td>
-                                <td><span class="status-badge <?php echo $statusClass; ?>"><?php echo $statusText; ?></span></td>
-                                <td>
-                                    <div class="action-buttons">
-                                        <button class="action-button view" onclick="viewStudentDetail(<?php echo $student['student_id']; ?>)">
-                                            <span class="material-icons">visibility</span>
-                                        </button>
-                                        <button class="action-button message" onclick="notifyParent(<?php echo $student['student_id']; ?>)">
-                                            <span class="material-icons">message</span>
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
+                                </div>
+                            </td>
+                            <td>ปวช.1/1</td>
+                            <td>อาจารย์ใจดี มากเมตตา</td>
+                            <td><span class="attendance-rate danger">65.8%</span></td>
+                            <td><span class="status-badge danger">ตกกิจกรรม</span></td>
+                            <td>
+                                <div class="action-buttons">
+                                    <button class="action-button view" data-student-id="1">
+                                        <span class="material-icons">visibility</span>
+                                    </button>
+                                    <button class="action-button message" data-student-id="1">
+                                        <span class="material-icons">message</span>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
                         
-                        <?php if (empty($riskStudents)): ?>
-                            <tr>
-                                <td colspan="6" class="text-center">ไม่พบข้อมูลนักเรียนที่เสี่ยงตกกิจกรรม</td>
-                            </tr>
-                        <?php endif; ?>
+                        <tr data-student-id="2">
+                            <td>
+                                <div class="student-name">
+                                    <div class="student-avatar">ม</div>
+                                    <div class="student-detail">
+                                        <a href="#" class="student-link" data-student-id="2">นายมานะ ตั้งใจ</a>
+                                        <p>รหัส: 67319010002</p>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>ปวช.1/2</td>
+                            <td>อาจารย์ราตรี นอนดึก</td>
+                            <td><span class="attendance-rate danger">68.2%</span></td>
+                            <td><span class="status-badge danger">ตกกิจกรรม</span></td>
+                            <td>
+                                <div class="action-buttons">
+                                    <button class="action-button view" data-student-id="2">
+                                        <span class="material-icons">visibility</span>
+                                    </button>
+                                    <button class="action-button message" data-student-id="2">
+                                        <span class="material-icons">message</span>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        
+                        <tr data-student-id="3">
+                            <td>
+                                <div class="student-name">
+                                    <div class="student-avatar">ส</div>
+                                    <div class="student-detail">
+                                        <a href="#" class="student-link" data-student-id="3">นายสมชาย อ่อนนุช</a>
+                                        <p>รหัส: 67319010003</p>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>ปวช.1/3</td>
+                            <td>อาจารย์จริงจัง ทำงาน</td>
+                            <td><span class="attendance-rate warning">75.5%</span></td>
+                            <td><span class="status-badge warning">เสี่ยงตกกิจกรรม</span></td>
+                            <td>
+                                <div class="action-buttons">
+                                    <button class="action-button view" data-student-id="3">
+                                        <span class="material-icons">visibility</span>
+                                    </button>
+                                    <button class="action-button message" data-student-id="3">
+                                        <span class="material-icons">message</span>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        
+                        <tr data-student-id="4">
+                            <td>
+                                <div class="student-name">
+                                    <div class="student-avatar">ก</div>
+                                    <div class="student-detail">
+                                        <a href="#" class="student-link" data-student-id="4">นางสาวกนกวรรณ รักษาการ</a>
+                                        <p>รหัส: 67319010005</p>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>ปวช.1/1</td>
+                            <td>อาจารย์มานะ พยายาม</td>
+                            <td><span class="attendance-rate warning">78.2%</span></td>
+                            <td><span class="status-badge warning">เสี่ยงตกกิจกรรม</span></td>
+                            <td>
+                                <div class="action-buttons">
+                                    <button class="action-button view" data-student-id="4">
+                                        <span class="material-icons">visibility</span>
+                                    </button>
+                                    <button class="action-button message" data-student-id="4">
+                                        <span class="material-icons">message</span>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        
+                        <tr data-student-id="5">
+                            <td>
+                                <div class="student-name">
+                                    <div class="student-avatar">ว</div>
+                                    <div class="student-detail">
+                                        <a href="#" class="student-link" data-student-id="5">นายวิชัย ฉลาดล้ำ</a>
+                                        <p>รหัส: 67319010006</p>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>ปวช.1/2</td>
+                            <td>อาจารย์เมตตา ใจดี</td>
+                            <td><span class="attendance-rate warning">76.9%</span></td>
+                            <td><span class="status-badge warning">เสี่ยงตกกิจกรรม</span></td>
+                            <td>
+                                <div class="action-buttons">
+                                    <button class="action-button view" data-student-id="5">
+                                        <span class="material-icons">visibility</span>
+                                    </button>
+                                    <button class="action-button message" data-student-id="5">
+                                        <span class="material-icons">message</span>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
                     </tbody>
                 </table>
             </div>
@@ -607,7 +1423,10 @@ include_once 'templates/header.php';
         <!-- Class Rankings -->
         <div class="card">
             <div class="card-header">
-                <div class="card-title">อันดับอัตราการเข้าแถวตามชั้นเรียน</div>
+                <div class="card-title">
+                    <span class="material-icons">leaderboard</span>
+                    อันดับอัตราการเข้าแถวตามชั้นเรียน
+                </div>
                 <div class="card-actions">
                     <div class="chart-tab active" data-level="all">ทั้งหมด</div>
                     <div class="chart-tab" data-level="high">ระดับ ปวส.</div>
@@ -628,39 +1447,70 @@ include_once 'templates/header.php';
                         </tr>
                     </thead>
                     <tbody>
-                        <?php foreach ($classRanking as $class): ?>
-                            <?php
-                                $attendanceRate = round($class['attendance_rate'], 1);
-                                $rateClass = 'good';
-                                $fillClass = 'green';
-                                
-                                if ($attendanceRate < 90 && $attendanceRate >= 80) {
-                                    $rateClass = 'warning';
-                                    $fillClass = 'yellow';
-                                } elseif ($attendanceRate < 80) {
-                                    $rateClass = 'danger';
-                                    $fillClass = 'red';
-                                }
-                            ?>
-                            <tr data-class-id="<?php echo $class['class_id']; ?>" data-level="<?php echo strpos($class['level'], 'ปวส.') !== false ? 'high' : 'middle'; ?>">
-                                <td><?php echo $class['class_name']; ?></td>
-                                <td><?php echo $class['advisor_name'] ?: 'ไม่มีข้อมูล'; ?></td>
-                                <td><?php echo $class['student_count']; ?></td>
-                                <td><?php echo $class['total_attendance']; ?></td>
-                                <td><span class="attendance-rate <?php echo $rateClass; ?>"><?php echo $attendanceRate; ?>%</span></td>
-                                <td>
-                                    <div class="progress-bar">
-                                        <div class="progress-fill <?php echo $fillClass; ?>" style="width: <?php echo $attendanceRate; ?>%;"></div>
-                                    </div>
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
+                        <tr data-class-id="1" data-level="middle">
+                            <td>ปวช.1/1</td>
+                            <td>อาจารย์มานะ พยายาม</td>
+                            <td>35</td>
+                            <td>34</td>
+                            <td><span class="attendance-rate good">97.1%</span></td>
+                            <td>
+                                <div class="progress-bar">
+                                    <div class="progress-fill green" style="width: 97.1%;"></div>
+                                </div>
+                            </td>
+                        </tr>
                         
-                        <?php if (empty($classRanking)): ?>
-                            <tr>
-                                <td colspan="6" class="text-center">ไม่พบข้อมูลชั้นเรียน</td>
-                            </tr>
-                        <?php endif; ?>
+                        <tr data-class-id="2" data-level="middle">
+                            <td>ปวช.2/1</td>
+                            <td>อาจารย์สดใส อารี</td>
+                            <td>32</td>
+                            <td>31</td>
+                            <td><span class="attendance-rate good">96.9%</span></td>
+                            <td>
+                                <div class="progress-bar">
+                                    <div class="progress-fill green" style="width: 96.9%;"></div>
+                                </div>
+                            </td>
+                        </tr>
+                        
+                        <tr data-class-id="3" data-level="middle">
+                            <td>ปวช.3/3</td>
+                            <td>อาจารย์สมใจ นึกแปลก</td>
+                            <td>30</td>
+                            <td>29</td>
+                            <td><span class="attendance-rate good">96.7%</span></td>
+                            <td>
+                                <div class="progress-bar">
+                                    <div class="progress-fill green" style="width: 96.7%;"></div>
+                                </div>
+                            </td>
+                        </tr>
+                        
+                        <tr data-class-id="4" data-level="high">
+                            <td>ปวส.1/1</td>
+                            <td>อาจารย์ใจดี มากเมตตา</td>
+                            <td>35</td>
+                            <td>33</td>
+                            <td><span class="attendance-rate good">94.3%</span></td>
+                            <td>
+                                <div class="progress-bar">
+                                    <div class="progress-fill green" style="width: 94.3%;"></div>
+                                </div>
+                            </td>
+                        </tr>
+                        
+                        <tr data-class-id="5" data-level="high">
+                            <td>ปวส.2/2</td>
+                            <td>อาจารย์ราตรี นอนดึก</td>
+                            <td>32</td>
+                            <td>28</td>
+                            <td><span class="attendance-rate warning">87.5%</span></td>
+                            <td>
+                                <div class="progress-bar">
+                                    <div class="progress-fill yellow" style="width: 87.5%;"></div>
+                                </div>
+                            </td>
+                        </tr>
                     </tbody>
                 </table>
             </div>
@@ -668,9 +1518,9 @@ include_once 'templates/header.php';
     </div>
 
     <!-- Modal สำหรับแสดงรายละเอียดนักเรียน -->
-    <div id="studentDetailModal" class="modal">
+    <div class="modal" id="studentDetailModal">
         <div class="modal-content">
-            <span class="close" onclick="closeModal()">&times;</span>
+            <span class="close" id="closeStudentModal">&times;</span>
             <h2 id="modal-student-name">ข้อมูลการเข้าแถว</h2>
             <div id="student-detail-content">
                 <!-- ข้อมูลนักเรียนจะถูกแสดงที่นี่ -->
@@ -680,14 +1530,14 @@ include_once 'templates/header.php';
     </div>
 
     <!-- Modal สำหรับส่งข้อความแจ้งเตือน -->
-    <div id="notificationModal" class="modal">
+    <div class="modal" id="notificationModal">
         <div class="modal-content">
-            <span class="close" onclick="closeNotificationModal()">&times;</span>
+            <span class="close" id="closeNotificationModal">&times;</span>
             <h2>ส่งข้อความแจ้งเตือนผู้ปกครอง</h2>
             <div class="notification-form">
                 <div class="form-group">
                     <label for="notification-template">เลือกเทมเพลตข้อความ</label>
-                    <select id="notification-template" onchange="updateNotificationContent()">
+                    <select id="notification-template">
                         <option value="risk_alert">แจ้งเตือนความเสี่ยงตกกิจกรรม</option>
                         <option value="absence_alert">แจ้งเตือนการขาดเรียน</option>
                         <option value="monthly_report">รายงานประจำเดือน</option>
@@ -699,33 +1549,75 @@ include_once 'templates/header.php';
                     <textarea id="notification-content" rows="6"></textarea>
                 </div>
                 <div class="form-actions">
-                    <button class="btn-cancel" onclick="closeNotificationModal()">ยกเลิก</button>
-                    <button class="btn-send" onclick="sendNotification()">ส่งข้อความ</button>
+                    <button class="btn-cancel" id="cancelNotification">ยกเลิก</button>
+                    <button class="btn-send" id="sendNotification">ส่งข้อความ</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal สำหรับเลือกช่วงวันที่ -->
+    <div class="modal" id="dateRangeModal">
+        <div class="modal-content" style="max-width: 400px;">
+            <span class="close" id="closeDateRangeModal">&times;</span>
+            <h2>เลือกช่วงวันที่</h2>
+            <div style="display: flex; flex-direction: column; gap: 15px; margin-top: 20px;">
+                <div class="form-group">
+                    <label for="start-date">วันที่เริ่มต้น</label>
+                    <input type="date" id="start-date" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label for="end-date">วันที่สิ้นสุด</label>
+                    <input type="date" id="end-date" class="form-control">
+                </div>
+                <div class="form-actions">
+                    <button class="btn-cancel" id="cancelDateRange">ยกเลิก</button>
+                    <button class="btn-send" id="applyDateRange">ตกลง</button>
                 </div>
             </div>
         </div>
     </div>
 
+    <!-- Loading overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="spinner"></div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
-        // ข้อมูลสำหรับกราฟ
-        const weeklyAttendanceData = <?php echo json_encode($weeklyAttendance); ?>;
+        // ข้อมูลสำหรับกราฟ (จะถูกแทนที่ด้วยข้อมูลจริงจาก AJAX)
+        const weeklyAttendanceData = [
+            { date: '4 พ.ค.', attendance_rate: 93.5 },
+            { date: '5 พ.ค.', attendance_rate: 94.2 },
+            { date: '6 พ.ค.', attendance_rate: 92.8 },
+            { date: '7 พ.ค.', attendance_rate: 95.1 },
+            { date: '8 พ.ค.', attendance_rate: 94.5 },
+            { date: '9 พ.ค.', attendance_rate: 93.9 },
+            { date: '10 พ.ค.', attendance_rate: 94.8 }
+        ];
+        
         const pieChartData = {
-            normal: <?php echo $attendancePieChart['normal']; ?>,
-            late: <?php echo $attendancePieChart['late']; ?>,
-            absent: <?php echo $attendancePieChart['absent']; ?>
+            normal: 75,
+            late: 15,
+            absent: 10
         };
 
         // ตัวแปรสำหรับเก็บ reference ของ Chart
-        let lineChart;
-        let pieChart;
+        let attendanceLineChart;
+        let attendancePieChart;
         let currentStudentId;
+        let currentPeriod = 'week'; // Default period
 
         // เมื่อโหลดหน้าเสร็จ
         document.addEventListener('DOMContentLoaded', function() {
-            initializeLineChart();
-            initializePieChart();
-            addEventListeners();
+            // สร้างกราฟและแผนภูมิ
+            initializeCharts();
+            
+            // ตั้งค่า Event Listeners
+            setupEventListeners();
+            
+            // สร้างปฏิทินรายวัน (สำหรับมุมมองรายวัน)
+            createCalendarView();
         });
 
         // ฟังก์ชันสร้างกราฟเส้นแสดงอัตราการเข้าแถว
@@ -736,18 +1628,21 @@ include_once 'templates/header.php';
             const labels = weeklyAttendanceData.map(item => item.date);
             const data = weeklyAttendanceData.map(item => item.attendance_rate);
             
-            lineChart = new Chart(ctx, {
+            attendanceLineChart = new Chart(ctx, {
                 type: 'line',
                 data: {
                     labels: labels,
                     datasets: [{
                         label: 'อัตราการเข้าแถว (%)',
                         data: data,
-                        backgroundColor: 'rgba(25, 118, 210, 0.1)',
-                        borderColor: 'rgba(25, 118, 210, 1)',
+                        backgroundColor: 'rgba(40, 167, 69, 0.1)',
+                        borderColor: 'rgb(40, 167, 69)',
                         borderWidth: 2,
                         tension: 0.4,
-                        fill: true
+                        fill: true,
+                        pointBackgroundColor: 'rgb(40, 167, 69)',
+                        pointRadius: 4,
+                        pointHoverRadius: 6
                     }]
                 },
                 options: {
@@ -785,7 +1680,7 @@ include_once 'templates/header.php';
         function initializePieChart() {
             const ctx = document.getElementById('attendancePieChart').getContext('2d');
             
-            pieChart = new Chart(ctx, {
+            attendancePieChart = new Chart(ctx, {
                 type: 'doughnut',
                 data: {
                     labels: ['มาปกติ', 'มาสาย', 'ขาด'],
@@ -813,15 +1708,16 @@ include_once 'templates/header.php';
                     cutout: '70%'
                 }
             });
-            
-            // แสดงค่าในกลางกราฟวงกลม
-            const totalAttendance = pieChartData.normal + pieChartData.late;
-            
-            // ถ้าต้องการแสดงค่าในกลางกราฟ ต้องใช้ plugin ของ Chart.js
         }
 
-        // ฟังก์ชันเพิ่ม Event Listener ให้กับปุ่มต่างๆ
-        function addEventListeners() {
+        // ฟังก์ชันสร้างกราฟและแผนภูมิทั้งหมด
+        function initializeCharts() {
+            initializeLineChart();
+            initializePieChart();
+        }
+
+        // ฟังก์ชันตั้งค่า Event Listeners
+        function setupEventListeners() {
             // ปุ่มแท็บกราฟเส้น
             document.querySelectorAll('.chart-actions .chart-tab').forEach(tab => {
                 tab.addEventListener('click', function() {
@@ -832,7 +1728,7 @@ include_once 'templates/header.php';
                     
                     // เปลี่ยนข้อมูลกราฟตามช่วงเวลาที่เลือก
                     const period = this.getAttribute('data-period');
-                    updateLineChart(period);
+                    updateAttendanceChart(period);
                 });
             });
             
@@ -851,33 +1747,140 @@ include_once 'templates/header.php';
             });
             
             // ช่องค้นหานักเรียน
-            document.getElementById('student-search').addEventListener('input', function() {
-                filterStudentTable(this.value);
-            });
-        }
-
-        // ฟังก์ชันอัปเดตข้อมูลกราฟเส้นตามช่วงเวลา
-        function updateLineChart(period) {
-            // ในตัวอย่างนี้จะใช้ข้อมูลเดิม แต่ในระบบจริงควรส่ง AJAX ไปดึงข้อมูลตามช่วงเวลา
-            
-            // ตัวอย่างการเปลี่ยน format ของ label
-            let labels = weeklyAttendanceData.map(item => item.date);
-            let data = weeklyAttendanceData.map(item => item.attendance_rate);
-            
-            if (period === 'month') {
-                // สมมติว่าเป็นข้อมูลรายวันในเดือนปัจจุบัน (30 วัน)
-                labels = Array.from({length: 30}, (_, i) => `${i+1}`);
-                data = Array.from({length: 30}, () => Math.floor(80 + Math.random() * 20));
-            } else if (period === 'semester') {
-                // สมมติว่าเป็นข้อมูลรายเดือนในภาคเรียนปัจจุบัน
-                labels = ['พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.'];
-                data = [92.5, 91.8, 90.5, 93.2, 94.1, 94.8];
+            const studentSearch = document.getElementById('student-search');
+            if (studentSearch) {
+                studentSearch.addEventListener('input', function() {
+                    filterStudentTable(this.value);
+                });
             }
             
-            // อัปเดตข้อมูลกราฟ
-            lineChart.data.labels = labels;
-            lineChart.data.datasets[0].data = data;
-            lineChart.update();
+            // ตัวเลือกช่วงเวลา
+            const periodSelector = document.getElementById('period-selector');
+            if (periodSelector) {
+                periodSelector.addEventListener('change', changePeriod);
+            }
+            
+            // ตัวเลือกแผนก
+            const departmentSelector = document.getElementById('department-selector');
+            if (departmentSelector) {
+                departmentSelector.addEventListener('change', changeDepartment);
+            }
+            
+            // ปุ่มดาวน์โหลดรายงาน
+            const downloadButton = document.getElementById('downloadReportBtn');
+            if (downloadButton) {
+                downloadButton.addEventListener('click', downloadReport);
+            }
+            
+            // ปุ่มแจ้งเตือนทั้งหมด
+            const notifyAllButton = document.getElementById('notifyAllBtn');
+            if (notifyAllButton) {
+                notifyAllButton.addEventListener('click', confirmNotifyAllRiskStudents);
+            }
+            
+            // ปุ่มดูรายละเอียดนักเรียน
+            document.querySelectorAll('.action-button.view, .student-link').forEach(button => {
+                button.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const studentId = this.getAttribute('data-student-id');
+                    viewStudentDetail(studentId);
+                });
+            });
+            
+            // ปุ่มส่งข้อความแจ้งเตือน
+            document.querySelectorAll('.action-button.message').forEach(button => {
+                button.addEventListener('click', function() {
+                    const studentId = this.getAttribute('data-student-id');
+                    notifyParent(studentId);
+                });
+            });
+            
+            // ปุ่มปิด Modal รายละเอียดนักเรียน
+            document.getElementById('closeStudentModal').addEventListener('click', function() {
+                document.getElementById('studentDetailModal').style.display = 'none';
+            });
+            
+            // ปุ่มปิด Modal การแจ้งเตือน
+            document.getElementById('closeNotificationModal').addEventListener('click', function() {
+                document.getElementById('notificationModal').style.display = 'none';
+            });
+            
+            // ปุ่มยกเลิกการแจ้งเตือน
+            document.getElementById('cancelNotification').addEventListener('click', function() {
+                document.getElementById('notificationModal').style.display = 'none';
+            });
+            
+            // ปุ่มส่งข้อความแจ้งเตือน
+            document.getElementById('sendNotification').addEventListener('click', sendNotification);
+            
+            // เลือกเทมเพลตข้อความ
+            document.getElementById('notification-template').addEventListener('change', updateNotificationContent);
+            
+            // ปุ่มปิด Modal เลือกช่วงวันที่
+            document.getElementById('closeDateRangeModal').addEventListener('click', function() {
+                document.getElementById('dateRangeModal').style.display = 'none';
+            });
+            
+            // ปุ่มยกเลิกการเลือกช่วงวันที่
+            document.getElementById('cancelDateRange').addEventListener('click', function() {
+                document.getElementById('dateRangeModal').style.display = 'none';
+            });
+            
+            // ปุ่มตกลงเลือกช่วงวันที่
+            document.getElementById('applyDateRange').addEventListener('click', applyDateRange);
+            
+            // Mobile menu toggle
+            const mobileMenuToggle = document.getElementById('mobileMenuToggle');
+            if (mobileMenuToggle) {
+                mobileMenuToggle.addEventListener('click', toggleMobileMenu);
+            }
+            
+            // ปิด Modal เมื่อคลิกพื้นหลัง
+            window.onclick = function(event) {
+                if (event.target.classList.contains('modal')) {
+                    event.target.style.display = 'none';
+                }
+            };
+        }
+
+        // ฟังก์ชันอัปเดตกราฟเส้นตามช่วงเวลาที่เลือก
+        function updateAttendanceChart(period) {
+            if (period === currentPeriod) return;
+            currentPeriod = period;
+            
+            showLoading();
+            
+            // จำลองการดึงข้อมูลจาก API
+            setTimeout(() => {
+                let labels = [];
+                let data = [];
+                
+                switch (period) {
+                    case 'week':
+                        labels = weeklyAttendanceData.map(item => item.date);
+                        data = weeklyAttendanceData.map(item => item.attendance_rate);
+                        break;
+                    case 'month':
+                        // สร้างข้อมูลจำลองสำหรับเดือน
+                        labels = Array.from({length: 30}, (_, i) => `${i+1} พ.ค.`);
+                        data = Array.from({length: 30}, () => Math.floor(85 + Math.random() * 10));
+                        break;
+                    case 'semester':
+                        // สร้างข้อมูลจำลองสำหรับภาคเรียน
+                        labels = ['พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.'];
+                        data = [94.5, 93.8, 92.5, 93.2, 94.1, 94.8];
+                        break;
+                }
+                
+                // อัปเดตข้อมูลกราฟ
+                if (attendanceLineChart) {
+                    attendanceLineChart.data.labels = labels;
+                    attendanceLineChart.data.datasets[0].data = data;
+                    attendanceLineChart.update();
+                }
+                
+                hideLoading();
+            }, 800);
         }
 
         // ฟังก์ชันกรองตารางชั้นเรียนตามระดับ
@@ -915,23 +1918,137 @@ include_once 'templates/header.php';
             const periodSelector = document.getElementById('period-selector');
             const period = periodSelector.value;
             
-            // ในระบบจริง ควรส่ง AJAX ไปดึงข้อมูลตามช่วงเวลาที่เลือก
-            alert(`กำลังเปลี่ยนการแสดงผลเป็น: ${period}`);
+            // แสดงหรือซ่อนปฏิทินรายวัน
+            const dailyAttendanceCard = document.getElementById('dailyAttendanceCard');
+            if (dailyAttendanceCard) {
+                dailyAttendanceCard.style.display = period === 'day' ? 'block' : 'none';
+            }
             
             // ถ้าเป็นกำหนดเอง ให้แสดง modal เลือกวันที่
             if (period === 'custom') {
-                // แสดง modal เลือกวันที่
-                alert('กรุณาเลือกช่วงวันที่ที่ต้องการ');
+                showDateRangeSelector();
+                return;
             }
+            
+            showLoading();
+            
+            // จำลองการดึงข้อมูลตามช่วงเวลา
+            setTimeout(() => {
+                hideLoading();
+                
+                // โค้ดอัปเดตข้อมูลตามช่วงเวลาที่เลือก
+                // ในระบบจริง ควรส่ง AJAX ไปดึงข้อมูลตามช่วงเวลา
+                
+                // อัปเดตชื่อหัวข้อตามช่วงเวลา
+                let periodText = '';
+                switch (period) {
+                    case 'day': periodText = 'วันนี้'; break;
+                    case 'week': periodText = 'สัปดาห์นี้'; break;
+                    case 'month': periodText = 'เดือนนี้'; break;
+                    case 'semester': periodText = 'ภาคเรียนที่ 1/2568'; break;
+                }
+                
+                // แสดงข้อความว่าเปลี่ยนช่วงเวลาแล้ว
+                alert(`เปลี่ยนการแสดงผลเป็นช่วง: ${periodText} เรียบร้อยแล้ว`);
+            }, 800);
+        }
+
+        // ฟังก์ชันเปลี่ยนแผนกที่แสดง
+        function changeDepartment() {
+            const departmentSelector = document.getElementById('department-selector');
+            const department = departmentSelector.value;
+            
+            showLoading();
+            
+            // จำลองการดึงข้อมูลตามแผนก
+            setTimeout(() => {
+                hideLoading();
+                
+                // โค้ดอัปเดตข้อมูลตามแผนกที่เลือก
+                // ในระบบจริง ควรส่ง AJAX ไปดึงข้อมูลตามแผนก
+                
+                const departmentText = departmentSelector.options[departmentSelector.selectedIndex].text;
+                alert(`เปลี่ยนการแสดงผลเป็นแผนก: ${departmentText} เรียบร้อยแล้ว`);
+            }, 800);
+        }
+
+        // แสดง modal เลือกช่วงวันที่
+        function showDateRangeSelector() {
+            // ตั้งค่าวันที่เริ่มต้นเป็นวันแรกของเดือนปัจจุบัน
+            const startDate = document.getElementById('start-date');
+            const endDate = document.getElementById('end-date');
+            
+            const today = new Date();
+            const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+            
+            startDate.valueAsDate = firstDayOfMonth;
+            endDate.valueAsDate = today;
+            
+            // แสดง Modal
+            document.getElementById('dateRangeModal').style.display = 'block';
+        }
+
+        // ประมวลผลช่วงวันที่ที่เลือก
+        function applyDateRange() {
+            const startDate = document.getElementById('start-date').value;
+            const endDate = document.getElementById('end-date').value;
+            
+            if (!startDate || !endDate) {
+                alert('กรุณาเลือกวันที่เริ่มต้นและวันที่สิ้นสุด');
+                return;
+            }
+            
+            if (new Date(startDate) > new Date(endDate)) {
+                alert('วันที่เริ่มต้นต้องมาก่อนวันที่สิ้นสุด');
+                return;
+            }
+            
+            // ปิด Modal
+            document.getElementById('dateRangeModal').style.display = 'none';
+            
+            showLoading();
+            
+            // จำลองการดึงข้อมูลตามช่วงวันที่
+            setTimeout(() => {
+                hideLoading();
+                alert(`เปลี่ยนการแสดงผลเป็นช่วงวันที่ ${startDate} ถึง ${endDate} เรียบร้อยแล้ว`);
+                
+                // เปลี่ยนตัวเลือกใน dropdown เป็น 'custom'
+                const periodSelector = document.getElementById('period-selector');
+                periodSelector.value = 'custom';
+            }, 800);
         }
 
         // ฟังก์ชันดาวน์โหลดรายงาน
         function downloadReport() {
             const periodSelector = document.getElementById('period-selector');
-            const period = periodSelector.value;
+            const departmentSelector = document.getElementById('department-selector');
             
-            // ในระบบจริง ควรส่ง POST request ไปยัง endpoint ที่จะสร้างรายงาน
-            alert(`กำลังดาวน์โหลดรายงานสำหรับช่วง: ${period}`);
+            const period = periodSelector.value;
+            const department = departmentSelector.value;
+            
+            showLoading();
+            
+            // จำลองการสร้างรายงาน
+            setTimeout(() => {
+                hideLoading();
+                
+                let periodText = 'ทั้งหมด';
+                switch (period) {
+                    case 'day': periodText = 'วันนี้'; break;
+                    case 'week': periodText = 'สัปดาห์นี้'; break;
+                    case 'month': periodText = 'เดือนนี้'; break;
+                    case 'semester': periodText = 'ภาคเรียนที่ 1/2568'; break;
+                    case 'custom': periodText = 'ช่วงวันที่ที่กำหนด'; break;
+                }
+                
+                const departmentText = departmentSelector.options[departmentSelector.selectedIndex].text;
+                
+                alert(`เริ่มดาวน์โหลดรายงานสำหรับช่วง: ${periodText} แผนก: ${departmentText}`);
+                
+                // ในระบบจริง ควรเปิดหน้าต่างดาวน์โหลดหรือส่ง response เป็นไฟล์
+                // window.location.href = `download_report.php?period=${period}&department=${department}`;
+            }, 800);
         }
 
         // ฟังก์ชันดูรายละเอียดนักเรียน
@@ -939,40 +2056,75 @@ include_once 'templates/header.php';
             currentStudentId = studentId;
             
             // แสดง modal
-            const modal = document.getElementById('studentDetailModal');
-            modal.style.display = 'block';
+            document.getElementById('studentDetailModal').style.display = 'block';
             
             // ตั้งค่า loading state
             document.getElementById('student-detail-content').innerHTML = '<div class="loading">กำลังโหลดข้อมูล...</div>';
             
-            // ในระบบจริง ควรส่ง AJAX ไปดึงข้อมูลนักเรียน
-            // ตัวอย่างการจำลองการโหลดข้อมูล
+            // จำลองการดึงข้อมูลนักเรียน
             setTimeout(() => {
                 // สมมติว่าได้รับข้อมูลจาก server
-                const studentData = {
-                    id: studentId,
-                    name: 'นักเรียนรหัส ' + studentId,
-                    class: 'ปวช.1/1',
-                    attendanceRate: 65.8,
-                    attendance: [
-                        { date: '10 พ.ค. 2568', status: 'มา', time: '07:45' },
-                        { date: '11 พ.ค. 2568', status: 'ขาด', time: '-' },
-                        { date: '12 พ.ค. 2568', status: 'มา', time: '07:50' },
-                        { date: '13 พ.ค. 2568', status: 'มา', time: '07:42' },
-                        { date: '14 พ.ค. 2568', status: 'ขาด', time: '-' }
-                    ]
-                };
+                let studentData;
+                
+                // ค้นหาข้อมูลนักเรียนจาก DOM (ในระบบจริงควรดึงจาก AJAX)
+                const studentRow = document.querySelector(`#risk-students-table tr[data-student-id="${studentId}"]`);
+                if (studentRow) {
+                    const nameElement = studentRow.querySelector('.student-detail a');
+                    const codeElement = studentRow.querySelector('.student-detail p');
+                    const classElement = studentRow.querySelector('td:nth-child(2)');
+                    const rateElement = studentRow.querySelector('.attendance-rate');
+                    
+                    studentData = {
+                        id: studentId,
+                        name: nameElement.textContent,
+                        code: codeElement.textContent.replace('รหัส: ', ''),
+                        class: classElement.textContent,
+                        attendanceRate: parseFloat(rateElement.textContent),
+                        attendance: [
+                            { date: '6 พ.ค. 2568', status: 'มา', statusClass: 'text-success', time: '07:45' },
+                            { date: '7 พ.ค. 2568', status: 'มา', statusClass: 'text-success', time: '07:50' },
+                            { date: '8 พ.ค. 2568', status: 'ขาด', statusClass: 'text-danger', time: '-' },
+                            { date: '9 พ.ค. 2568', status: 'มา', statusClass: 'text-success', time: '07:42' },
+                            { date: '10 พ.ค. 2568', status: 'มา', statusClass: 'text-success', time: '07:40' }
+                        ]
+                    };
+                } else {
+                    // ข้อมูลตัวอย่างหากไม่พบในตาราง
+                    studentData = {
+                        id: studentId,
+                        name: 'นักเรียนรหัส ' + studentId,
+                        code: '67319010001',
+                        class: 'ปวช.1/1',
+                        attendanceRate: 65.8,
+                        attendance: [
+                            { date: '6 พ.ค. 2568', status: 'มา', statusClass: 'text-success', time: '07:45' },
+                            { date: '7 พ.ค. 2568', status: 'ขาด', statusClass: 'text-danger', time: '-' },
+                            { date: '8 พ.ค. 2568', status: 'มา', statusClass: 'text-success', time: '07:50' },
+                            { date: '9 พ.ค. 2568', status: 'มา', statusClass: 'text-success', time: '07:42' },
+                            { date: '10 พ.ค. 2568', status: 'ขาด', statusClass: 'text-danger', time: '-' }
+                        ]
+                    };
+                }
                 
                 // อัปเดตชื่อนักเรียนใน modal
                 document.getElementById('modal-student-name').textContent = studentData.name;
+                
+                // กำหนดคลาสสำหรับอัตราการเข้าแถว
+                let rateClass = 'text-success';
+                if (studentData.attendanceRate < 80 && studentData.attendanceRate >= 70) {
+                    rateClass = 'text-warning';
+                } else if (studentData.attendanceRate < 70) {
+                    rateClass = 'text-danger';
+                }
                 
                 // สร้าง HTML สำหรับแสดงข้อมูล
                 let html = `
                     <div class="student-info">
                         <div class="student-header">
                             <h3>${studentData.name}</h3>
+                            <p>${studentData.code}</p>
                             <p>ชั้น ${studentData.class}</p>
-                            <p>อัตราการเข้าแถว: <span class="${studentData.attendanceRate < 70 ? 'text-danger' : 'text-warning'}">${studentData.attendanceRate}%</span></p>
+                            <p>อัตราการเข้าแถว: <span class="${rateClass}">${studentData.attendanceRate}%</span></p>
                         </div>
                         
                         <h4>ประวัติการเข้าแถว</h4>
@@ -990,11 +2142,10 @@ include_once 'templates/header.php';
                 
                 // เพิ่มข้อมูลประวัติการเข้าแถว
                 studentData.attendance.forEach(day => {
-                    const statusClass = day.status === 'มา' ? 'text-success' : 'text-danger';
                     html += `
                         <tr>
                             <td>${day.date}</td>
-                            <td><span class="${statusClass}">${day.status}</span></td>
+                            <td><span class="${day.statusClass}">${day.status}</span></td>
                             <td>${day.time}</td>
                         </tr>
                     `;
@@ -1018,12 +2169,7 @@ include_once 'templates/header.php';
                 
                 // อัปเดตเนื้อหาใน modal
                 document.getElementById('student-detail-content').innerHTML = html;
-            }, 500);
-        }
-
-        // ฟังก์ชันปิด modal
-        function closeModal() {
-            document.getElementById('studentDetailModal').style.display = 'none';
+            }, 800);
         }
 
         // ฟังก์ชันส่งการแจ้งเตือนไปยังผู้ปกครอง
@@ -1031,59 +2177,36 @@ include_once 'templates/header.php';
             currentStudentId = studentId;
             
             // แสดง modal แจ้งเตือน
-            const modal = document.getElementById('notificationModal');
-            modal.style.display = 'block';
+            document.getElementById('notificationModal').style.display = 'block';
             
             // ตั้งค่า template เริ่มต้น
             updateNotificationContent();
         }
 
-        // ฟังก์ชันปิด modal แจ้งเตือน
-        function closeNotificationModal() {
-            document.getElementById('notificationModal').style.display = 'none';
-        }
-
         // ฟังก์ชันอัปเดตเนื้อหาข้อความแจ้งเตือน
         function updateNotificationContent() {
-            const template = document.getElementById('notification-template').value;
+            const templateSelect = document.getElementById('notification-template');
             const contentField = document.getElementById('notification-content');
+            
+            const template = templateSelect.value;
+            
+            // ข้อมูลนักเรียน (ในระบบจริงควรดึงจาก AJAX)
+            let studentName = "นักเรียน";
+            const studentRow = document.querySelector(`#risk-students-table tr[data-student-id="${currentStudentId}"]`);
+            if (studentRow) {
+                studentName = studentRow.querySelector('.student-detail a').textContent;
+            }
             
             // ตัวอย่างเทมเพลตข้อความ
             switch (template) {
                 case 'risk_alert':
-                    contentField.value = `เรียน ผู้ปกครองของนักเรียน
-
-ทางวิทยาลัยขอแจ้งว่า บุตรหลานของท่านมีความเสี่ยงที่จะไม่ผ่านกิจกรรมเข้าแถว เนื่องจากปัจจุบันเข้าร่วมเพียง 70% ซึ่งต่ำกว่าเกณฑ์ที่กำหนด (80%)
-
-กรุณาติดต่อครูที่ปรึกษาเพื่อหาแนวทางแก้ไขต่อไป
-
-ด้วยความเคารพ
-วิทยาลัยการอาชีพปราสาท`;
+                    contentField.value = `เรียน ผู้ปกครองของ ${studentName}\n\nทางวิทยาลัยขอแจ้งว่า บุตรหลานของท่านมีความเสี่ยงที่จะไม่ผ่านกิจกรรมเข้าแถว เนื่องจากปัจจุบันเข้าร่วมเพียง 70% ซึ่งต่ำกว่าเกณฑ์ที่กำหนด (80%)\n\nกรุณาติดต่อครูที่ปรึกษาเพื่อหาแนวทางแก้ไขต่อไป\n\nด้วยความเคารพ\nวิทยาลัยการอาชีพปราสาท`;
                     break;
                 case 'absence_alert':
-                    contentField.value = `เรียน ผู้ปกครองของนักเรียน
-
-ทางวิทยาลัยขอแจ้งว่า บุตรหลานของท่านไม่ได้เข้าร่วมกิจกรรมเข้าแถวในวันนี้
-
-กรุณาติดต่อครูที่ปรึกษาหากมีข้อสงสัย
-
-ด้วยความเคารพ
-วิทยาลัยการอาชีพปราสาท`;
+                    contentField.value = `เรียน ผู้ปกครองของ ${studentName}\n\nทางวิทยาลัยขอแจ้งว่า บุตรหลานของท่านไม่ได้เข้าร่วมกิจกรรมเข้าแถวในวันนี้\n\nกรุณาติดต่อครูที่ปรึกษาหากมีข้อสงสัย\n\nด้วยความเคารพ\nวิทยาลัยการอาชีพปราสาท`;
                     break;
                 case 'monthly_report':
-                    contentField.value = `เรียน ผู้ปกครองของนักเรียน
-
-รายงานสรุปการเข้าแถวประจำเดือนพฤษภาคม 2568
-
-จำนวนวันเข้าแถว: 15 วัน
-จำนวนวันขาด: 5 วัน
-อัตราการเข้าแถว: 75%
-สถานะ: เสี่ยงไม่ผ่านกิจกรรม
-
-กรุณาติดต่อครูที่ปรึกษาเพื่อหาแนวทางแก้ไขต่อไป
-
-ด้วยความเคารพ
-วิทยาลัยการอาชีพปราสาท`;
+                    contentField.value = `เรียน ผู้ปกครองของ ${studentName}\n\nรายงานสรุปการเข้าแถวประจำเดือนพฤษภาคม 2568\n\nจำนวนวันเข้าแถว: 15 วัน\nจำนวนวันขาด: 5 วัน\nอัตราการเข้าแถว: 75%\nสถานะ: เสี่ยงไม่ผ่านกิจกรรม\n\nกรุณาติดต่อครูที่ปรึกษาเพื่อหาแนวทางแก้ไขต่อไป\n\nด้วยความเคารพ\nวิทยาลัยการอาชีพปราสาท`;
                     break;
                 case 'custom':
                     contentField.value = '';
@@ -1093,20 +2216,49 @@ include_once 'templates/header.php';
 
         // ฟังก์ชันส่งข้อความแจ้งเตือน
         function sendNotification() {
-            const template = document.getElementById('notification-template').value;
-            const content = document.getElementById('notification-content').value;
+            const templateSelect = document.getElementById('notification-template');
+            const contentField = document.getElementById('notification-content');
             
-            // ในระบบจริง ควรส่ง AJAX ไปยัง backend เพื่อส่งข้อความแจ้งเตือน
-            alert(`กำลังส่งข้อความแจ้งเตือนไปยังผู้ปกครองของนักเรียนรหัส ${currentStudentId} โดยใช้เทมเพลต ${template}`);
+            const template = templateSelect.value;
+            const content = contentField.value;
             
-            // ปิด modal
-            closeNotificationModal();
+            if (!content.trim()) {
+                alert('กรุณากรอกข้อความแจ้งเตือน');
+                return;
+            }
+            
+            showLoading();
+            
+            // จำลองการส่ง API request
+            setTimeout(() => {
+                hideLoading();
+                
+                // ปิด modal
+                document.getElementById('notificationModal').style.display = 'none';
+                
+                // แสดงข้อความสำเร็จ
+                alert(`ส่งข้อความแจ้งเตือนไปยังผู้ปกครองนักเรียนรหัส ${currentStudentId} เรียบร้อยแล้ว`);
+            }, 800);
+        }
+
+        // ฟังก์ชันยืนยันการส่งแจ้งเตือนไปยังนักเรียนทั้งหมดที่เสี่ยง
+        function confirmNotifyAllRiskStudents() {
+            if (confirm('คุณต้องการส่งข้อความแจ้งเตือนไปยังผู้ปกครองของนักเรียนที่เสี่ยงตกกิจกรรมทั้งหมดหรือไม่?')) {
+                notifyAllRiskStudents();
+            }
         }
 
         // ฟังก์ชันส่งการแจ้งเตือนไปยังผู้ปกครองทั้งหมด
         function notifyAllRiskStudents() {
-            // ในระบบจริง ควรมี modal ให้ยืนยันการส่งแจ้งเตือนทั้งหมด
-            alert('กำลังส่งข้อความแจ้งเตือนไปยังผู้ปกครองของนักเรียนที่เสี่ยงตกกิจกรรมทั้งหมด');
+            showLoading();
+            
+            // จำลองการส่ง API request
+            setTimeout(() => {
+                hideLoading();
+                
+                // แสดงข้อความสำเร็จ
+                alert('ส่งข้อความแจ้งเตือนไปยังผู้ปกครองของนักเรียนที่เสี่ยงตกกิจกรรมทั้งหมดเรียบร้อยแล้ว');
+            }, 1200);
         }
 
         // ฟังก์ชันดูประวัติการเข้าแถวทั้งหมด
@@ -1115,24 +2267,59 @@ include_once 'templates/header.php';
             window.location.href = `student_history.php?id=${studentId}`;
         }
 
-        // ปิด modal เมื่อคลิกนอกกรอบ
-        window.onclick = function(event) {
-            const studentModal = document.getElementById('studentDetailModal');
-            const notificationModal = document.getElementById('notificationModal');
+        // ฟังก์ชันสร้างปฏิทินรายวัน
+        function createCalendarView() {
+            const calendarView = document.getElementById('calendarView');
+            if (!calendarView) return;
             
-            if (event.target === studentModal) {
-                studentModal.style.display = 'none';
-            }
+            // ล้างปฏิทินเดิม
+            calendarView.innerHTML = '';
             
-            if (event.target === notificationModal) {
-                notificationModal.style.display = 'none';
+            // สร้างวันที่จำลอง
+            const currentDate = new Date();
+            const daysInMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
+            
+            for (let i = 1; i <= daysInMonth; i++) {
+                const dayDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), i);
+                const isWeekend = dayDate.getDay() === 0 || dayDate.getDay() === 6;
+                const isToday = i === currentDate.getDate();
+                
+                // สร้างข้อมูลจำลอง
+                let attendanceRate = '-';
+                if (!isWeekend) {
+                    if (i <= currentDate.getDate()) {
+                        attendanceRate = Math.floor(90 + Math.random() * 8) + '%';
+                    }
+                }
+                
+                // สร้าง DOM element
+                const dayElement = document.createElement('div');
+                dayElement.className = `calendar-day${isWeekend ? ' weekend' : ''}${isToday ? ' today' : ''}`;
+                
+                dayElement.innerHTML = `
+                    <div class="calendar-date">${i}</div>
+                    <div class="calendar-stats">${attendanceRate}</div>
+                `;
+                
+                calendarView.appendChild(dayElement);
             }
-        };
+        }
+
+        // ฟังก์ชันแสดง/ซ่อนเมนูบนมือถือ
+        function toggleMobileMenu() {
+            const sidebar = document.querySelector('.sidebar');
+            sidebar.classList.toggle('active');
+        }
+
+        // ฟังก์ชันแสดง loading
+        function showLoading() {
+            document.getElementById('loadingOverlay').style.display = 'flex';
+        }
+
+        // ฟังก์ชันซ่อน loading
+        function hideLoading() {
+            document.getElementById('loadingOverlay').style.display = 'none';
+        }
     </script>
 </body>
 </html>
-
-<?php
-// โหลด footer
-include_once 'templates/footer.php';
-?>

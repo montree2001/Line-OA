@@ -1,850 +1,980 @@
 /**
- * reports.js - แก้ไขการทำงานของแผงค้นหาและกรองข้อมูล
+ * reports.js - Interactive functionality for reports dashboard
+ * 
+ * Part of the system "น้องสัตบรรณ - ดูแลผู้เรียน"
+ * วิทยาลัยการอาชีพปราสาท
  */
 
-// ตัวจัดการรายงาน
-const ReportManager = {
-    // การอ้างอิงกราฟ
-    charts: {
-        yearlyTrend: null,
-        absenceReasons: null,
-        classComparison: null,
-        studentMonthly: null
-    },
-    
-    // สถานะตัวกรองปัจจุบัน
-    filters: {
-        reportType: 'monthly',
-        department: '',
-        period: 'current',
-        classLevel: '',
-        classRoom: '',
-        startDate: '',
-        endDate: '',
-        studentSearch: ''
-    },
-    
-    // เริ่มต้นตัวจัดการรายงาน
-    init() {
-        console.log('เริ่มต้น ReportManager...');
-        this.setupEventListeners();
-        this.initializeFilters();
-        this.initializeCharts();
-        this.setupResponsiveLayout();
-    },
-    
-    // กำหนด Event Listeners
-    setupEventListeners() {
-        console.log('กำหนด Event Listeners...');
-        
-        // ตัวกรอง
-        const reportTypeElem = document.getElementById('reportType');
-        if (reportTypeElem) {
-            reportTypeElem.addEventListener('change', this.handleReportTypeChange.bind(this));
-        } else {
-            console.warn('ไม่พบอิลิเมนต์ reportType');
-        }
-        
-        const reportPeriodElem = document.getElementById('reportPeriod');
-        if (reportPeriodElem) {
-            reportPeriodElem.addEventListener('change', this.handlePeriodChange.bind(this));
-        } else {
-            console.warn('ไม่พบอิลิเมนต์ reportPeriod');
-        }
-        
-        const departmentFilterElem = document.getElementById('departmentFilter');
-        if (departmentFilterElem) {
-            departmentFilterElem.addEventListener('change', this.handleDepartmentChange.bind(this));
-        }
-        
-        const classLevelElem = document.getElementById('classLevel');
-        if (classLevelElem) {
-            classLevelElem.addEventListener('change', this.handleClassLevelChange.bind(this));
-        }
-        
-        // ปุ่มสร้างรายงาน
-        const filterButtonElem = document.querySelector('.filter-button');
-        if (filterButtonElem) {
-            filterButtonElem.addEventListener('click', this.generateReport.bind(this));
-        } else {
-            console.warn('ไม่พบปุ่มกรองข้อมูล');
-        }
-        
-        // ปุ่มดูรายละเอียดนักเรียน
-        document.querySelectorAll('.table-action-btn.primary').forEach(btn => {
-            btn.addEventListener('click', e => {
-                const studentId = e.currentTarget.getAttribute('data-student-id') || 
-                                 e.currentTarget.closest('tr')?.getAttribute('data-student-id');
-                if (studentId) {
-                    this.viewStudentDetails(parseInt(studentId));
-                }
-            });
-        });
-        
-        // ตรวจจับการปรับขนาดหน้าจอ
-        window.addEventListener('resize', this.handleResize.bind(this));
-    },
-    
-    // ตั้งค่าเริ่มต้นตัวกรอง
-    initializeFilters() {
-        console.log('ตั้งค่าเริ่มต้นตัวกรอง...');
-        
-        // ตั้งค่า period จากการเลือกเริ่มต้น
-        const periodElem = document.getElementById('reportPeriod');
-        if (periodElem) {
-            this.filters.period = periodElem.value;
-            this.handlePeriodChange({ target: periodElem });
-        }
-        
-        // ตั้งค่า report type จากการเลือกเริ่มต้น
-        const reportTypeElem = document.getElementById('reportType');
-        if (reportTypeElem) {
-            this.filters.reportType = reportTypeElem.value;
-            this.handleReportTypeChange({ target: reportTypeElem });
-        }
-        
-        // แก้ไขปัญหาการไม่แสดงผลแผงกรองข้อมูล
-        this.fixFilterDisplayIssues();
-    },
-    
-    // แก้ไขปัญหาการไม่แสดงผลแผงกรองข้อมูล
-    fixFilterDisplayIssues() {
-        // ตรวจสอบว่าแผงกรองแสดงผลอยู่หรือไม่
-        const filterContainer = document.querySelector('.filter-container');
-        if (filterContainer) {
-            // ตรวจสอบค่า display
-            const displayStyle = window.getComputedStyle(filterContainer).display;
-            if (displayStyle === 'none') {
-                console.log('แก้ไขปัญหาแผงกรองไม่แสดงผล');
-                filterContainer.style.display = 'flex';
-            }
-            
-            // ตรวจสอบความโปร่งใส
-            filterContainer.style.opacity = '1';
-            filterContainer.style.visibility = 'visible';
-        } else {
-            console.warn('ไม่พบ filter-container');
-        }
-        
-        // ตรวจสอบตัวกรองย่อยทุกตัว
-        document.querySelectorAll('.filter-group').forEach(group => {
-            group.style.display = 'block';
-        });
-        
-        // ตรวจสอบการแสดงผลของช่วงวันที่
-        this.updateDateRangeDisplay();
-    },
-    
-    // เริ่มต้นกราฟทั้งหมด
-    initializeCharts() {
-        console.log('เริ่มต้นกราฟ...');
-        
-        // ตรวจสอบว่า Chart.js ถูกโหลดแล้วหรือไม่
-        if (typeof Chart !== 'undefined') {
-            this.createYearlyTrendChart();
-            this.createAbsenceReasonsPieChart();
-            this.createClassComparisonChart();
-        } else {
-            console.warn('Chart.js ไม่ได้ถูกโหลด รอการโหลด...');
-            // รอให้ Chart.js โหลดเสร็จ
-            window.addEventListener('load', () => {
-                setTimeout(() => {
-                    if (typeof Chart !== 'undefined') {
-                        this.createYearlyTrendChart();
-                        this.createAbsenceReasonsPieChart();
-                        this.createClassComparisonChart();
-                    } else {
-                        console.error('ไม่พบ Chart.js หลังจากรอ');
-                    }
-                }, 1000);
-            });
-        }
-    },
-    
-    // ตั้งค่าสำหรับหน้าจอแบบ responsive
-    setupResponsiveLayout() {
-        this.handleResize();
-    },
-    
-    // จัดการกับการปรับขนาดหน้าจอ
-    handleResize() {
-        // ปรับขนาดกราฟตามขนาดหน้าจอ
-        const chartContainers = document.querySelectorAll('.chart-container');
-        chartContainers.forEach(container => {
-            if (window.innerWidth <= 576) {
-                container.style.height = '250px';
-            } else {
-                container.style.height = '300px';
-            }
-        });
-        
-        // ปรับการแสดงผลบนมือถือ
-        if (window.innerWidth <= 768) {
-            document.querySelectorAll('.monthly-summary-item').forEach(item => {
-                item.style.minWidth = '100%';
-            });
-            
-            document.querySelectorAll('.filter-group').forEach(group => {
-                group.style.minWidth = '100%';
-                group.style.maxWidth = '100%';
-            });
-        }
-        
-        // อัพเดทกราฟตามขนาดใหม่
-        Object.values(this.charts).forEach(chart => {
-            if (chart) {
-                try {
-                    chart.resize();
-                } catch (e) {
-                    // บางครั้ง Chart.js อาจจะไม่มีเมธอด resize
-                    console.warn('ไม่สามารถปรับขนาดกราฟได้', e);
-                }
-            }
-        });
-    },
-    
-    // จัดการกับการเปลี่ยนประเภทรายงาน
-    handleReportTypeChange(e) {
-        if (!e || !e.target) return;
-        
-        const reportType = e.target.value;
-        console.log(`เปลี่ยนประเภทรายงานเป็น: ${reportType}`);
-        this.filters.reportType = reportType;
-        
-        // แสดง/ซ่อนตัวกรองนักเรียน
-        const studentFilters = document.querySelectorAll('.student-filter');
-        studentFilters.forEach(filter => {
-            filter.style.display = reportType === 'student' ? 'block' : 'none';
-        });
-        
-        // ปรับตัวกรองอื่นๆ ตามประเภทรายงาน
-        const classFilters = document.querySelectorAll('.class-filter');
-        classFilters.forEach(filter => {
-            filter.style.display = reportType === 'class' ? 'block' : 'flex';
-        });
-        
-        // ปรับตัวเลือกช่วงเวลาตามประเภทรายงาน
-        const periodElem = document.getElementById('reportPeriod');
-        if (periodElem) {
-            if (reportType === 'daily') {
-                periodElem.innerHTML = `
-                    <option value="today">วันนี้</option>
-                    <option value="yesterday">เมื่อวาน</option>
-                    <option value="custom">กำหนดเอง</option>
-                `;
-                periodElem.value = 'today';
-            } else if (reportType === 'weekly') {
-                periodElem.innerHTML = `
-                    <option value="current">สัปดาห์นี้</option>
-                    <option value="prev">สัปดาห์ที่แล้ว</option>
-                    <option value="custom">กำหนดเอง</option>
-                `;
-                periodElem.value = 'current';
-            } else {
-                periodElem.innerHTML = `
-                    <option value="current">เดือนปัจจุบัน</option>
-                    <option value="prev">เดือนที่แล้ว</option>
-                    <option value="last3">3 เดือนย้อนหลัง</option>
-                    <option value="semester">ภาคเรียนปัจจุบัน</option>
-                    <option value="custom">กำหนดเอง</option>
-                `;
-                periodElem.value = 'current';
-            }
-            
-            this.filters.period = periodElem.value;
-            this.handlePeriodChange({ target: periodElem });
-        }
-    },
-    
-    // จัดการกับการเปลี่ยนช่วงเวลา
-    handlePeriodChange(e) {
-        if (!e || !e.target) return;
-        
-        const period = e.target.value;
-        console.log(`เปลี่ยนช่วงเวลาเป็น: ${period}`);
-        this.filters.period = period;
-        
-        this.updateDateRangeDisplay();
-    },
-    
-    // อัพเดทการแสดงผลช่วงวันที่
-    updateDateRangeDisplay() {
-        const dateRanges = document.querySelectorAll('.date-range');
-        const shouldShowDateRange = this.filters.period === 'custom';
-        
-        dateRanges.forEach(range => {
-            // แทนที่จะใช้ display: none ซึ่งอาจมีปัญหา
-            if (shouldShowDateRange) {
-                range.classList.remove('truly-hidden');
-                range.style.visibility = 'visible';
-                range.style.height = 'auto';
-                range.style.opacity = '1';
-            } else {
-                range.classList.add('truly-hidden');
-                range.style.visibility = 'hidden';
-                range.style.height = '0';
-                range.style.opacity = '0';
-            }
-        });
-    },
-    
-    // จัดการกับการเปลี่ยนแผนก
-    handleDepartmentChange(e) {
-        if (!e || !e.target) return;
-        
-        const departmentId = e.target.value;
-        console.log(`เปลี่ยนแผนกเป็น: ${departmentId}`);
-        this.filters.department = departmentId;
-        
-        // อัพเดทตัวเลือกระดับชั้น
-        this.updateClassLevelOptions(departmentId);
-    },
-    
-    // อัพเดทตัวเลือกระดับชั้นตามแผนก
-    updateClassLevelOptions(departmentId) {
-        const classLevelElem = document.getElementById('classLevel');
-        if (!classLevelElem) return;
-        
-        // ถ้ามีการเลือกแผนก ให้ดึงข้อมูลระดับชั้นที่เกี่ยวข้อง
-        if (departmentId) {
-            // ในกรณีจริง ควรส่ง AJAX request ไปดึงข้อมูล
-            console.log(`กำลังดึงระดับชั้นสำหรับแผนก ${departmentId}`);
-            
-            // ตัวอย่างข้อมูล (ในระบบจริงควรดึงจาก API)
-            const levels = ['ปวช.1', 'ปวช.2', 'ปวช.3', 'ปวส.1', 'ปวส.2'];
-            
-            // อัพเดทตัวเลือก
-            classLevelElem.innerHTML = '<option value="">ทุกระดับชั้น</option>';
-            levels.forEach(level => {
-                const option = document.createElement('option');
-                option.value = level;
-                option.textContent = level;
-                classLevelElem.appendChild(option);
-            });
-        } else {
-            // ถ้าไม่เลือกแผนก แสดงทุกระดับชั้น
-            classLevelElem.innerHTML = '<option value="">ทุกระดับชั้น</option>';
-            const levels = ['ปวช.1', 'ปวช.2', 'ปวช.3', 'ปวส.1', 'ปวส.2'];
-            levels.forEach(level => {
-                const option = document.createElement('option');
-                option.value = level;
-                option.textContent = level;
-                classLevelElem.appendChild(option);
-            });
-        }
-        
-        // รีเซ็ตค่าระดับชั้นและกลุ่ม
-        classLevelElem.value = '';
-        this.filters.classLevel = '';
-        this.handleClassLevelChange({ target: classLevelElem });
-    },
-    
-    // จัดการกับการเปลี่ยนระดับชั้น
-    handleClassLevelChange(e) {
-        if (!e || !e.target) return;
-        
-        const classLevel = e.target.value;
-        console.log(`เปลี่ยนระดับชั้นเป็น: ${classLevel}`);
-        this.filters.classLevel = classLevel;
-        
-        // อัพเดทตัวเลือกห้องเรียน
-        this.updateClassRoomOptions(classLevel);
-    },
-    
-    // อัพเดทตัวเลือกห้องเรียนตามระดับชั้น
-    updateClassRoomOptions(classLevel) {
-        const classRoomElem = document.getElementById('classRoom');
-        if (!classRoomElem) return;
-        
-        // ถ้ามีการเลือกระดับชั้น ให้ดึงข้อมูลห้องที่เกี่ยวข้อง
-        if (classLevel) {
-            // ในกรณีจริง ควรส่ง AJAX request ไปดึงข้อมูล
-            console.log(`กำลังดึงห้องเรียนสำหรับระดับชั้น ${classLevel}`);
-            
-            // อัพเดทตัวเลือก
-            classRoomElem.innerHTML = '<option value="">ทุกห้อง</option>';
-            
-            // ตัวอย่างข้อมูล (ในระบบจริงควรดึงจาก API)
-            for (let i = 1; i <= 5; i++) {
-                const option = document.createElement('option');
-                option.value = i.toString();
-                option.textContent = i.toString();
-                classRoomElem.appendChild(option);
-            }
-        } else {
-            // ถ้าไม่เลือกระดับชั้น ล้างตัวเลือกห้อง
-            classRoomElem.innerHTML = '<option value="">ทุกห้อง</option>';
-        }
-        
-        // รีเซ็ตค่าห้อง
-        classRoomElem.value = '';
-        this.filters.classRoom = '';
-    },
-    
-    // สร้างรายงานด้วยตัวกรองปัจจุบัน
-    generateReport() {
-        console.log('กำลังสร้างรายงาน...');
-        
-        // เก็บค่าตัวกรองทั้งหมด
-        this.filters.reportType = document.getElementById('reportType').value;
-        this.filters.department = document.getElementById('departmentFilter').value;
-        this.filters.period = document.getElementById('reportPeriod').value;
-        this.filters.classLevel = document.getElementById('classLevel').value;
-        this.filters.classRoom = document.getElementById('classRoom').value;
-        
-        if (this.filters.period === 'custom') {
-            this.filters.startDate = document.getElementById('startDate').value;
-            this.filters.endDate = document.getElementById('endDate').value;
-            
-            // ตรวจสอบวันที่
-            if (!this.filters.startDate || !this.filters.endDate) {
-                alert('กรุณาระบุวันที่เริ่มต้นและวันที่สิ้นสุด');
-                return;
-            }
-            
-            // ตรวจสอบว่าวันที่เริ่มต้นอยู่ก่อนวันที่สิ้นสุด
-            if (new Date(this.filters.startDate) > new Date(this.filters.endDate)) {
-                alert('วันที่เริ่มต้นต้องอยู่ก่อนวันที่สิ้นสุด');
-                return;
-            }
-        }
-        
-        if (this.filters.reportType === 'student') {
-            this.filters.studentSearch = document.getElementById('studentSearch').value;
-            if (!this.filters.studentSearch) {
-                alert('กรุณาระบุรหัสหรือชื่อนักเรียน');
-                return;
-            }
-        }
-        
-        // แสดงข้อความกำลังโหลด
-        this.showLoadingOverlay();
-        
-        // ในกรณีจริง ควรส่ง AJAX request ไปดึงข้อมูล
-        console.log('กำลังสร้างรายงานด้วยตัวกรอง:', this.filters);
-        
-        // จำลองการเรียก API
-        setTimeout(() => {
-            // ซ่อนข้อความกำลังโหลด
-            this.hideLoadingOverlay();
-            
-            // รีเฟรชหน้าเพื่อแสดงข้อมูลใหม่ (ในระบบจริงควรอัพเดท DOM แทน)
-            alert('สร้างรายงานเรียบร้อยแล้ว');
-            window.location.reload();
-        }, 1500);
-    },
-    
-    // แสดงข้อมูลนักเรียนโดยละเอียด
-    viewStudentDetails(studentId) {
-        console.log(`กำลังดูข้อมูลของนักเรียนรหัส: ${studentId}`);
-        
-        // ในกรณีจริง ควรส่ง AJAX request ไปดึงข้อมูล
-        // สำหรับตัวอย่าง ใช้ข้อมูลสมมติ
-        
-        // เตรียมข้อมูลนักเรียนตัวอย่าง
-        const studentData = {
-            id: studentId,
-            name: 'นายธนกฤต สุขใจ',
-            code: '16478',
-            className: 'ปวช.1/1 เลขที่ 12',
-            attendanceRate: 68.5,
-            presentDays: 15,
-            absentDays: 7,
-            totalDays: 22,
-            attendanceHistory: [
-                { date: '16/03/2568', status: 'มา', statusClass: 'success', time: '08:02', remark: '-' },
-                { date: '15/03/2568', status: 'มา', statusClass: 'success', time: '08:05', remark: '-' },
-                { date: '14/03/2568', status: 'ขาด', statusClass: 'danger', time: '-', remark: 'ไม่มาโรงเรียน' },
-                { date: '13/03/2568', status: 'มาสาย', statusClass: 'warning', time: '08:32', remark: 'รถติด' },
-                { date: '12/03/2568', status: 'มา', statusClass: 'success', time: '08:10', remark: '-' }
-            ],
-            notificationHistory: [
-                { date: '16/03/2568', type: 'แจ้งเตือนความเสี่ยง', sender: 'จารุวรรณ บุญมี', status: 'ส่งสำเร็จ', statusClass: 'success' },
-                { date: '01/03/2568', type: 'แจ้งเตือนปกติ', sender: 'อ.ประสิทธิ์ ดีเลิศ', status: 'ส่งสำเร็จ', statusClass: 'success' },
-                { date: '15/02/2568', type: 'แจ้งเตือนปกติ', sender: 'อ.ประสิทธิ์ ดีเลิศ', status: 'ส่งสำเร็จ', statusClass: 'success' }
-            ],
-            monthlyTrend: {
-                labels: ['ม.ค.', 'ก.พ.', 'มี.ค.'],
-                rates: [68, 70, 68.5]
-            }
-        };
-        
-        // แสดงข้อมูลในโมดัล (ในกรณีจริงควรเรียกฟังก์ชันเฉพาะ)
-        alert(`แสดงข้อมูลนักเรียน: ${studentData.name} (รหัส ${studentData.code})\nอัตราการเข้าแถว: ${studentData.attendanceRate}%`);
-    },
-    
-    // แสดงโอเวอร์เลย์กำลังโหลด
-    showLoadingOverlay() {
-        let overlay = document.getElementById('loadingOverlay');
-        if (!overlay) {
-            overlay = document.createElement('div');
-            overlay.id = 'loadingOverlay';
-            overlay.innerHTML = `
-                <div class="loading-spinner">
-                    <span class="material-icons spin">refresh</span>
-                    <span>กำลังโหลดข้อมูล...</span>
-                </div>
-            `;
-            
-            // เพิ่มสไตล์สำหรับโอเวอร์เลย์
-            const style = document.createElement('style');
-            style.textContent = `
-                #loadingOverlay {
-                    position: fixed;
-                    top: 0;
-                    left: 0;
-                    width: 100%;
-                    height: 100%;
-                    background-color: rgba(255, 255, 255, 0.8);
-                    display: flex;
-                    justify-content: center;
-                    align-items: center;
-                    z-index: 2000;
-                    backdrop-filter: blur(3px);
-                }
-                .loading-spinner {
-                    display: flex;
-                    flex-direction: column;
-                    align-items: center;
-                    gap: 10px;
-                    background-color: white;
-                    padding: 20px;
-                    border-radius: 10px;
-                    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-                }
-                .spin {
-                    animation: spin 1.5s linear infinite;
-                    font-size: 36px;
-                    color: #1976d2;
-                }
-                @keyframes spin {
-                    0% { transform: rotate(0deg); }
-                    100% { transform: rotate(360deg); }
-                }
-            `;
-            document.head.appendChild(style);
-            document.body.appendChild(overlay);
-        } else {
-            overlay.style.display = 'flex';
-        }
-    },
-    
-    // ซ่อนโอเวอร์เลย์กำลังโหลด
-    hideLoadingOverlay() {
-        const overlay = document.getElementById('loadingOverlay');
-        if (overlay) {
-            overlay.style.display = 'none';
-        }
-    },
-    
-    // สร้างกราฟแนวโน้มรายปี
-    createYearlyTrendChart() {
-        const ctx = document.getElementById('yearlyAttendanceChart');
-        if (!ctx) {
-            console.warn('ไม่พบอิลิเมนต์ yearlyAttendanceChart');
-            return;
-        }
-        
-        // ถ้ามีกราฟเดิมให้ทำลายก่อน
-        if (this.charts.yearlyTrend) {
-            this.charts.yearlyTrend.destroy();
-        }
-        
-        // พยายามดึงข้อมูลจาก window object (ถ้าตั้งไว้ใน PHP)
-        let data = [];
-        let labels = [];
-        
-        if (window.yearlyTrendsData) {
-            labels = window.yearlyTrendsData.map(item => item.month);
-            data = window.yearlyTrendsData.map(item => item.rate);
-        } else {
-            // ใช้ข้อมูลตัวอย่างถ้าไม่มีข้อมูลจริง
-            labels = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.'];
-            data = [95, 94, 92, 91, 93, 94, 90, 89, 92, 100];
-        }
-        
-        // สร้างกราฟ
-        this.charts.yearlyTrend = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'อัตราการเข้าแถว (%)',
-                    data: data,
-                    backgroundColor: 'rgba(25, 118, 210, 0.1)',
-                    borderColor: 'rgba(25, 118, 210, 1)',
-                    borderWidth: 2,
-                    pointBackgroundColor: 'rgba(25, 118, 210, 1)',
-                    pointRadius: 4,
-                    tension: 0.4,
-                    fill: true
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    y: {
-                        beginAtZero: false,
-                        min: Math.max(0, Math.min(...data) - 10),
-                        max: 100,
-                        ticks: {
-                            callback: function(value) {
-                                return value + '%';
-                            }
-                        },
-                        grid: {
-                            color: 'rgba(0, 0, 0, 0.05)'
-                        }
-                    },
-                    x: {
-                        grid: {
-                            display: false
-                        }
-                    }
-                },
-                plugins: {
-                    legend: {
-                        display: false
-                    },
-                    tooltip: {
-                        backgroundColor: 'rgba(0, 0, 0, 0.7)',
-                        titleFont: {
-                            size: 14
-                        },
-                        bodyFont: {
-                            size: 13
-                        },
-                        padding: 10,
-                        caretSize: 6,
-                        displayColors: false,
-                        callbacks: {
-                            label: function(context) {
-                                return `อัตราการเข้าแถว: ${context.parsed.y.toFixed(1)}%`;
-                            }
-                        }
-                    }
-                }
-            }
-        });
-    },
-    
-    // สร้างกราฟวงกลมแสดงสาเหตุการขาด
-    createAbsenceReasonsPieChart() {
-        const ctx = document.getElementById('absenceReasonsChart');
-        if (!ctx) {
-            console.warn('ไม่พบอิลิเมนต์ absenceReasonsChart');
-            return;
-        }
-        
-        // ถ้ามีกราฟเดิมให้ทำลายก่อน
-        if (this.charts.absenceReasons) {
-            this.charts.absenceReasons.destroy();
-        }
-        
-        // พยายามดึงข้อมูลจาก window object (ถ้าตั้งไว้ใน PHP)
-        let data = [];
-        let labels = [];
-        let colors = [];
-        
-        if (window.absenceReasonsData) {
-            labels = window.absenceReasonsData.map(item => item.reason);
-            data = window.absenceReasonsData.map(item => item.percent);
-            colors = window.absenceReasonsData.map(item => item.color || getRandomColor());
-        } else {
-            // ใช้ข้อมูลตัวอย่างถ้าไม่มีข้อมูลจริง
-            labels = ['ป่วย', 'ธุระส่วนตัว', 'มาสาย', 'ไม่ทราบสาเหตุ'];
-            data = [42, 28, 15, 15];
-            colors = [
-                'rgba(33, 150, 243, 0.8)',
-                'rgba(255, 152, 0, 0.8)',
-                'rgba(156, 39, 176, 0.8)',
-                'rgba(244, 67, 54, 0.8)'
-            ];
-        }
-        
-        // สร้างกราฟ
-        this.charts.absenceReasons = new Chart(ctx, {
-            type: 'doughnut',
-            data: {
-                labels: labels,
-                datasets: [{
-                    data: data,
-                    backgroundColor: colors,
-                    borderWidth: 0,
-                    hoverOffset: 10
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                cutout: '60%',
-                plugins: {
-                    legend: {
-                        position: 'bottom',
-                        labels: {
-                            padding: 15,
-                            usePointStyle: true,
-                            font: {
-                                size: 12
-                            }
-                        }
-                    },
-                    tooltip: {
-                        backgroundColor: 'rgba(0, 0, 0, 0.7)',
-                        titleFont: {
-                            size: 14
-                        },
-                        bodyFont: {
-                            size: 13
-                        },
-                        padding: 10,
-                        callbacks: {
-                            label: function(context) {
-                                const value = context.parsed;
-                                return `${context.label}: ${value}%`;
-                            }
-                        }
-                    }
-                }
-            }
-        });
-    },
-    
-    // สร้างกราฟเปรียบเทียบอัตราการเข้าแถวตามชั้นเรียน
-    createClassComparisonChart() {
-        const ctx = document.getElementById('classComparisonBarChart');
-        if (!ctx) {
-            console.warn('ไม่พบอิลิเมนต์ classComparisonBarChart');
-            return;
-        }
-        
-        // ถ้ามีกราฟเดิมให้ทำลายก่อน
-        if (this.charts.classComparison) {
-            this.charts.classComparison.destroy();
-        }
-        
-        // พยายามดึงข้อมูลจาก window object (ถ้าตั้งไว้ใน PHP)
-        let data = [];
-        let labels = [];
-        let colors = [];
-        
-        if (window.classRatesData && window.classRatesData.length) {
-            labels = window.classRatesData.map(item => item.class_name);
-            data = window.classRatesData.map(item => parseFloat(item.attendance_rate));
-            
-            // กำหนดสีตามค่า
-            colors = data.map(rate => {
-                if (rate >= 90) return 'rgba(76, 175, 80, 0.8)';
-                if (rate >= 80) return 'rgba(255, 152, 0, 0.8)';
-                return 'rgba(244, 67, 54, 0.8)';
-            });
-        } else {
-            // ใช้ข้อมูลตัวอย่างถ้าไม่มีข้อมูลจริง
-            labels = ['ปวช.1/1', 'ปวช.1/2', 'ปวช.2/1', 'ปวช.2/2', 'ปวช.3/1', 'ปวส.1/1', 'ปวส.2/1'];
-            data = [92, 90, 88, 94, 89, 82, 93];
-            
-            // กำหนดสีตามค่า
-            colors = data.map(rate => {
-                if (rate >= 90) return 'rgba(76, 175, 80, 0.8)';
-                if (rate >= 80) return 'rgba(255, 152, 0, 0.8)';
-                return 'rgba(244, 67, 54, 0.8)';
-            });
-        }
-        
-        // สร้างกราฟ
-        this.charts.classComparison = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'อัตราการเข้าแถว (%)',
-                    data: data,
-                    backgroundColor: colors,
-                    borderWidth: 0,
-                    borderRadius: 4,
-                    maxBarThickness: 50
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    y: {
-                        beginAtZero: false,
-                        min: Math.max(0, Math.min(...data) - 10),
-                        max: 100,
-                        ticks: {
-                            callback: function(value) {
-                                return value + '%';
-                            }
-                        },
-                        grid: {
-                            color: 'rgba(0, 0, 0, 0.05)'
-                        }
-                    },
-                    x: {
-                        grid: {
-                            display: false
-                        }
-                    }
-                },
-                plugins: {
-                    legend: {
-                        display: false
-                    },
-                    tooltip: {
-                        backgroundColor: 'rgba(0, 0, 0, 0.7)',
-                        titleFont: {
-                            size: 14
-                        },
-                        bodyFont: {
-                            size: 13
-                        },
-                        padding: 10,
-                        callbacks: {
-                            label: function(context) {
-                                return `อัตราการเข้าแถว: ${context.parsed.y.toFixed(1)}%`;
-                            }
-                        }
-                    }
-                }
-            }
-        });
-    }
-};
+// Charts references
+let attendanceLineChart;
+let attendancePieChart;
+let currentStudentId;
+let currentPeriod = 'week'; // Default period
 
-// ฟังก์ชันสร้างสีสุ่ม
-function getRandomColor() {
-    const letters = '0123456789ABCDEF';
-    let color = 'rgba(';
-    for (let i = 0; i < 3; i++) {
-        color += Math.floor(Math.random() * 256) + ',';
-    }
-    color += '0.8)';
-    return color;
+// เมื่อโหลดหน้าเสร็จ
+document.addEventListener('DOMContentLoaded', function() {
+    // สร้างกราฟและแผนภูมิ
+    initializeCharts();
+    
+    // ตั้งค่า Event Listeners
+    setupEventListeners();
+    
+    // สร้างปฏิทินรายวัน (สำหรับมุมมองรายวัน)
+    createCalendarView();
+});
+
+// ฟังก์ชันสร้างกราฟเส้นแสดงอัตราการเข้าแถว
+function initializeLineChart() {
+    const ctx = document.getElementById('attendanceLineChart').getContext('2d');
+    
+    // เตรียมข้อมูลสำหรับกราฟ
+    const labels = weeklyTrendsData.map(item => item.date);
+    const data = weeklyTrendsData.map(item => item.attendance_rate);
+    
+    // กำหนดสีสำหรับวันหยุดสุดสัปดาห์
+    const pointBackgroundColors = weeklyTrendsData.map(item => 
+        item.is_weekend ? 'rgba(200, 200, 200, 0.5)' : 'rgb(40, 167, 69)'
+    );
+    
+    const pointBorderColors = weeklyTrendsData.map(item => 
+        item.is_weekend ? 'rgba(200, 200, 200, 0.8)' : 'rgb(40, 167, 69)'
+    );
+    
+    attendanceLineChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'อัตราการเข้าแถว (%)',
+                data: data,
+                backgroundColor: 'rgba(40, 167, 69, 0.1)',
+                borderColor: 'rgb(40, 167, 69)',
+                borderWidth: 2,
+                tension: 0.4,
+                fill: true,
+                pointBackgroundColor: pointBackgroundColors,
+                pointBorderColor: pointBorderColors,
+                pointRadius: 5,
+                pointHoverRadius: 7
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: false,
+                    min: Math.max(0, Math.min(...data.filter(val => val > 0)) - 10),
+                    max: 100,
+                    ticks: {
+                        callback: function(value) {
+                            return value + '%';
+                        }
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const dataIndex = context.dataIndex;
+                            const isWeekend = weeklyTrendsData[dataIndex]?.is_weekend;
+                            
+                            if (isWeekend) {
+                                return ['วันหยุดสุดสัปดาห์', `อัตราการเข้าแถว: ${context.parsed.y}%`];
+                            }
+                            return `อัตราการเข้าแถว: ${context.parsed.y}%`;
+                        }
+                    }
+                }
+            }
+        }
+    });
 }
 
-// เมื่อ DOM โหลดเสร็จ
-document.addEventListener('DOMContentLoaded', () => {
-    console.log('DOM loaded, initializing ReportManager...');
+// ฟังก์ชันสร้างกราฟวงกลมแสดงสาเหตุการขาดแถว
+function initializePieChart() {
+    const ctx = document.getElementById('attendancePieChart').getContext('2d');
     
-    // เริ่มต้นตัวจัดการรายงาน
-    ReportManager.init();
+    // เตรียมข้อมูลสำหรับกราฟ
+    const labels = absenceReasonsData.map(item => item.reason);
+    const data = absenceReasonsData.map(item => item.percent);
+    const colors = absenceReasonsData.map(item => item.color);
     
-    // เพิ่ม listeners ที่อาจไม่ได้ถูกจัดการใน init
-    document.querySelector('[onclick="refreshYearlyChart()"]')?.addEventListener('click', () => {
-        ReportManager.createYearlyTrendChart();
+    attendancePieChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: data,
+                backgroundColor: colors,
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return `${context.label}: ${context.parsed}%`;
+                        }
+                    }
+                }
+            },
+            cutout: '65%',
+            animation: {
+                animateRotate: true,
+                animateScale: true
+            }
+        }
+    });
+}
+
+// ฟังก์ชันสร้างกราฟและแผนภูมิทั้งหมด
+function initializeCharts() {
+    initializeLineChart();
+    initializePieChart();
+}
+
+// ฟังก์ชันตั้งค่า Event Listeners
+function setupEventListeners() {
+    // ปุ่มแท็บกราฟเส้น
+    document.querySelectorAll('.chart-actions .chart-tab').forEach(tab => {
+        tab.addEventListener('click', function() {
+            // เอาคลาส active ออกจากทุกแท็บ
+            document.querySelectorAll('.chart-actions .chart-tab').forEach(t => t.classList.remove('active'));
+            // เพิ่มคลาส active ให้กับแท็บที่คลิก
+            this.classList.add('active');
+            
+            // เปลี่ยนข้อมูลกราฟตามช่วงเวลาที่เลือก
+            const period = this.getAttribute('data-period');
+            updateAttendanceChart(period);
+        });
     });
     
-    document.querySelector('[onclick="downloadYearlyChart()"]')?.addEventListener('click', () => {
-        alert('กำลังดาวน์โหลดกราฟแนวโน้มการเข้าแถวตลอดปีการศึกษา');
+    // ปุ่มแท็บตารางอันดับชั้นเรียน
+    document.querySelectorAll('.card-actions .chart-tab').forEach(tab => {
+        tab.addEventListener('click', function() {
+            // เอาคลาส active ออกจากทุกแท็บ
+            document.querySelectorAll('.card-actions .chart-tab').forEach(t => t.classList.remove('active'));
+            // เพิ่มคลาส active ให้กับแท็บที่คลิก
+            this.classList.add('active');
+            
+            // กรองข้อมูลตารางตามระดับชั้นที่เลือก
+            const level = this.getAttribute('data-level');
+            filterClassTable(level);
+        });
     });
     
-    document.querySelector('[onclick="downloadReport()"]')?.addEventListener('click', () => {
-        alert('กำลังดาวน์โหลดรายงานสรุปการเข้าแถว');
+    // ช่องค้นหานักเรียน
+    const studentSearch = document.getElementById('student-search');
+    if (studentSearch) {
+        studentSearch.addEventListener('input', function() {
+            filterStudentTable(this.value);
+        });
+    }
+    
+    // ตัวเลือกช่วงเวลา
+    const periodSelector = document.getElementById('period-selector');
+    if (periodSelector) {
+        periodSelector.addEventListener('change', changePeriod);
+    }
+    
+    // ตัวเลือกแผนก
+    const departmentSelector = document.getElementById('department-selector');
+    if (departmentSelector) {
+        departmentSelector.addEventListener('change', changeDepartment);
+    }
+    
+    // ปุ่มดาวน์โหลดรายงาน
+    const downloadButton = document.getElementById('downloadReportBtn');
+    if (downloadButton) {
+        downloadButton.addEventListener('click', downloadReport);
+    }
+    
+    // ปุ่มพิมพ์รายงาน
+    const printButton = document.getElementById('printReportBtn');
+    if (printButton) {
+        printButton.addEventListener('click', printReport);
+    }
+    
+    // ปุ่มแจ้งเตือนทั้งหมด
+    const notifyAllButton = document.getElementById('notifyAllBtn');
+    if (notifyAllButton) {
+        notifyAllButton.addEventListener('click', confirmNotifyAllRiskStudents);
+    }
+    
+    // ปุ่มดูรายละเอียดนักเรียน
+    document.querySelectorAll('.action-button.view, .student-link').forEach(button => {
+        button.addEventListener('click', function(e) {
+            e.preventDefault();
+            const studentId = this.getAttribute('data-student-id');
+            viewStudentDetail(studentId);
+        });
     });
     
-    // แก้ไขปัญหาที่อาจเกิดขึ้นจากการโหลดสคริปต์
-    setTimeout(() => ReportManager.fixFilterDisplayIssues(), 500);
-});
+    // ปุ่มส่งข้อความแจ้งเตือน
+    document.querySelectorAll('.action-button.message').forEach(button => {
+        button.addEventListener('click', function() {
+            const studentId = this.getAttribute('data-student-id');
+            notifyParent(studentId);
+        });
+    });
+    
+    // ปุ่มปิด Modal รายละเอียดนักเรียน
+    const closeStudentModal = document.getElementById('closeStudentModal');
+    if (closeStudentModal) {
+        closeStudentModal.addEventListener('click', function() {
+            document.getElementById('studentDetailModal').style.display = 'none';
+        });
+    }
+    
+    // ปุ่มปิด Modal การแจ้งเตือน
+    const closeNotificationModal = document.getElementById('closeNotificationModal');
+    if (closeNotificationModal) {
+        closeNotificationModal.addEventListener('click', function() {
+            document.getElementById('notificationModal').style.display = 'none';
+        });
+    }
+    
+    // ปุ่มยกเลิกการแจ้งเตือน
+    const cancelNotification = document.getElementById('cancelNotification');
+    if (cancelNotification) {
+        cancelNotification.addEventListener('click', function() {
+            document.getElementById('notificationModal').style.display = 'none';
+        });
+    }
+    
+    // ปุ่มส่งข้อความแจ้งเตือน
+    const sendNotificationBtn = document.getElementById('sendNotification');
+    if (sendNotificationBtn) {
+        sendNotificationBtn.addEventListener('click', sendNotification);
+    }
+    
+    // เลือกเทมเพลตข้อความ
+    const notificationTemplate = document.getElementById('notification-template');
+    if (notificationTemplate) {
+        notificationTemplate.addEventListener('change', updateNotificationContent);
+    }
+    
+    // ปุ่มปิด Modal เลือกช่วงวันที่
+    const closeDateRangeModal = document.getElementById('closeDateRangeModal');
+    if (closeDateRangeModal) {
+        closeDateRangeModal.addEventListener('click', function() {
+            document.getElementById('dateRangeModal').style.display = 'none';
+        });
+    }
+    
+    // ปุ่มยกเลิกการเลือกช่วงวันที่
+    const cancelDateRange = document.getElementById('cancelDateRange');
+    if (cancelDateRange) {
+        cancelDateRange.addEventListener('click', function() {
+            document.getElementById('dateRangeModal').style.display = 'none';
+        });
+    }
+    
+    // ปุ่มตกลงเลือกช่วงวันที่
+    const applyDateRange = document.getElementById('applyDateRange');
+    if (applyDateRange) {
+        applyDateRange.addEventListener('click', applyDateRange);
+    }
+    
+    // ปิด Modal เมื่อคลิกพื้นหลัง
+    window.onclick = function(event) {
+        if (event.target.classList.contains('modal')) {
+            event.target.style.display = 'none';
+        }
+    };
+}
+
+// ฟังก์ชันอัปเดตกราฟเส้นตามช่วงเวลาที่เลือก
+function updateAttendanceChart(period) {
+    if (period === currentPeriod) return;
+    currentPeriod = period;
+    
+    showLoading();
+    
+    // ในระบบจริง ควรใช้ AJAX เพื่อดึงข้อมูลจากเซิร์ฟเวอร์
+    // api/reports.php?action=chart_data&period=week|month|semester
+    
+    // จำลองการดึงข้อมูลโดยใช้ setTimeout
+    setTimeout(() => {
+        let labels = [];
+        let data = [];
+        let colors = [];
+        
+        switch (period) {
+            case 'week':
+                // ใช้ข้อมูลที่มีอยู่แล้ว
+                labels = weeklyTrendsData.map(item => item.date);
+                data = weeklyTrendsData.map(item => item.attendance_rate);
+                colors = weeklyTrendsData.map(item => 
+                    item.is_weekend ? 'rgba(200, 200, 200, 0.5)' : 'rgb(40, 167, 69)'
+                );
+                break;
+                
+            case 'month':
+                // สร้างข้อมูลจำลองสำหรับเดือน
+                const daysInMonth = 30;
+                labels = Array.from({length: daysInMonth}, (_, i) => `${i+1}`);
+                data = Array.from({length: daysInMonth}, () => Math.floor(85 + Math.random() * 10));
+                colors = Array(daysInMonth).fill('rgb(40, 167, 69)');
+                break;
+                
+            case 'semester':
+                // สร้างข้อมูลจำลองสำหรับภาคเรียน
+                labels = ['พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.'];
+                data = [94.5, 93.8, 92.5, 93.2, 94.1, 94.8];
+                colors = Array(6).fill('rgb(40, 167, 69)');
+                break;
+        }
+        
+        // อัปเดตข้อมูลกราฟ
+        if (attendanceLineChart) {
+            attendanceLineChart.data.labels = labels;
+            attendanceLineChart.data.datasets[0].data = data;
+            attendanceLineChart.data.datasets[0].pointBackgroundColor = colors;
+            attendanceLineChart.data.datasets[0].pointBorderColor = colors;
+            
+            // อัปเดตสเกล Y เพื่อให้แสดงผลได้สวยงาม
+            const minValue = Math.min(...data.filter(val => val > 0));
+            attendanceLineChart.options.scales.y.min = Math.max(0, minValue - 10);
+            
+            attendanceLineChart.update();
+        }
+        
+        hideLoading();
+    }, 800);
+}
+
+// ฟังก์ชันกรองตารางชั้นเรียนตามระดับ
+function filterClassTable(level) {
+    const rows = document.querySelectorAll('.class-rank-table tbody tr');
+    
+    rows.forEach(row => {
+        if (level === 'all' || row.getAttribute('data-level') === level) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+}
+
+// ฟังก์ชันกรองตารางนักเรียนจากการค้นหา
+function filterStudentTable(searchText) {
+    const rows = document.querySelectorAll('#risk-students-table tbody tr');
+    const searchLower = searchText.toLowerCase();
+    
+    rows.forEach(row => {
+        // ข้ามแถวที่เป็นข้อความ "ไม่พบข้อมูล"
+        if (!row.getAttribute('data-student-id')) return;
+        
+        const studentName = row.querySelector('.student-detail a')?.textContent.toLowerCase() || '';
+        const studentCode = row.querySelector('.student-detail p')?.textContent.toLowerCase() || '';
+        
+        if (studentName.includes(searchLower) || studentCode.includes(searchLower) || searchText === '') {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+}
+
+// ฟังก์ชันเปลี่ยนช่วงเวลาการแสดงผล
+function changePeriod() {
+    const periodSelector = document.getElementById('period-selector');
+    const period = periodSelector.value;
+    
+    // แสดงหรือซ่อนปฏิทินรายวัน
+    const dailyAttendanceCard = document.getElementById('dailyAttendanceCard');
+    if (dailyAttendanceCard) {
+        dailyAttendanceCard.style.display = period === 'day' ? 'block' : 'none';
+    }
+    
+    // ถ้าเป็นกำหนดเอง ให้แสดง modal เลือกวันที่
+    if (period === 'custom') {
+        showDateRangeSelector();
+        return;
+    }
+    
+    showLoading();
+    
+    // ในระบบจริง ควรส่ง AJAX ไปดึงข้อมูลตามช่วงเวลา
+    // api/reports.php?action=overview&period=day|week|month|semester
+    
+    setTimeout(() => {
+        hideLoading();
+        
+        // แสดงข้อความว่าเปลี่ยนช่วงเวลาแล้ว
+        let periodText = '';
+        switch (period) {
+            case 'day': periodText = 'วันนี้'; break;
+            case 'week': periodText = 'สัปดาห์นี้'; break;
+            case 'month': periodText = 'เดือนนี้'; break;
+            case 'semester': periodText = `ภาคเรียนที่ ${academicYearData.semester}/${academicYearData.thai_year}`; break;
+        }
+        
+        // ทำงานเพิ่มเติม เช่น อัปเดตกราฟ อัปเดตตาราง ฯลฯ
+        
+        alert(`เปลี่ยนการแสดงผลเป็นช่วง: ${periodText} เรียบร้อยแล้ว`);
+    }, 800);
+}
+
+// ฟังก์ชันเปลี่ยนแผนกที่แสดง
+function changeDepartment() {
+    const departmentSelector = document.getElementById('department-selector');
+    const departmentId = departmentSelector.value;
+    
+    showLoading();
+    
+    // ในระบบจริง ควรส่ง AJAX ไปดึงข้อมูลตามแผนก
+    // api/reports.php?action=overview&department_id=1,2,3,...
+    
+    setTimeout(() => {
+        hideLoading();
+        
+        const departmentText = departmentSelector.options[departmentSelector.selectedIndex].text;
+        alert(`เปลี่ยนการแสดงผลเป็นแผนก: ${departmentText} เรียบร้อยแล้ว`);
+        
+        // ทำงานเพิ่มเติม เช่น อัปเดตกราฟ อัปเดตตาราง ฯลฯ
+    }, 800);
+}
+
+// แสดง modal เลือกช่วงวันที่
+function showDateRangeSelector() {
+    // ตั้งค่าวันที่เริ่มต้นเป็นวันแรกของเดือนปัจจุบัน
+    const startDate = document.getElementById('start-date');
+    const endDate = document.getElementById('end-date');
+    
+    const today = new Date();
+    const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    
+    startDate.valueAsDate = firstDayOfMonth;
+    endDate.valueAsDate = today;
+    
+    // แสดง Modal
+    document.getElementById('dateRangeModal').style.display = 'block';
+}
+
+// ประมวลผลช่วงวันที่ที่เลือก
+function applyDateRange() {
+    const startDate = document.getElementById('start-date').value;
+    const endDate = document.getElementById('end-date').value;
+    
+    if (!startDate || !endDate) {
+        alert('กรุณาเลือกวันที่เริ่มต้นและวันที่สิ้นสุด');
+        return;
+    }
+    
+    if (new Date(startDate) > new Date(endDate)) {
+        alert('วันที่เริ่มต้นต้องมาก่อนวันที่สิ้นสุด');
+        return;
+    }
+    
+    // ปิด Modal
+    document.getElementById('dateRangeModal').style.display = 'none';
+    
+    showLoading();
+    
+    // ในระบบจริง ควรส่ง AJAX ไปดึงข้อมูลตามช่วงวันที่
+    // api/reports.php?action=custom_period&start_date=...&end_date=...
+    
+    setTimeout(() => {
+        hideLoading();
+        
+        // แสดงช่วงวันที่ที่เลือก
+        const formatDate = (dateStr) => {
+            const d = new Date(dateStr);
+            return d.toLocaleDateString('th-TH', {year: 'numeric', month: 'long', day: 'numeric'});
+        };
+        
+        alert(`เปลี่ยนการแสดงผลเป็นช่วงวันที่ ${formatDate(startDate)} ถึง ${formatDate(endDate)} เรียบร้อยแล้ว`);
+        
+        // เปลี่ยนตัวเลือกใน dropdown เป็น 'custom'
+        const periodSelector = document.getElementById('period-selector');
+        periodSelector.value = 'custom';
+    }, 800);
+}
+
+// ฟังก์ชันดาวน์โหลดรายงาน
+function downloadReport() {
+    const periodSelector = document.getElementById('period-selector');
+    const departmentSelector = document.getElementById('department-selector');
+    
+    const period = periodSelector.value;
+    const departmentId = departmentSelector.value;
+    
+    showLoading();
+    
+    // ในระบบจริง ควรเปิดหน้าต่าง popup หรือส่งคำขอไปยังเซิร์ฟเวอร์
+    // window.open(`api/download_report.php?period=${period}&department_id=${departmentId}`, '_blank');
+    
+    setTimeout(() => {
+        hideLoading();
+        
+        let periodText = '';
+        switch (period) {
+            case 'day': periodText = 'วันนี้'; break;
+            case 'week': periodText = 'สัปดาห์นี้'; break;
+            case 'month': periodText = 'เดือนนี้'; break;
+            case 'semester': periodText = `ภาคเรียนที่ ${academicYearData.semester}/${academicYearData.thai_year}`; break;
+            case 'custom': periodText = 'ช่วงวันที่ที่กำหนด'; break;
+        }
+        
+        const departmentText = departmentSelector.options[departmentSelector.selectedIndex].text;
+        
+        alert(`เริ่มดาวน์โหลดรายงานสำหรับช่วง: ${periodText} แผนก: ${departmentText}`);
+    }, 1000);
+}
+
+// ฟังก์ชันพิมพ์รายงาน
+function printReport() {
+    window.print();
+}
+
+// ฟังก์ชันดูรายละเอียดนักเรียน
+function viewStudentDetail(studentId) {
+    currentStudentId = studentId;
+    
+    // แสดง modal
+    document.getElementById('studentDetailModal').style.display = 'block';
+    
+    // ตั้งค่า loading state
+    document.getElementById('student-detail-content').innerHTML = '<div class="loading">กำลังโหลดข้อมูล...</div>';
+    
+    // ในระบบจริง ควรใช้ AJAX เพื่อดึงข้อมูลนักเรียนจากเซิร์ฟเวอร์
+    // fetch(`api/reports.php?action=student_details&student_id=${studentId}`)
+    
+    // จำลองการดึงข้อมูลโดยใช้ setTimeout
+    setTimeout(() => {
+        // สมมติว่าได้รับข้อมูลจาก server
+        let studentData;
+        
+        // ค้นหาข้อมูลนักเรียนจาก DOM (ในระบบจริงควรดึงจาก AJAX)
+        const studentRow = document.querySelector(`#risk-students-table tr[data-student-id="${studentId}"]`);
+        if (studentRow) {
+            const nameElement = studentRow.querySelector('.student-detail a');
+            const codeElement = studentRow.querySelector('.student-detail p');
+            const classElement = studentRow.querySelector('td:nth-child(2)');
+            const rateElement = studentRow.querySelector('.attendance-rate');
+            const advisorElement = studentRow.querySelector('td:nth-child(3)');
+            
+            studentData = {
+                id: studentId,
+                name: nameElement.textContent.trim(),
+                code: codeElement.textContent.replace('รหัส: ', '').trim(),
+                class: classElement.textContent.trim(),
+                advisorName: advisorElement.textContent.trim(),
+                attendanceRate: parseFloat(rateElement.textContent),
+                attendance: [
+                    { date: '6 พ.ค. 2568', status: 'มา', statusClass: 'success', time: '07:45', remarks: '-' },
+                    { date: '7 พ.ค. 2568', status: 'มา', statusClass: 'success', time: '07:50', remarks: '-' },
+                    { date: '8 พ.ค. 2568', status: 'ขาด', statusClass: 'danger', time: '-', remarks: 'ไม่มาโรงเรียน' },
+                    { date: '9 พ.ค. 2568', status: 'มาสาย', statusClass: 'warning', time: '08:32', remarks: 'รถติด' },
+                    { date: '10 พ.ค. 2568', status: 'มา', statusClass: 'success', time: '07:40', remarks: '-' },
+                    { date: '11 พ.ค. 2568', status: 'ลา', statusClass: 'info', time: '-', remarks: 'ป่วย' },
+                    { date: '12 พ.ค. 2568', status: 'มา', statusClass: 'success', time: '07:45', remarks: '-' }
+                ],
+                monthlyTrend: {
+                    labels: ['มี.ค.', 'เม.ย.', 'พ.ค.'],
+                    rates: [60, 65, studentData?.attendanceRate || 65.8]
+                },
+                notifications: [
+                    { date: '28 เม.ย. 2568', type: 'แจ้งเตือนความเสี่ยง', sender: 'อ.' + (advisorElement?.textContent || 'ที่ปรึกษา'), status: 'ส่งสำเร็จ' },
+                    { date: '15 เม.ย. 2568', type: 'แจ้งเตือนความเสี่ยง', sender: 'ฝ่ายกิจการนักเรียน', status: 'ส่งสำเร็จ' }
+                ]
+            };
+        } else {
+            // ข้อมูลตัวอย่างหากไม่พบในตาราง
+            studentData = {
+                id: studentId,
+                name: 'นักเรียนรหัส ' + studentId,
+                code: '67319010001',
+                class: 'ปวช.1/1',
+                advisorName: 'อาจารย์ที่ปรึกษา',
+                attendanceRate: 65.8,
+                attendance: [
+                    { date: '6 พ.ค. 2568', status: 'มา', statusClass: 'success', time: '07:45', remarks: '-' },
+                    { date: '7 พ.ค. 2568', status: 'ขาด', statusClass: 'danger', time: '-', remarks: 'ไม่มาโรงเรียน' },
+                    { date: '8 พ.ค. 2568', status: 'มา', statusClass: 'success', time: '07:50', remarks: '-' },
+                    { date: '9 พ.ค. 2568', status: 'มา', statusClass: 'success', time: '07:42', remarks: '-' },
+                    { date: '10 พ.ค. 2568', status: 'ขาด', statusClass: 'danger', time: '-', remarks: 'ไม่มาโรงเรียน' }
+                ],
+                monthlyTrend: {
+                    labels: ['มี.ค.', 'เม.ย.', 'พ.ค.'],
+                    rates: [60, 65, 65.8]
+                },
+                notifications: [
+                    { date: '28 เม.ย. 2568', type: 'แจ้งเตือนความเสี่ยง', sender: 'อาจารย์ที่ปรึกษา', status: 'ส่งสำเร็จ' },
+                    { date: '15 เม.ย. 2568', type: 'แจ้งเตือนความเสี่ยง', sender: 'ฝ่ายกิจการนักเรียน', status: 'ส่งสำเร็จ' }
+                ]
+            };
+        }
+        
+        // อัปเดตชื่อนักเรียนใน modal
+        document.getElementById('modal-student-name').textContent = 'ข้อมูลการเข้าแถว - ' + studentData.name;
+        
+        // กำหนดคลาสสำหรับอัตราการเข้าแถว
+        let rateClass = 'text-success';
+        let statusText = 'ปกติ';
+        if (studentData.attendanceRate < 80 && studentData.attendanceRate >= 70) {
+            rateClass = 'text-warning';
+            statusText = 'เสี่ยงตกกิจกรรม';
+        } else if (studentData.attendanceRate < 70) {
+            rateClass = 'text-danger';
+            statusText = 'ตกกิจกรรม';
+        }
+        
+        // คำนวณจำนวนวันเข้าแถวและขาดแถว
+        const presentDays = studentData.attendance.filter(day => day.status === 'มา' || day.status === 'มาสาย').length;
+        const absentDays = studentData.attendance.filter(day => day.status === 'ขาด').length;
+        const leaveDays = studentData.attendance.filter(day => day.status === 'ลา').length;
+        const totalDays = studentData.attendance.length;
+        
+        // สร้าง HTML สำหรับแสดงข้อมูล
+        let html = `
+            <div class="student-profile">
+                <div class="student-profile-header">
+                    <div class="student-profile-avatar">${studentData.name.charAt(0)}</div>
+                    <div class="student-profile-info">
+                        <h3>${studentData.name}</h3>
+                        <p>รหัสนักเรียน: ${studentData.code}</p>
+                        <p>ชั้น ${studentData.class}</p>
+                        <p>ครูที่ปรึกษา: ${studentData.advisorName}</p>
+                        <p>สถานะการเข้าแถว: <span class="${rateClass}">${statusText} (${studentData.attendanceRate}%)</span></p>
+                    </div>
+                </div>
+                
+                <div class="student-attendance-summary">
+                    <h4>สรุปการเข้าแถวประจำเดือน${academicYearData.current_month} ${academicYearData.current_year}</h4>
+                    <div class="row">
+                        <div class="col-4">
+                            <div class="attendance-stat">
+                                <div class="attendance-stat-value">${presentDays}</div>
+                                <div class="attendance-stat-label">วันที่เข้าแถว</div>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="attendance-stat">
+                                <div class="attendance-stat-value">${absentDays}</div>
+                                <div class="attendance-stat-label">วันที่ขาดแถว</div>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="attendance-stat">
+                                <div class="attendance-stat-value">${totalDays}</div>
+                                <div class="attendance-stat-label">วันทั้งหมด</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="attendance-history">
+                    <h4>ประวัติการเข้าแถวรายวัน</h4>
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>วันที่</th>
+                                    <th>สถานะ</th>
+                                    <th>เวลา</th>
+                                    <th>หมายเหตุ</th>
+                                </tr>
+                            </thead>
+                            <tbody>`;
+        
+        // เพิ่มข้อมูลประวัติการเข้าแถว
+        studentData.attendance.forEach(day => {
+            html += `
+                <tr>
+                    <td>${day.date}</td>
+                    <td><span class="status-badge ${day.statusClass}">${day.status}</span></td>
+                    <td>${day.time}</td>
+                    <td>${day.remarks}</td>
+                </tr>`;
+        });
+        
+        html += `
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <div class="attendance-chart">
+                    <h4>แนวโน้มการเข้าแถวรายเดือน</h4>
+                    <div class="chart-container" style="height: 250px;">
+                        <canvas id="studentMonthlyChart"></canvas>
+                    </div>
+                </div>
+                
+                <div class="notification-history">
+                    <h4>ประวัติการแจ้งเตือนผู้ปกครอง</h4>
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>วันที่</th>
+                                    <th>ประเภท</th>
+                                    <th>ผู้ส่ง</th>
+                                    <th>สถานะ</th>
+                                </tr>
+                            </thead>
+                            <tbody>`;
+        
+        // เพิ่มข้อมูลประวัติการแจ้งเตือน
+        studentData.notifications.forEach(notification => {
+            html += `
+                <tr>
+                    <td>${notification.date}</td>
+                    <td>${notification.type}</td>
+                    <td>${notification.sender}</td>
+                    <td><span class="status-badge success">${notification.status}</span></td>
+                </tr>`;
+        });
+        
+        html += `
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <div class="modal-actions" style="margin-top: 20px;">
+                    <button class="btn-cancel" onclick="document.getElementById('studentDetailModal').style.display='none'">ปิด</button>
+                    <button class="btn-send" onclick="notifyParent(${studentId})">
+                        <span class="material-icons">notifications</span> แจ้งเตือนผู้ปกครอง
+                    </button>
+                    <button class="btn-primary" onclick="window.location.href='student_details.php?id=${studentId}'">
+                        <span class="material-icons">visibility</span> ดูข้อมูลเพิ่มเติม
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        // อัปเดตเนื้อหาใน modal
+        document.getElementById('student-detail-content').innerHTML = html;
+        
+        // สร้างกราฟแนวโน้มรายเดือน
+        createStudentMonthlyChart(studentData.monthlyTrend);
+    }, 800);
+}
+
+// ฟังก์ชันสร้างกราฟแนวโน้มการเข้าแถวรายเดือนของนักเรียน
+function createStudentMonthlyChart(trendData) {
+    const ctx = document.getElementById('studentMonthlyChart');
+    if (!ctx) return;
+    
+    const chartColor = trendData.rates[trendData.rates.length - 1] >= 70 ? 
+        (trendData.rates[trendData.rates.length - 1] >= 80 ? '#28a745' : '#ffc107') : '#dc3545';
+    
+    const chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: trendData.labels,
+            datasets: [{
+                label: 'อัตราการเข้าแถว (%)',
+                data: trendData.rates,
+                backgroundColor: `${chartColor}20`,
+                borderColor: chartColor,
+                borderWidth: 2,
+                tension: 0.4,
+                fill: true,
+                pointBackgroundColor: chartColor,
+                pointRadius: 5
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: false,
+                    min: Math.max(0, Math.min(...trendData.rates) - 10),
+                    max: 100,
+                    ticks: {
+                        callback: function(value) {
+                            return value + '%';
+                        }
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return `อัตราการเข้าแถว: ${context.parsed.y}%`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+// ฟังก์ชันส่งการแจ้งเตือนไปยังผู้ปกครอง
+function notifyParent(studentId) {
+    currentStudentId = studentId;
+    
+    // แสดง modal แจ้งเตือน
+    document.getElementById('notificationModal').style.display = 'block';
+    
+    // ตั้งค่า template เริ่มต้น
+    updateNotificationContent();
+}
+
+// ฟังก์ชันอัปเดตเนื้อหาข้อความแจ้งเตือน
+function updateNotificationContent() {
+    const templateSelect = document.getElementById('notification-template');
+    const contentField = document.getElementById('notification-content');
+    
+    const template = templateSelect.value;
+    
+    // ข้อมูลนักเรียน (ในระบบจริงควรดึงจาก AJAX)
+    let studentName = "นักเรียน";
+    let className = "";
+    let advisorName = "";
+    
+    const studentRow = document.querySelector(`#risk-students-table tr[data-student-id="${currentStudentId}"]`);
+    if (studentRow) {
+        studentName = studentRow.querySelector('.student-detail a').textContent.trim();
+        className = studentRow.querySelector('td:nth-child(2)').textContent.trim();
+        advisorName = studentRow.querySelector('td:nth-child(3)').textContent.trim();
+    }
+    
+    // ตัวอย่างเทมเพลตข้อความ
+    switch (template) {
+        case 'risk_alert':
+            contentField.value = `เรียน ผู้ปกครองของ ${studentName}\n\nทางวิทยาลัยขอแจ้งว่า ${studentName} นักเรียนชั้น ${className} มีความเสี่ยงที่จะไม่ผ่านกิจกรรมเข้าแถว เนื่องจากปัจจุบันเข้าร่วมเพียง 70% ซึ่งต่ำกว่าเกณฑ์ที่กำหนด (80%)\n\nกรุณาติดต่อครูที่ปรึกษา ${advisorName} เพื่อหาแนวทางแก้ไขต่อไป\n\nด้วยความเคารพ\nฝ่ายกิจการนักเรียน\nวิทยาลัยการอาชีพปราสาท`;
+            break;
+        case 'absence_alert':
+            contentField.value = `เรียน ผู้ปกครองของ ${studentName}\n\nทางวิทยาลัยขอแจ้งว่า ${studentName} นักเรียนชั้น ${className} ไม่ได้เข้าร่วมกิจกรรมเข้าแถวในวันนี้\n\nกรุณาติดต่อครูที่ปรึกษา ${advisorName} หากมีข้อสงสัย\n\nด้วยความเคารพ\nฝ่ายกิจการนักเรียน\nวิทยาลัยการอาชีพปราสาท`;
+            break;
+        case 'monthly_report':
+            contentField.value = `เรียน ผู้ปกครองของ ${studentName}\n\nรายงานสรุปการเข้าแถวประจำเดือน${academicYearData.current_month} ${academicYearData.current_year}\n\nจำนวนวันเข้าแถว: 15 วัน\nจำนวนวันขาด: 5 วัน\nอัตราการเข้าแถว: 75%\nสถานะ: เสี่ยงไม่ผ่านกิจกรรม\n\nกรุณาติดต่อครูที่ปรึกษา ${advisorName} เพื่อหาแนวทางแก้ไขต่อไป\n\nด้วยความเคารพ\nฝ่ายกิจการนักเรียน\nวิทยาลัยการอาชีพปราสาท`;
+            break;
+        case 'custom':
+            contentField.value = '';
+            break;
+    }
+}
+
+// ฟังก์ชันส่งข้อความแจ้งเตือน
+function sendNotification() {
+    const templateSelect = document.getElementById('notification-template');
+    const contentField = document.getElementById('notification-content');
+    
+    const template = templateSelect.value;
+    const content = contentField.value;
+    
+    if (!content.trim()) {
+        alert('กรุณากรอกข้อความแจ้งเตือน');
+        return;
+    }
+    
+    showLoading();
+    
+    // ในระบบจริง ควรส่ง AJAX ไปยังเซิร์ฟเวอร์
+    // fetch('api/reports.php?action=send_notification', {
+    //     method: 'POST',
+    //     body: JSON.stringify({
+    //         student_id: currentStudentId,
+    //         template: template,
+    //         message: content
+    //     }),
+    //     headers: {
+    //         'Content-Type': 'application/json'
+    //     }
+    // })
+    
+    setTimeout(() => {
+        hideLoading();
+        
+        // ปิด modal
+        document.getElementById('notificationModal').style.display = 'none';
+        
+        // แสดงข้อความสำเร็จ
+        alert(`ส่งข้อความแจ้งเตือนไปยังผู้ปกครองนักเรียนรหัส ${currentStudentId} เรียบร้อยแล้ว`);
+    }, 800);
+}
+
+// ฟังก์ชันยืนยันการส่งแจ้งเตือนไปยังนักเรียนทั้งหมดที่เสี่ยง
+function confirmNotifyAllRiskStudents() {
+    if (confirm('คุณต้องการส่งข้อความแจ้งเตือนไปยังผู้ปกครองของนักเรียนที่เสี่ยงตกกิจกรรมทั้งหมดหรือไม่?')) {
+        notifyAllRiskStudents();
+    }
+}
+
+// ฟังก์ชันส่งการแจ้งเตือนไปยังผู้ปกครองทั้งหมด
+function notifyAllRiskStudents() {
+    showLoading();
+    
+    // ในระบบจริง ควรส่ง AJAX ไปยังเซิร์ฟเวอร์
+    // fetch('api/reports.php?action=notify_all_risk_students', {
+    //     method: 'POST'
+    // })
+    
+    setTimeout(() => {
+        hideLoading();
+        
+        // แสดงข้อความสำเร็จ
+        alert('ส่งข้อความแจ้งเตือนไปยังผู้ปกครองของนักเรียนที่เสี่ยงตกกิจกรรมทั้งหมดเรียบร้อยแล้ว');
+    }, 1200);
+}
+
+// ฟังก์ชันสร้างปฏิทินรายวัน
+function createCalendarView() {
+    const calendarView = document.getElementById('calendarView');
+    if (!calendarView) return;
+    
+    // ล้างปฏิทินเดิม
+    calendarView.innerHTML = '';
+    
+    // สร้างวันที่จำลอง
+    const currentDate = new Date();
+    const daysInMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
+    
+    for (let i = 1; i <= daysInMonth; i++) {
+        const dayDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), i);
+        const isWeekend = dayDate.getDay() === 0 || dayDate.getDay() === 6;
+        const isToday = i === currentDate.getDate();
+        
+        // สร้างข้อมูลจำลอง
+        let attendanceRate = '-';
+        if (!isWeekend) {
+            if (i <= currentDate.getDate()) {
+                attendanceRate = Math.floor(90 + Math.random() * 8) + '%';
+            }
+        }
+        
+        // สร้าง DOM element
+        const dayElement = document.createElement('div');
+        dayElement.className = `calendar-day${isWeekend ? ' weekend' : ''}${isToday ? ' today' : ''}`;
+        
+        dayElement.innerHTML = `
+            <div class="calendar-date">${i}</div>
+            <div class="calendar-stats">${attendanceRate}</div>
+        `;
+        
+        calendarView.appendChild(dayElement);
+    }
+}
+
+// ฟังก์ชันแสดง loading
+function showLoading() {
+    document.getElementById('loadingOverlay').style.display = 'flex';
+}
+
+// ฟังก์ชันซ่อน loading
+function hideLoading() {
+    document.getElementById('loadingOverlay').style.display = 'none';
+}
