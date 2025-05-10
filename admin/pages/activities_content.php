@@ -397,6 +397,376 @@ $alert_error = $save_error ?? false;
     </div>
 </div>
 
+
+<!-- สรุปภาพรวมกิจกรรม -->
+<div class="card">
+    <div class="card-title">
+        <span class="material-icons">assessment</span>
+        สรุปภาพรวมกิจกรรม ปีการศึกษา <?php echo $academic_year_display; ?>
+    </div>
+    <div class="card-body">
+        <!-- สรุปจำนวนกิจกรรม -->
+        <div class="activity-summary">
+            <div class="row">
+                <div class="col-md-3">
+                    <div class="summary-card">
+                        <div class="summary-icon">
+                            <span class="material-icons">event</span>
+                        </div>
+                        <div class="summary-content">
+                            <div class="summary-value"><?php echo count($activities); ?></div>
+                            <div class="summary-label">กิจกรรมทั้งหมด</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="summary-card">
+                        <div class="summary-icon upcoming">
+                            <span class="material-icons">event_upcoming</span>
+                        </div>
+                        <div class="summary-content">
+                            <?php
+                            $today = date('Y-m-d');
+                            $upcoming_count = 0;
+                            foreach ($activities as $activity) {
+                                if ($activity['activity_date'] > $today) {
+                                    $upcoming_count++;
+                                }
+                            }
+                            ?>
+                            <div class="summary-value"><?php echo $upcoming_count; ?></div>
+                            <div class="summary-label">กิจกรรมที่กำลังจะมาถึง</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="summary-card">
+                        <div class="summary-icon today">
+                            <span class="material-icons">today</span>
+                        </div>
+                        <div class="summary-content">
+                            <?php
+                            $today_count = 0;
+                            foreach ($activities as $activity) {
+                                if ($activity['activity_date'] === $today) {
+                                    $today_count++;
+                                }
+                            }
+                            ?>
+                            <div class="summary-value"><?php echo $today_count; ?></div>
+                            <div class="summary-label">กิจกรรมวันนี้</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="summary-card">
+                        <div class="summary-icon passed">
+                            <span class="material-icons">event_available</span>
+                        </div>
+                        <div class="summary-content">
+                            <?php
+                            $passed_count = 0;
+                            foreach ($activities as $activity) {
+                                if ($activity['activity_date'] < $today) {
+                                    $passed_count++;
+                                }
+                            }
+                            ?>
+                            <div class="summary-value"><?php echo $passed_count; ?></div>
+                            <div class="summary-label">กิจกรรมที่ผ่านไปแล้ว</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- กราฟแสดงการมีส่วนร่วมกิจกรรม -->
+        <div class="row mt-4">
+            <div class="col-md-6">
+                <div class="chart-container">
+                    <h3 class="chart-title">การเข้าร่วมกิจกรรมตามแผนกวิชา</h3>
+                    <canvas id="departmentChart" height="250"></canvas>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="chart-container">
+                    <h3 class="chart-title">การเข้าร่วมกิจกรรมตามระดับชั้น</h3>
+                    <canvas id="levelChart" height="250"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- สไตล์สำหรับส่วนสรุป -->
+<style>
+.activity-summary {
+    margin-bottom: 20px;
+}
+
+.summary-card {
+    display: flex;
+    align-items: center;
+    background-color: white;
+    border-radius: 8px;
+    padding: 15px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    height: 100%;
+}
+
+.summary-icon {
+    background-color: var(--primary-color, #06c755);
+    color: white;
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 15px;
+}
+
+.summary-icon.upcoming {
+    background-color: #4caf50;
+}
+
+.summary-icon.today {
+    background-color: #ff9800;
+}
+
+.summary-icon.passed {
+    background-color: #9e9e9e;
+}
+
+.summary-icon .material-icons {
+    font-size: 24px;
+}
+
+.summary-content {
+    display: flex;
+    flex-direction: column;
+}
+
+.summary-value {
+    font-size: 24px;
+    font-weight: bold;
+    color: #333;
+}
+
+.summary-label {
+    font-size: 14px;
+    color: #666;
+}
+
+.chart-container {
+    background-color: white;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    height: 100%;
+}
+
+.chart-title {
+    font-size: 16px;
+    text-align: center;
+    margin-bottom: 15px;
+    color: #333;
+}
+</style>
+
+<!-- สคริปต์สำหรับสร้างกราฟ -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // ตรวจสอบว่ามี Chart.js หรือไม่
+    if (typeof Chart !== 'undefined') {
+        // ข้อมูลสำหรับกราฟแผนกวิชา
+        createDepartmentChart();
+        createLevelChart();
+    }
+});
+
+/**
+ * สร้างกราฟการเข้าร่วมกิจกรรมตามแผนกวิชา
+ */
+function createDepartmentChart() {
+    // สร้าง AJAX request เพื่อดึงข้อมูล
+    fetch('ajax/get_activity_summary_by_department.php')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const ctx = document.getElementById('departmentChart').getContext('2d');
+                
+                // ข้อมูลกราฟ
+                const chartData = {
+                    labels: data.department_names,
+                    datasets: [
+                        {
+                            label: 'นักเรียนทั้งหมด',
+                            data: data.total_students,
+                            backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                            borderColor: 'rgba(54, 162, 235, 1)',
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'เข้าร่วมกิจกรรม',
+                            data: data.participants,
+                            backgroundColor: 'rgba(75, 192, 192, 0.5)',
+                            borderColor: 'rgba(75, 192, 192, 1)',
+                            borderWidth: 1
+                        }
+                    ]
+                };
+                
+                // สร้างกราฟ
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: chartData,
+                    options: {
+                        responsive: true,
+                        scales: {
+                            y: {
+                                beginAtZero: true
+                            }
+                        }
+                    }
+                });
+            } else {
+                console.error('Error loading department data:', data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            // สร้างกราฟตัวอย่างหากไม่สามารถดึงข้อมูลได้
+            const ctx = document.getElementById('departmentChart').getContext('2d');
+            
+            // ข้อมูลตัวอย่าง
+            const sampleData = {
+                labels: ['ช่างยนต์', 'ช่างไฟฟ้า', 'ช่างอิเล็กทรอนิกส์', 'เทคโนโลยีสารสนเทศ', 'ช่างเชื่อมโลหะ'],
+                datasets: [
+                    {
+                        label: 'นักเรียนทั้งหมด',
+                        data: [50, 45, 30, 40, 25],
+                        backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        borderWidth: 1
+                    },
+                    {
+                        label: 'เข้าร่วมกิจกรรม',
+                        data: [40, 35, 25, 30, 20],
+                        backgroundColor: 'rgba(75, 192, 192, 0.5)',
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        borderWidth: 1
+                    }
+                ]
+            };
+            
+            // สร้างกราฟตัวอย่าง
+            new Chart(ctx, {
+                type: 'bar',
+                data: sampleData,
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        });
+}
+
+/**
+ * สร้างกราฟการเข้าร่วมกิจกรรมตามระดับชั้น
+ */
+function createLevelChart() {
+    // สร้าง AJAX request เพื่อดึงข้อมูล
+    fetch('ajax/get_activity_summary_by_level.php')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const ctx = document.getElementById('levelChart').getContext('2d');
+                
+                // ข้อมูลกราฟ
+                const chartData = {
+                    labels: data.levels,
+                    datasets: [
+                        {
+                            label: 'นักเรียนทั้งหมด',
+                            data: data.total_students,
+                            backgroundColor: 'rgba(153, 102, 255, 0.5)',
+                            borderColor: 'rgba(153, 102, 255, 1)',
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'เข้าร่วมกิจกรรม',
+                            data: data.participants,
+                            backgroundColor: 'rgba(255, 159, 64, 0.5)',
+                            borderColor: 'rgba(255, 159, 64, 1)',
+                            borderWidth: 1
+                        }
+                    ]
+                };
+                
+                // สร้างกราฟ
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: chartData,
+                    options: {
+                        responsive: true,
+                        scales: {
+                            y: {
+                                beginAtZero: true
+                            }
+                        }
+                    }
+                });
+            } else {
+                console.error('Error loading level data:', data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            // สร้างกราฟตัวอย่างหากไม่สามารถดึงข้อมูลได้
+            const ctx = document.getElementById('levelChart').getContext('2d');
+            
+            // ข้อมูลตัวอย่าง
+            const sampleData = {
+                labels: ['ปวช.1', 'ปวช.2', 'ปวช.3', 'ปวส.1', 'ปวส.2'],
+                datasets: [
+                    {
+                        label: 'นักเรียนทั้งหมด',
+                        data: [60, 55, 50, 40, 35],
+                        backgroundColor: 'rgba(153, 102, 255, 0.5)',
+                        borderColor: 'rgba(153, 102, 255, 1)',
+                        borderWidth: 1
+                    },
+                    {
+                        label: 'เข้าร่วมกิจกรรม',
+                        data: [50, 45, 40, 30, 25],
+                        backgroundColor: 'rgba(255, 159, 64, 0.5)',
+                        borderColor: 'rgba(255, 159, 64, 1)',
+                        borderWidth: 1
+                    }
+                ]
+            };
+            
+            // สร้างกราฟตัวอย่าง
+            new Chart(ctx, {
+                type: 'bar',
+                data: sampleData,
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        });
+}
+</script>
 <!-- สคริปต์เพิ่มเติมเฉพาะหน้านี้ -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {

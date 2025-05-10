@@ -89,6 +89,7 @@ function openEditActivityModal(activityId) {
     const modal = document.getElementById('editActivityModal');
     const form = document.getElementById('editActivityForm');
     
+    // แสดงการโหลด
     form.innerHTML = '<div class="text-center"><div class="spinner"></div><p>กำลังโหลดข้อมูล...</p></div>';
     modal.style.display = 'flex';
     
@@ -97,7 +98,7 @@ function openEditActivityModal(activityId) {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                // คืนค่าฟอร์มเดิม (สามารถปรับปรุงได้ตามความเหมาะสม)
+                // คืนค่าฟอร์มเดิม
                 form.innerHTML = originalEditFormHTML;
                 
                 const activity = data.activity;
@@ -112,20 +113,44 @@ function openEditActivityModal(activityId) {
                 
                 // กำหนดแผนกวิชาเป้าหมาย
                 if (typeof $ !== 'undefined' && typeof $.fn.select2 !== 'undefined') {
-                    $('#edit_target_departments').val(activity.target_departments).trigger('change');
-                    $('#edit_target_levels').val(activity.target_levels).trigger('change');
+                    // Re-initialize Select2 after restoring the form HTML
+                    $('#edit_target_departments').select2({
+                        placeholder: 'เลือกแผนกวิชา',
+                        allowClear: true
+                    });
+                    
+                    $('#edit_target_levels').select2({
+                        placeholder: 'เลือกระดับชั้น',
+                        allowClear: true
+                    });
+                    
+                    // Wait a bit for Select2 to initialize
+                    setTimeout(() => {
+                        $('#edit_target_departments').val(activity.target_departments).trigger('change');
+                        $('#edit_target_levels').val(activity.target_levels).trigger('change');
+                    }, 100);
                 } else {
                     // กำหนดค่าแบบทั่วไปหากไม่มี Select2
                     const deptSelect = document.getElementById('edit_target_departments');
-                    Array.from(deptSelect.options).forEach(option => {
-                        option.selected = activity.target_departments.includes(parseInt(option.value));
-                    });
+                    if (deptSelect) {
+                        Array.from(deptSelect.options).forEach(option => {
+                            option.selected = activity.target_departments.includes(parseInt(option.value));
+                        });
+                    }
                     
                     const levelSelect = document.getElementById('edit_target_levels');
-                    Array.from(levelSelect.options).forEach(option => {
-                        option.selected = activity.target_levels.includes(option.value);
-                    });
+                    if (levelSelect) {
+                        Array.from(levelSelect.options).forEach(option => {
+                            option.selected = activity.target_levels.includes(option.value);
+                        });
+                    }
                 }
+                
+                // Log to help debug
+                console.log('Activity data:', activity);
+                console.log('Target departments:', activity.target_departments);
+                console.log('Target levels:', activity.target_levels);
+                
             } else {
                 // แสดงข้อความผิดพลาด
                 form.innerHTML = `
@@ -312,7 +337,7 @@ const originalEditFormHTML = `
         <div class="form-group">
             <label for="edit_target_departments" class="form-label">แผนกวิชาเป้าหมาย</label>
             <select id="edit_target_departments" name="target_departments[]" class="form-control" multiple>
-                <!-- จะเติมตัวเลือกจาก PHP -->
+                // Options will be populated by PHP
             </select>
             <small class="form-text text-muted">ไม่เลือก = ทุกแผนก</small>
         </div>
@@ -321,7 +346,7 @@ const originalEditFormHTML = `
         <div class="form-group">
             <label for="edit_target_levels" class="form-label">ระดับชั้นเป้าหมาย</label>
             <select id="edit_target_levels" name="target_levels[]" class="form-control" multiple>
-                <!-- จะเติมตัวเลือกจาก PHP -->
+                // Options will be populated by PHP
             </select>
             <small class="form-text text-muted">ไม่เลือก = ทุกระดับชั้น</small>
         </div>
