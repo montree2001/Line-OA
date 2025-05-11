@@ -10,6 +10,78 @@ if (isset($_GET['debug']) && $_GET['debug'] == '1'):
 </div>
 <?php endif; ?>
 
+<!-- CSS เพิ่มเติมสำหรับแสดงครูที่ปรึกษา -->
+<style>
+    /* สไตล์สำหรับข้อมูลครูที่ปรึกษาในตาราง */
+    .class-advisor-info {
+        display: flex;
+        align-items: center;
+    }
+    
+    .advisor-icon {
+        margin-right: 8px;
+        font-size: 18px;
+    }
+    
+    .advisor-name {
+        flex: 1;
+    }
+    
+    /* ปรับปรุงการแสดงรายการครูที่ปรึกษา */
+    .advisor-item {
+        display: flex;
+        align-items: center;
+        padding: 0.75rem;
+        background-color: var(--light-color);
+        border-radius: var(--border-radius);
+        margin-bottom: 0.5rem;
+        transition: all 0.2s;
+    }
+    
+    .advisor-item:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    }
+    
+    /* สไตล์ปุ่มจัดการครูที่ปรึกษา */
+    .table-action-btn.success {
+        background-color: var(--success-light);
+        color: var(--success-color);
+    }
+    
+    .table-action-btn.success:hover {
+        background-color: var(--success-color);
+        color: white;
+    }
+    
+    /* สไตล์เพิ่มเติมสำหรับสถิติและแผนภูมิ */
+    .chart-container {
+        height: 220px;
+        position: relative;
+    }
+    
+    /* ปรับปรุงการแสดงสถิติการเข้าแถว */
+    .attendance-bar-container {
+        width: 100%;
+        height: 20px;
+        background-color: #f1f1f1;
+        border-radius: 10px;
+        overflow: hidden;
+        margin-top: 5px;
+    }
+    
+    .no-advisor-message {
+        text-align: center;
+        padding: 15px;
+    }
+    
+    .no-advisor-message .material-icons {
+        font-size: 48px;
+        color: #6c757d;
+        margin-bottom: 10px;
+    }
+</style>
+
 <!-- สรุปข้อมูล Dashboard -->
 <div class="dashboard-summary row">
     <div class="col-md-3">
@@ -79,7 +151,7 @@ if (isset($_GET['debug']) && $_GET['debug'] == '1'):
                 เพิ่มชั้นเรียนใหม่
             </button>
             <?php if (isset($data['has_new_academic_year']) && $data['has_new_academic_year']): ?>
-                <button class="btn btn-warning btn-sm" onclick="showPromoteStudentsModal()">
+                <button class="btn btn-warning btn-sm" onclick="showModal('promoteStudentsModal')">
                     <span class="material-icons">upgrade</span>
                     เลื่อนชั้นนักเรียน
                 </button>
@@ -159,96 +231,101 @@ if (isset($_GET['debug']) && $_GET['debug'] == '1'):
                     </tr>
                 </thead>
                 <tbody id="classTableBody">
-                    <?php if (isset($data['classes']) && is_array($data['classes']) && !empty($data['classes'])): ?>
+                <?php if (empty($data['classes'])): ?>
+                        <tr>
+                            <td colspan="7" class="text-center">ไม่พบข้อมูลชั้นเรียน</td>
+                        </tr>
+                    <?php else: ?>
                         <?php foreach ($data['classes'] as $class): ?>
                             <tr class="class-row" 
-                                data-academic-year="<?php echo isset($class['academic_year_id']) ? $class['academic_year_id'] : ''; ?>" 
-                                data-level="<?php echo isset($class['level']) ? $class['level'] : ''; ?>" 
-                                data-department="<?php echo isset($class['department_id']) ? $class['department_id'] : ''; ?>">
-                                <td><?php echo isset($class['class_id']) ? $class['class_id'] : ''; ?></td>
+                                data-academic-year="<?php echo $class['academic_year_id']; ?>"
+                                data-level="<?php echo $class['level']; ?>"
+                                data-department="<?php echo $class['department_id']; ?>">
+                                
+                                <td><?php echo $class['class_id']; ?></td>
+                                
                                 <td>
                                     <div class="class-info">
-                                        <div class="class-avatar"><?php echo isset($class['level']) ? substr($class['level'], 0, 1) : '?'; ?></div>
+                                        <div class="class-avatar"><?php echo substr($class['level'], -2); ?></div>
                                         <div class="class-details">
-                                            <div class="class-name">
-                                                <?php 
-                                                $level = isset($class['level']) ? $class['level'] : '';
-                                                $group = isset($class['group_number']) ? $class['group_number'] : '';
-                                                $dept = isset($class['department_name']) ? $class['department_name'] : '';
-                                                echo $level . ' กลุ่ม ' . $group . ' (' . $dept . ')'; 
-                                                ?>
-                                            </div>
-                                            <div class="class-dept">
-                                                <?php 
-                                                $year = isset($class['academic_year']) ? $class['academic_year'] : 
-                                                      (isset($class['year']) ? $class['year'] : '');
-                                                $semester = isset($class['semester']) ? $class['semester'] : '';
-                                                echo $year . ($semester ? ' (ภาคเรียนที่ ' . $semester . ')' : ''); 
-                                                ?>
-                                            </div>
+                                            <div class="class-name"><?php echo $class['level']; ?> กลุ่ม <?php echo $class['group_number']; ?></div>
+                                            <div class="class-dept"><?php echo $class['department_name']; ?></div>
                                         </div>
                                     </div>
                                 </td>
-                                <td><?php echo isset($class['primary_advisor']) ? $class['primary_advisor'] : 'ไม่มีครูที่ปรึกษา'; ?></td>
-                                <td><?php echo isset($class['student_count']) ? $class['student_count'] : 0; ?> คน</td>
+                                
                                 <td>
-                                    <?php 
-                                    // คำนวณอัตราการเข้าแถว
-                                    $attendance_rate = 0;
-                                    $total_days = 0;
-                                    $present_days = isset($class['total_attendance_days']) ? $class['total_attendance_days'] : 0;
-                                    $absent_days = isset($class['total_absence_days']) ? $class['total_absence_days'] : 0;
-                                    
-                                    if ($present_days > 0 || $absent_days > 0) {
-                                        $total_days = $present_days + $absent_days;
-                                        if ($total_days > 0) {
-                                            $attendance_rate = ($present_days / $total_days) * 100;
-                                        }
-                                    }
-                                    
-                                    $bar_class = 'good';
-                                    if ($attendance_rate < 75) {
-                                        $bar_class = 'danger';
-                                    } else if ($attendance_rate < 90) {
-                                        $bar_class = 'warning';
-                                    }
-                                    ?>
-                                    
-                                    <?php if ($total_days > 0): ?>
-                                        <div class="attendance-bar-container">
-                                            <div class="attendance-bar <?php echo $bar_class; ?>" style="width: <?php echo min(100, $attendance_rate); ?>%">
-                                                <span class="attendance-rate"><?php echo number_format($attendance_rate, 1); ?>%</span>
-                                            </div>
-                                        </div>
+                                    <?php if (empty($class['advisors'])): ?>
+                                        <span class="text-muted">ไม่มีครูที่ปรึกษา</span>
                                     <?php else: ?>
-                                        <div class="text-muted">ไม่มีข้อมูล</div>
+                                        <?php foreach ($class['advisors'] as $index => $advisor): ?>
+                                            <?php if ($index > 0): ?><br><?php endif; ?>
+                                            <?php if ($advisor['is_primary']): ?>
+                                                <strong><?php echo $advisor['name']; ?></strong>
+                                                <span class="badge badge-primary">หลัก</span>
+                                            <?php else: ?>
+                                                <?php echo $advisor['name']; ?>
+                                            <?php endif; ?>
+                                        <?php endforeach; ?>
                                     <?php endif; ?>
                                 </td>
+                                
+                                <td class="text-center"><?php echo $class['student_count']; ?> คน</td>
+                                
                                 <td>
-                                    <span class="status-badge <?php echo (isset($class['is_active']) && $class['is_active']) ? 'success' : 'danger'; ?>">
-                                        <?php echo (isset($class['is_active']) && $class['is_active']) ? 'ใช้งาน' : 'ไม่ใช้งาน'; ?>
+                                    <div class="attendance-bar-container">
+                                        <div class="attendance-bar <?php 
+                                            echo $class['attendance_rate'] > 90 ? 'good' : 
+                                                ($class['attendance_rate'] > 75 ? 'warning' : 'danger'); 
+                                        ?>" style="width: <?php echo $class['attendance_rate']; ?>%">
+                                            <span class="attendance-rate"><?php echo round($class['attendance_rate']); ?>%</span>
+                                        </div>
+                                    </div>
+                                </td>
+                                
+                                <td>
+                                    <span class="status-badge <?php 
+                                        echo $class['attendance_rate'] > 90 ? 'success' : 
+                                            ($class['attendance_rate'] > 75 ? 'warning' : 'danger'); 
+                                    ?>">
+                                        <?php 
+                                            echo $class['attendance_rate'] > 90 ? 'ปกติ' : 
+                                                ($class['attendance_rate'] > 75 ? 'ต้องติดตาม' : 'เสี่ยง'); 
+                                        ?>
                                     </span>
                                 </td>
+                                
                                 <td>
                                     <div class="action-buttons">
-                                        <button class="table-action-btn primary" onclick="showClassDetails(<?php echo $class['class_id']; ?>)" title="ดูรายละเอียด">
+                                        <button class="table-action-btn primary" 
+                                                onclick="showClassDetails(<?php echo $class['class_id']; ?>)" 
+                                                title="ดูรายละเอียด">
                                             <span class="material-icons">visibility</span>
                                         </button>
-                                        <button class="table-action-btn warning" onclick="editClass(<?php echo $class['class_id']; ?>)" title="แก้ไข">
+                                        
+                                        <button class="table-action-btn warning" 
+                                                onclick="manageAdvisors(<?php echo $class['class_id']; ?>)" 
+                                                title="จัดการครูที่ปรึกษา">
+                                            <span class="material-icons">people</span>
+                                        </button>
+                                        
+                                        <button class="table-action-btn success" 
+                                                onclick="editClass(<?php echo $class['class_id']; ?>)" 
+                                                title="แก้ไข">
                                             <span class="material-icons">edit</span>
                                         </button>
-                                        <button class="table-action-btn danger" onclick="deleteClass(<?php echo $class['class_id']; ?>)" title="ลบ">
+                                        
+                                        <button class="table-action-btn danger" 
+                                                onclick="deleteClass(<?php echo $class['class_id']; ?>)" 
+                                                title="ลบ">
                                             <span class="material-icons">delete</span>
                                         </button>
                                     </div>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
-                    <?php else: ?>
-                        <tr>
-                            <td colspan="7" class="text-center">ไม่พบข้อมูลชั้นเรียน</td>
-                        </tr>
                     <?php endif; ?>
+                   
                 </tbody>
             </table>
         </div>
@@ -283,44 +360,35 @@ if (isset($_GET['debug']) && $_GET['debug'] == '1'):
                     </tr>
                 </thead>
                 <tbody id="departmentTableBody">
-                    <?php if (isset($data['departments']) && is_array($data['departments']) && !empty($data['departments'])): ?>
-                        <?php foreach ($data['departments'] as $dept): ?>
-                            <?php 
-                            // นับจำนวนชั้นเรียนและนักเรียนในแผนกนี้
-                            $class_count = 0;
-                            $student_count = 0;
-                            if (isset($data['classes']) && is_array($data['classes']) && !empty($data['classes'])) {
-                                foreach ($data['classes'] as $class) {
-                                    if (isset($class['department_id']) && isset($dept['department_id']) && 
-                                        $class['department_id'] == $dept['department_id']) {
-                                        $class_count++;
-                                        $student_count += isset($class['student_count']) ? (int)$class['student_count'] : 0;
-                                    }
-                                }
-                            }
-                            ?>
-                            <tr>
-                                <td><?php echo isset($dept['department_code']) ? $dept['department_code'] : ''; ?></td>
-                                <td><?php echo isset($dept['department_name']) ? $dept['department_name'] : ''; ?></td>
-                                <td><?php echo $class_count; ?></td>
-                                <td><?php echo $student_count; ?> คน</td>
-                                <td>
-                                    <div class="action-buttons">
-                                        <button class="table-action-btn warning" onclick="editDepartment('<?php echo $dept['department_id']; ?>')" title="แก้ไข">
-                                            <span class="material-icons">edit</span>
-                                        </button>
-                                        <button class="table-action-btn danger" onclick="deleteDepartment('<?php echo $dept['department_id']; ?>')" title="ลบ">
-                                            <span class="material-icons">delete</span>
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
-                    <?php else: ?>
-                        <tr>
-                            <td colspan="5" class="text-center">ไม่พบข้อมูลแผนกวิชา</td>
-                        </tr>
-                    <?php endif; ?>
+                <?php if (empty($data['departments'])): ?>
+        <tr>
+            <td colspan="5" class="text-center">ไม่พบข้อมูลแผนกวิชา</td>
+        </tr>
+    <?php else: ?>
+        <?php foreach ($data['departments'] as $dept): ?>
+            <tr>
+                <td><?php echo htmlspecialchars($dept['department_code'] ?? 'N/A'); ?></td>
+                <td><?php echo htmlspecialchars($dept['department_name'] ?? 'ไม่ระบุ'); ?></td>
+                <td class="text-center"><?php echo isset($dept['class_count']) ? $dept['class_count'] : 0; ?></td>
+                <td class="text-center"><?php echo isset($dept['student_count']) ? $dept['student_count'] : 0; ?></td>
+                <td>
+                    <div class="action-buttons">
+                        <button class="table-action-btn success" 
+                                onclick="editDepartment('<?php echo $dept['department_id'] ?? ''; ?>')" 
+                                title="แก้ไข">
+                            <span class="material-icons">edit</span>
+                        </button>
+                        
+                        <button class="table-action-btn danger" 
+                                onclick="deleteDepartment('<?php echo $dept['department_id'] ?? ''; ?>')" 
+                                title="ลบ">
+                            <span class="material-icons">delete</span>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        <?php endforeach; ?>
+    <?php endif; ?>
                 </tbody>
             </table>
         </div>
@@ -448,7 +516,10 @@ if (isset($_GET['debug']) && $_GET['debug'] == '1'):
                 <div class="col-md-6">
                     <div class="card">
                         <div class="card-header">
-                            <div class="card-title">ข้อมูลชั้นเรียน</div>
+                            <div class="card-title">
+                                <span class="material-icons">info</span>
+                                ข้อมูลชั้นเรียน
+                            </div>
                         </div>
                         <div class="card-body">
                             <table class="details-table">
@@ -483,14 +554,21 @@ if (isset($_GET['debug']) && $_GET['debug'] == '1'):
                 <div class="col-md-6">
                     <div class="card">
                         <div class="card-header">
-                            <div class="card-title">ครูที่ปรึกษา</div>
-                            <button class="btn btn-sm btn-primary" onclick="manageAdvisorsFromDetails()">
-                                <span class="material-icons">people</span>
-                                จัดการครูที่ปรึกษา
-                            </button>
+                            <div class="card-title">
+                                <span class="material-icons">supervisor_account</span>
+                                ครูที่ปรึกษา
+                            </div>
+                            <div class="card-actions">
+                                <button class="btn btn-primary btn-sm" onclick="manageAdvisorsFromDetails()">
+                                    <span class="material-icons">people</span>
+                                    จัดการครูที่ปรึกษา
+                                </button>
+                            </div>
                         </div>
                         <div class="card-body">
-                            <div id="advisorsList" class="advisor-items"></div>
+                            <div id="advisorsList" class="advisor-items">
+                                <!-- จะถูกเติมโดย JavaScript -->
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -500,7 +578,10 @@ if (isset($_GET['debug']) && $_GET['debug'] == '1'):
                 <div class="col-md-6">
                     <div class="card">
                         <div class="card-header">
-                            <div class="card-title">สถิติการเข้าแถว</div>
+                            <div class="card-title">
+                                <span class="material-icons">bar_chart</span>
+                                สถิติการเข้าแถว
+                            </div>
                         </div>
                         <div class="card-body">
                             <div class="chart-container">
@@ -512,7 +593,10 @@ if (isset($_GET['debug']) && $_GET['debug'] == '1'):
                 <div class="col-md-6">
                     <div class="card">
                         <div class="card-header">
-                            <div class="card-title">สถิติรายเดือน</div>
+                            <div class="card-title">
+                                <span class="material-icons">date_range</span>
+                                สถิติรายเดือน
+                            </div>
                         </div>
                         <div class="card-body">
                             <div class="chart-container">
@@ -525,7 +609,10 @@ if (isset($_GET['debug']) && $_GET['debug'] == '1'):
 
             <div class="card mt-3">
                 <div class="card-header">
-                    <div class="card-title">รายชื่อนักเรียน</div>
+                    <div class="card-title">
+                        <span class="material-icons">people</span>
+                        รายชื่อนักเรียน
+                    </div>
                     <div class="card-actions">
                         <button class="btn btn-sm btn-primary" onclick="downloadClassReport()">
                             <span class="material-icons">file_download</span>
@@ -552,6 +639,16 @@ if (isset($_GET['debug']) && $_GET['debug'] == '1'):
                     </div>
                 </div>
             </div>
+
+            <!-- เพิ่มคำแนะนำการใช้งาน -->
+            <div class="alert alert-info mt-3">
+                <div><strong>คำแนะนำการใช้งาน:</strong></div>
+                <ul>
+                    <li>จัดการครูที่ปรึกษาได้โดยคลิกที่ปุ่ม "จัดการครูที่ปรึกษา"</li>
+                    <li>สามารถกำหนดครูที่ปรึกษาหลักได้ 1 คน และครูที่ปรึกษาร่วมได้หลายคน</li>
+                    <li>ดาวน์โหลดรายงานข้อมูลชั้นเรียนได้โดยคลิกที่ปุ่ม "ดาวน์โหลดรายงาน"</li>
+                </ul>
+            </div>
         </div>
         <div class="modal-footer">
             <button type="button" class="btn btn-secondary" data-dismiss="modal">ปิด</button>
@@ -563,7 +660,10 @@ if (isset($_GET['debug']) && $_GET['debug'] == '1'):
 <div class="modal large-modal" id="advisorsModal">
     <div class="modal-content">
         <div class="modal-header">
-            <h2 class="modal-title">จัดการครูที่ปรึกษา <span id="advisorsClassTitle"></span></h2>
+            <h2 class="modal-title">
+                <span class="material-icons">people</span>
+                จัดการครูที่ปรึกษา <span id="advisorsClassTitle"></span>
+            </h2>
             <button class="modal-close" data-dismiss="modal">
                 <span class="material-icons">close</span>
             </button>
@@ -573,7 +673,10 @@ if (isset($_GET['debug']) && $_GET['debug'] == '1'):
                 <div class="col-md-5">
                     <div class="current-advisors card">
                         <div class="card-header">
-                            <div class="card-title">ครูที่ปรึกษาปัจจุบัน</div>
+                            <div class="card-title">
+                                <span class="material-icons">supervisor_account</span>
+                                ครูที่ปรึกษาปัจจุบัน
+                            </div>
                         </div>
                         <div class="card-body">
                             <div id="currentAdvisorsList" class="advisor-items scrollable">
@@ -587,7 +690,10 @@ if (isset($_GET['debug']) && $_GET['debug'] == '1'):
                         <div class="col-md-12">
                             <div class="add-advisor card">
                                 <div class="card-header">
-                                    <div class="card-title">เพิ่มครูที่ปรึกษา</div>
+                                    <div class="card-title">
+                                        <span class="material-icons">person_add</span>
+                                        เพิ่มครูที่ปรึกษา
+                                    </div>
                                 </div>
                                 <div class="card-body">
                                     <div class="form-search-box">
@@ -626,7 +732,10 @@ if (isset($_GET['debug']) && $_GET['debug'] == '1'):
                         <div class="col-md-12 mt-3">
                             <div class="advisor-changes-summary card">
                                 <div class="card-header">
-                                    <div class="card-title">สรุปการเปลี่ยนแปลง</div>
+                                    <div class="card-title">
+                                        <span class="material-icons">history</span>
+                                        สรุปการเปลี่ยนแปลง
+                                    </div>
                                 </div>
                                 <div class="card-body">
                                     <div id="changesLog" class="changes-log">
@@ -679,7 +788,10 @@ if (isset($_GET['debug']) && $_GET['debug'] == '1'):
                 <div class="col-md-5">
                     <div class="card">
                         <div class="card-header">
-                            <div class="card-title">ตั้งค่าการเลื่อนชั้น</div>
+                            <div class="card-title">
+                                <span class="material-icons">settings</span>
+                                ตั้งค่าการเลื่อนชั้น
+                            </div>
                         </div>
                         <div class="card-body">
                             <div class="form-group">
@@ -732,7 +844,10 @@ if (isset($_GET['debug']) && $_GET['debug'] == '1'):
                                 <div id="newAcademicYearForm" class="new-academic-year-form mt-3" style="display: none;">
                                     <div class="card">
                                         <div class="card-header">
-                                            <div class="card-title">เพิ่มปีการศึกษาใหม่</div>
+                                            <div class="card-title">
+                                                <span class="material-icons">add_circle</span>
+                                                เพิ่มปีการศึกษาใหม่
+                                            </div>
                                         </div>
                                         <div class="card-body">
                                             <div class="form-group">
@@ -773,7 +888,10 @@ if (isset($_GET['debug']) && $_GET['debug'] == '1'):
                 <div class="col-md-7">
                     <div class="card">
                         <div class="card-header">
-                            <div class="card-title">สรุปจำนวนนักเรียนที่จะเลื่อนชั้น</div>
+                            <div class="card-title">
+                                <span class="material-icons">stacked_bar_chart</span>
+                                สรุปจำนวนนักเรียนที่จะเลื่อนชั้น
+                            </div>
                         </div>
                         <div class="card-body">
                             <div id="promotionChart" class="chart-container">
@@ -909,6 +1027,8 @@ document.addEventListener('DOMContentLoaded', function() {
             pageLength: 10, // จำนวนแถวต่อหน้า
             initComplete: function() {
                 console.log('Class DataTable initComplete');
+                // ตรวจสอบและเพิ่มปุ่มจัดการครูที่ปรึกษาหลังจาก DataTable ถูกสร้าง
+                setTimeout(checkAndAddAdvisorManagementButtons, 500);
             }
         });
         
@@ -957,7 +1077,50 @@ document.addEventListener('DOMContentLoaded', function() {
     $('#classSearchInput').on('keyup', function() {
         filterClassesBySearch(this.value);
     });
+    
+    // ตั้งค่าค่าเริ่มต้นสำหรับโมดัลเลื่อนชั้น
+    $('#toAcademicYear').on('change', function() {
+        const selectedValue = $(this).val();
+        if (selectedValue === 'new') {
+            $('#newAcademicYearForm').show();
+        } else {
+            $('#newAcademicYearForm').hide();
+        }
+    });
 });
+
+// ฟังก์ชันเพิ่มปุ่มจัดการครูที่ปรึกษาในตาราง
+function checkAndAddAdvisorManagementButtons() {
+    // ตรวจสอบว่า DataTable ถูกสร้างเรียบร้อยแล้ว
+    if (!document.querySelector('.action-buttons')) {
+        console.log('Waiting for action buttons to be ready...');
+        setTimeout(checkAndAddAdvisorManagementButtons, 500);
+        return;
+    }
+    
+    console.log('Adding advisor management buttons...');
+    // ตรวจสอบและเพิ่มปุ่มจัดการครูที่ปรึกษาหากยังไม่มี
+    document.querySelectorAll('.action-buttons').forEach(function(actionDiv) {
+        if (!actionDiv.querySelector('button[title="จัดการครูที่ปรึกษา"]')) {
+            const detailsButton = actionDiv.querySelector('button[onclick^="showClassDetails"]');
+            if (detailsButton) {
+                const classIdMatch = detailsButton.getAttribute('onclick').match(/\d+/);
+                
+                if (classIdMatch) {
+                    const classId = classIdMatch[0];
+                    const advisorBtn = document.createElement('button');
+                    advisorBtn.className = 'table-action-btn success';
+                    advisorBtn.setAttribute('onclick', `manageAdvisors(${classId})`);
+                    advisorBtn.setAttribute('title', 'จัดการครูที่ปรึกษา');
+                    advisorBtn.innerHTML = '<span class="material-icons">people</span>';
+                    
+                    // แทรกปุ่มหลังปุ่มดูรายละเอียด
+                    actionDiv.insertBefore(advisorBtn, detailsButton.nextSibling);
+                }
+            }
+        }
+    });
+}
 
 // ฟังก์ชันกรองข้อมูลชั้นเรียน
 function filterClasses() {
@@ -982,11 +1145,96 @@ function filterClasses() {
     }
     
     table.draw();
+    
+    // แสดงการแจ้งเตือน
+    showNotification(`กรองข้อมูลสำเร็จ แสดง ${table.page.info().recordsDisplay} รายการ`, 'info');
 }
 
 // ฟังก์ชันกรองตามคำค้นหา
 function filterClassesBySearch(searchText) {
     let table = $('#classTable').DataTable();
     table.search(searchText).draw();
+}
+
+// ปรับปรุงฟังก์ชัน populateAdvisorsList ให้แสดงผลดีขึ้น
+function populateAdvisorsList(advisors) {
+    const advisorsList = document.getElementById('advisorsList');
+    if (!advisorsList) return;
+    
+    advisorsList.innerHTML = '';
+    
+    if (!advisors || advisors.length === 0) {
+        advisorsList.innerHTML = `
+            <div class="text-center py-3 no-advisor-message">
+                <span class="material-icons">person_off</span>
+                <p class="text-muted mt-2">ยังไม่มีครูที่ปรึกษา</p>
+                <button class="btn btn-primary btn-sm mt-2" onclick="manageAdvisorsFromDetails()">
+                    <span class="material-icons">add</span> เพิ่มครูที่ปรึกษา
+                </button>
+            </div>
+        `;
+        return;
+    }
+    
+    advisors.forEach(advisor => {
+        const advisorEl = document.createElement('div');
+        advisorEl.className = 'advisor-item';
+        
+        // ใช้ตัวอักษรแรกของชื่อเป็นอักษรย่อ
+        const initial = advisor.name ? advisor.name.charAt(0) : 'A';
+        
+        advisorEl.innerHTML = `
+            <div class="advisor-avatar">${initial}</div>
+            <div class="advisor-info">
+                <div>${advisor.name || 'ไม่ระบุชื่อ'} ${advisor.is_primary ? '<span class="badge badge-primary">หลัก</span>' : ''}</div>
+                <div class="advisor-position">${advisor.position || 'ครูผู้สอน'}</div>
+            </div>
+        `;
+        advisorsList.appendChild(advisorEl);
+    });
+}
+
+// ปรับปรุงฟังก์ชัน renderCurrentAdvisors ให้แสดงผลสวยงามขึ้น
+function renderCurrentAdvisors(advisors) {
+    const currentAdvisorsList = document.getElementById('currentAdvisorsList');
+    if (!currentAdvisorsList) {
+        console.error('Element #currentAdvisorsList not found');
+        return;
+    }
+    
+    currentAdvisorsList.innerHTML = '';
+    
+    if (!advisors || advisors.length === 0) {
+        currentAdvisorsList.innerHTML = `
+            <div class="text-center py-3 no-advisor-message">
+                <span class="material-icons">person_off</span>
+                <p class="text-muted mt-2">ยังไม่มีครูที่ปรึกษา</p>
+                <p class="text-muted small">กรุณาเลือกครูที่ปรึกษาจากรายการด้านขวา</p>
+            </div>
+        `;
+        return;
+    }
+    
+    advisors.forEach(advisor => {
+        const advisorEl = document.createElement('div');
+        advisorEl.className = 'advisor-item';
+        advisorEl.innerHTML = `
+            <div class="advisor-avatar">${advisor.name.charAt(0)}</div>
+            <div class="advisor-info">
+                <div>${advisor.name} ${advisor.is_primary ? '<span class="badge badge-primary">หลัก</span>' : ''}</div>
+                <div class="advisor-position">${advisor.position || 'ครูผู้สอน'}</div>
+            </div>
+            <div class="advisor-action">
+                ${!advisor.is_primary ? `
+                <button class="table-action-btn primary" onclick="setAsPrimaryAdvisor(${advisor.id})">
+                    <span class="material-icons">stars</span>
+                </button>` : ''}
+                <button class="table-action-btn danger" onclick="removeAdvisor(${advisor.id})">
+                    <span class="material-icons">delete</span>
+                </button>
+            </div>
+        `;
+        currentAdvisorsList.appendChild(advisorEl);
+    });
 }
 </script>
