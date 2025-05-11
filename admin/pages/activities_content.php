@@ -277,22 +277,28 @@ $alert_error = $save_error ?? false;
                     <div class="col-md-6">
                         <div class="form-group">
                             <label for="target_departments" class="form-label">แผนกวิชาเป้าหมาย</label>
-                            <select id="target_departments" name="target_departments[]" class="form-control" multiple>
+                            <div class="checkbox-container">
                                 <?php foreach ($departments as $department): ?>
-                                <option value="<?php echo $department['department_id']; ?>"><?php echo $department['department_name']; ?></option>
+                                <div class="form-check">
+                                    <input type="checkbox" id="dept_<?php echo $department['department_id']; ?>" name="target_departments[]" value="<?php echo $department['department_id']; ?>" class="form-check-input">
+                                    <label for="dept_<?php echo $department['department_id']; ?>" class="form-check-label"><?php echo $department['department_name']; ?></label>
+                                </div>
                                 <?php endforeach; ?>
-                            </select>
+                            </div>
                             <small class="form-text text-muted">ไม่เลือก = ทุกแผนก</small>
                         </div>
                     </div>
                     <div class="col-md-6">
                         <div class="form-group">
                             <label for="target_levels" class="form-label">ระดับชั้นเป้าหมาย</label>
-                            <select id="target_levels" name="target_levels[]" class="form-control" multiple>
+                            <div class="checkbox-container">
                                 <?php foreach ($levels as $level): ?>
-                                <option value="<?php echo $level; ?>"><?php echo $level; ?></option>
+                                <div class="form-check">
+                                    <input type="checkbox" id="level_<?php echo str_replace('.', '_', $level); ?>" name="target_levels[]" value="<?php echo $level; ?>" class="form-check-input">
+                                    <label for="level_<?php echo str_replace('.', '_', $level); ?>" class="form-check-label"><?php echo $level; ?></label>
+                                </div>
                                 <?php endforeach; ?>
-                            </select>
+                            </div>
                             <small class="form-text text-muted">ไม่เลือก = ทุกระดับชั้น</small>
                         </div>
                     </div>
@@ -362,23 +368,29 @@ $alert_error = $save_error ?? false;
                 <div class="row">
                     <div class="col-md-6">
                         <div class="form-group">
-                            <label for="edit_target_departments" class="form-label">แผนกวิชาเป้าหมาย</label>
-                            <select id="edit_target_departments" name="target_departments[]" class="form-control" multiple>
+                            <label class="form-label">แผนกวิชาเป้าหมาย</label>
+                            <div class="checkbox-container" id="edit_departments_container">
                                 <?php foreach ($departments as $department): ?>
-                                <option value="<?php echo $department['department_id']; ?>"><?php echo $department['department_name']; ?></option>
+                                <div class="form-check">
+                                    <input type="checkbox" id="edit_dept_<?php echo $department['department_id']; ?>" name="target_departments[]" value="<?php echo $department['department_id']; ?>" class="form-check-input">
+                                    <label for="edit_dept_<?php echo $department['department_id']; ?>" class="form-check-label"><?php echo $department['department_name']; ?></label>
+                                </div>
                                 <?php endforeach; ?>
-                            </select>
+                            </div>
                             <small class="form-text text-muted">ไม่เลือก = ทุกแผนก</small>
                         </div>
                     </div>
                     <div class="col-md-6">
                         <div class="form-group">
-                            <label for="edit_target_levels" class="form-label">ระดับชั้นเป้าหมาย</label>
-                            <select id="edit_target_levels" name="target_levels[]" class="form-control" multiple>
+                            <label class="form-label">ระดับชั้นเป้าหมาย</label>
+                            <div class="checkbox-container" id="edit_levels_container">
                                 <?php foreach ($levels as $level): ?>
-                                <option value="<?php echo $level; ?>"><?php echo $level; ?></option>
+                                <div class="form-check">
+                                    <input type="checkbox" id="edit_level_<?php echo str_replace('.', '_', $level); ?>" name="target_levels[]" value="<?php echo $level; ?>" class="form-check-input">
+                                    <label for="edit_level_<?php echo str_replace('.', '_', $level); ?>" class="form-check-label"><?php echo $level; ?></label>
+                                </div>
                                 <?php endforeach; ?>
-                            </select>
+                            </div>
                             <small class="form-text text-muted">ไม่เลือก = ทุกระดับชั้น</small>
                         </div>
                     </div>
@@ -612,13 +624,87 @@ $alert_error = $save_error ?? false;
     font-weight: normal;
     margin-left: 5px;
 }
+
+/* กล่องตัวเลือกแบบ checkbox */
+.checkbox-container {
+    max-height: 200px;
+    overflow-y: auto;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 10px;
+    background-color: #f9f9f9;
+}
+
+.checkbox-container .form-check {
+    margin-bottom: 8px;
+}
+
+.checkbox-container .form-check:last-child {
+    margin-bottom: 0;
+}
+
+/* ปรับปรุงรูปแบบโมดัล */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0,0,0,0.5);
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-content {
+    position: relative;
+    background-color: #fff;
+    margin: auto;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    max-width: 800px;
+    width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+/* ป้องกันการปิดโมดัลเมื่อคลิกภายนอก */
+.modal.prevent-close {
+    pointer-events: none;
+}
+
+.modal.prevent-close .modal-content {
+    pointer-events: auto;
+}
+
+@media (max-width: 768px) {
+    .modal-content {
+        width: 95%;
+        max-height: 95vh;
+    }
+    
+    .checkbox-container {
+        max-height: 150px;
+    }
+    
+    .row {
+        flex-direction: column;
+    }
+    
+    .col-md-3, .col-md-4, .col-md-6, .col-md-8 {
+        width: 100%;
+        margin-bottom: 15px;
+    }
+}
 </style>
 
 <!-- JavaScript เพื่อสนับสนุนฟังก์ชันการทำงาน -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // ซ่อนแจ้งเตือนหลังจาก 3 วินาที
-    const alerts = document.querySelectorAll('.alert');
+    const alerts = document.querySelectorAll('.alert:not(.alert-warning)');
     alerts.forEach(alert => {
         setTimeout(function() {
             alert.style.opacity = '0';
@@ -628,440 +714,26 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 3000);
     });
     
-    // ตั้งค่าวันที่เริ่มต้นเป็นวันนี้สำหรับฟอร์มเพิ่มกิจกรรม
-    const addDateInput = document.getElementById('activity_date');
-    if (addDateInput) {
-        addDateInput.value = new Date().toISOString().split('T')[0];
-    }
-    
-    // ตรวจสอบ Select2 และเริ่มต้นถ้ามี
-    if (typeof $ !== 'undefined' && typeof $.fn.select2 !== 'undefined') {
-        // เริ่มต้น Select2 สำหรับ dropdown แบบเลือกหลายรายการ
-        $('#target_departments, #edit_target_departments').select2({
-            placeholder: 'เลือกแผนกวิชา',
-            allowClear: true
-        });
-        
-        $('#target_levels, #edit_target_levels').select2({
-            placeholder: 'เลือกระดับชั้น',
-            allowClear: true
-        });
-    }
-    
-    // เพิ่ม event listener สำหรับการตรวจสอบการส่งฟอร์ม
-    const addForm = document.getElementById('addActivityForm');
-    if (addForm) {
-        addForm.addEventListener('submit', function(event) {
-            if (!validateActivityForm(this)) {
-                event.preventDefault();
+    // ป้องกันการปิดโมดัลเมื่อคลิกภายนอก
+    const modals = document.querySelectorAll('.modal');
+    modals.forEach(modal => {
+        modal.addEventListener('click', function(event) {
+            if (event.target === modal) {
+                // ไม่ให้ปิดโมดัลเมื่อคลิกพื้นหลัง
+                event.stopPropagation();
             }
         });
-    }
-    
-    const editForm = document.getElementById('editActivityForm');
-    if (editForm) {
-        editForm.addEventListener('submit', function(event) {
-            if (!validateActivityForm(this)) {
-                event.preventDefault();
-            }
-        });
-    }
-    
-    // ตัวกรองกิจกรรมเริ่มต้น - ตรวจสอบ URL พารามิเตอร์
-    initializeFilters();
-    
-    // สร้างกราฟถ้ามีไลบรารี Chart.js
-    if (typeof Chart !== 'undefined') {
-        createDepartmentChart();
-        createLevelChart();
-    }
-});
-
-/**
- * ตรวจสอบความถูกต้องของฟอร์มกิจกรรม
- */
-function validateActivityForm(form) {
-    const name = form.querySelector('[name="activity_name"]').value.trim();
-    const date = form.querySelector('[name="activity_date"]').value.trim();
-    
-    if (!name) {
-        alert('กรุณาระบุชื่อกิจกรรม');
-        return false;
-    }
-    
-    if (!date) {
-        alert('กรุณาระบุวันที่จัดกิจกรรม');
-        return false;
-    }
-    
-    return true;
-}
-
-/**
- * เปิดโมดัลเพิ่มกิจกรรม
- */
-function openAddActivityModal() {
-    // รีเซ็ตฟอร์ม
-    document.getElementById('addActivityForm').reset();
-    
-    // กำหนดวันที่เป็นวันนี้
-    document.getElementById('activity_date').value = new Date().toISOString().split('T')[0];
-    
-    // รีเซ็ต Select2 ถ้ามี
-    if (typeof $ !== 'undefined' && typeof $.fn.select2 !== 'undefined') {
-        $('#target_departments').val(null).trigger('change');
-        $('#target_levels').val(null).trigger('change');
-    }
-    
-    // เปิดโมดัล
-    document.getElementById('addActivityModal').style.display = 'flex';
-}
-
-/**
- * เปิดโมดัลแก้ไขกิจกรรม
- */
-function openEditActivityModal(activityId) {
-    // แสดงการโหลด
-    const modal = document.getElementById('editActivityModal');
-    const form = document.getElementById('editActivityForm');
-    
-    // แสดงโมดัล
-    modal.style.display = 'flex';
-    
-    // ดึงข้อมูลกิจกรรม
-    fetch(`ajax/get_activity.php?activity_id=${activityId}`)
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                const activity = data.activity;
-                
-                // กำหนดค่าให้ฟอร์ม
-                document.getElementById('edit_activity_id').value = activity.activity_id;
-                document.getElementById('edit_activity_name').value = rtrim(activity.activity_name, '/');
-                document.getElementById('edit_activity_date').value = activity.activity_date;
-                document.getElementById('edit_activity_location').value = activity.activity_location || '';
-                document.getElementById('edit_required_attendance').checked = (activity.required_attendance == 1);
-                document.getElementById('edit_activity_description').value = activity.description || '';
-                
-                // กำหนดแผนกวิชาและระดับชั้นเป้าหมาย
-                if (typeof $ !== 'undefined' && typeof $.fn.select2 !== 'undefined') {
-                    $('#edit_target_departments').val(activity.target_departments).trigger('change');
-                    $('#edit_target_levels').val(activity.target_levels).trigger('change');
-                } else {
-                    // กำหนดค่าแบบทั่วไปหากไม่มี Select2
-                    const deptSelect = document.getElementById('edit_target_departments');
-                    if (deptSelect) {
-                        Array.from(deptSelect.options).forEach(option => {
-                            option.selected = activity.target_departments.includes(parseInt(option.value));
-                        });
-                    }
-                    
-                    const levelSelect = document.getElementById('edit_target_levels');
-                    if (levelSelect) {
-                        Array.from(levelSelect.options).forEach(option => {
-                            option.selected = activity.target_levels.includes(option.value);
-                        });
-                    }
-                }
-            } else {
-                // แสดงข้อความผิดพลาด
-                alert(data.error || 'ไม่สามารถดึงข้อมูลกิจกรรมได้');
-                closeModal('editActivityModal');
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('เกิดข้อผิดพลาดในการดึงข้อมูลกิจกรรม');
-            closeModal('editActivityModal');
-        });
-}
-
-/**
- * ยืนยันการลบกิจกรรม
- */
-function confirmDeleteActivity(activityId, activityName) {
-    document.getElementById('delete_activity_id').value = activityId;
-    document.getElementById('delete_activity_name').textContent = activityName;
-    document.getElementById('deleteActivityModal').style.display = 'flex';
-}
-
-/**
- * ปิดโมดัล
- */
-function closeModal(modalId) {
-    document.getElementById(modalId).style.display = 'none';
-}
-
-/**
- * กรองรายการกิจกรรม
- */
-function filterActivities() {
-    const month = document.getElementById('filterMonth').value;
-    const status = document.getElementById('filterStatus').value;
-    const search = document.getElementById('filterSearch').value.toLowerCase();
-    
-    // บันทึกค่าลงใน URL เพื่อให้สามารถคงค่าการกรองได้เมื่อโหลดหน้าใหม่
-    const url = new URL(window.location);
-    if (month) url.searchParams.set('month', month);
-    else url.searchParams.delete('month');
-    
-    if (status) url.searchParams.set('status', status);
-    else url.searchParams.delete('status');
-    
-    if (search) url.searchParams.set('search', search);
-    else url.searchParams.delete('search');
-    
-    window.history.replaceState({}, '', url);
-    
-    // กรองรายการกิจกรรม
-    const activities = document.querySelectorAll('.activity-item');
-    let visibleCount = 0;
-    
-    activities.forEach(activity => {
-        const activityMonth = activity.dataset.month;
-        const activityStatus = activity.dataset.status;
-        const activityName = activity.dataset.name;
-        const activityId = activity.dataset.id || '';
         
-        let isVisible = true;
-        
-        if (month && activityMonth !== month) {
-            isVisible = false;
-        }
-        
-        if (status && activityStatus !== status) {
-            isVisible = false;
-        }
-        
-        // ค้นหาทั้งในชื่อและรหัสกิจกรรม
-        if (search && !activityName.includes(search) && !activityId.includes(search)) {
-            isVisible = false;
-        }
-        
-        activity.style.display = isVisible ? 'flex' : 'none';
-        
-        if (isVisible) {
-            visibleCount++;
-        }
+        // เพิ่มคลาสเพื่อป้องกันการปิดเมื่อคลิกภายนอก
+        modal.classList.add('prevent-close');
     });
     
-    // แสดงข้อความเมื่อไม่พบกิจกรรม
-    document.getElementById('no-results-message').style.display = (visibleCount === 0) ? 'block' : 'none';
-}
-
-/**
- * เริ่มต้นตัวกรองจาก URL
- */
-function initializeFilters() {
-    const url = new URL(window.location);
-    
-    // ตั้งค่าตัวกรองตาม URL
-    if (url.searchParams.has('month')) {
-        document.getElementById('filterMonth').value = url.searchParams.get('month');
-    }
-    
-    if (url.searchParams.has('status')) {
-        document.getElementById('filterStatus').value = url.searchParams.get('status');
-    }
-    
-    if (url.searchParams.has('search')) {
-        document.getElementById('filterSearch').value = url.searchParams.get('search');
-    }
-    
-    // ใช้ตัวกรองทันที
-    if (url.searchParams.has('month') || url.searchParams.has('status') || url.searchParams.has('search')) {
-        filterActivities();
-    }
-}
-
-/**
- * ฟังก์ชันตัดอักขระที่ระบุออกจากท้ายข้อความ
- */
-function rtrim(str, chars) {
-    chars = chars || '\\s';
-    str = str || '';
-    return str.replace(new RegExp('[' + chars + ']+$', 'g'), '');
-}
-
-/**
- * สร้างกราฟการเข้าร่วมกิจกรรมตามแผนกวิชา
- */
-function createDepartmentChart() {
-    // สร้าง AJAX request เพื่อดึงข้อมูล
-    fetch('ajax/get_activity_summary_by_department.php')
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                const ctx = document.getElementById('departmentChart').getContext('2d');
-                
-                // ข้อมูลกราฟ
-                const chartData = {
-                    labels: data.department_names,
-                    datasets: [
-                        {
-                            label: 'นักเรียนทั้งหมด',
-                            data: data.total_students,
-                            backgroundColor: 'rgba(54, 162, 235, 0.5)',
-                            borderColor: 'rgba(54, 162, 235, 1)',
-                            borderWidth: 1
-                        },
-                        {
-                            label: 'เข้าร่วมกิจกรรม',
-                            data: data.participants,
-                            backgroundColor: 'rgba(75, 192, 192, 0.5)',
-                            borderColor: 'rgba(75, 192, 192, 1)',
-                            borderWidth: 1
-                        }
-                    ]
-                };
-                
-                // สร้างกราฟ
-                new Chart(ctx, {
-                    type: 'bar',
-                    data: chartData,
-                    options: {
-                        responsive: true,
-                        scales: {
-                            y: {
-                                beginAtZero: true
-                            }
-                        }
-                    }
-                });
-            } else {
-                console.error('Error loading department data:', data.error);
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            // สร้างกราฟตัวอย่างหากไม่สามารถดึงข้อมูลได้
-            const ctx = document.getElementById('departmentChart').getContext('2d');
-            
-            // ข้อมูลตัวอย่าง
-            const sampleData = {
-                labels: ['ช่างยนต์', 'ช่างไฟฟ้า', 'ช่างอิเล็กทรอนิกส์', 'เทคโนโลยีสารสนเทศ', 'ช่างเชื่อมโลหะ'],
-                datasets: [
-                    {
-                        label: 'นักเรียนทั้งหมด',
-                        data: [50, 45, 30, 40, 25],
-                        backgroundColor: 'rgba(54, 162, 235, 0.5)',
-                        borderColor: 'rgba(54, 162, 235, 1)',
-                        borderWidth: 1
-                    },
-                    {
-                        label: 'เข้าร่วมกิจกรรม',
-                        data: [40, 35, 25, 30, 20],
-                        backgroundColor: 'rgba(75, 192, 192, 0.5)',
-                        borderColor: 'rgba(75, 192, 192, 1)',
-                        borderWidth: 1
-                    }
-                ]
-            };
-            
-            // สร้างกราฟตัวอย่าง
-            new Chart(ctx, {
-                type: 'bar',
-                data: sampleData,
-                options: {
-                    responsive: true,
-                    scales: {
-                        y: {
-                            beginAtZero: true
-                        }
-                    }
-                }
-            });
-        });
-}
-
-/**
- * สร้างกราฟการเข้าร่วมกิจกรรมตามระดับชั้น
- */
-function createLevelChart() {
-    // สร้าง AJAX request เพื่อดึงข้อมูล
-    fetch('ajax/get_activity_summary_by_level.php')
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                const ctx = document.getElementById('levelChart').getContext('2d');
-                
-                // ข้อมูลกราฟ
-                const chartData = {
-                    labels: data.levels,
-                    datasets: [
-                        {
-                            label: 'นักเรียนทั้งหมด',
-                            data: data.total_students,
-                            backgroundColor: 'rgba(153, 102, 255, 0.5)',
-                            borderColor: 'rgba(153, 102, 255, 1)',
-                            borderWidth: 1
-                        },
-                        {
-                            label: 'เข้าร่วมกิจกรรม',
-                            data: data.participants,
-                            backgroundColor: 'rgba(255, 159, 64, 0.5)',
-                            borderColor: 'rgba(255, 159, 64, 1)',
-                            borderWidth: 1
-                        }
-                    ]
-                };
-                
-                // สร้างกราฟ
-                new Chart(ctx, {
-                    type: 'bar',
-                    data: chartData,
-                    options: {
-                        responsive: true,
-                        scales: {
-                            y: {
-                                beginAtZero: true
-                            }
-                        }
-                    }
-                });
-            } else {
-                console.error('Error loading level data:', data.error);
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            // สร้างกราฟตัวอย่างหากไม่สามารถดึงข้อมูลได้
-            const ctx = document.getElementById('levelChart').getContext('2d');
-            
-            // ข้อมูลตัวอย่าง
-            const sampleData = {
-                labels: ['ปวช.1', 'ปวช.2', 'ปวช.3', 'ปวส.1', 'ปวส.2'],
-                datasets: [
-                    {
-                        label: 'นักเรียนทั้งหมด',
-                        data: [60, 55, 50, 40, 35],
-                        backgroundColor: 'rgba(153, 102, 255, 0.5)',
-                        borderColor: 'rgba(153, 102, 255, 1)',
-                        borderWidth: 1
-                    },
-                    {
-                        label: 'เข้าร่วมกิจกรรม',
-                        data: [50, 45, 40, 30, 25],
-                        backgroundColor: 'rgba(255, 159, 64, 0.5)',
-                        borderColor: 'rgba(255, 159, 64, 1)',
-                        borderWidth: 1
-                    }
-                ]
-            };
-            
-            // สร้างกราฟตัวอย่าง
-            new Chart(ctx, {
-                type: 'bar',
-                data: sampleData,
-                options: {
-                    responsive: true,
-                    scales: {
-                        y: {
-                            beginAtZero: true
-                        }
-                    }
-                }
-            });
-        });
-}
+    // ป้องกันการกด ESC เพื่อปิดโมดัล
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape') {
+            event.preventDefault();
+            return false;
+        }
+    });
+});
 </script>

@@ -1,12 +1,13 @@
 <?php
 /**
- * get_students_for_activity.php - ไฟล์สำหรับดึงข้อมูลนักเรียนสำหรับการบันทึกการเข้าร่วมกิจกรรม
+ * get_students_for_activity.php - ไฟล์สำหรับดึงข้อมูลนักเรียนเพื่อบันทึกการเข้าร่วมกิจกรรม
  */
 
 // เริ่ม session และตรวจสอบการเข้าถึง
 session_start();
-header('Content-Type: application/json'); // กำหนด content type เป็น JSON ทุกกรณี
+header('Content-Type: application/json');
 
+// ป้องกันการเข้าถึงโดยตรง (อาจเปิดให้ทดสอบได้โดยปิด comment)
 /* if (!isset($_SESSION['user_id']) || !in_array($_SESSION['user_role'], ['admin', 'teacher'])) {
     echo json_encode(['success' => false, 'error' => 'ไม่มีสิทธิ์เข้าถึงข้อมูล']);
     exit;
@@ -16,7 +17,7 @@ header('Content-Type: application/json'); // กำหนด content type เป
 require_once '../../config/db_config.php';
 require_once '../../db_connect.php';
 
-// รับพารามิเตอร์
+// รับพารามิเตอร์จาก GET request
 $activity_id = isset($_GET['activity_id']) ? intval($_GET['activity_id']) : 0;
 $department_id = isset($_GET['department_id']) ? intval($_GET['department_id']) : 0;
 $level = isset($_GET['level']) ? $_GET['level'] : '';
@@ -29,85 +30,75 @@ if (!$activity_id) {
     exit;
 }
 
-// ตรวจสอบว่ามีเงื่อนไขการค้นหาอย่างน้อย 1 อย่าง
-if (!$department_id && !$level && !$class_id && !$search) {
-    echo json_encode(['success' => false, 'error' => 'กรุณาระบุเงื่อนไขการค้นหา']);
-    exit;
-}
-
 try {
     // เชื่อมต่อฐานข้อมูล
     $conn = getDB();
     
-    // ดึงข้อมูลกิจกรรมเพื่อตรวจสอบกลุ่มเป้าหมาย
-    $stmt = $conn->prepare("
-        SELECT a.activity_id, a.activity_name, a.academic_year_id
-        FROM activities a
-        WHERE a.activity_id = ?
-    ");
-    $stmt->execute([$activity_id]);
-    $activity = $stmt->fetch(PDO::FETCH_ASSOC);
-    
-    if (!$activity) {
-        echo json_encode(['success' => false, 'error' => 'ไม่พบข้อมูลกิจกรรม']);
-        exit;
-    }
-    
-    // ดึงแผนกวิชาเป้าหมาย
-    $stmt = $conn->prepare("
-        SELECT department_id
-        FROM activity_target_departments
-        WHERE activity_id = ?
-    ");
-    $stmt->execute([$activity_id]);
-    $target_departments = $stmt->fetchAll(PDO::FETCH_COLUMN);
-    
-    // ดึงระดับชั้นเป้าหมาย
-    $stmt = $conn->prepare("
-        SELECT level
-        FROM activity_target_levels
-        WHERE activity_id = ?
-    ");
-    $stmt->execute([$activity_id]);
-    $target_levels = $stmt->fetchAll(PDO::FETCH_COLUMN);
-    
-    // สร้าง SQL query ตามเงื่อนไข
+    // สร้าง SQL query พื้นฐาน
     $sql = "
-        SELECT s.student_id, s.student_code, s.title, s.current_class_id, 
-               u.first_name, u.last_name, 
-               c.level, c.group_number, d.department_name,
-               aa.attendance_status, aa.remarks
+        SELECT 
+            s.student_id, s.student_code, s.title, 
+            u.first_name, u.last_name, 
+            c.level, c.group_number,
+            d.department_name,
+            aa.attendance_status, aa.record_time, aa.remarks
         FROM students s
         JOIN users u ON s.user_id = u.user_id
         LEFT JOIN classes c ON s.current_class_id = c.class_id
         LEFT JOIN departments d ON c.department_id = d.department_id
-        LEFT JOIN activity_attendance aa ON aa.student_id = s.student_id AND aa.activity_id = ?
+        LEFT JOIN activity_attendance aa ON s.student_id = aa.student_id AND aa.activity_id = ?
         WHERE s.status = 'กำลังศึกษา'
     ";
     
-    // กำหนดเงื่อนไขเพิ่มเติม
-    $params = [$activity_id]; // เริ่มต้นด้วย activity_id
-    $whereClauses = [];
+    // สร้างเงื่อนไขการค้นหาเพิ่มเติม
+    $params = [$activity_id];
+    $conditions = [];
     
-    // สร้างเงื่อนไขตามเป้าหมายกิจกรรม
-    if (!empty($target_departments)) {
-        $placeholders = rtrim(str_repeat('?,', count($target_departments)), ',');
-        $whereClauses[] = "d.department_id IN ($placeholders)";
-        $params = array_merge($params, $target_departments);
+    // เพิ่มเงื่อนไขตามแผนกวิชา
+    if ($department_id) {
+        $conditions[] = "d.department_id = ?";
+        $params[] = $department_id;
     }
     
-    if (!empty($target_levels)) {
-        $placeholders = rtrim(str_repeat('?,', count($target_levels)), ',');
-        $whereClauses[] = "c.level IN ($placeholders)";
-        $params = array_merge($params, $target_levels);
+    // เพิ่มเงื่อนไขตามระดับชั้น
+    if ($level) {
+        $conditions[] = "c.level = ?";
+        $params[] = $level;
     }
     
-    // สร้างเงื่อนไขตามค่าค้นหา
+    // เพิ่มเงื่อนไขตามกลุ่มเรียน
     if ($class_id) {
-        $whereClauses[] = "s.current_class_id = ?";
+        $conditions[] = "c.class_id = ?";
         $params[] = $class_id;
-        
-        // ดึงข้อมูลห้องเรียนเพิ่มเติม
+    }
+    
+    // เพิ่มเงื่อนไขการค้นหา (รหัสนักเรียนหรือชื่อ)
+    if ($search) {
+        $conditions[] = "(s.student_code LIKE ? OR u.first_name LIKE ? OR u.last_name LIKE ?)";
+        $searchTerm = "%$search%";
+        $params[] = $searchTerm;
+        $params[] = $searchTerm;
+        $params[] = $searchTerm;
+    }
+    
+    // เพิ่มเงื่อนไขการค้นหาลงใน SQL
+    if (!empty($conditions)) {
+        $sql .= " AND " . implode(" AND ", $conditions);
+    }
+    
+    // เพิ่ม ORDER BY
+    $sql .= " ORDER BY d.department_name, c.level, c.group_number, u.first_name, u.last_name";
+    
+    // เตรียมและ execute query
+    $stmt = $conn->prepare($sql);
+    $stmt->execute($params);
+    $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    // สร้างข้อมูลสำหรับระบุกลุ่มที่กำลังแสดง
+    $class_info = '';
+    
+    if ($class_id) {
+        // ดึงข้อมูลกลุ่มเรียนที่เลือก
         $stmt = $conn->prepare("
             SELECT c.level, c.group_number, d.department_name
             FROM classes c
@@ -115,100 +106,43 @@ try {
             WHERE c.class_id = ?
         ");
         $stmt->execute([$class_id]);
-        $class_info = $stmt->fetch(PDO::FETCH_ASSOC);
+        $class = $stmt->fetch(PDO::FETCH_ASSOC);
         
-        if ($class_info) {
-            $class_display = "ห้อง " . $class_info['level'] . '/' . $class_info['group_number'] . ' ' . $class_info['department_name'];
+        if ($class) {
+            $class_info = "กลุ่ม {$class['level']}/{$class['group_number']} แผนก{$class['department_name']}";
         }
-    } else {
-        if ($department_id) {
-            $whereClauses[] = "c.department_id = ?";
-            $params[] = $department_id;
-            
-            // ดึงชื่อแผนก
-            $stmt = $conn->prepare("SELECT department_name FROM departments WHERE department_id = ?");
-            $stmt->execute([$department_id]);
-            $dept_info = $stmt->fetch(PDO::FETCH_ASSOC);
-            
-            if ($dept_info) {
-                $dept_display = $dept_info['department_name'];
-            }
-        }
+    } else if ($department_id && $level) {
+        // กรณีเลือกแผนกและระดับชั้น
+        $stmt = $conn->prepare("SELECT department_name FROM departments WHERE department_id = ?");
+        $stmt->execute([$department_id]);
+        $department = $stmt->fetch(PDO::FETCH_ASSOC);
         
-        if ($level) {
-            $whereClauses[] = "c.level = ?";
-            $params[] = $level;
+        if ($department) {
+            $class_info = "ระดับชั้น {$level} แผนก{$department['department_name']}";
         }
-    }
-    
-    // เงื่อนไขการค้นหา
-    if ($search) {
-        $whereClauses[] = "(s.student_code LIKE ? OR u.first_name LIKE ? OR u.last_name LIKE ?)";
-        $searchParam = "%$search%";
-        $params[] = $searchParam;
-        $params[] = $searchParam;
-        $params[] = $searchParam;
-    }
-    
-    // รวมเงื่อนไขทั้งหมด
-    if (!empty($whereClauses)) {
-        $sql .= " AND " . implode(' AND ', $whereClauses);
-    }
-    
-    // หากเป็นครูที่ปรึกษา ให้ดึงเฉพาะห้องที่เป็นที่ปรึกษา
-    if (isset($_SESSION['user_role']) && $_SESSION['user_role'] == 'teacher' && isset($_SESSION['user_id'])) {
-        // ดึงรหัสครู
-        $stmt = $conn->prepare("SELECT teacher_id FROM teachers WHERE user_id = ?");
-        $stmt->execute([$_SESSION['user_id']]);
-        $teacher = $stmt->fetch(PDO::FETCH_ASSOC);
+    } else if ($department_id) {
+        // กรณีเลือกเฉพาะแผนก
+        $stmt = $conn->prepare("SELECT department_name FROM departments WHERE department_id = ?");
+        $stmt->execute([$department_id]);
+        $department = $stmt->fetch(PDO::FETCH_ASSOC);
         
-        if ($teacher) {
-            $sql .= " AND s.current_class_id IN (
-                SELECT class_id FROM class_advisors 
-                WHERE teacher_id = ?
-            )";
-            $params[] = $teacher['teacher_id'];
+        if ($department) {
+            $class_info = "แผนก{$department['department_name']}";
         }
+    } else if ($level) {
+        // กรณีเลือกเฉพาะระดับชั้น
+        $class_info = "ระดับชั้น {$level}";
+    } else if ($search) {
+        // กรณีค้นหา
+        $class_info = "ผลการค้นหา: {$search}";
     }
     
-    // เรียงลำดับตามรหัสนักเรียน
-    $sql .= " ORDER BY s.student_code";
-    
-    // เตรียม statement และ execute
-    $stmt = $conn->prepare($sql);
-    $stmt->execute($params);
-    
-    $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    
-    // ตรวจสอบว่าพบนักเรียนหรือไม่
-    if (count($students) === 0) {
-        echo json_encode([
-            'success' => true,
-            'students' => [],
-            'message' => 'ไม่พบข้อมูลนักเรียนตามเงื่อนไขที่เลือก'
-        ]);
-        exit;
-    }
-    
-    // กำหนดข้อมูลชื่อกลุ่มที่เลือก
-    $class_info = '';
-    if (isset($class_display)) {
-        $class_info = $class_display;
-    } elseif (isset($dept_display)) {
-        $class_info = 'แผนก ' . $dept_display;
-        if ($level) {
-            $class_info .= ' ระดับชั้น ' . $level;
-        }
-    } elseif ($level) {
-        $class_info = 'ระดับชั้น ' . $level;
-    }
-    
-    // ส่งข้อมูลกลับในรูปแบบ JSON
+    // ส่งผลลัพธ์
     echo json_encode([
         'success' => true,
         'students' => $students,
         'class_info' => $class_info,
-        'activity_id' => $activity_id
+        'count' => count($students)
     ]);
     
 } catch (PDOException $e) {
