@@ -1,554 +1,376 @@
 /**
- * activity_attendance.js - จัดการการบันทึกการเข้าร่วมกิจกรรม
+ * activities.js - จัดการหน้ากิจกรรมกลาง
  */
 
 document.addEventListener('DOMContentLoaded', function() {
-    // เชื่อมต่อปุ่มค้นหา
-    const btnSearch = document.getElementById('btnSearch');
-    if (btnSearch) {
-        btnSearch.addEventListener('click', searchStudents);
+    // ซ่อนแจ้งเตือนหลังจาก 3 วินาที
+    const alerts = document.querySelectorAll('.alert');
+    alerts.forEach(alert => {
+        setTimeout(function() {
+            alert.style.opacity = '0';
+            setTimeout(function() {
+                alert.style.display = 'none';
+            }, 500);
+        }, 3000);
+    });
+    
+    // ตรวจสอบการเชื่อมโยง Select2 ก่อนใช้งาน
+    if (typeof $ !== 'undefined' && typeof $.fn.select2 !== 'undefined') {
+        // เริ่มต้น Select2 สำหรับ dropdown แบบเลือกหลายรายการ
+        $('#target_departments, #edit_target_departments').select2({
+            placeholder: 'เลือกแผนกวิชา',
+            allowClear: true
+        });
+        
+        $('#target_levels, #edit_target_levels').select2({
+            placeholder: 'เลือกระดับชั้น',
+            allowClear: true
+        });
     }
     
-    // เชื่อมต่อ event สำหรับการเปลี่ยนแปลงแผนกและระดับชั้น
-    const filterDepartment = document.getElementById('filterDepartment');
-    const filterLevel = document.getElementById('filterLevel');
-    
-    if (filterDepartment) {
-        filterDepartment.addEventListener('change', updateClasses);
+    // ตั้งค่าวันที่เริ่มต้นเป็นวันนี้สำหรับฟอร์มเพิ่มกิจกรรม
+    const addDateInput = document.getElementById('activity_date');
+    if (addDateInput) {
+        addDateInput.value = new Date().toISOString().split('T')[0];
     }
     
-    if (filterLevel) {
-        filterLevel.addEventListener('change', updateClasses);
-    }
+    // ตรวจสอบสิทธิ์การใช้งานกลุ่มเป้าหมาย
+    const isAdmin = document.body.classList.contains('role-admin');
     
-    // เชื่อมต่อ event สำหรับฟอร์ม
-    const attendanceForm = document.getElementById('attendanceForm');
-    if (attendanceForm) {
-        attendanceForm.addEventListener('submit', function(event) {
-            // ตรวจสอบว่ามีการเลือกนักเรียนหรือไม่
-            const checkedStudents = document.querySelectorAll('input[name^="attendance"][type="checkbox"]:checked');
-            if (checkedStudents.length === 0) {
+    // เพิ่ม event listener สำหรับการตรวจสอบการส่งฟอร์มเพิ่มกิจกรรม
+    const addForm = document.getElementById('addActivityForm');
+    if (addForm) {
+        addForm.addEventListener('submit', function(event) {
+            if (!validateActivityForm(this)) {
                 event.preventDefault();
-                alert('กรุณาเลือกนักเรียนอย่างน้อย 1 คน');
-                return false;
-            }
-            
-            // ถามยืนยันก่อนบันทึก
-            if (!confirm('ยืนยันการบันทึกการเข้าร่วมกิจกรรม?')) {
-                event.preventDefault();
-                return false;
             }
         });
     }
     
-    // ปรับปรุงตัวเลือกห้องเรียนเริ่มต้น
-    updateClasses();
-    
-    // โหลดสรุปการเข้าร่วมกิจกรรม
-    loadAttendanceSummary();
-    
-    // ตรวจสอบการแสดงข้อความแจ้งเตือน
-    const successAlert = document.getElementById('success-alert');
-    if (successAlert) {
-        setTimeout(function() {
-            successAlert.style.opacity = '0';
-            setTimeout(function() {
-                successAlert.style.display = 'none';
-            }, 500);
-        }, 3000);
+    // เพิ่ม event listener สำหรับการตรวจสอบการส่งฟอร์มแก้ไขกิจกรรม
+    const editForm = document.getElementById('editActivityForm');
+    if (editForm) {
+        editForm.addEventListener('submit', function(event) {
+            if (!validateActivityForm(this)) {
+                event.preventDefault();
+            }
+        });
     }
+    
+    // ตัวกรองกิจกรรมเริ่มต้น - ตรวจสอบ URL พารามิเตอร์
+    initializeFilters();
 });
 
 /**
- * อัปเดตรายการห้องเรียนตามแผนกและระดับชั้นที่เลือก
+ * เปิดโมดัลเพิ่มกิจกรรม
  */
-function updateClasses() {
-    const departmentSelect = document.getElementById('filterDepartment');
-    const levelSelect = document.getElementById('filterLevel');
-    const classSelect = document.getElementById('filterClass');
+function openAddActivityModal() {
+    // รีเซ็ตฟอร์ม
+    document.getElementById('addActivityForm').reset();
     
-    if (!departmentSelect || !levelSelect || !classSelect) return;
+    // กำหนดวันที่เป็นวันนี้
+    document.getElementById('activity_date').value = new Date().toISOString().split('T')[0];
     
-    const departmentId = departmentSelect.value;
-    const level = levelSelect.value;
-    
-    // ล้างตัวเลือกเดิมยกเว้นตัวแรก
-    while (classSelect.options.length > 1) {
-        classSelect.remove(1);
+    // รีเซ็ต Select2 ถ้ามี
+    if (typeof $ !== 'undefined' && typeof $.fn.select2 !== 'undefined') {
+        $('#target_departments').val(null).trigger('change');
+        $('#target_levels').val(null).trigger('change');
     }
     
-    // ถ้าไม่ได้เลือกแผนกหรือระดับชั้น ไม่ต้องดึงข้อมูลเพิ่ม
-    if (!departmentId && !level) return;
-    
-    // แสดง loading
-    classSelect.disabled = true;
-    
-    // สร้าง URL สำหรับดึงข้อมูล
-    let url = 'ajax/get_classes.php?';
-    if (departmentId) url += 'department_id=' + departmentId + '&';
-    if (level) url += 'level=' + level;
-    
-    // ดึงข้อมูลห้องเรียน
-    fetch(url)
-        .then(response => response.json())
-        .then(data => {
-            if (data.success && data.classes) {
-                // เพิ่มตัวเลือกห้องเรียน
-                data.classes.forEach(classItem => {
-                    const option = document.createElement('option');
-                    option.value = classItem.class_id;
-                    option.textContent = `${classItem.level}/${classItem.group_number} ${classItem.department_name}`;
-                    classSelect.appendChild(option);
-                });
-            }
-        })
-        .catch(error => {
-            console.error('Error fetching classes:', error);
-        })
-        .finally(() => {
-            classSelect.disabled = false;
-        });
+    // เปิดโมดัล
+    document.getElementById('addActivityModal').style.display = 'flex';
 }
 
 /**
- * ค้นหานักเรียนตามเงื่อนไขที่เลือก
+ * เปิดโมดัลแก้ไขกิจกรรม
  */
-function searchStudents() {
-    const departmentSelect = document.getElementById('filterDepartment');
-    const levelSelect = document.getElementById('filterLevel');
-    const classSelect = document.getElementById('filterClass');
-    const searchInput = document.getElementById('filterSearch');
-    const activityIdInput = document.querySelector('input[name="activity_id"]');
+function openEditActivityModal(activityId) {
+    // แสดงการโหลด
+    const modal = document.getElementById('editActivityModal');
+    const form = document.getElementById('editActivityForm');
     
-    if (!departmentSelect || !levelSelect || !classSelect || !searchInput || !activityIdInput) {
-        console.error('Required form elements not found');
-        return;
-    }
+    // แสดงการโหลด
+    form.innerHTML = '<div class="text-center"><div class="spinner"></div><p>กำลังโหลดข้อมูล...</p></div>';
+    modal.style.display = 'flex';
     
-    const departmentId = departmentSelect.value;
-    const level = levelSelect.value;
-    const classId = classSelect.value;
-    const search = searchInput.value;
-    const activityId = activityIdInput.value;
-    
-    // ตรวจสอบว่าเลือกเงื่อนไขการค้นหาอย่างน้อย 1 อย่าง
-    if (!departmentId && !level && !classId && !search) {
-        alert('กรุณาเลือกแผนกวิชา ระดับชั้น กลุ่มเรียน หรือระบุคำค้นหาอย่างน้อย 1 อย่าง');
-        return;
-    }
-    
-    // ซ่อนข้อความและแสดง loading
-    const studentListContainer = document.getElementById('studentListContainer');
-    const noStudentsMessage = document.getElementById('noStudentsMessage');
-    const loadingIndicator = document.getElementById('loadingIndicator');
-    const formActions = document.getElementById('formActions');
-    const attendanceSummary = document.getElementById('attendanceSummary');
-    
-    if (studentListContainer) studentListContainer.style.display = 'none';
-    if (noStudentsMessage) noStudentsMessage.style.display = 'none';
-    if (loadingIndicator) loadingIndicator.style.display = 'block';
-    if (formActions) formActions.style.display = 'none';
-    if (attendanceSummary) attendanceSummary.style.display = 'none';
-    
-    // สร้าง URL สำหรับดึงข้อมูล
-    let url = `ajax/get_students_for_activity.php?activity_id=${activityId}`;
-    if (departmentId) url += `&department_id=${departmentId}`;
-    if (level) url += `&level=${level}`;
-    if (classId) url += `&class_id=${classId}`;
-    if (search) url += `&search=${encodeURIComponent(search)}`;
-    
-    // ดึงข้อมูลนักเรียน
-    fetch(url)
+    // ดึงข้อมูลกิจกรรม
+    fetch(`ajax/get_activity.php?activity_id=${activityId}`)
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                if (data.students && data.students.length > 0) {
-                    // แสดงชื่อห้องหรือกลุ่มที่เลือก
-                    const classTitle = document.getElementById('classTitle');
-                    if (classTitle) {
-                        classTitle.textContent = data.class_info || '';
+                // คืนค่าฟอร์มเดิม
+                form.innerHTML = originalEditFormHTML;
+                
+                const activity = data.activity;
+                
+                // กำหนดค่าให้ฟอร์ม
+                document.getElementById('edit_activity_id').value = activity.activity_id;
+                document.getElementById('edit_activity_name').value = activity.activity_name;
+                document.getElementById('edit_activity_date').value = activity.activity_date;
+                document.getElementById('edit_activity_location').value = activity.activity_location || '';
+                document.getElementById('edit_required_attendance').checked = (activity.required_attendance == 1);
+                document.getElementById('edit_activity_description').value = activity.description || '';
+                
+                // กำหนดแผนกวิชาเป้าหมาย
+                if (typeof $ !== 'undefined' && typeof $.fn.select2 !== 'undefined') {
+                    // Re-initialize Select2 after restoring the form HTML
+                    $('#edit_target_departments').select2({
+                        placeholder: 'เลือกแผนกวิชา',
+                        allowClear: true
+                    });
+                    
+                    $('#edit_target_levels').select2({
+                        placeholder: 'เลือกระดับชั้น',
+                        allowClear: true
+                    });
+                    
+                    // Wait a bit for Select2 to initialize
+                    setTimeout(() => {
+                        $('#edit_target_departments').val(activity.target_departments).trigger('change');
+                        $('#edit_target_levels').val(activity.target_levels).trigger('change');
+                    }, 100);
+                } else {
+                    // กำหนดค่าแบบทั่วไปหากไม่มี Select2
+                    const deptSelect = document.getElementById('edit_target_departments');
+                    if (deptSelect) {
+                        Array.from(deptSelect.options).forEach(option => {
+                            option.selected = activity.target_departments.includes(parseInt(option.value));
+                        });
                     }
                     
-                    // แสดงรายชื่อนักเรียน
-                    renderStudentList(data.students);
-                    if (studentListContainer) studentListContainer.style.display = 'block';
-                    if (formActions) formActions.style.display = 'flex';
-                    if (attendanceSummary) attendanceSummary.style.display = 'block';
-                    
-                    // อัปเดตสรุปการเช็คชื่อ
-                    updateAttendanceSummary();
-                } else {
-                    // ไม่พบนักเรียน
-                    if (noStudentsMessage) noStudentsMessage.style.display = 'block';
+                    const levelSelect = document.getElementById('edit_target_levels');
+                    if (levelSelect) {
+                        Array.from(levelSelect.options).forEach(option => {
+                            option.selected = activity.target_levels.includes(option.value);
+                        });
+                    }
                 }
+                
+                // Log to help debug
+                console.log('Activity data:', activity);
+                console.log('Target departments:', activity.target_departments);
+                console.log('Target levels:', activity.target_levels);
+                
             } else {
-                // เกิดข้อผิดพลาด
-                alert(data.error || 'เกิดข้อผิดพลาดในการดึงข้อมูล');
-                if (noStudentsMessage) noStudentsMessage.style.display = 'block';
+                // แสดงข้อความผิดพลาด
+                form.innerHTML = `
+                    <div class="alert alert-error">
+                        <span class="material-icons">error</span>
+                        <div class="alert-message">${data.error || 'ไม่สามารถดึงข้อมูลกิจกรรมได้'}</div>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" onclick="closeModal('editActivityModal')">ปิด</button>
+                    </div>
+                `;
             }
         })
         .catch(error => {
-            console.error('Error fetching students:', error);
-            alert('เกิดข้อผิดพลาดในการดึงข้อมูล');
-            if (noStudentsMessage) noStudentsMessage.style.display = 'block';
-        })
-        .finally(() => {
-            if (loadingIndicator) loadingIndicator.style.display = 'none';
+            console.error('Error:', error);
+            // แสดงข้อความผิดพลาด
+            form.innerHTML = `
+                <div class="alert alert-error">
+                    <span class="material-icons">error</span>
+                    <div class="alert-message">เกิดข้อผิดพลาดในการดึงข้อมูลกิจกรรม</div>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('editActivityModal')">ปิด</button>
+                </div>
+            `;
         });
 }
 
 /**
- * แสดงรายชื่อนักเรียน
+ * ยืนยันการลบกิจกรรม
  */
-function renderStudentList(students) {
-    const studentList = document.getElementById('studentList');
-    if (!studentList) return;
+function confirmDeleteActivity(activityId, activityName) {
+    document.getElementById('delete_activity_id').value = activityId;
+    document.getElementById('delete_activity_name').textContent = activityName;
+    document.getElementById('deleteActivityModal').style.display = 'flex';
+}
+
+/**
+ * ปิดโมดัล
+ */
+function closeModal(modalId) {
+    document.getElementById(modalId).style.display = 'none';
+}
+
+/**
+ * กรองรายการกิจกรรม
+ */
+/**
+ * กรองรายการกิจกรรม
+ */
+function filterActivities() {
+    const month = document.getElementById('filterMonth').value;
+    const status = document.getElementById('filterStatus').value;
+    const search = document.getElementById('filterSearch').value.toLowerCase();
     
-    // ล้างรายการเดิม
-    studentList.innerHTML = '';
+    // บันทึกค่าลงใน URL เพื่อให้สามารถคงค่าการกรองได้เมื่อโหลดหน้าใหม่
+    const url = new URL(window.location);
+    if (month) url.searchParams.set('month', month);
+    else url.searchParams.delete('month');
     
-    // เพิ่มรายชื่อนักเรียน
-    students.forEach((student, index) => {
-        const row = document.createElement('tr');
+    if (status) url.searchParams.set('status', status);
+    else url.searchParams.delete('status');
+    
+    if (search) url.searchParams.set('search', search);
+    else url.searchParams.delete('search');
+    
+    window.history.replaceState({}, '', url);
+    
+    // กรองรายการกิจกรรม
+    const activities = document.querySelectorAll('.activity-item');
+    let visibleCount = 0;
+    
+    activities.forEach(activity => {
+        const activityMonth = activity.dataset.month;
+        const activityStatus = activity.dataset.status;
+        const activityName = activity.dataset.name;
+        const activityId = activity.dataset.id || '';
         
-        // สถานะการเช็คชื่อเดิม (ถ้ามี)
-        const checkedAttr = student.attendance_status ? 'checked' : '';
-        const status = student.attendance_status || 'absent';
+        let isVisible = true;
         
-        row.innerHTML = `
-            <td>${index + 1}</td>
-            <td>
-                <input type="checkbox" name="attendance[${student.student_id}][check]" value="1" ${checkedAttr} onchange="updateRowHighlight(this)">
-            </td>
-            <td>${student.student_code}</td>
-            <td>${student.title || ''}${student.first_name} ${student.last_name}</td>
-            <td>${student.level || ''}/${student.group_number || ''} ${student.department_name || ''}</td>
-            <td>
-                <select class="form-control form-control-sm" name="attendance[${student.student_id}][status]" onchange="updateAttendanceSummary()">
-                    <option value="present" ${status === 'present' ? 'selected' : ''}>เข้าร่วม</option>
-                    <option value="absent" ${status === 'absent' ? 'selected' : ''}>ไม่เข้าร่วม</option>
-                </select>
-            </td>
-            <td>
-                <input type="text" class="form-control form-control-sm" name="attendance[${student.student_id}][remarks]" 
-                       placeholder="หมายเหตุ" value="${student.remarks || ''}">
-            </td>
-        `;
-        
-        // เพิ่ม highlight ถ้ามีการเช็คชื่อแล้ว
-        if (student.attendance_status) {
-            row.classList.add('selected-row');
+        if (month && activityMonth !== month) {
+            isVisible = false;
         }
         
-        studentList.appendChild(row);
-    });
-}
-
-/**
- * อัปเดต highlight แถวตามการเลือก
- */
-function updateRowHighlight(checkbox) {
-    if (!checkbox) return;
-    
-    const row = checkbox.closest('tr');
-    if (row) {
-        if (checkbox.checked) {
-            row.classList.add('selected-row');
-        } else {
-            row.classList.remove('selected-row');
+        if (status && activityStatus !== status) {
+            isVisible = false;
         }
-    }
-    
-    // อัปเดตสรุปการเช็คชื่อ
-    updateAttendanceSummary();
-}
-
-/**
- * อัปเดตสรุปการเช็คชื่อ
- */
-function updateAttendanceSummary() {
-    const checkboxes = document.querySelectorAll('input[name^="attendance"][type="checkbox"]');
-    let presentCount = 0;
-    let absentCount = 0;
-    let totalCount = checkboxes.length;
-    
-    checkboxes.forEach(checkbox => {
-        if (checkbox.checked) {
-            const studentId = checkbox.name.match(/\[(\d+)\]/);
-            if (studentId && studentId[1]) {
-                const statusSelect = document.querySelector(`select[name="attendance[${studentId[1]}][status]"]`);
-                if (statusSelect) {
-                    const status = statusSelect.value;
-                    if (status === 'present') {
-                        presentCount++;
-                    } else {
-                        absentCount++;
-                    }
-                }
-            }
+        
+        // ค้นหาทั้งในชื่อและรหัสกิจกรรม
+        if (search && !activityName.includes(search) && !activityId.includes(search)) {
+            isVisible = false;
+        }
+        
+        activity.style.display = isVisible ? 'flex' : 'none';
+        
+        if (isVisible) {
+            visibleCount++;
         }
     });
     
-    // อัปเดตค่าในหน้าเว็บ
-    const presentCountEl = document.getElementById('presentCount');
-    const absentCountEl = document.getElementById('absentCount');
-    const totalCountEl = document.getElementById('totalCount');
-    
-    if (presentCountEl) presentCountEl.textContent = presentCount;
-    if (absentCountEl) absentCountEl.textContent = absentCount;
-    if (totalCountEl) totalCountEl.textContent = totalCount;
+    // แสดงข้อความเมื่อไม่พบกิจกรรม
+    const noResultsMessage = document.getElementById('no-results-message');
+    if (noResultsMessage) {
+        noResultsMessage.style.display = (visibleCount === 0) ? 'block' : 'none';
+    }
 }
 
 /**
- * เลือกนักเรียนทั้งหมด
+ * เริ่มต้นตัวกรองจาก URL
  */
-function checkAllStudents() {
-    const checkboxes = document.querySelectorAll('input[name^="attendance"][type="checkbox"]');
-    checkboxes.forEach(checkbox => {
-        checkbox.checked = true;
-        const row = checkbox.closest('tr');
-        if (row) row.classList.add('selected-row');
-    });
+function initializeFilters() {
+    const url = new URL(window.location);
     
-    // อัปเดตสรุปการเช็คชื่อ
-    updateAttendanceSummary();
-}
-
-/**
- * ยกเลิกการเลือกนักเรียนทั้งหมด
- */
-function uncheckAllStudents() {
-    const checkboxes = document.querySelectorAll('input[name^="attendance"][type="checkbox"]');
-    checkboxes.forEach(checkbox => {
-        checkbox.checked = false;
-        const row = checkbox.closest('tr');
-        if (row) row.classList.remove('selected-row');
-    });
-    
-    // อัปเดตสรุปการเช็คชื่อ
-    updateAttendanceSummary();
-}
-
-/**
- * กำหนดสถานะการเช็คชื่อทั้งหมด
- */
-function setAllStatus(status) {
-    // เลือกนักเรียนทั้งหมดก่อน
-    checkAllStudents();
-    
-    // กำหนดสถานะให้ทั้งหมด
-    const selects = document.querySelectorAll('select[name^="attendance"][name$="[status]"]');
-    selects.forEach(select => {
-        select.value = status;
-    });
-    
-    // อัปเดตสรุปการเช็คชื่อ
-    updateAttendanceSummary();
-}
-
-/**
- * รีเซ็ตฟอร์ม
- */
-function resetForm() {
-    const form = document.getElementById('attendanceForm');
-    if (form) form.reset();
-    
-    uncheckAllStudents();
-    
-    // อัปเดต highlight ของแถว
-    const rows = document.querySelectorAll('#studentList tr');
-    rows.forEach(row => {
-        row.classList.remove('selected-row');
-    });
-    
-    // อัปเดตสรุปการเช็คชื่อ
-    updateAttendanceSummary();
-}
-
-/**
- * โหลดสรุปการเข้าร่วมกิจกรรม
- */
-function loadAttendanceSummary() {
-    const activityIdInput = document.querySelector('input[name="activity_id"]');
-    if (!activityIdInput) return;
-    
-    const activityId = activityIdInput.value;
-    
-    // แสดง loading
-    const loadingAttendanceSummary = document.getElementById('loadingAttendanceSummary');
-    const attendanceSummaryContent = document.getElementById('attendanceSummaryContent');
-    const noAttendanceSummary = document.getElementById('noAttendanceSummary');
-    
-    if (loadingAttendanceSummary) loadingAttendanceSummary.style.display = 'block';
-    if (attendanceSummaryContent) attendanceSummaryContent.style.display = 'none';
-    if (noAttendanceSummary) noAttendanceSummary.style.display = 'none';
-    
-    // ดึงข้อมูลสรุปการเข้าร่วมกิจกรรม
-    fetch(`ajax/get_activity_summary.php?activity_id=${activityId}`)
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                if (data.has_attendance) {
-                    // แสดงข้อมูลสรุป
-                    const summaryTotal = document.getElementById('summary-total');
-                    const summaryPresent = document.getElementById('summary-present');
-                    const summaryAbsent = document.getElementById('summary-absent');
-                    const summaryPercent = document.getElementById('summary-percent');
-                    
-                    if (summaryTotal) summaryTotal.textContent = data.total_students;
-                    if (summaryPresent) summaryPresent.textContent = data.present_count;
-                    if (summaryAbsent) summaryAbsent.textContent = data.absent_count;
-                    if (summaryPercent) summaryPercent.textContent = data.attendance_percent + '%';
-                    
-                    // สร้างกราฟหรือแผนภูมิ
-                    if (typeof Chart !== 'undefined') {
-                        if (data.department_summary && data.department_summary.length > 0) {
-                            createDepartmentChart(data.department_summary);
-                        }
-                        
-                        if (data.level_summary && data.level_summary.length > 0) {
-                            createLevelChart(data.level_summary);
-                        }
-                    } else {
-                        console.error('Chart.js library is not loaded');
-                    }
-                    
-                    if (attendanceSummaryContent) attendanceSummaryContent.style.display = 'block';
-                } else {
-                    // ยังไม่มีข้อมูลการเข้าร่วมกิจกรรม
-                    if (noAttendanceSummary) noAttendanceSummary.style.display = 'block';
-                }
-            } else {
-                // เกิดข้อผิดพลาด
-                console.error('Error loading attendance summary:', data.error);
-                if (noAttendanceSummary) noAttendanceSummary.style.display = 'block';
-            }
-        })
-        .catch(error => {
-            console.error('Error loading attendance summary:', error);
-            if (noAttendanceSummary) noAttendanceSummary.style.display = 'block';
-        })
-        .finally(() => {
-            if (loadingAttendanceSummary) loadingAttendanceSummary.style.display = 'none';
-        });
-}
-
-/**
- * สร้างกราฟสรุปตามแผนกวิชา
- */
-function createDepartmentChart(data) {
-    if (!data || data.length === 0) return;
-    
-    const ctx = document.getElementById('departmentChart');
-    if (!ctx) {
-        console.error('Cannot find canvas element with id "departmentChart"');
-        return;
+    // ตั้งค่าตัวกรองตาม URL
+    if (url.searchParams.has('month')) {
+        document.getElementById('filterMonth').value = url.searchParams.get('month');
     }
     
-    // ล้างกราฟเดิม (ถ้ามี)
-    if (window.departmentChart instanceof Chart) {
-        window.departmentChart.destroy();
+    if (url.searchParams.has('status')) {
+        document.getElementById('filterStatus').value = url.searchParams.get('status');
     }
     
-    // เตรียมข้อมูลสำหรับกราฟ
-    const labels = data.map(item => item.department_name);
-    const presentData = data.map(item => parseInt(item.present_count) || 0);
-    const absentData = data.map(item => parseInt(item.absent_count) || 0);
+    if (url.searchParams.has('search')) {
+        document.getElementById('filterSearch').value = url.searchParams.get('search');
+    }
     
-    // สร้างกราฟใหม่
-    window.departmentChart = new Chart(ctx.getContext('2d'), {
-        type: 'bar',
-        data: {
-            labels: labels,
-            datasets: [
-                {
-                    label: 'เข้าร่วม',
-                    data: presentData,
-                    backgroundColor: 'rgba(75, 192, 192, 0.6)',
-                    borderColor: 'rgba(75, 192, 192, 1)',
-                    borderWidth: 1
-                },
-                {
-                    label: 'ไม่เข้าร่วม',
-                    data: absentData,
-                    backgroundColor: 'rgba(255, 99, 132, 0.6)',
-                    borderColor: 'rgba(255, 99, 132, 1)',
-                    borderWidth: 1
-                }
-            ]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-                x: {
-                    stacked: false
-                },
-                y: {
-                    stacked: false,
-                    beginAtZero: true
-                }
-            }
-        }
-    });
+    // ใช้ตัวกรองทันที
+    if (url.searchParams.has('month') || url.searchParams.has('status') || url.searchParams.has('search')) {
+        filterActivities();
+    }
 }
 
 /**
- * สร้างกราฟสรุปตามระดับชั้น
+ * ตรวจสอบความถูกต้องของฟอร์มกิจกรรม
  */
-function createLevelChart(data) {
-    if (!data || data.length === 0) return;
+function validateActivityForm(form) {
+    const name = form.querySelector('[name="activity_name"]').value.trim();
+    const date = form.querySelector('[name="activity_date"]').value.trim();
     
-    const ctx = document.getElementById('levelChart');
-    if (!ctx) {
-        console.error('Cannot find canvas element with id "levelChart"');
-        return;
+    if (!name) {
+        alert('กรุณาระบุชื่อกิจกรรม');
+        return false;
     }
     
-    // ล้างกราฟเดิม (ถ้ามี)
-    if (window.levelChart instanceof Chart) {
-        window.levelChart.destroy();
+    if (!date) {
+        alert('กรุณาระบุวันที่จัดกิจกรรม');
+        return false;
     }
     
-    // เตรียมข้อมูลสำหรับกราฟ
-    const labels = data.map(item => item.level);
-    const presentData = data.map(item => parseInt(item.present_count) || 0);
-    const absentData = data.map(item => parseInt(item.absent_count) || 0);
-    
-    // สร้างกราฟใหม่
-    window.levelChart = new Chart(ctx.getContext('2d'), {
-        type: 'bar',
-        data: {
-            labels: labels,
-            datasets: [
-                {
-                    label: 'เข้าร่วม',
-                    data: presentData,
-                    backgroundColor: 'rgba(75, 192, 192, 0.6)',
-                    borderColor: 'rgba(75, 192, 192, 1)',
-                    borderWidth: 1
-                },
-                {
-                    label: 'ไม่เข้าร่วม',
-                    data: absentData,
-                    backgroundColor: 'rgba(255, 99, 132, 0.6)',
-                    borderColor: 'rgba(255, 99, 132, 1)',
-                    borderWidth: 1
-                }
-            ]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-                x: {
-                    stacked: false
-                },
-                y: {
-                    stacked: false,
-                    beginAtZero: true
-                }
-            }
-        }
-    });
+    return true;
 }
+
+// เก็บ HTML ของฟอร์มแก้ไขสำหรับใช้คืนค่า
+const originalEditFormHTML = `
+<input type="hidden" id="edit_activity_id" name="activity_id">
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="form-group">
+            <label for="edit_activity_name" class="form-label">ชื่อกิจกรรม <span class="text-danger">*</span></label>
+            <input type="text" id="edit_activity_name" name="activity_name" class="form-control" required>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="form-group">
+            <label for="edit_activity_date" class="form-label">วันที่จัดกิจกรรม <span class="text-danger">*</span></label>
+            <input type="date" id="edit_activity_date" name="activity_date" class="form-control" required>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="form-group">
+            <label for="edit_activity_location" class="form-label">สถานที่จัดกิจกรรม</label>
+            <input type="text" id="edit_activity_location" name="activity_location" class="form-control">
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="form-group">
+            <label class="form-label">บังคับเข้าร่วม</label>
+            <div class="form-check">
+                <input type="checkbox" id="edit_required_attendance" name="required_attendance" class="form-check-input">
+                <label for="edit_required_attendance" class="form-check-label">เป็นกิจกรรมบังคับ (มีผลต่อการจบการศึกษา)</label>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="form-group">
+            <label for="edit_target_departments" class="form-label">แผนกวิชาเป้าหมาย</label>
+            <select id="edit_target_departments" name="target_departments[]" class="form-control" multiple>
+                // Options will be populated by PHP
+            </select>
+            <small class="form-text text-muted">ไม่เลือก = ทุกแผนก</small>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="form-group">
+            <label for="edit_target_levels" class="form-label">ระดับชั้นเป้าหมาย</label>
+            <select id="edit_target_levels" name="target_levels[]" class="form-control" multiple>
+                // Options will be populated by PHP
+            </select>
+            <small class="form-text text-muted">ไม่เลือก = ทุกระดับชั้น</small>
+        </div>
+    </div>
+</div>
+
+<div class="form-group">
+    <label for="edit_activity_description" class="form-label">รายละเอียดกิจกรรม</label>
+    <textarea id="edit_activity_description" name="activity_description" class="form-control" rows="4"></textarea>
+</div>
+
+<div class="form-actions">
+    <button type="button" class="btn btn-secondary" onclick="closeModal('editActivityModal')">ยกเลิก</button>
+    <button type="submit" name="edit_activity" class="btn btn-primary">
+        <span class="material-icons">save</span>
+        บันทึกการแก้ไข
+    </button>
+</div>
+`;

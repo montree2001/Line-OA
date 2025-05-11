@@ -4,34 +4,57 @@
 
 document.addEventListener('DOMContentLoaded', function() {
     // เชื่อมต่อปุ่มค้นหา
-    document.getElementById('btnSearch').addEventListener('click', searchStudents);
+    const btnSearch = document.getElementById('btnSearch');
+    if (btnSearch) {
+        btnSearch.addEventListener('click', searchStudents);
+    }
     
     // เชื่อมต่อ event สำหรับการเปลี่ยนแปลงแผนกและระดับชั้น
-    document.getElementById('filterDepartment').addEventListener('change', updateClasses);
-    document.getElementById('filterLevel').addEventListener('change', updateClasses);
+    const filterDepartment = document.getElementById('filterDepartment');
+    const filterLevel = document.getElementById('filterLevel');
+    
+    if (filterDepartment) {
+        filterDepartment.addEventListener('change', updateClasses);
+    }
+    
+    if (filterLevel) {
+        filterLevel.addEventListener('change', updateClasses);
+    }
     
     // เชื่อมต่อ event สำหรับฟอร์ม
-    document.getElementById('attendanceForm').addEventListener('submit', function(event) {
-        // ตรวจสอบว่ามีการเลือกนักเรียนหรือไม่
-        const checkedStudents = document.querySelectorAll('input[name^="attendance"][type="checkbox"]:checked');
-        if (checkedStudents.length === 0) {
-            event.preventDefault();
-            alert('กรุณาเลือกนักเรียนอย่างน้อย 1 คน');
-            return false;
-        }
-        
-        // ถามยืนยันก่อนบันทึก
-        if (!confirm('ยืนยันการบันทึกการเข้าร่วมกิจกรรม?')) {
-            event.preventDefault();
-            return false;
-        }
-    });
+    const attendanceForm = document.getElementById('attendanceForm');
+    if (attendanceForm) {
+        attendanceForm.addEventListener('submit', function(event) {
+            // ตรวจสอบว่ามีการเลือกนักเรียนหรือไม่
+            const checkedStudents = document.querySelectorAll('input[name^="attendance"][type="checkbox"]:checked');
+            if (checkedStudents.length === 0) {
+                event.preventDefault();
+                alert('กรุณาเลือกนักเรียนอย่างน้อย 1 คน');
+                return false;
+            }
+            
+            // ถามยืนยันก่อนบันทึก
+            if (!confirm('ยืนยันการบันทึกการเข้าร่วมกิจกรรม?')) {
+                event.preventDefault();
+                return false;
+            }
+        });
+    }
+    
+    // เชื่อมต่อปุ่มส่งออกข้อมูล
+    const btnExport = document.getElementById('btnExport');
+    if (btnExport) {
+        btnExport.addEventListener('click', exportToExcel);
+    }
     
     // ปรับปรุงตัวเลือกห้องเรียนเริ่มต้น
     updateClasses();
     
     // โหลดสรุปการเข้าร่วมกิจกรรม
     loadAttendanceSummary();
+    
+    // โหลดข้อมูลสถิติเบื้องต้นทันที
+    loadQuickStats();
     
     // ตรวจสอบการแสดงข้อความแจ้งเตือน
     const successAlert = document.getElementById('success-alert');
@@ -43,15 +66,25 @@ document.addEventListener('DOMContentLoaded', function() {
             }, 500);
         }, 3000);
     }
+    
+    // ปรับขนาดกราฟเมื่อหน้าจอเปลี่ยนขนาด
+    window.addEventListener('resize', function() {
+        adjustChartSize();
+    });
 });
 
 /**
  * อัปเดตรายการห้องเรียนตามแผนกและระดับชั้นที่เลือก
  */
 function updateClasses() {
-    const departmentId = document.getElementById('filterDepartment').value;
-    const level = document.getElementById('filterLevel').value;
+    const departmentSelect = document.getElementById('filterDepartment');
+    const levelSelect = document.getElementById('filterLevel');
     const classSelect = document.getElementById('filterClass');
+    
+    if (!departmentSelect || !levelSelect || !classSelect) return;
+    
+    const departmentId = departmentSelect.value;
+    const level = levelSelect.value;
     
     // ล้างตัวเลือกเดิมยกเว้นตัวแรก
     while (classSelect.options.length > 1) {
@@ -71,7 +104,12 @@ function updateClasses() {
     
     // ดึงข้อมูลห้องเรียน
     fetch(url)
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
         .then(data => {
             if (data.success && data.classes) {
                 // เพิ่มตัวเลือกห้องเรียน
@@ -95,11 +133,17 @@ function updateClasses() {
  * ค้นหานักเรียนตามเงื่อนไขที่เลือก
  */
 function searchStudents() {
-    const departmentId = document.getElementById('filterDepartment').value;
-    const level = document.getElementById('filterLevel').value;
-    const classId = document.getElementById('filterClass').value;
-    const search = document.getElementById('filterSearch').value;
-    const activityId = document.querySelector('input[name="activity_id"]').value;
+    // รับค่าจากฟอร์ม
+    const departmentId = document.getElementById('filterDepartment')?.value || '';
+    const level = document.getElementById('filterLevel')?.value || '';
+    const classId = document.getElementById('filterClass')?.value || '';
+    const search = document.getElementById('filterSearch')?.value || '';
+    const activityId = document.querySelector('input[name="activity_id"]')?.value;
+    
+    if (!activityId) {
+        console.error('ไม่พบรหัสกิจกรรม');
+        return;
+    }
     
     // ตรวจสอบว่าเลือกเงื่อนไขการค้นหาอย่างน้อย 1 อย่าง
     if (!departmentId && !level && !classId && !search) {
@@ -108,54 +152,113 @@ function searchStudents() {
     }
     
     // ซ่อนข้อความและแสดง loading
-    document.getElementById('studentListContainer').style.display = 'none';
-    document.getElementById('noStudentsMessage').style.display = 'none';
-    document.getElementById('loadingIndicator').style.display = 'block';
-    document.getElementById('formActions').style.display = 'none';
-    document.getElementById('attendanceSummary').style.display = 'none';
+    showLoading(true);
     
     // สร้าง URL สำหรับดึงข้อมูล
-    let url = 'ajax/get_students_for_activity.php?activity_id=' + activityId;
-    if (departmentId) url += '&department_id=' + departmentId;
-    if (level) url += '&level=' + level;
-    if (classId) url += '&class_id=' + classId;
-    if (search) url += '&search=' + encodeURIComponent(search);
+    let url = `ajax/get_students_for_activity.php?activity_id=${activityId}`;
+    if (departmentId) url += `&department_id=${departmentId}`;
+    if (level) url += `&level=${level}`;
+    if (classId) url += `&class_id=${classId}`;
+    if (search) url += `&search=${encodeURIComponent(search)}`;
     
     // ดึงข้อมูลนักเรียน
     fetch(url)
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
         .then(data => {
             if (data.success) {
                 if (data.students && data.students.length > 0) {
-                    // แสดงชื่อห้องหรือกลุ่มที่เลือก
-                    document.getElementById('classTitle').textContent = data.class_info || '';
-                    
-                    // แสดงรายชื่อนักเรียน
-                    renderStudentList(data.students);
-                    document.getElementById('studentListContainer').style.display = 'block';
-                    document.getElementById('formActions').style.display = 'flex';
-                    document.getElementById('attendanceSummary').style.display = 'block';
-                    
-                    // อัปเดตสรุปการเช็คชื่อ
-                    updateAttendanceSummary();
+                    displayStudentList(data);
                 } else {
-                    // ไม่พบนักเรียน
-                    document.getElementById('noStudentsMessage').style.display = 'block';
+                    showNoStudentsMessage();
                 }
             } else {
-                // เกิดข้อผิดพลาด
-                alert(data.error || 'เกิดข้อผิดพลาดในการดึงข้อมูล');
-                document.getElementById('noStudentsMessage').style.display = 'block';
+                handleApiError(data.error);
             }
         })
         .catch(error => {
             console.error('Error fetching students:', error);
-            alert('เกิดข้อผิดพลาดในการดึงข้อมูล');
-            document.getElementById('noStudentsMessage').style.display = 'block';
+            handleFetchError();
         })
         .finally(() => {
-            document.getElementById('loadingIndicator').style.display = 'none';
+            showLoading(false);
         });
+}
+
+/**
+ * แสดงรายชื่อนักเรียนและข้อมูลที่เกี่ยวข้อง
+ */
+function displayStudentList(data) {
+    // แสดงชื่อห้องหรือกลุ่มที่เลือก
+    const classTitle = document.getElementById('classTitle');
+    if (classTitle) {
+        classTitle.textContent = data.class_info || '';
+    }
+    
+    // แสดงรายชื่อนักเรียน
+    renderStudentList(data.students);
+    
+    // แสดงส่วนที่เกี่ยวข้อง
+    const studentListContainer = document.getElementById('studentListContainer');
+    const formActions = document.getElementById('formActions');
+    const attendanceSummary = document.getElementById('attendanceSummary');
+    
+    if (studentListContainer) studentListContainer.style.display = 'block';
+    if (formActions) formActions.style.display = 'flex';
+    if (attendanceSummary) attendanceSummary.style.display = 'block';
+    
+    // อัปเดตสรุปการเช็คชื่อ
+    updateAttendanceSummary();
+}
+
+/**
+ * แสดง/ซ่อนการโหลด
+ */
+function showLoading(isLoading) {
+    const loadingIndicator = document.getElementById('loadingIndicator');
+    const studentListContainer = document.getElementById('studentListContainer');
+    const noStudentsMessage = document.getElementById('noStudentsMessage');
+    const formActions = document.getElementById('formActions');
+    const attendanceSummary = document.getElementById('attendanceSummary');
+    
+    if (loadingIndicator) loadingIndicator.style.display = isLoading ? 'block' : 'none';
+    
+    if (!isLoading) return;
+    
+    if (studentListContainer) studentListContainer.style.display = 'none';
+    if (noStudentsMessage) noStudentsMessage.style.display = 'none';
+    if (formActions) formActions.style.display = 'none';
+    if (attendanceSummary) attendanceSummary.style.display = 'none';
+}
+
+/**
+ * แสดงข้อความเมื่อไม่พบนักเรียน
+ */
+function showNoStudentsMessage() {
+    const noStudentsMessage = document.getElementById('noStudentsMessage');
+    if (noStudentsMessage) noStudentsMessage.style.display = 'block';
+}
+
+/**
+ * จัดการข้อผิดพลาดจาก API
+ */
+function handleApiError(errorMessage) {
+    alert(errorMessage || 'เกิดข้อผิดพลาดในการดึงข้อมูล');
+    const noStudentsMessage = document.getElementById('noStudentsMessage');
+    if (noStudentsMessage) noStudentsMessage.style.display = 'block';
+}
+
+/**
+ * จัดการข้อผิดพลาดจากการเชื่อมต่อ
+ */
+function handleFetchError() {
+    alert('เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่อีกครั้ง');
+    const noStudentsMessage = document.getElementById('noStudentsMessage');
+    if (noStudentsMessage) noStudentsMessage.style.display = 'block';
 }
 
 /**
@@ -163,6 +266,7 @@ function searchStudents() {
  */
 function renderStudentList(students) {
     const studentList = document.getElementById('studentList');
+    if (!studentList) return;
     
     // ล้างรายการเดิม
     studentList.innerHTML = '';
@@ -208,11 +312,15 @@ function renderStudentList(students) {
  * อัปเดต highlight แถวตามการเลือก
  */
 function updateRowHighlight(checkbox) {
+    if (!checkbox) return;
+    
     const row = checkbox.closest('tr');
-    if (checkbox.checked) {
-        row.classList.add('selected-row');
-    } else {
-        row.classList.remove('selected-row');
+    if (row) {
+        if (checkbox.checked) {
+            row.classList.add('selected-row');
+        } else {
+            row.classList.remove('selected-row');
+        }
     }
     
     // อัปเดตสรุปการเช็คชื่อ
@@ -230,21 +338,29 @@ function updateAttendanceSummary() {
     
     checkboxes.forEach(checkbox => {
         if (checkbox.checked) {
-            const studentId = checkbox.name.match(/\[(\d+)\]/)[1];
-            const status = document.querySelector(`select[name="attendance[${studentId}][status]"]`).value;
-            
-            if (status === 'present') {
-                presentCount++;
-            } else {
-                absentCount++;
+            const studentId = checkbox.name.match(/\[(\d+)\]/);
+            if (studentId && studentId[1]) {
+                const statusSelect = document.querySelector(`select[name="attendance[${studentId[1]}][status]"]`);
+                if (statusSelect) {
+                    const status = statusSelect.value;
+                    if (status === 'present') {
+                        presentCount++;
+                    } else {
+                        absentCount++;
+                    }
+                }
             }
         }
     });
     
     // อัปเดตค่าในหน้าเว็บ
-    document.getElementById('presentCount').textContent = presentCount;
-    document.getElementById('absentCount').textContent = absentCount;
-    document.getElementById('totalCount').textContent = totalCount;
+    const presentCountEl = document.getElementById('presentCount');
+    const absentCountEl = document.getElementById('absentCount');
+    const totalCountEl = document.getElementById('totalCount');
+    
+    if (presentCountEl) presentCountEl.textContent = presentCount;
+    if (absentCountEl) absentCountEl.textContent = absentCount;
+    if (totalCountEl) totalCountEl.textContent = totalCount;
 }
 
 /**
@@ -255,7 +371,7 @@ function checkAllStudents() {
     checkboxes.forEach(checkbox => {
         checkbox.checked = true;
         const row = checkbox.closest('tr');
-        row.classList.add('selected-row');
+        if (row) row.classList.add('selected-row');
     });
     
     // อัปเดตสรุปการเช็คชื่อ
@@ -270,7 +386,7 @@ function uncheckAllStudents() {
     checkboxes.forEach(checkbox => {
         checkbox.checked = false;
         const row = checkbox.closest('tr');
-        row.classList.remove('selected-row');
+        if (row) row.classList.remove('selected-row');
     });
     
     // อัปเดตสรุปการเช็คชื่อ
@@ -298,7 +414,9 @@ function setAllStatus(status) {
  * รีเซ็ตฟอร์ม
  */
 function resetForm() {
-    document.getElementById('attendanceForm').reset();
+    const form = document.getElementById('attendanceForm');
+    if (form) form.reset();
+    
     uncheckAllStudents();
     
     // อัปเดต highlight ของแถว
@@ -315,49 +433,115 @@ function resetForm() {
  * โหลดสรุปการเข้าร่วมกิจกรรม
  */
 function loadAttendanceSummary() {
-    const activityId = document.querySelector('input[name="activity_id"]').value;
+    const activityId = document.querySelector('input[name="activity_id"]')?.value;
+    if (!activityId) return;
     
     // แสดง loading
-    document.getElementById('loadingAttendanceSummary').style.display = 'block';
-    document.getElementById('attendanceSummaryContent').style.display = 'none';
-    document.getElementById('noAttendanceSummary').style.display = 'none';
+    const loadingAttendanceSummary = document.getElementById('loadingAttendanceSummary');
+    const attendanceSummaryContent = document.getElementById('attendanceSummaryContent');
+    const noAttendanceSummary = document.getElementById('noAttendanceSummary');
+    
+    if (loadingAttendanceSummary) loadingAttendanceSummary.style.display = 'block';
+    if (attendanceSummaryContent) attendanceSummaryContent.style.display = 'none';
+    if (noAttendanceSummary) noAttendanceSummary.style.display = 'none';
     
     // ดึงข้อมูลสรุปการเข้าร่วมกิจกรรม
     fetch(`ajax/get_activity_summary.php?activity_id=${activityId}`)
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
         .then(data => {
             if (data.success) {
                 if (data.has_attendance) {
                     // แสดงข้อมูลสรุป
-                    document.getElementById('summary-total').textContent = data.total_students;
-                    document.getElementById('summary-present').textContent = data.present_count;
-                    document.getElementById('summary-absent').textContent = data.absent_count;
-                    document.getElementById('summary-percent').textContent = data.attendance_percent + '%';
+                    const summaryTotal = document.getElementById('summary-total');
+                    const summaryPresent = document.getElementById('summary-present');
+                    const summaryAbsent = document.getElementById('summary-absent');
+                    const summaryPercent = document.getElementById('summary-percent');
+                    
+                    if (summaryTotal) summaryTotal.textContent = data.total_students;
+                    if (summaryPresent) summaryPresent.textContent = data.present_count;
+                    if (summaryAbsent) summaryAbsent.textContent = data.absent_count;
+                    if (summaryPercent) summaryPercent.textContent = data.attendance_percent + '%';
+                    
+                    // อัปเดตข้อมูลสถิติเบื้องต้น
+                    updateQuickStats(data.total_students, data.present_count, data.attendance_percent);
                     
                     // สร้างกราฟหรือแผนภูมิ
                     if (typeof Chart !== 'undefined') {
-                        createDepartmentChart(data.department_summary);
-                        createLevelChart(data.level_summary);
+                        if (data.department_summary && data.department_summary.length > 0) {
+                            createDepartmentChart(data.department_summary);
+                        }
+                        
+                        if (data.level_summary && data.level_summary.length > 0) {
+                            createLevelChart(data.level_summary);
+                        }
+                    } else {
+                        console.error('Chart.js library is not loaded');
                     }
                     
-                    document.getElementById('attendanceSummaryContent').style.display = 'block';
+                    if (attendanceSummaryContent) attendanceSummaryContent.style.display = 'block';
                 } else {
                     // ยังไม่มีข้อมูลการเข้าร่วมกิจกรรม
-                    document.getElementById('noAttendanceSummary').style.display = 'block';
+                    if (noAttendanceSummary) noAttendanceSummary.style.display = 'block';
                 }
             } else {
                 // เกิดข้อผิดพลาด
                 console.error('Error loading attendance summary:', data.error);
-                document.getElementById('noAttendanceSummary').style.display = 'block';
+                if (noAttendanceSummary) noAttendanceSummary.style.display = 'block';
             }
         })
         .catch(error => {
             console.error('Error loading attendance summary:', error);
-            document.getElementById('noAttendanceSummary').style.display = 'block';
+            if (noAttendanceSummary) noAttendanceSummary.style.display = 'block';
         })
         .finally(() => {
-            document.getElementById('loadingAttendanceSummary').style.display = 'none';
+            if (loadingAttendanceSummary) loadingAttendanceSummary.style.display = 'none';
         });
+}
+
+/**
+ * โหลดข้อมูลสถิติเบื้องต้น
+ */
+function loadQuickStats() {
+    const activityId = document.querySelector('input[name="activity_id"]')?.value;
+    if (!activityId) return;
+    
+    fetch(`ajax/get_activity_summary.php?activity_id=${activityId}`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                const totalStudents = data.total_students || 0;
+                const presentCount = data.present_count || 0;
+                const attendancePercent = data.attendance_percent || 0;
+                
+                updateQuickStats(totalStudents, presentCount, attendancePercent);
+            }
+        })
+        .catch(error => {
+            console.error('Error loading quick stats:', error);
+        });
+}
+
+/**
+ * อัปเดตข้อมูลสถิติเบื้องต้น
+ */
+function updateQuickStats(totalStudents, presentCount, attendancePercent) {
+    const quickTotalStudents = document.getElementById('quick-total-students');
+    const quickPresentCount = document.getElementById('quick-present-count');
+    const quickPercent = document.getElementById('quick-percent');
+    
+    if (quickTotalStudents) quickTotalStudents.textContent = totalStudents;
+    if (quickPresentCount) quickPresentCount.textContent = presentCount;
+    if (quickPercent) quickPercent.textContent = attendancePercent + '%';
 }
 
 /**
@@ -366,7 +550,10 @@ function loadAttendanceSummary() {
 function createDepartmentChart(data) {
     if (!data || data.length === 0) return;
     
-    const ctx = document.getElementById('departmentChart').getContext('2d');
+    const canvas = document.getElementById('departmentChart');
+    if (!canvas) return;
+    
+    const ctx = canvas.getContext('2d');
     
     // ล้างกราฟเดิม (ถ้ามี)
     if (window.departmentChart instanceof Chart) {
@@ -374,9 +561,17 @@ function createDepartmentChart(data) {
     }
     
     // เตรียมข้อมูลสำหรับกราฟ
-    const labels = data.map(item => item.department_name);
-    const presentData = data.map(item => item.present_count);
-    const absentData = data.map(item => item.absent_count);
+    const labels = data.map(item => 
+        // ตัดชื่อแผนกให้สั้นลงสำหรับการแสดงผลบนมือถือ
+        window.innerWidth < 768 ? 
+            (item.department_name.length > 10 ? 
+                item.department_name.substring(0, 10) + '...' : 
+                item.department_name) : 
+            item.department_name
+    );
+    
+    const presentData = data.map(item => parseInt(item.present_count) || 0);
+    const absentData = data.map(item => parseInt(item.absent_count) || 0);
     
     // สร้างกราฟใหม่
     window.departmentChart = new Chart(ctx, {
@@ -405,11 +600,30 @@ function createDepartmentChart(data) {
             maintainAspectRatio: false,
             scales: {
                 x: {
-                    stacked: false
+                    stacked: false,
+                    ticks: {
+                        font: {
+                            size: window.innerWidth < 768 ? 8 : 12
+                        }
+                    }
                 },
                 y: {
                     stacked: false,
                     beginAtZero: true
+                }
+            },
+            plugins: {
+                legend: {
+                    position: window.innerWidth < 768 ? 'bottom' : 'top'
+                },
+                tooltip: {
+                    callbacks: {
+                        title: function(tooltipItems) {
+                            // แสดงชื่อแผนกเต็มใน tooltip
+                            const index = tooltipItems[0].dataIndex;
+                            return data[index].department_name;
+                        }
+                    }
                 }
             }
         }
@@ -422,7 +636,10 @@ function createDepartmentChart(data) {
 function createLevelChart(data) {
     if (!data || data.length === 0) return;
     
-    const ctx = document.getElementById('levelChart').getContext('2d');
+    const canvas = document.getElementById('levelChart');
+    if (!canvas) return;
+    
+    const ctx = canvas.getContext('2d');
     
     // ล้างกราฟเดิม (ถ้ามี)
     if (window.levelChart instanceof Chart) {
@@ -431,8 +648,8 @@ function createLevelChart(data) {
     
     // เตรียมข้อมูลสำหรับกราฟ
     const labels = data.map(item => item.level);
-    const presentData = data.map(item => item.present_count);
-    const absentData = data.map(item => item.absent_count);
+    const presentData = data.map(item => parseInt(item.present_count) || 0);
+    const absentData = data.map(item => parseInt(item.absent_count) || 0);
     
     // สร้างกราฟใหม่
     window.levelChart = new Chart(ctx, {
@@ -461,13 +678,80 @@ function createLevelChart(data) {
             maintainAspectRatio: false,
             scales: {
                 x: {
-                    stacked: false
+                    stacked: false,
+                    ticks: {
+                        font: {
+                            size: window.innerWidth < 768 ? 8 : 12
+                        }
+                    }
                 },
                 y: {
                     stacked: false,
                     beginAtZero: true
                 }
+            },
+            plugins: {
+                legend: {
+                    position: window.innerWidth < 768 ? 'bottom' : 'top'
+                }
             }
         }
     });
+}
+
+/**
+ * ปรับขนาดกราฟตามขนาดหน้าจอ
+ */
+function adjustChartSize() {
+    if (window.departmentChart) {
+        window.departmentChart.options.scales.x.ticks.font.size = window.innerWidth < 768 ? 8 : 12;
+        window.departmentChart.options.plugins.legend.position = window.innerWidth < 768 ? 'bottom' : 'top';
+        window.departmentChart.update();
+    }
+    
+    if (window.levelChart) {
+        window.levelChart.options.scales.x.ticks.font.size = window.innerWidth < 768 ? 8 : 12;
+        window.levelChart.options.plugins.legend.position = window.innerWidth < 768 ? 'bottom' : 'top';
+        window.levelChart.update();
+    }
+}
+
+/**
+ * ส่งออกข้อมูลเป็นไฟล์ Excel
+ */
+function exportToExcel() {
+    const activityId = document.querySelector('input[name="activity_id"]')?.value;
+    if (!activityId) {
+        alert('ไม่พบรหัสกิจกรรม');
+        return;
+    }
+    
+    // ตรวจสอบว่ามีนักเรียนในรายการหรือไม่
+    const studentList = document.getElementById('studentList');
+    if (!studentList || studentList.children.length === 0 || studentList.querySelector('td[colspan]')) {
+        alert('กรุณาค้นหานักเรียนก่อนส่งออกข้อมูล');
+        return;
+    }
+    
+    // แสดงการโหลด
+    const exportButton = document.getElementById('btnExport');
+    if (exportButton) {
+        exportButton.disabled = true;
+        const originalText = exportButton.innerHTML;
+        exportButton.innerHTML = '<span class="material-icons">hourglass_top</span> กำลังส่งออก...';
+        
+        // คืนค่าปุ่มเป็นปกติหลังจาก 3 วินาที
+        setTimeout(() => {
+            if (exportButton) {
+                exportButton.disabled = false;
+                exportButton.innerHTML = originalText;
+            }
+        }, 3000);
+    }
+    
+    // สร้าง URL สำหรับดาวน์โหลด
+    const url = `ajax/export_attendance.php?activity_id=${activityId}`;
+    
+    // เปิดหน้าต่างใหม่สำหรับดาวน์โหลด
+    window.open(url, '_blank');
 }

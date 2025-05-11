@@ -330,7 +330,7 @@ if (isset($_POST['delete_activity'])) {
         $conn->commit();
         
         $save_success = true;
-        $response_message = "ลบกิจกรรม เรียบร้อยแล้ว";
+        $response_message = "ลบกิจกรรม  เรียบร้อยแล้ว";
     } catch (PDOException $e) {
         // Rollback ในกรณีที่เกิดข้อผิดพลาด
         $conn->rollBack();

@@ -251,3 +251,4 @@ require_once 'templates/main_content.php';
 // โหลดเทมเพลตส่วนท้าย
 require_once 'templates/footer.php';
 ?>
+
