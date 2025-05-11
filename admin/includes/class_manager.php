@@ -286,21 +286,7 @@ function handleAddDepartment() {
         $stmt->execute([$departmentCode, $departmentName]);
         
         $departmentId = $conn->lastInsertId();
-        
-        // บันทึกการดำเนินการของผู้ดูแลระบบ
-        $adminId = $_SESSION['user_id'];
-        $stmt = $conn->prepare("
-            INSERT INTO admin_actions (admin_id, action_type, action_details)
-            VALUES (?, 'add_department', ?)
-        ");
-        $stmt->execute([
-            $adminId,
-            json_encode([
-                'department_id' => $departmentId,
-                'department_code' => $departmentCode,
-                'department_name' => $departmentName
-            ])
-        ]);
+     
         
         header('Content-Type: application/json');
         echo json_encode([
@@ -378,20 +364,7 @@ function handleEditDepartment() {
         ");
         $stmt->execute([$departmentName, $departmentId]);
         
-        // บันทึกการดำเนินการของผู้ดูแลระบบ
-        $adminId = $_SESSION['user_id'];
-        $stmt = $conn->prepare("
-            INSERT INTO admin_actions (admin_id, action_type, action_details)
-            VALUES (?, 'edit_department', ?)
-        ");
-        $stmt->execute([
-            $adminId,
-            json_encode([
-                'department_id' => $departmentId,
-                'department_code' => $department['department_code'],
-                'department_name' => $departmentName
-            ])
-        ]);
+    
         
         header('Content-Type: application/json');
         echo json_encode([
@@ -471,20 +444,7 @@ function handleDeleteDepartment() {
         $stmt = $conn->prepare("DELETE FROM departments WHERE department_id = ?");
         $stmt->execute([$departmentId]);
         
-        // บันทึกการดำเนินการของผู้ดูแลระบบ
-        $adminId = $_SESSION['user_id'];
-        $stmt = $conn->prepare("
-            INSERT INTO admin_actions (admin_id, action_type, action_details)
-            VALUES (?, 'remove_department', ?)
-        ");
-        $stmt->execute([
-            $adminId,
-            json_encode([
-                'department_id' => $department['department_id'],
-                'department_code' => $department['department_code'],
-                'department_name' => $department['department_name']
-            ])
-        ]);
+    
         
         // Commit transaction
         $conn->commit();
@@ -746,23 +706,8 @@ function handleAddClass() {
         
         $classId = $conn->lastInsertId();
         
-        // บันทึกการดำเนินการของผู้ดูแลระบบ
-        $adminId = $_SESSION['user_id'];
-        $stmt = $conn->prepare("
-            INSERT INTO admin_actions (admin_id, action_type, action_details)
-            VALUES (?, 'add_class', ?)
-        ");
-        $stmt->execute([
-            $adminId,
-            json_encode([
-                'class_id' => $classId,
-                'academic_year_id' => $academicYearId,
-                'level' => $level,
-                'department_id' => $departmentId,
-                'group_number' => $groupNumber
-            ])
-        ]);
-        
+    
+    
         header('Content-Type: application/json');
         echo json_encode([
             'status' => 'success',
@@ -845,22 +790,7 @@ function handleEditClass() {
         ");
         $stmt->execute([$academicYearId, $level, $departmentId, $groupNumber, $classroom, $classId]);
         
-        // บันทึกการดำเนินการของผู้ดูแลระบบ
-        $adminId = $_SESSION['user_id'];
-        $stmt = $conn->prepare("
-            INSERT INTO admin_actions (admin_id, action_type, action_details)
-            VALUES (?, 'edit_class', ?)
-        ");
-        $stmt->execute([
-            $adminId,
-            json_encode([
-                'class_id' => $classId,
-                'academic_year_id' => $academicYearId,
-                'level' => $level,
-                'department_id' => $departmentId,
-                'group_number' => $groupNumber
-            ])
-        ]);
+      
         
         header('Content-Type: application/json');
         echo json_encode([
@@ -949,20 +879,7 @@ function handleDeleteClass() {
         $stmt = $conn->prepare("DELETE FROM classes WHERE class_id = ?");
         $stmt->execute([$classId]);
         
-        // บันทึกการดำเนินการของผู้ดูแลระบบ
-        $adminId = $_SESSION['user_id'];
-        $stmt = $conn->prepare("
-            INSERT INTO admin_actions (admin_id, action_type, action_details)
-            VALUES (?, 'remove_class', ?)
-        ");
-        $stmt->execute([
-            $adminId,
-            json_encode([
-                'class_id' => $class['class_id'],
-                'class_name' => "{$class['level']} กลุ่ม {$class['group_number']} {$class['department_name']}",
-                'academic_year' => "{$class['year']} (ภาคเรียนที่ {$class['semester']})"
-            ])
-        ]);
+
         
         // Commit transaction
         $conn->commit();
@@ -1202,19 +1119,7 @@ function handleManageAdvisors() {
             }
         }
         
-        // บันทึกการดำเนินการของผู้ดูแลระบบ
-        $adminId = $_SESSION['user_id'];
-        $stmt = $conn->prepare("
-            INSERT INTO admin_actions (admin_id, action_type, action_details)
-            VALUES (?, 'manage_advisors', ?)
-        ");
-        $stmt->execute([
-            $adminId,
-            json_encode([
-                'class_id' => $classId,
-                'changes' => $changes
-            ])
-        ]);
+ 
         
         // Commit transaction
         $conn->commit();
@@ -1294,19 +1199,7 @@ function handlePromoteStudents() {
         $stmt->execute([$fromAcademicYearId, $toAcademicYearId, $notes, $adminId]);
         $batchId = $conn->lastInsertId();
         
-        // บันทึกการดำเนินการของผู้ดูแลระบบ
-        $stmt = $conn->prepare("
-            INSERT INTO admin_actions (admin_id, action_type, action_details)
-            VALUES (?, 'promote_students', ?)
-        ");
-        $stmt->execute([
-            $adminId,
-            json_encode([
-                'batch_id' => $batchId,
-                'from_academic_year_id' => $fromAcademicYearId,
-                'to_academic_year_id' => $toAcademicYearId
-            ])
-        ]);
+
         
         // ดึงข้อมูลนักเรียนและชั้นเรียนในปีการศึกษาต้นทาง
         $stmt = $conn->prepare("
@@ -1508,21 +1401,7 @@ function handleAddAcademicYear() {
         $stmt->execute([$year, $semester, $startDate, $endDate, $requiredDays]);
         
         $academicYearId = $conn->lastInsertId();
-        
-        // บันทึกการดำเนินการของผู้ดูแลระบบ
-        $adminId = $_SESSION['user_id'];
-        $stmt = $conn->prepare("
-            INSERT INTO admin_actions (admin_id, action_type, action_details)
-            VALUES (?, 'create_academic_year', ?)
-        ");
-        $stmt->execute([
-            $adminId,
-            json_encode([
-                'academic_year_id' => $academicYearId,
-                'year' => $year,
-                'semester' => $semester
-            ])
-        ]);
+    
         
         header('Content-Type: application/json');
         echo json_encode([

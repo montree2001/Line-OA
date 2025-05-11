@@ -408,19 +408,7 @@ function updateClassAdvisors($classId, $changes) {
             }
         }
         
-        // บันทึกการดำเนินการของผู้ดูแลระบบ
-        $adminId = $_SESSION['user_id'] ?? 1;
-        $stmt = $conn->prepare("
-            INSERT INTO admin_actions (admin_id, action_type, action_details)
-            VALUES (?, 'manage_advisors', ?)
-        ");
-        $stmt->execute([
-            $adminId,
-            json_encode([
-                'class_id' => $classId,
-                'changes' => $changes
-            ], JSON_UNESCAPED_UNICODE)
-        ]);
+      
         
         // Commit transaction
         $conn->commit();
@@ -864,12 +852,7 @@ function promoteStudents($data) {
             'graduates_count' => $graduateCount
         ], JSON_UNESCAPED_UNICODE);
         
-        $actionQuery = "INSERT INTO admin_actions (admin_id, action_type, action_details) 
-                      VALUES (:admin_id, 'promote_students', :details)";
-        $actionStmt = $conn->prepare($actionQuery);
-        $actionStmt->bindParam(':admin_id', $adminId, PDO::PARAM_INT);
-        $actionStmt->bindParam(':details', $details, PDO::PARAM_STR);
-        $actionStmt->execute();
+  
         
         $conn->commit();
         

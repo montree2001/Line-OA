@@ -14,9 +14,18 @@ ini_set('display_errors', 1);
 
 // เริ่ม session
 session_start();
-$_SESSION['user_id']=109; // ใช้ ID 1 เป็นค่าเริ่มต้นถ้าไม่มี session
-$adminId = $_SESSION['user_id'] ?? 109; // ใช้ ID 1 เป็นค่าเริ่มต้นถ้าไม่มี session
+// ตรวจสอบการล็อกอิน (แสดงความคิดเห็นออกไปเพื่อการทดสอบ)
+if (!isset($_SESSION['user_id']) || !isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'admin') {
+    header('Location: ../login.php');
+    exit;
+}
 
+// ข้อมูลเกี่ยวกับเจ้าหน้าที่ (จริงๆ ควรดึงจากฐานข้อมูล)
+$admin_info = [
+    'name' => $_SESSION['user_name'] ?? 'เจ้าหน้าที่',
+    'role' => $_SESSION['user_role'] ?? 'ผู้ดูแลระบบ',
+    'initials' => 'A',
+];
 // นำเข้าไฟล์เชื่อมต่อฐานข้อมูล
 require_once '../db_connect.php';
 

@@ -209,23 +209,7 @@ function addClass($data) {
         
         $classId = $conn->lastInsertId();
         
-        // บันทึกการดำเนินการ
-        if (isset($_SESSION['user_id'])) {
-            $adminId = $_SESSION['user_id'];
-            $stmt = $conn->prepare("
-                INSERT INTO admin_actions (admin_id, action_type, action_details)
-                VALUES (?, 'add_class', ?)
-            ");
-            $details = json_encode([
-                'class_id' => $classId,
-                'academic_year_id' => $academicYearId,
-                'level' => $level,
-                'department_id' => $departmentId,
-                'group_number' => $groupNumber
-            ], JSON_UNESCAPED_UNICODE);
-            $stmt->execute([$adminId, $details]);
-        }
-        
+       
         return [
             'success' => true,
             'message' => 'เพิ่มชั้นเรียนใหม่เรียบร้อยแล้ว',
@@ -285,22 +269,7 @@ function updateClass($data) {
         ");
         $stmt->execute([$academicYearId, $level, $departmentId, $groupNumber, $classroom, $classId]);
         
-        // บันทึกการดำเนินการ
-        if (isset($_SESSION['user_id'])) {
-            $adminId = $_SESSION['user_id'];
-            $stmt = $conn->prepare("
-                INSERT INTO admin_actions (admin_id, action_type, action_details)
-                VALUES (?, 'edit_class', ?)
-            ");
-            $details = json_encode([
-                'class_id' => $classId,
-                'academic_year_id' => $academicYearId,
-                'level' => $level,
-                'department_id' => $departmentId,
-                'group_number' => $groupNumber
-            ], JSON_UNESCAPED_UNICODE);
-            $stmt->execute([$adminId, $details]);
-        }
+       
         
         return [
             'success' => true,
@@ -363,19 +332,7 @@ function deleteClass($classId) {
         $stmt = $conn->prepare("DELETE FROM classes WHERE class_id = ?");
         $stmt->execute([$classId]);
         
-        // บันทึกการดำเนินการ
-        if (isset($_SESSION['user_id'])) {
-            $adminId = $_SESSION['user_id'];
-            $stmt = $conn->prepare("
-                INSERT INTO admin_actions (admin_id, action_type, action_details)
-                VALUES (?, 'remove_class', ?)
-            ");
-            $details = json_encode([
-                'class_id' => $classId,
-                'class_name' => "{$classInfo['level']} กลุ่ม {$classInfo['group_number']} {$classInfo['department_name']}"
-            ], JSON_UNESCAPED_UNICODE);
-            $stmt->execute([$adminId, $details]);
-        }
+       
         
         return [
             'success' => true,

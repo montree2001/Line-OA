@@ -91,21 +91,7 @@ try {
             // อัปเดตข้อมูลสรุปการเข้าแถวของนักเรียน
             updateStudentAttendanceSummary($conn, $student_id, $academic_year_id);
             
-            // บันทึกการดำเนินการของผู้ดูแลระบบ
-            $action_type = 'update_student_status';
-            $action_details = json_encode([
-                'type' => 'attendance',
-                'date' => $today,
-                'student_id' => $student_id,
-                'method' => $method,
-                'status' => $status
-            ]);
             
-            $stmt = $conn->prepare("
-                INSERT INTO admin_actions (admin_id, action_type, action_details)
-                VALUES (?, ?, ?)
-            ");
-            $stmt->execute([$user_id, $action_type, $action_details]);
             
             $conn->commit();
             
@@ -181,20 +167,7 @@ try {
                 updateStudentAttendanceSummary($conn, $student_id, $academic_year_id);
             }
             
-            // บันทึกการดำเนินการของผู้ดูแลระบบ
-            $action_type = 'update_student_status';
-            $action_details = json_encode([
-                'type' => 'bulk_attendance',
-                'date' => $attendance_date,
-                'student_count' => count($students),
-                'method' => 'manual'
-            ]);
-            
-            $stmt = $conn->prepare("
-                INSERT INTO admin_actions (admin_id, action_type, action_details)
-                VALUES (?, ?, ?)
-            ");
-            $stmt->execute([$user_id, $action_type, $action_details]);
+           
             
             $conn->commit();
             

@@ -45,20 +45,7 @@ function addDepartment($data) {
         
         $department_id = $db->lastInsertId();
         
-        // บันทึกการดำเนินการในตาราง admin_actions
-        $admin_id = $_SESSION['user_id'] ?? 1; // ควรดึงจาก session จริง
-        $details = json_encode([
-            'department_id' => $department_id,
-            'department_code' => $department_code,
-            'department_name' => $data['department_name']
-        ]);
-        
-        $actionQuery = "INSERT INTO admin_actions (admin_id, action_type, action_details) 
-                       VALUES (:admin_id, 'add_department', :details)";
-        $actionStmt = $db->prepare($actionQuery);
-        $actionStmt->bindParam(':admin_id', $admin_id, PDO::PARAM_INT);
-        $actionStmt->bindParam(':details', $details, PDO::PARAM_STR);
-        $actionStmt->execute();
+   
         
         return [
             'success' => true, 
@@ -116,19 +103,7 @@ function updateDepartment($data) {
         $stmt->bindParam(':id', $data['department_id'], PDO::PARAM_INT);
         $stmt->execute();
         
-        // บันทึกการดำเนินการในตาราง admin_actions
-        $admin_id = $_SESSION['user_id'] ?? 1; // ควรดึงจาก session จริง
-        $details = json_encode([
-            'department_id' => $data['department_id'],
-            'department_name' => $data['department_name']
-        ]);
-        
-        $actionQuery = "INSERT INTO admin_actions (admin_id, action_type, action_details) 
-                       VALUES (:admin_id, 'edit_department', :details)";
-        $actionStmt = $db->prepare($actionQuery);
-        $actionStmt->bindParam(':admin_id', $admin_id, PDO::PARAM_INT);
-        $actionStmt->bindParam(':details', $details, PDO::PARAM_STR);
-        $actionStmt->execute();
+     
         
         return ['success' => true, 'message' => 'แก้ไขข้อมูลแผนกวิชาสำเร็จ'];
     } catch (PDOException $e) {
@@ -186,20 +161,7 @@ function deleteDepartment($department_id) {
         $stmt->bindParam(':id', $department_id, PDO::PARAM_INT);
         $stmt->execute();
         
-        // บันทึกการดำเนินการในตาราง admin_actions
-        $admin_id = $_SESSION['user_id'] ?? 1; // ควรดึงจาก session จริง
-        $details = json_encode([
-            'department_id' => $department_id,
-            'department_code' => $departmentInfo['department_code'],
-            'department_name' => $departmentInfo['department_name']
-        ]);
         
-        $actionQuery = "INSERT INTO admin_actions (admin_id, action_type, action_details) 
-                       VALUES (:admin_id, 'remove_department', :details)";
-        $actionStmt = $db->prepare($actionQuery);
-        $actionStmt->bindParam(':admin_id', $admin_id, PDO::PARAM_INT);
-        $actionStmt->bindParam(':details', $details, PDO::PARAM_STR);
-        $actionStmt->execute();
         
         return ['success' => true, 'message' => 'ลบแผนกวิชาสำเร็จ'];
     } catch (PDOException $e) {

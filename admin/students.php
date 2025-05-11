@@ -13,7 +13,12 @@ if (!isset($_SESSION['user_id']) || !isset($_SESSION['user_role']) || $_SESSION[
 }
 // เชื่อมต่อฐานข้อมูล
 require_once '../db_connect.php';
-
+// ข้อมูลเกี่ยวกับเจ้าหน้าที่ (จริงๆ ควรดึงจากฐานข้อมูล)
+$admin_info = [
+    'name' => $_SESSION['user_name'] ?? 'เจ้าหน้าที่',
+    'role' => $_SESSION['user_role'] ?? 'ผู้ดูแลระบบ',
+    'initials' => 'A',
+];
 // ฟังก์ชันสำหรับดึงข้อมูลนักเรียน
 function getStudents($filters = []) {
     $conn = getDB();

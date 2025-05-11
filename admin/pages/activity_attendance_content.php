@@ -327,6 +327,180 @@ $alert_error = $save_error ?? false;
         </div>
     </div>
 </div>
+<!-- เพิ่มปุ่มส่งออกและพิมพ์ข้อมูล ระหว่าง class="bulk-actions" -->
+<div class="export-actions">
+    <button type="button" id="btnExport" class="btn btn-info" onclick="exportToExcel()">
+        <span class="material-icons">file_download</span>
+        ส่งออกข้อมูล Excel
+    </button>
+    <button type="button" id="btnPrint" class="btn btn-info" onclick="printAttendanceList()">
+        <span class="material-icons">print</span>
+        พิมพ์รายชื่อ
+    </button>
+</div>
+
+<!-- เพิ่มเข้าไปในส่วนของ style -->
+<style>
+/* รูปแบบส่วนปุ่มส่งออกและพิมพ์ข้อมูล */
+.export-actions {
+    display: flex;
+    gap: 10px;
+    margin-left: auto;
+}
+
+.bulk-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+@media print {
+    .no-print {
+        display: none !important;
+    }
+    
+    .main-sidebar, .page-header, .filter-container, .action-buttons, 
+    .bulk-actions, .form-actions, .card-title, .main-header {
+        display: none !important;
+    }
+    
+    .main-content {
+        margin-left: 0 !important;
+        padding: 0 !important;
+    }
+    
+    .card {
+        box-shadow: none !important;
+        border: none !important;
+    }
+    
+    .table-responsive {
+        overflow: visible !important;
+    }
+    
+    .data-table {
+        width: 100% !important;
+        border-collapse: collapse;
+    }
+    
+    .data-table th, .data-table td {
+        border: 1px solid #ddd !important;
+        padding: 8px !important;
+    }
+    
+    .attendance-summary {
+        page-break-inside: avoid;
+    }
+    
+    .attendance-stat {
+        border: 1px solid #ddd !important;
+        padding: 10px !important;
+    }
+}
+</style>
+
+<!-- เพิ่มฟังก์ชันพิมพ์รายชื่อในส่วน JavaScript -->
+<script>
+/**
+ * พิมพ์รายชื่อผู้เข้าร่วมกิจกรรม
+ */
+function printAttendanceList() {
+    // ตรวจสอบว่ามีข้อมูลให้พิมพ์หรือไม่
+    const studentList = document.getElementById('studentList');
+    if (!studentList || studentList.children.length === 0 || studentList.querySelector('td[colspan]')) {
+        alert('กรุณาค้นหานักเรียนก่อนพิมพ์รายชื่อ');
+        return;
+    }
+    
+    // เตรียมพิมพ์
+    const activityName = document.querySelector('.activity-title h2').innerText;
+    const activityDate = document.querySelector('.activity-meta .activity-date').innerText;
+    
+    // เปลี่ยนชื่อหน้าเว็บเป็นชื่อกิจกรรมสำหรับการพิมพ์
+    const originalTitle = document.title;
+    document.title = `รายชื่อผู้เข้าร่วมกิจกรรม ${activityName}`;
+    
+    // ซ่อนส่วนที่ไม่ต้องการพิมพ์
+    const elementsToHide = document.querySelectorAll('.no-print');
+    elementsToHide.forEach(element => {
+        element.dataset.originalDisplay = element.style.display;
+        element.style.display = 'none';
+    });
+    
+    // เพิ่มข้อมูลสำหรับพิมพ์
+    const printInfo = document.createElement('div');
+    printInfo.className = 'print-only';
+    printInfo.innerHTML = `
+        <h1 style="text-align:center; margin-bottom: 20px;">${activityName}</h1>
+        <p style="text-align:center; margin-bottom: 30px;">${activityDate}</p>
+    `;
+    
+    // แทรกข้อมูลสำหรับพิมพ์ที่ต้นของตาราง
+    const tableContainer = document.querySelector('.table-responsive');
+    tableContainer.insertBefore(printInfo, tableContainer.firstChild);
+    
+    // พิมพ์
+    window.print();
+    
+    // ลบส่วนที่เพิ่มและคืนค่าการแสดงผลเดิม
+    setTimeout(() => {
+        tableContainer.removeChild(printInfo);
+        
+        elementsToHide.forEach(element => {
+            element.style.display = element.dataset.originalDisplay || '';
+        });
+        
+        document.title = originalTitle;
+    }, 100);
+}
+/**
+ * ส่งออกข้อมูลเป็นไฟล์ Excel
+ */
+function exportToExcel() {
+    const activityId = document.querySelector('input[name="activity_id"]')?.value;
+    if (!activityId) {
+        alert('ไม่พบรหัสกิจกรรม');
+        return;
+    }
+    
+    // รับค่าจากตัวกรอง
+    const departmentId = document.getElementById('filterDepartment')?.value || '';
+    const level = document.getElementById('filterLevel')?.value || '';
+    const classId = document.getElementById('filterClass')?.value || '';
+    const search = document.getElementById('filterSearch')?.value || '';
+    
+    // แสดงการโหลด
+    const exportButton = document.getElementById('btnExport');
+    if (exportButton) {
+        exportButton.disabled = true;
+        const originalText = exportButton.innerHTML;
+        exportButton.innerHTML = '<span class="material-icons">hourglass_top</span> กำลังส่งออก...';
+        
+        // คืนค่าปุ่มเป็นปกติหลังจาก 3 วินาที
+        setTimeout(() => {
+            if (exportButton) {
+                exportButton.disabled = false;
+                exportButton.innerHTML = originalText;
+            }
+        }, 3000);
+    }
+    
+    // สร้าง URL สำหรับดาวน์โหลด
+    let url = `ajax/export_attendance.php?activity_id=${activityId}`;
+    if (departmentId) url += `&department_id=${departmentId}`;
+    if (level) url += `&level=${encodeURIComponent(level)}`;
+    if (classId) url += `&class_id=${classId}`;
+    if (search) url += `&search=${encodeURIComponent(search)}`;
+    
+    // เปิดหน้าต่างใหม่สำหรับดาวน์โหลด
+    window.open(url, '_blank');
+}
+</script>
+
+
 
 <!-- สคริปต์เพิ่มเติมเฉพาะหน้านี้ -->
 <style>

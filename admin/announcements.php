@@ -6,22 +6,22 @@
 // เริ่ม session
 session_start();
 
-/* // เพิ่มการตรวจสอบสิทธิ์การเข้าถึง
-if (!isset($_SESSION['user_id']) || !isset($_SESSION['user_type']) || $_SESSION['user_type'] != 'admin') {
-    header('Location: login.php');
+// ตรวจสอบการล็อกอิน (แสดงความคิดเห็นออกไปเพื่อการทดสอบ)
+if (!isset($_SESSION['user_id']) || !isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'admin') {
+    header('Location: ../login.php');
     exit;
 }
- */
+
 // กำหนดข้อมูลสำหรับหน้าปัจจุบัน
 $current_page = 'announcements';
 $page_title = 'จัดการประกาศ';
 $page_header = 'จัดการประกาศถึงนักเรียน';
 
-// ข้อมูลเกี่ยวกับเจ้าหน้าที่ (ควรดึงจากฐานข้อมูล)
+// ข้อมูลเกี่ยวกับเจ้าหน้าที่ (จริงๆ ควรดึงจากฐานข้อมูล)
 $admin_info = [
-    'name' => 'จารุวรรณ บุญมี',
-    'role' => 'เจ้าหน้าที่กิจการนักเรียน',
-    'initials' => 'จ'
+    'name' => $_SESSION['user_name'] ?? 'เจ้าหน้าที่',
+    'role' => $_SESSION['user_role'] ?? 'ผู้ดูแลระบบ',
+    'initials' => 'A',
 ];
 
 // ปุ่มบนส่วนหัว

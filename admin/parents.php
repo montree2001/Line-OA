@@ -6,13 +6,12 @@
 
 // เริ่ม session
 session_start();
-/* 
-// ตรวจสอบการล็อกอิน
-if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
-    header('Location: login.php');
+// ตรวจสอบการล็อกอิน (แสดงความคิดเห็นออกไปเพื่อการทดสอบ)
+if (!isset($_SESSION['user_id']) || !isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'admin') {
+    header('Location: ../login.php');
     exit;
 }
- */
+
 // นำเข้าไฟล์การเชื่อมต่อฐานข้อมูล
 require_once '../db_connect.php';
 
@@ -27,17 +26,12 @@ $page_header = 'จัดการข้อมูลผู้ปกครอง'
 $current_page = 'parents';
 $hide_search = true;
 
-/* // โหลดข้อมูลผู้ดูแลระบบ (admin) ที่ล็อกอินอยู่
-$admin_id = $_SESSION['user_id'];
-$stmt = getDB()->prepare("SELECT u.first_name, u.last_name, u.role FROM users u WHERE u.user_id = ?");
-$stmt->execute([$admin_id]);
-$admin_user = $stmt->fetch(PDO::FETCH_ASSOC);
+// ข้อมูลเกี่ยวกับเจ้าหน้าที่ (จริงๆ ควรดึงจากฐานข้อมูล)
 $admin_info = [
-    'name' => $admin_user['first_name'] . ' ' . $admin_user['last_name'],
-    'role' => $admin_user['role'] === 'admin' ? 'ผู้ดูแลระบบ' : 'เจ้าหน้าที่',
-    'initials' => mb_substr($admin_user['first_name'], 0, 1, 'UTF-8')
-]; */
-
+    'name' => $_SESSION['user_name'] ?? 'เจ้าหน้าที่',
+    'role' => $_SESSION['user_role'] ?? 'ผู้ดูแลระบบ',
+    'initials' => 'A',
+];
 // กำหนดปุ่มในส่วนหัว
 $header_buttons = [
     [
