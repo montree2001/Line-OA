@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost
--- Generation Time: May 10, 2025 at 04:17 PM
+-- Generation Time: May 11, 2025 at 05:08 AM
 -- Server version: 10.4.28-MariaDB
 -- PHP Version: 8.0.28
 
@@ -70,7 +70,7 @@ CREATE TABLE `activities` (
 --
 
 INSERT INTO `activities` (`activity_id`, `activity_name`, `activity_date`, `activity_location`, `description`, `required_attendance`, `academic_year_id`, `created_by`, `updated_by`, `created_at`, `updated_at`) VALUES
-(2, 'กิจกรรมปฐมนิเทศนักศึกษาใหม่', '2025-05-08', 'หอประชุมวิทยาลัยการอาชีพปราสาท', '', 1, 1, 109, NULL, '2025-05-10 14:13:01', NULL);
+(13, 'กิจกรรมปฐมนิเทศนักศึกษาใหม่', '2025-05-11', 'หอประชุมวิทยาลัยการอาชีพปราสาท', '', 0, 1, 1, 1, '2025-05-11 02:58:02', '2025-05-11 02:59:06');
 
 -- --------------------------------------------------------
 
@@ -87,17 +87,6 @@ CREATE TABLE `activity_attendance` (
   `record_time` timestamp NOT NULL DEFAULT current_timestamp() COMMENT 'เวลาที่บันทึก',
   `remarks` text DEFAULT NULL COMMENT 'หมายเหตุ'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `activity_attendance`
---
-
-INSERT INTO `activity_attendance` (`attendance_id`, `activity_id`, `student_id`, `attendance_status`, `recorder_id`, `record_time`, `remarks`) VALUES
-(1, 2, 41, 'absent', 109, '2025-05-10 14:16:06', ''),
-(2, 2, 48, 'absent', 109, '2025-05-10 14:16:06', ''),
-(3, 2, 50, 'absent', 109, '2025-05-10 14:16:06', ''),
-(4, 2, 51, 'absent', 109, '2025-05-10 14:16:06', ''),
-(5, 2, 52, 'absent', 109, '2025-05-10 14:16:06', '');
 
 -- --------------------------------------------------------
 
@@ -120,6 +109,13 @@ CREATE TABLE `activity_target_levels` (
   `activity_id` int(11) NOT NULL COMMENT 'รหัสกิจกรรม',
   `level` enum('ปวช.1','ปวช.2','ปวช.3','ปวส.1','ปวส.2') NOT NULL COMMENT 'ระดับชั้น'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `activity_target_levels`
+--
+
+INSERT INTO `activity_target_levels` (`activity_id`, `level`) VALUES
+(13, 'ปวช.1');
 
 -- --------------------------------------------------------
 
@@ -159,42 +155,6 @@ CREATE TABLE `admin_actions` (
   `action_date` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
---
--- Dumping data for table `admin_actions`
---
-
-INSERT INTO `admin_actions` (`action_id`, `admin_id`, `action_type`, `action_details`, `action_date`) VALUES
-(52, 109, 'add_student', 'hi', '2025-05-03 15:17:00'),
-(54, 109, 'manage_advisors', '{\"class_id\":\"16\",\"changes\":[{\"action\":\"add\",\"teacher_id\":\"5\",\"is_primary\":true}]}', '2025-05-03 15:19:41'),
-(55, 109, 'add_department', '{\"department_id\":\"12\",\"department_code\":\"TEST\",\"department_name\":\"\\u0e40\\u0e17\\u0e04\\u0e42\\u0e19\\u0e42\\u0e25\\u0e22\\u0e35\\u0e2a\\u0e32\\u0e23\\u0e2a\\u0e19\\u0e40\\u0e17\\u0e282\"}', '2025-05-03 15:36:45'),
-(56, 109, 'remove_department', '{\"department_id\":\"12\",\"department_code\":\"TEST\",\"department_name\":\"\\u0e40\\u0e17\\u0e04\\u0e42\\u0e19\\u0e42\\u0e25\\u0e22\\u0e35\\u0e2a\\u0e32\\u0e23\\u0e2a\\u0e19\\u0e40\\u0e17\\u0e282\"}', '2025-05-03 15:59:27'),
-(57, 109, 'remove_department', '{\"department_id\":\"9\",\"department_code\":\"ADMIN\",\"department_name\":\"\\u0e1a\\u0e23\\u0e34\\u0e2b\\u0e32\\u0e23\"}', '2025-05-03 16:08:30'),
-(58, 109, 'manage_advisors', '{\"class_id\":\"12\",\"changes\":[{\"action\":\"add\",\"teacher_id\":\"6\",\"is_primary\":true}]}', '2025-05-04 05:42:14'),
-(59, 109, 'manage_advisors', '{\"class_id\":\"12\",\"changes\":[{\"action\":\"add\",\"teacher_id\":\"7\",\"is_primary\":true}]}', '2025-05-04 05:48:02'),
-(60, 109, 'manage_advisors', '{\"class_id\":\"14\",\"changes\":[{\"action\":\"add\",\"teacher_id\":\"7\",\"is_primary\":true}]}', '2025-05-05 15:45:28'),
-(61, 109, 'add_department', '{\"department_id\":\"13\",\"department_code\":\"TEST\",\"department_name\":\"\\u0e40\\u0e17\\u0e04\\u0e42\\u0e19\\u0e42\\u0e25\\u0e22\\u0e35\\u0e2a\\u0e32\\u0e23\\u0e2a\\u0e19\\u0e40\\u0e17\\u0e282\"}', '2025-05-06 17:07:48'),
-(62, 109, 'update_student_status', '{\"type\":\"attendance\",\"date\":\"2025-05-09\",\"student_count\":5,\"method\":\"manual\"}', '2025-05-09 06:32:47'),
-(63, 109, 'update_student_status', '{\"type\":\"attendance\",\"date\":\"2025-05-09\",\"student_count\":1,\"method\":\"manual\"}', '2025-05-09 07:05:18'),
-(64, 109, 'update_student_status', '{\"type\":\"attendance\",\"date\":\"2025-05-09\",\"student_count\":1,\"method\":\"manual\"}', '2025-05-09 07:06:32'),
-(65, 109, 'update_student_status', '{\"type\":\"attendance\",\"date\":\"2025-05-09\",\"student_count\":1,\"method\":\"manual\"}', '2025-05-09 10:53:36'),
-(66, 109, 'update_student_status', '{\"type\":\"attendance\",\"date\":\"2025-05-09\",\"student_count\":1,\"method\":\"manual\"}', '2025-05-09 10:55:05'),
-(67, 109, 'update_student_status', '{\"type\":\"attendance\",\"date\":\"2025-05-09\",\"student_count\":1,\"method\":\"manual\"}', '2025-05-09 10:55:30'),
-(68, 109, 'update_student_status', '{\"type\":\"attendance\",\"date\":\"2025-05-09\",\"student_count\":1,\"method\":\"manual\"}', '2025-05-09 10:55:39'),
-(69, 109, 'update_student_status', '{\"type\":\"attendance\",\"date\":\"2025-05-09\",\"student_count\":1,\"method\":\"manual\"}', '2025-05-09 10:55:40'),
-(70, 109, 'update_student_status', '{\"type\":\"attendance\",\"date\":\"2025-05-09\",\"student_count\":1,\"method\":\"manual\"}', '2025-05-09 10:55:41'),
-(71, 109, 'update_student_status', '{\"type\":\"attendance\",\"date\":\"2025-05-08\",\"student_count\":1,\"method\":\"manual\"}', '2025-05-09 13:53:39'),
-(72, 109, 'update_student_status', '{\"type\":\"attendance\",\"date\":\"2025-05-08\",\"student_count\":1,\"method\":\"manual\"}', '2025-05-09 13:55:44'),
-(73, 109, 'update_student_status', '{\"type\":\"attendance\",\"date\":\"2025-05-08\",\"student_count\":1,\"method\":\"manual\"}', '2025-05-09 13:55:49'),
-(74, 109, 'update_student_status', '{\"type\":\"attendance\",\"date\":\"2025-05-10\",\"student_count\":5,\"method\":\"manual\"}', '2025-05-10 09:03:10'),
-(75, 109, 'update_student_status', '{\"type\":\"attendance\",\"date\":\"2025-05-10\",\"student_count\":5,\"method\":\"manual\"}', '2025-05-10 12:07:21'),
-(76, 109, 'update_student_status', '{\"type\":\"attendance\",\"date\":\"2025-05-10\",\"student_count\":1,\"method\":\"manual\"}', '2025-05-10 12:08:11'),
-(77, 109, 'create_activity', '{\"activity_id\":\"1\",\"activity_name\":\"\\u0e01\\u0e34\\u0e08\\u0e01\\u0e23\\u0e23\\u0e21\\u0e1b\\u0e10\\u0e21\\u0e19\\u0e34\\u0e40\\u0e17\\u0e28\\u0e19\\u0e31\\u0e01\\u0e28\\u0e36\\u0e01\\u0e29\\u0e32\\u0e43\\u0e2b\\u0e21\\u0e48\",\"activity_date\":\"2025-05-09\"}', '2025-05-10 14:10:33'),
-(78, 109, 'edit_activity', '{\"activity_id\":\"1\",\"activity_name\":\"\\u0e01\\u0e34\\u0e08\\u0e01\\u0e23\\u0e23\\u0e21\\u0e1b\\u0e10\\u0e21\\u0e19\\u0e34\\u0e40\\u0e17\\u0e28\\u0e19\\u0e31\\u0e01\\u0e28\\u0e36\\u0e01\\u0e29\\u0e32\\u0e43\\u0e2b\\u0e21\\u0e48\",\"activity_date\":\"2025-05-09\"}', '2025-05-10 14:10:41'),
-(79, 109, 'edit_activity', '{\"activity_id\":\"1\",\"activity_name\":\"\\u0e01\\u0e34\\u0e08\\u0e01\\u0e23\\u0e23\\u0e21\\u0e1b\\u0e10\\u0e21\\u0e19\\u0e34\\u0e40\\u0e17\\u0e28\\u0e19\\u0e31\\u0e01\\u0e28\\u0e36\\u0e01\\u0e29\\u0e32\\u0e43\\u0e2b\\u0e21\\u0e48\",\"activity_date\":\"2025-05-09\"}', '2025-05-10 14:12:31'),
-(80, 109, 'delete_activity', '{\"activity_id\":\"1\",\"activity_name\":\"\\u0e01\\u0e34\\u0e08\\u0e01\\u0e23\\u0e23\\u0e21\\u0e1b\\u0e10\\u0e21\\u0e19\\u0e34\\u0e40\\u0e17\\u0e28\\u0e19\\u0e31\\u0e01\\u0e28\\u0e36\\u0e01\\u0e29\\u0e32\\u0e43\\u0e2b\\u0e21\\u0e48\"}', '2025-05-10 14:12:33'),
-(81, 109, 'create_activity', '{\"activity_id\":\"2\",\"activity_name\":\"\\u0e01\\u0e34\\u0e08\\u0e01\\u0e23\\u0e23\\u0e21\\u0e1b\\u0e10\\u0e21\\u0e19\\u0e34\\u0e40\\u0e17\\u0e28\\u0e19\\u0e31\\u0e01\\u0e28\\u0e36\\u0e01\\u0e29\\u0e32\\u0e43\\u0e2b\\u0e21\\u0e48\",\"activity_date\":\"2025-05-08\"}', '2025-05-10 14:13:01'),
-(82, 109, 'record_activity_attendance', '{\"activity_id\":2,\"activity_name\":\"\\u0e01\\u0e34\\u0e08\\u0e01\\u0e23\\u0e23\\u0e21\\u0e1b\\u0e10\\u0e21\\u0e19\\u0e34\\u0e40\\u0e17\\u0e28\\u0e19\\u0e31\\u0e01\\u0e28\\u0e36\\u0e01\\u0e29\\u0e32\\u0e43\\u0e2b\\u0e21\\u0e48\",\"student_count\":5}', '2025-05-10 14:16:06');
-
 -- --------------------------------------------------------
 
 --
@@ -222,7 +182,7 @@ CREATE TABLE `admin_users` (
 --
 
 INSERT INTO `admin_users` (`admin_id`, `username`, `password`, `title`, `first_name`, `last_name`, `email`, `phone`, `role`, `is_active`, `last_login`, `created_at`, `updated_at`) VALUES
-(1, 'admin', '0192023a7bbd73250516f069df18b500', 'นาย', 'ผู้ดูแล', 'ระบบ', 'admin@prasat.ac.th', '0899999999', 'admin', 1, '2025-05-10 20:38:57', '2025-05-09 04:40:20', '2025-05-10 13:38:57');
+(1, 'admin', '0192023a7bbd73250516f069df18b500', 'นาย', 'ผู้ดูแล', 'ระบบ', 'admin@prasat.ac.th', '0899999999', 'admin', 1, '2025-05-10 22:22:06', '2025-05-09 04:40:20', '2025-05-10 15:22:06');
 
 -- --------------------------------------------------------
 
@@ -245,13 +205,6 @@ CREATE TABLE `announcements` (
   `created_at` datetime NOT NULL,
   `updated_at` datetime DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
---
--- Dumping data for table `announcements`
---
-
-INSERT INTO `announcements` (`announcement_id`, `title`, `content`, `type`, `status`, `is_all_targets`, `target_department`, `target_level`, `expiration_date`, `scheduled_date`, `created_by`, `created_at`, `updated_at`) VALUES
-(3, 'ทดสอบการออกประกาศ', 'ทดสอบ', 'general', 'active', 1, 6, '1', NULL, NULL, 91, '2025-04-01 05:24:23', NULL);
 
 -- --------------------------------------------------------
 
@@ -276,31 +229,6 @@ CREATE TABLE `attendance` (
   `remarks` text DEFAULT NULL COMMENT 'หมายเหตุเพิ่มเติม'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
---
--- Dumping data for table `attendance`
---
-
-INSERT INTO `attendance` (`attendance_id`, `student_id`, `academic_year_id`, `date`, `attendance_status`, `check_method`, `checker_user_id`, `location_lat`, `location_lng`, `photo_url`, `pin_code`, `check_time`, `created_at`, `remarks`) VALUES
-(43, 41, 1, '2025-05-04', 'present', 'Manual', 121, NULL, NULL, NULL, NULL, '12:43:09', '2025-05-04 05:43:09', ''),
-(44, 48, 1, '2025-05-04', 'present', 'Manual', 121, NULL, NULL, NULL, NULL, '12:43:56', '2025-05-04 05:43:56', ''),
-(45, 50, 1, '2025-05-04', 'present', 'Manual', 121, NULL, NULL, NULL, NULL, '12:43:56', '2025-05-04 05:43:56', ''),
-(46, 51, 1, '2025-05-04', 'present', 'Manual', 121, NULL, NULL, NULL, NULL, '12:43:58', '2025-05-04 05:43:58', ''),
-(47, 52, 1, '2025-05-04', 'present', 'Manual', 121, NULL, NULL, NULL, NULL, '12:43:58', '2025-05-04 05:43:58', ''),
-(48, 49, 1, '2025-05-06', 'present', 'GPS', NULL, 14.6160135, 103.3475743, NULL, NULL, '10:54:20', '2025-05-06 03:54:20', NULL),
-(49, 41, 1, '2025-05-09', 'present', 'Manual', 109, NULL, NULL, NULL, NULL, '13:32:47', '2025-05-09 06:32:47', ''),
-(50, 48, 1, '2025-05-09', 'present', 'Manual', 109, NULL, NULL, NULL, NULL, '13:32:47', '2025-05-09 06:32:47', ''),
-(51, 50, 1, '2025-05-09', 'present', 'Manual', 109, NULL, NULL, NULL, NULL, '13:32:47', '2025-05-09 06:32:47', ''),
-(52, 51, 1, '2025-05-09', 'present', 'Manual', 109, NULL, NULL, NULL, NULL, '13:32:47', '2025-05-09 06:32:47', ''),
-(53, 52, 1, '2025-05-09', 'present', 'Manual', 109, NULL, NULL, NULL, NULL, '13:32:47', '2025-05-09 06:32:47', ''),
-(54, 49, 1, '2025-05-09', 'present', 'Manual', 109, NULL, NULL, NULL, NULL, '14:05:18', '2025-05-09 07:05:18', ''),
-(55, 49, 1, '2025-05-08', 'present', 'Manual', 109, NULL, NULL, NULL, NULL, '20:53:39', '2025-05-09 13:53:39', ''),
-(56, 41, 1, '2025-05-10', 'absent', 'Manual', 109, NULL, NULL, NULL, NULL, '16:03:10', '2025-05-10 09:03:10', ''),
-(57, 48, 1, '2025-05-10', 'present', 'Manual', 109, NULL, NULL, NULL, NULL, '16:03:10', '2025-05-10 09:03:10', ''),
-(58, 50, 1, '2025-05-10', 'present', 'Manual', 109, NULL, NULL, NULL, NULL, '16:03:10', '2025-05-10 09:03:10', ''),
-(59, 51, 1, '2025-05-10', 'present', 'Manual', 109, NULL, NULL, NULL, NULL, '16:03:10', '2025-05-10 09:03:10', ''),
-(60, 52, 1, '2025-05-10', 'present', 'Manual', 109, NULL, NULL, NULL, NULL, '16:03:10', '2025-05-10 09:03:10', ''),
-(61, 49, 1, '2025-05-10', 'present', 'Manual', 109, NULL, NULL, NULL, NULL, '19:08:11', '2025-05-10 12:08:11', '');
-
 -- --------------------------------------------------------
 
 --
@@ -317,15 +245,6 @@ CREATE TABLE `attendance_retroactive_history` (
   `created_by` int(11) NOT NULL COMMENT 'ผู้ที่ทำการเช็คชื่อย้อนหลัง',
   `created_at` timestamp NOT NULL DEFAULT current_timestamp() COMMENT 'วันที่บันทึก'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `attendance_retroactive_history`
---
-
-INSERT INTO `attendance_retroactive_history` (`history_id`, `attendance_id`, `student_id`, `retroactive_date`, `retroactive_status`, `retroactive_reason`, `created_by`, `created_at`) VALUES
-(4, 17, 41, '2025-04-29', 'present', 'ลืม', 111, '2025-04-30 15:44:16'),
-(5, 34, 48, '2025-05-02', 'present', 'สาย', 118, '2025-05-03 16:24:46'),
-(6, 35, 51, '2025-05-02', 'absent', 'สาย', 118, '2025-05-03 16:25:07');
 
 -- --------------------------------------------------------
 
@@ -409,14 +328,6 @@ CREATE TABLE `class_advisors` (
   `is_primary` tinyint(1) NOT NULL DEFAULT 0 COMMENT 'ครูที่ปรึกษาหลักหรือไม่',
   `assigned_date` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `class_advisors`
---
-
-INSERT INTO `class_advisors` (`class_id`, `teacher_id`, `is_primary`, `assigned_date`) VALUES
-(12, 7, 1, '2025-05-04 05:48:02'),
-(14, 7, 1, '2025-05-05 15:45:28');
 
 -- --------------------------------------------------------
 
@@ -668,12 +579,7 @@ CREATE TABLE `students` (
 --
 
 INSERT INTO `students` (`student_id`, `user_id`, `student_code`, `title`, `current_class_id`, `status`, `created_at`, `updated_at`) VALUES
-(41, 99, '17785785786', 'นาย', 12, 'กำลังศึกษา', '2025-04-01 02:39:41', '2025-05-05 15:47:41'),
-(48, 106, '67319010001', 'นาย', 12, 'กำลังศึกษา', '2025-04-01 02:58:16', '2025-04-01 03:02:02'),
-(49, 124, '67319010002', 'นาย', 14, 'กำลังศึกษา', '2025-04-01 02:58:16', '2025-05-09 14:18:24'),
-(50, 108, '67319010003', 'นาย', 12, 'กำลังศึกษา', '2025-04-01 02:58:16', '2025-04-01 03:02:02'),
-(51, 109, '67319010005', 'นางสาว', 12, 'กำลังศึกษา', '2025-04-01 02:58:16', '2025-05-05 15:47:22'),
-(52, 110, '67319010006', 'นาย', 12, 'กำลังศึกษา', '2025-04-01 02:58:16', '2025-05-05 15:46:59');
+(49, 124, '67319010002', 'นาย', 14, 'กำลังศึกษา', '2025-04-01 02:58:16', '2025-05-09 14:18:24');
 
 -- --------------------------------------------------------
 
@@ -698,36 +604,7 @@ CREATE TABLE `student_academic_records` (
 --
 
 INSERT INTO `student_academic_records` (`record_id`, `student_id`, `academic_year_id`, `class_id`, `total_attendance_days`, `total_absence_days`, `passed_activity`, `created_at`, `updated_at`) VALUES
-(34, 41, 1, 12, 2, 1, NULL, '2025-04-01 02:39:41', '2025-05-10 12:07:21'),
-(36, 48, 1, 12, 3, 0, NULL, '2025-04-01 02:58:16', '2025-05-10 12:07:21'),
-(37, 49, 1, 14, 4, 0, NULL, '2025-04-01 02:58:16', '2025-05-10 12:08:11'),
-(38, 50, 1, 12, 3, 0, NULL, '2025-04-01 02:58:16', '2025-05-10 12:07:21'),
-(39, 51, 1, 12, 3, 0, NULL, '2025-04-01 02:58:16', '2025-05-10 12:07:21'),
-(40, 52, 1, 12, 3, 0, NULL, '2025-04-01 02:58:16', '2025-05-10 12:07:21');
-
--- --------------------------------------------------------
-
---
--- Table structure for table `student_pending`
---
-
-CREATE TABLE `student_pending` (
-  `id` int(11) NOT NULL,
-  `student_code` varchar(11) NOT NULL COMMENT 'รหัสนักศึกษา 11 หลัก',
-  `title` enum('นาย','นางสาว','อื่นๆ') DEFAULT NULL COMMENT 'คำนำหน้า',
-  `first_name` varchar(255) NOT NULL COMMENT 'ชื่อจริง',
-  `last_name` varchar(255) NOT NULL COMMENT 'นามสกุล',
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `student_pending`
---
-
-INSERT INTO `student_pending` (`id`, `student_code`, `title`, `first_name`, `last_name`, `created_at`, `updated_at`) VALUES
-(1, '12345678913', 'นาย', 'MONTREE', 'SRISUK', '2025-05-01 13:59:52', '2025-05-01 13:59:52'),
-(2, '63222110017', 'นาย', 'มนตรี', 'ศรีสุข', '2025-05-02 14:24:44', '2025-05-03 05:46:26');
+(37, 49, 1, 14, 4, 0, NULL, '2025-04-01 02:58:16', '2025-05-10 12:08:11');
 
 -- --------------------------------------------------------
 
@@ -937,31 +814,6 @@ CREATE TABLE `teachers` (
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
---
--- Dumping data for table `teachers`
---
-
-INSERT INTO `teachers` (`teacher_id`, `user_id`, `title`, `national_id`, `department_id`, `position`, `first_name`, `last_name`, `created_at`, `updated_at`) VALUES
-(7, 123, 'นาย', '1320601295892', 1, 'ข้าราชการ', 'MONTREE', 'SRISUK', '2025-05-04 05:47:34', '2025-05-04 05:47:34');
-
--- --------------------------------------------------------
-
---
--- Table structure for table `teacher_pending`
---
-
-CREATE TABLE `teacher_pending` (
-  `id` int(11) NOT NULL,
-  `national_id` varchar(13) NOT NULL COMMENT 'เลขบัตรประชาชน',
-  `title` enum('นาย','นาง','นางสาว','ดร.','ผศ.','รศ.','ศ.','อื่นๆ') DEFAULT NULL COMMENT 'คำนำหน้า',
-  `first_name` varchar(255) NOT NULL COMMENT 'ชื่อจริง',
-  `last_name` varchar(255) NOT NULL COMMENT 'นามสกุล',
-  `department_id` int(11) DEFAULT NULL COMMENT 'รหัสแผนกวิชา',
-  `position` varchar(100) DEFAULT NULL COMMENT 'ตำแหน่ง',
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
 -- --------------------------------------------------------
 
 --
@@ -990,21 +842,6 @@ CREATE TABLE `users` (
 --
 
 INSERT INTO `users` (`user_id`, `line_id`, `role`, `title`, `first_name`, `last_name`, `profile_picture`, `phone_number`, `email`, `gdpr_consent`, `gdpr_consent_date`, `created_at`, `updated_at`, `last_login`) VALUES
-(91, 'TEMP_12345678911_1743341503_16506b', 'student', 'นาย', 'มนตรี', 'ศรีสุข', NULL, '0956313677', 'workmontree@prasat.ac.th', 1, NULL, '2025-03-30 13:31:43', '2025-03-30 13:31:43', NULL),
-(93, 'TEMP_13123131231_1743404563_a0cd57', 'student', 'นาย', 'มนตรี', 'ศรีสุข', NULL, '0956313677', 'workmontree@prasat.ac.th', 1, NULL, '2025-03-31 07:02:43', '2025-03-31 07:02:43', NULL),
-(95, 'TEMP_12345678910_1743407108_b7e03c', 'student', 'นาย', 'มนตรี', 'ศรีสุข', NULL, '0956313677', '', 1, NULL, '2025-03-31 07:45:08', '2025-03-31 07:45:08', NULL),
-(99, 'TEMP_17785785786_1743475181_218f1d', 'student', 'นาย', 'มนตรี', 'ศรีสุข', NULL, '0956313677', '', 1, NULL, '2025-04-01 02:39:41', '2025-05-05 15:47:41', NULL),
-(100, 'TEMP_12345678910_1743475198_0f2fe3', 'student', 'นาย', 'มนตรี', 'ศรีสุข', NULL, '0956313677', 'montree@gmail.com', 1, NULL, '2025-04-01 02:39:58', '2025-04-01 02:39:58', NULL),
-(101, 'TEMP_67319010001_1743476248_0238bb91', 'student', 'นาย', 'สมชาย', 'ใจดี', NULL, '0891234567', 'somchai@example.com', 1, NULL, '2025-04-01 02:57:28', '2025-04-01 02:57:28', NULL),
-(102, 'TEMP_67319010002_1743476248_9dbb7d20', 'student', 'นางสาว', 'สมหญิง', 'รักเรียน', NULL, '0891234568', 'somying@example.com', 1, NULL, '2025-04-01 02:57:28', '2025-04-01 02:57:28', NULL),
-(103, 'TEMP_67319010003_1743476248_258b031e', 'student', 'นาย', 'สมชาย', 'ใจดี', NULL, '0891234569', 'somchai@example.com', 1, NULL, '2025-04-01 02:57:28', '2025-04-01 02:57:28', NULL),
-(104, 'TEMP_67319010005_1743476248_fbc17cdc', 'student', 'นางสาว', 'สมหญิง', 'รักเรียน', NULL, '0891234570', 'somying@example.com', 1, NULL, '2025-04-01 02:57:28', '2025-04-01 02:57:28', NULL),
-(105, 'TEMP_67319010006_1743476248_0b4febcd', 'student', 'นาย', 'สมชาย', 'ใจดี', NULL, '0891234571', 'somchai@example.com', 1, NULL, '2025-04-01 02:57:28', '2025-04-01 02:57:28', NULL),
-(106, 'TEMP_67319010001_1743476296_f7f9d903', 'student', 'นาย', 'สมชาย', 'ใจดี', NULL, '0891234567', 'somchai@example.com', 1, NULL, '2025-04-01 02:58:16', '2025-04-01 03:02:02', NULL),
-(108, 'TEMP_67319010003_1743476296_1d7ab4a3', 'student', 'นาย', 'สมชาย', 'ใจดี', NULL, '0891234569', 'somchai@example.com', 1, NULL, '2025-04-01 02:58:16', '2025-04-01 03:02:02', NULL),
-(109, 'TEMP_67319010005_1743476296_f37fc90a', 'student', 'นางสาว', 'สมหญิง', 'รักเรียน', NULL, '0891234570', 'somying@example.com', 1, NULL, '2025-04-01 02:58:16', '2025-05-05 15:47:22', NULL),
-(110, 'TEMP_67319010006_1743476296_58d55de4', 'student', 'นาย', 'สมชาย', 'ใจดี', NULL, '0891234571', 'somchai@example.com', 1, NULL, '2025-04-01 02:58:16', '2025-05-05 15:46:59', NULL),
-(123, 'TEMP_17463376549803', 'teacher', 'นาย', 'MONTREE', 'SRISUK', NULL, '0956313677', '', 1, NULL, '2025-05-04 05:47:34', '2025-05-04 05:47:34', NULL),
 (124, 'Uab9dff8376554a091aa4cfe6cc9791d6', 'student', 'นาย', 'สมหญิง', 'รักเรียน', 'https://profile.line-scdn.net/0hG24vO_T7GB0ZDwnP_yJmYmlfG3c6fkEPPWtQeS9bFSskNlpCZmFWeisOFSQkO1hNZ2gEKylcEi4VHG97B1nkKR4_RSwlOV5CPG9W_Q', '0891234568', 'somying@example.com', 1, '2025-05-06 10:43:48', '2025-05-06 03:43:09', '2025-05-09 14:18:24', '2025-05-09 21:16:45');
 
 -- --------------------------------------------------------
@@ -1330,13 +1167,6 @@ ALTER TABLE `student_academic_records`
   ADD KEY `class_id` (`class_id`);
 
 --
--- Indexes for table `student_pending`
---
-ALTER TABLE `student_pending`
-  ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `student_code` (`student_code`);
-
---
 -- Indexes for table `student_promotion_batch`
 --
 ALTER TABLE `student_promotion_batch`
@@ -1363,14 +1193,6 @@ ALTER TABLE `teachers`
   ADD KEY `department_id` (`department_id`);
 
 --
--- Indexes for table `teacher_pending`
---
-ALTER TABLE `teacher_pending`
-  ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `national_id` (`national_id`),
-  ADD KEY `department_id` (`department_id`);
-
---
 -- Indexes for table `users`
 --
 ALTER TABLE `users`
@@ -1391,13 +1213,13 @@ ALTER TABLE `academic_years`
 -- AUTO_INCREMENT for table `activities`
 --
 ALTER TABLE `activities`
-  MODIFY `activity_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `activity_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
 
 --
 -- AUTO_INCREMENT for table `activity_attendance`
 --
 ALTER TABLE `activity_attendance`
-  MODIFY `attendance_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+  MODIFY `attendance_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=26;
 
 --
 -- AUTO_INCREMENT for table `additional_locations`
@@ -1409,7 +1231,7 @@ ALTER TABLE `additional_locations`
 -- AUTO_INCREMENT for table `admin_actions`
 --
 ALTER TABLE `admin_actions`
-  MODIFY `action_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=83;
+  MODIFY `action_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=95;
 
 --
 -- AUTO_INCREMENT for table `admin_users`
@@ -1532,12 +1354,6 @@ ALTER TABLE `student_academic_records`
   MODIFY `record_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=47;
 
 --
--- AUTO_INCREMENT for table `student_pending`
---
-ALTER TABLE `student_pending`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
-
---
 -- AUTO_INCREMENT for table `student_promotion_batch`
 --
 ALTER TABLE `student_promotion_batch`
@@ -1554,12 +1370,6 @@ ALTER TABLE `system_settings`
 --
 ALTER TABLE `teachers`
   MODIFY `teacher_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
-
---
--- AUTO_INCREMENT for table `teacher_pending`
---
-ALTER TABLE `teacher_pending`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `users`
@@ -1728,12 +1538,6 @@ ALTER TABLE `system_settings`
 ALTER TABLE `teachers`
   ADD CONSTRAINT `teachers_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE,
   ADD CONSTRAINT `teachers_ibfk_2` FOREIGN KEY (`department_id`) REFERENCES `departments` (`department_id`);
-
---
--- Constraints for table `teacher_pending`
---
-ALTER TABLE `teacher_pending`
-  ADD CONSTRAINT `teacher_pending_ibfk_1` FOREIGN KEY (`department_id`) REFERENCES `departments` (`department_id`);
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
