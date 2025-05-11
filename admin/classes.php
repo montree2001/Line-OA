@@ -223,12 +223,16 @@ if (isset($_GET['action'])) {
 // กำหนดเส้นทางเนื้อหา
 $content_path = 'pages/classes_content.php';
 $extra_css = [
-    'assets/css/classes.css'
+    'assets/css/classes.css',
+    'https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css',
+    'https://cdn.datatables.net/responsive/2.5.0/css/responsive.dataTables.min.css'
 ];
 
 $extra_js = [
+    'https://code.jquery.com/jquery-3.7.0.min.js',
+    'https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js',
+    'https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js',
     'assets/js/classes.js',
-
     'https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js'
 ];
 

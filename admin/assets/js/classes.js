@@ -28,6 +28,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // แสดง notification ว่าระบบพร้อมใช้งาน
     showNotification('ระบบจัดการชั้นเรียนพร้อมใช้งาน', 'info');
+    
 });
 
 /**

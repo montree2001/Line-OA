@@ -131,8 +131,9 @@
         </div>
 
         <!-- ตารางข้อมูลชั้นเรียน -->
+        <!-- ตารางข้อมูลชั้นเรียน -->
         <div class="table-responsive">
-            <table class="data-table">
+            <table id="classTable" class="data-table display responsive nowrap" width="100%">
                 <thead>
                     <tr>
                         <th>รหัส</th>
@@ -141,104 +142,11 @@
                         <th>จำนวนนักเรียน</th>
                         <th>การเข้าแถว</th>
                         <th>สถานะ</th>
-                        <th>การจัดการ</th>
+                        <th width="120px">การจัดการ</th>
                     </tr>
                 </thead>
                 <tbody id="classTableBody">
-                    <?php if (empty($data['classes'])): ?>
-                        <tr>
-                            <td colspan="7" class="text-center">ไม่พบข้อมูลชั้นเรียน</td>
-                        </tr>
-                    <?php else: ?>
-                        <?php foreach ($data['classes'] as $class): ?>
-                            <tr class="class-row" 
-                                data-academic-year="<?php echo $class['academic_year_id']; ?>"
-                                data-level="<?php echo $class['level']; ?>"
-                                data-department="<?php echo $class['department_id']; ?>">
-                                
-                                <td><?php echo $class['class_id']; ?></td>
-                                
-                                <td>
-                                    <div class="class-info">
-                                        <div class="class-avatar"><?php echo substr($class['level'], -2); ?></div>
-                                        <div class="class-details">
-                                            <div class="class-name"><?php echo $class['level']; ?> กลุ่ม <?php echo $class['group_number']; ?></div>
-                                            <div class="class-dept"><?php echo $class['department_name']; ?></div>
-                                        </div>
-                                    </div>
-                                </td>
-                                
-                                <td>
-                                    <?php if (empty($class['advisors'])): ?>
-                                        <span class="text-muted">ไม่มีครูที่ปรึกษา</span>
-                                    <?php else: ?>
-                                        <?php foreach ($class['advisors'] as $index => $advisor): ?>
-                                            <?php if ($index > 0): ?><br><?php endif; ?>
-                                            <?php if ($advisor['is_primary']): ?>
-                                                <strong><?php echo $advisor['name']; ?></strong>
-                                                <span class="badge badge-primary">หลัก</span>
-                                            <?php else: ?>
-                                                <?php echo $advisor['name']; ?>
-                                            <?php endif; ?>
-                                        <?php endforeach; ?>
-                                    <?php endif; ?>
-                                </td>
-                                
-                                <td class="text-center"><?php echo $class['student_count']; ?> คน</td>
-                                
-                                <td>
-                                    <div class="attendance-bar-container">
-                                        <div class="attendance-bar <?php 
-                                            echo $class['attendance_rate'] > 90 ? 'good' : 
-                                                ($class['attendance_rate'] > 75 ? 'warning' : 'danger'); 
-                                        ?>" style="width: <?php echo $class['attendance_rate']; ?>%">
-                                            <span class="attendance-rate"><?php echo round($class['attendance_rate']); ?>%</span>
-                                        </div>
-                                    </div>
-                                </td>
-                                
-                                <td>
-                                    <span class="status-badge <?php 
-                                        echo $class['attendance_rate'] > 90 ? 'success' : 
-                                            ($class['attendance_rate'] > 75 ? 'warning' : 'danger'); 
-                                    ?>">
-                                        <?php 
-                                            echo $class['attendance_rate'] > 90 ? 'ปกติ' : 
-                                                ($class['attendance_rate'] > 75 ? 'ต้องติดตาม' : 'เสี่ยง'); 
-                                        ?>
-                                    </span>
-                                </td>
-                                
-                                <td>
-                                    <div class="action-buttons">
-                                        <button class="table-action-btn primary" 
-                                                onclick="showClassDetails(<?php echo $class['class_id']; ?>)" 
-                                                title="ดูรายละเอียด">
-                                            <span class="material-icons">visibility</span>
-                                        </button>
-                                        
-                                        <button class="table-action-btn warning" 
-                                                onclick="manageAdvisors(<?php echo $class['class_id']; ?>)" 
-                                                title="จัดการครูที่ปรึกษา">
-                                            <span class="material-icons">people</span>
-                                        </button>
-                                        
-                                        <button class="table-action-btn success" 
-                                                onclick="editClass(<?php echo $class['class_id']; ?>)" 
-                                                title="แก้ไข">
-                                            <span class="material-icons">edit</span>
-                                        </button>
-                                        
-                                        <button class="table-action-btn danger" 
-                                                onclick="deleteClass(<?php echo $class['class_id']; ?>)" 
-                                                title="ลบ">
-                                            <span class="material-icons">delete</span>
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
-                    <?php endif; ?>
+                    <!-- ข้อมูลชั้นเรียนอยู่ที่นี่ -->
                 </tbody>
             </table>
         </div>
@@ -262,47 +170,19 @@
 
     <div class="card-body">
         <div class="table-responsive">
-            <table class="data-table">
+            <table id="departmentTable" class="data-table display responsive nowrap" width="100%">
                 <thead>
                     <tr>
                         <th>รหัสแผนกวิชา</th>
                         <th>ชื่อแผนกวิชา</th>
                         <th>จำนวนชั้นเรียน</th>
                         <th>จำนวนนักเรียน</th>
-                        <th>การจัดการ</th>
+                        <th width="100px">การจัดการ</th>
                     </tr>
                 </thead>
                 <tbody id="departmentTableBody">
-    <?php if (empty($data['departments'])): ?>
-        <tr>
-            <td colspan="5" class="text-center">ไม่พบข้อมูลแผนกวิชา</td>
-        </tr>
-    <?php else: ?>
-        <?php foreach ($data['departments'] as $dept): ?>
-            <tr>
-                <td><?php echo htmlspecialchars($dept['department_code'] ?? 'N/A'); ?></td>
-                <td><?php echo htmlspecialchars($dept['department_name'] ?? 'ไม่ระบุ'); ?></td>
-                <td class="text-center"><?php echo isset($dept['class_count']) ? $dept['class_count'] : 0; ?></td>
-                <td class="text-center"><?php echo isset($dept['student_count']) ? $dept['student_count'] : 0; ?></td>
-                <td>
-                    <div class="action-buttons">
-                        <button class="table-action-btn success" 
-                                onclick="editDepartment('<?php echo $dept['department_id'] ?? ''; ?>')" 
-                                title="แก้ไข">
-                            <span class="material-icons">edit</span>
-                        </button>
-                        
-                        <button class="table-action-btn danger" 
-                                onclick="deleteDepartment('<?php echo $dept['department_id'] ?? ''; ?>')" 
-                                title="ลบ">
-                            <span class="material-icons">delete</span>
-                        </button>
-                    </div>
-                </td>
-            </tr>
-        <?php endforeach; ?>
-    <?php endif; ?>
-</tbody>
+                    <!-- ข้อมูลแผนกวิชาอยู่ที่นี่ -->
+                </tbody>
             </table>
         </div>
     </div>
@@ -859,3 +739,95 @@
         </div>
     </div>
 </div>
+
+<script>
+    // เมื่อโหลดหน้าเสร็จ
+document.addEventListener('DOMContentLoaded', function() {
+    // เริ่มต้น DataTables สำหรับตารางชั้นเรียน
+    if (document.getElementById('classTable')) {
+        $('#classTable').DataTable({
+            responsive: true,
+            language: {
+                url: 'https://cdn.datatables.net/plug-ins/1.13.6/i18n/th.json',
+            },
+            columnDefs: [
+                { responsivePriority: 1, targets: [1, 6] }, // ลำดับความสำคัญของคอลัมน์เมื่อหน้าจอเล็ก
+                { orderable: false, targets: [6] } // คอลัมน์ที่ไม่ต้องการให้เรียงลำดับ (การจัดการ)
+            ],
+            order: [[1, 'asc']], // เรียงลำดับตามชั้นเรียน
+            pageLength: 10, // จำนวนแถวต่อหน้า
+        });
+    }
+    
+    // เริ่มต้น DataTables สำหรับตารางแผนกวิชา
+    if (document.getElementById('departmentTable')) {
+        $('#departmentTable').DataTable({
+            responsive: true,
+            language: {
+                url: 'https://cdn.datatables.net/plug-ins/1.13.6/i18n/th.json',
+            },
+            columnDefs: [
+                { responsivePriority: 1, targets: [1, 4] },
+                { orderable: false, targets: [4] }
+            ],
+            order: [[1, 'asc']], // เรียงลำดับตามชื่อแผนกวิชา
+            pageLength: 10,
+        });
+    }
+    
+    // เริ่มต้น DataTables สำหรับตารางนักเรียนในโมดัลรายละเอียดชั้นเรียน
+    $('#classDetailsModal').on('shown.bs.modal', function () {
+        if (document.getElementById('studentTable')) {
+            $('#studentTable').DataTable({
+                responsive: true,
+                language: {
+                    url: 'https://cdn.datatables.net/plug-ins/1.13.6/i18n/th.json',
+                },
+                destroy: true, // ทำลายตารางเดิมก่อนสร้างใหม่
+                pageLength: 10,
+            });
+        }
+    });
+    
+    // ตั้งค่า event เมื่อกดปุ่มกรองข้อมูล
+    $('#filterClassesBtn').click(function() {
+        filterClasses();
+    });
+    
+    // ตั้งค่าตัวกรองตามคำค้นหา
+    $('#classSearchInput').on('keyup', function() {
+        filterClassesBySearch(this.value);
+    });
+});
+
+// ฟังก์ชันกรองข้อมูลชั้นเรียน
+function filterClasses() {
+    const academicYear = $('#academicYearFilter').val();
+    const level = $('#levelFilter').val();
+    const department = $('#departmentFilter').val();
+    
+    let table = $('#classTable').DataTable();
+    
+    // รีเซ็ตการกรอง
+    table.search('').columns().search('').draw();
+    
+    // ใช้ API ของ DataTables ในการกรอง
+    if (academicYear) {
+        table.column(0).search(academicYear, true, false);
+    }
+    if (level) {
+        table.column(1).search(level, true, false);
+    }
+    if (department) {
+        table.column(1).search(department, true, false);
+    }
+    
+    table.draw();
+}
+
+// ฟังก์ชันกรองตามคำค้นหา
+function filterClassesBySearch(searchText) {
+    let table = $('#classTable').DataTable();
+    table.search(searchText).draw();
+}
+</script>
