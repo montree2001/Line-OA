@@ -1,5 +1,15 @@
 <!-- คอนเทนต์หน้าจัดการชั้นเรียนและแผนกวิชา (classes_content.php) -->
 
+<?php
+// ส่วนดีบักสำหรับตรวจสอบโครงสร้างข้อมูล (เปิดใช้งานด้วย ?debug=1)
+if (isset($_GET['debug']) && $_GET['debug'] == '1'): 
+?>
+<div style="background:#f8f9fa;padding:15px;margin:15px 0;border:1px solid #ddd;border-radius:5px;">
+    <h4>Debug: Data Structure</h4>
+    <pre><?php print_r($data); ?></pre>
+</div>
+<?php endif; ?>
+
 <!-- สรุปข้อมูล Dashboard -->
 <div class="dashboard-summary row">
     <div class="col-md-3">
@@ -48,7 +58,7 @@
                     <span class="material-icons">warning</span>
                 </div>
                 <div class="info-container">
-                    <h3><?php echo $data['at_risk_count'] ?? 0; ?></h3>
+                    <h3><?php echo isset($data['at_risk_count']) ? $data['at_risk_count'] : 0; ?></h3>
                     <p>นักเรียนเสี่ยงตกกิจกรรม</p>
                 </div>
             </div>
@@ -68,7 +78,7 @@
                 <span class="material-icons">add</span>
                 เพิ่มชั้นเรียนใหม่
             </button>
-            <?php if ($data['has_new_academic_year']): ?>
+            <?php if (isset($data['has_new_academic_year']) && $data['has_new_academic_year']): ?>
                 <button class="btn btn-warning btn-sm" onclick="showPromoteStudentsModal()">
                     <span class="material-icons">upgrade</span>
                     เลื่อนชั้นนักเรียน
@@ -86,11 +96,13 @@
                         <label for="academicYearFilter">ปีการศึกษา</label>
                         <select id="academicYearFilter" class="form-control">
                             <option value="">ทั้งหมด</option>
-                            <?php foreach ($data['academic_years'] as $year): ?>
-                                <option value="<?php echo $year['academic_year_id']; ?>" <?php echo ($year['is_active'] ? 'selected' : ''); ?>>
-                                    <?php echo $year['year']; ?> (ภาคเรียนที่ <?php echo $year['semester']; ?>)
-                                </option>
-                            <?php endforeach; ?>
+                            <?php if (isset($data['academic_years']) && is_array($data['academic_years'])): ?>
+                                <?php foreach ($data['academic_years'] as $year): ?>
+                                    <option value="<?php echo $year['academic_year_id']; ?>" <?php echo (isset($year['is_active']) && $year['is_active'] ? 'selected' : ''); ?>>
+                                        <?php echo $year['year']; ?> (ภาคเรียนที่ <?php echo $year['semester']; ?>)
+                                    </option>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
                         </select>
                     </div>
                 </div>
@@ -112,9 +124,11 @@
                         <label for="departmentFilter">แผนกวิชา</label>
                         <select id="departmentFilter" class="form-control">
                             <option value="">ทั้งหมด</option>
-                            <?php foreach ($data['departments'] as $dept): ?>
-                                <option value="<?php echo $dept['department_id']; ?>"><?php echo $dept['department_name']; ?></option>
-                            <?php endforeach; ?>
+                            <?php if (isset($data['departments']) && is_array($data['departments'])): ?>
+                                <?php foreach ($data['departments'] as $dept): ?>
+                                    <option value="<?php echo $dept['department_id']; ?>"><?php echo $dept['department_name']; ?></option>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
                         </select>
                     </div>
                 </div>
@@ -131,7 +145,6 @@
         </div>
 
         <!-- ตารางข้อมูลชั้นเรียน -->
-        <!-- ตารางข้อมูลชั้นเรียน -->
         <div class="table-responsive">
             <table id="classTable" class="data-table display responsive nowrap" width="100%">
                 <thead>
@@ -146,7 +159,96 @@
                     </tr>
                 </thead>
                 <tbody id="classTableBody">
-                    <!-- ข้อมูลชั้นเรียนอยู่ที่นี่ -->
+                    <?php if (isset($data['classes']) && is_array($data['classes']) && !empty($data['classes'])): ?>
+                        <?php foreach ($data['classes'] as $class): ?>
+                            <tr class="class-row" 
+                                data-academic-year="<?php echo isset($class['academic_year_id']) ? $class['academic_year_id'] : ''; ?>" 
+                                data-level="<?php echo isset($class['level']) ? $class['level'] : ''; ?>" 
+                                data-department="<?php echo isset($class['department_id']) ? $class['department_id'] : ''; ?>">
+                                <td><?php echo isset($class['class_id']) ? $class['class_id'] : ''; ?></td>
+                                <td>
+                                    <div class="class-info">
+                                        <div class="class-avatar"><?php echo isset($class['level']) ? substr($class['level'], 0, 1) : '?'; ?></div>
+                                        <div class="class-details">
+                                            <div class="class-name">
+                                                <?php 
+                                                $level = isset($class['level']) ? $class['level'] : '';
+                                                $group = isset($class['group_number']) ? $class['group_number'] : '';
+                                                $dept = isset($class['department_name']) ? $class['department_name'] : '';
+                                                echo $level . ' กลุ่ม ' . $group . ' (' . $dept . ')'; 
+                                                ?>
+                                            </div>
+                                            <div class="class-dept">
+                                                <?php 
+                                                $year = isset($class['academic_year']) ? $class['academic_year'] : 
+                                                      (isset($class['year']) ? $class['year'] : '');
+                                                $semester = isset($class['semester']) ? $class['semester'] : '';
+                                                echo $year . ($semester ? ' (ภาคเรียนที่ ' . $semester . ')' : ''); 
+                                                ?>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td><?php echo isset($class['primary_advisor']) ? $class['primary_advisor'] : 'ไม่มีครูที่ปรึกษา'; ?></td>
+                                <td><?php echo isset($class['student_count']) ? $class['student_count'] : 0; ?> คน</td>
+                                <td>
+                                    <?php 
+                                    // คำนวณอัตราการเข้าแถว
+                                    $attendance_rate = 0;
+                                    $total_days = 0;
+                                    $present_days = isset($class['total_attendance_days']) ? $class['total_attendance_days'] : 0;
+                                    $absent_days = isset($class['total_absence_days']) ? $class['total_absence_days'] : 0;
+                                    
+                                    if ($present_days > 0 || $absent_days > 0) {
+                                        $total_days = $present_days + $absent_days;
+                                        if ($total_days > 0) {
+                                            $attendance_rate = ($present_days / $total_days) * 100;
+                                        }
+                                    }
+                                    
+                                    $bar_class = 'good';
+                                    if ($attendance_rate < 75) {
+                                        $bar_class = 'danger';
+                                    } else if ($attendance_rate < 90) {
+                                        $bar_class = 'warning';
+                                    }
+                                    ?>
+                                    
+                                    <?php if ($total_days > 0): ?>
+                                        <div class="attendance-bar-container">
+                                            <div class="attendance-bar <?php echo $bar_class; ?>" style="width: <?php echo min(100, $attendance_rate); ?>%">
+                                                <span class="attendance-rate"><?php echo number_format($attendance_rate, 1); ?>%</span>
+                                            </div>
+                                        </div>
+                                    <?php else: ?>
+                                        <div class="text-muted">ไม่มีข้อมูล</div>
+                                    <?php endif; ?>
+                                </td>
+                                <td>
+                                    <span class="status-badge <?php echo (isset($class['is_active']) && $class['is_active']) ? 'success' : 'danger'; ?>">
+                                        <?php echo (isset($class['is_active']) && $class['is_active']) ? 'ใช้งาน' : 'ไม่ใช้งาน'; ?>
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="action-buttons">
+                                        <button class="table-action-btn primary" onclick="showClassDetails(<?php echo $class['class_id']; ?>)" title="ดูรายละเอียด">
+                                            <span class="material-icons">visibility</span>
+                                        </button>
+                                        <button class="table-action-btn warning" onclick="editClass(<?php echo $class['class_id']; ?>)" title="แก้ไข">
+                                            <span class="material-icons">edit</span>
+                                        </button>
+                                        <button class="table-action-btn danger" onclick="deleteClass(<?php echo $class['class_id']; ?>)" title="ลบ">
+                                            <span class="material-icons">delete</span>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <tr>
+                            <td colspan="7" class="text-center">ไม่พบข้อมูลชั้นเรียน</td>
+                        </tr>
+                    <?php endif; ?>
                 </tbody>
             </table>
         </div>
@@ -181,7 +283,44 @@
                     </tr>
                 </thead>
                 <tbody id="departmentTableBody">
-                    <!-- ข้อมูลแผนกวิชาอยู่ที่นี่ -->
+                    <?php if (isset($data['departments']) && is_array($data['departments']) && !empty($data['departments'])): ?>
+                        <?php foreach ($data['departments'] as $dept): ?>
+                            <?php 
+                            // นับจำนวนชั้นเรียนและนักเรียนในแผนกนี้
+                            $class_count = 0;
+                            $student_count = 0;
+                            if (isset($data['classes']) && is_array($data['classes']) && !empty($data['classes'])) {
+                                foreach ($data['classes'] as $class) {
+                                    if (isset($class['department_id']) && isset($dept['department_id']) && 
+                                        $class['department_id'] == $dept['department_id']) {
+                                        $class_count++;
+                                        $student_count += isset($class['student_count']) ? (int)$class['student_count'] : 0;
+                                    }
+                                }
+                            }
+                            ?>
+                            <tr>
+                                <td><?php echo isset($dept['department_code']) ? $dept['department_code'] : ''; ?></td>
+                                <td><?php echo isset($dept['department_name']) ? $dept['department_name'] : ''; ?></td>
+                                <td><?php echo $class_count; ?></td>
+                                <td><?php echo $student_count; ?> คน</td>
+                                <td>
+                                    <div class="action-buttons">
+                                        <button class="table-action-btn warning" onclick="editDepartment('<?php echo $dept['department_id']; ?>')" title="แก้ไข">
+                                            <span class="material-icons">edit</span>
+                                        </button>
+                                        <button class="table-action-btn danger" onclick="deleteDepartment('<?php echo $dept['department_id']; ?>')" title="ลบ">
+                                            <span class="material-icons">delete</span>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <tr>
+                            <td colspan="5" class="text-center">ไม่พบข้อมูลแผนกวิชา</td>
+                        </tr>
+                    <?php endif; ?>
                 </tbody>
             </table>
         </div>
@@ -205,11 +344,13 @@
                     <label for="academicYear">ปีการศึกษา <span class="text-danger">*</span></label>
                     <select id="academicYear" class="form-control" name="academic_year_id" required>
                         <option value="">เลือกปีการศึกษา</option>
-                        <?php foreach ($data['academic_years'] as $year): ?>
-                            <option value="<?php echo $year['academic_year_id']; ?>" <?php echo ($year['is_active'] ? 'selected' : ''); ?>>
-                                <?php echo $year['year']; ?> (ภาคเรียนที่ <?php echo $year['semester']; ?>)
-                            </option>
-                        <?php endforeach; ?>
+                        <?php if (isset($data['academic_years']) && is_array($data['academic_years'])): ?>
+                            <?php foreach ($data['academic_years'] as $year): ?>
+                                <option value="<?php echo $year['academic_year_id']; ?>" <?php echo (isset($year['is_active']) && $year['is_active'] ? 'selected' : ''); ?>>
+                                    <?php echo $year['year']; ?> (ภาคเรียนที่ <?php echo $year['semester']; ?>)
+                                </option>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
                     </select>
                 </div>
 
@@ -229,9 +370,11 @@
                     <label for="classDepartment">แผนกวิชา <span class="text-danger">*</span></label>
                     <select id="classDepartment" class="form-control" name="department_id" required>
                         <option value="">เลือกแผนกวิชา</option>
-                        <?php foreach ($data['departments'] as $dept): ?>
-                            <option value="<?php echo $dept['department_id']; ?>"><?php echo $dept['department_name']; ?></option>
-                        <?php endforeach; ?>
+                        <?php if (isset($data['departments']) && is_array($data['departments'])): ?>
+                            <?php foreach ($data['departments'] as $dept): ?>
+                                <option value="<?php echo $dept['department_id']; ?>"><?php echo $dept['department_name']; ?></option>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
                     </select>
                 </div>
 
@@ -454,12 +597,14 @@
                                     <div class="form-group">
                                         <select id="advisorSelect" class="form-control" size="7">
                                             <option value="">-- เลือกครูที่ปรึกษา --</option>
-                                            <?php foreach ($data['teachers'] as $teacher): ?>
-                                                <option value="<?php echo $teacher['teacher_id']; ?>">
-                                                    <?php echo $teacher['title'] . ' ' . $teacher['first_name'] . ' ' . $teacher['last_name']; ?>
-                                                    (<?php echo $teacher['department_name'] ?? 'ไม่ระบุแผนก'; ?>)
-                                                </option>
-                                            <?php endforeach; ?>
+                                            <?php if (isset($data['teachers']) && is_array($data['teachers'])): ?>
+                                                <?php foreach ($data['teachers'] as $teacher): ?>
+                                                    <option value="<?php echo $teacher['teacher_id']; ?>">
+                                                        <?php echo $teacher['title'] . ' ' . $teacher['first_name'] . ' ' . $teacher['last_name']; ?>
+                                                        (<?php echo isset($teacher['department_name']) ? $teacher['department_name'] : 'ไม่ระบุแผนก'; ?>)
+                                                    </option>
+                                                <?php endforeach; ?>
+                                            <?php endif; ?>
                                         </select>
                                     </div>
                                     <div class="d-flex align-items-center mt-2">
@@ -540,13 +685,15 @@
                             <div class="form-group">
                                 <label for="fromAcademicYear">ปีการศึกษาต้นทาง</label>
                                 <select id="fromAcademicYear" class="form-control">
-                                    <?php foreach ($data['academic_years'] as $year): ?>
-                                        <?php if ($year['is_active']): ?>
-                                            <option value="<?php echo $year['academic_year_id']; ?>" selected>
-                                                <?php echo $year['year']; ?> (ภาคเรียนที่ <?php echo $year['semester']; ?>)
-                                            </option>
-                                        <?php endif; ?>
-                                    <?php endforeach; ?>
+                                    <?php if (isset($data['academic_years']) && is_array($data['academic_years'])): ?>
+                                        <?php foreach ($data['academic_years'] as $year): ?>
+                                            <?php if (isset($year['is_active']) && $year['is_active']): ?>
+                                                <option value="<?php echo $year['academic_year_id']; ?>" selected>
+                                                    <?php echo $year['year']; ?> (ภาคเรียนที่ <?php echo $year['semester']; ?>)
+                                                </option>
+                                            <?php endif; ?>
+                                        <?php endforeach; ?>
+                                    <?php endif; ?>
                                 </select>
                                 <small class="form-text text-muted">ปีการศึกษาที่จะเลื่อนชั้นนักเรียนออก</small>
                             </div>
@@ -557,18 +704,20 @@
                                     <?php
                                     // แสดงเฉพาะปีการศึกษาที่อยู่ถัดไป
                                     $nextYearFound = false;
-                                    foreach ($data['academic_years'] as $year):
-                                        if ($year['is_active']) continue; // ข้ามปีปัจจุบัน
+                                    if (isset($data['academic_years']) && is_array($data['academic_years'])):
+                                        foreach ($data['academic_years'] as $year):
+                                            if (isset($year['is_active']) && $year['is_active']) continue; // ข้ามปีปัจจุบัน
 
-                                        if (!$nextYearFound):
-                                            $nextYearFound = true;
+                                            if (!$nextYearFound):
+                                                $nextYearFound = true;
                                     ?>
-                                            <option value="<?php echo $year['academic_year_id']; ?>" selected>
-                                                <?php echo $year['year']; ?> (ภาคเรียนที่ <?php echo $year['semester']; ?>)
-                                            </option>
-                                        <?php
-                                        endif;
-                                    endforeach;
+                                                <option value="<?php echo $year['academic_year_id']; ?>" selected>
+                                                    <?php echo $year['year']; ?> (ภาคเรียนที่ <?php echo $year['semester']; ?>)
+                                                </option>
+                                            <?php
+                                            endif;
+                                        endforeach;
+                                    endif;
 
                                     // ถ้าไม่พบปีการศึกษาถัดไป ให้แสดงตัวเลือกเพิ่มปีการศึกษาใหม่
                                     if (!$nextYearFound):
@@ -641,13 +790,13 @@
                                         </tr>
                                     </thead>
                                     <tbody id="promotionCountsBody">
-                                        <?php if (isset($data['promotion_counts']) && !empty($data['promotion_counts'])): ?>
+                                        <?php if (isset($data['promotion_counts']) && is_array($data['promotion_counts']) && !empty($data['promotion_counts'])): ?>
                                             <?php foreach ($data['promotion_counts'] as $promotion): ?>
                                                 <tr>
-                                                    <td><?php echo $promotion['current_level']; ?></td>
-                                                    <td class="text-center"><?php echo $promotion['student_count']; ?> คน</td>
-                                                    <td class="<?php echo $promotion['new_level'] === 'สำเร็จการศึกษา' ? 'text-success' : ''; ?>">
-                                                        <?php echo $promotion['new_level']; ?>
+                                                    <td><?php echo isset($promotion['current_level']) ? $promotion['current_level'] : ''; ?></td>
+                                                    <td class="text-center"><?php echo isset($promotion['student_count']) ? $promotion['student_count'] : 0; ?> คน</td>
+                                                    <td class="<?php echo (isset($promotion['new_level']) && $promotion['new_level'] === 'สำเร็จการศึกษา') ? 'text-success' : ''; ?>">
+                                                        <?php echo isset($promotion['new_level']) ? $promotion['new_level'] : ''; ?>
                                                     </td>
                                                 </tr>
                                             <?php endforeach; ?>
@@ -663,9 +812,9 @@
                                             <th class="text-center">
                                                 <?php
                                                 $total = 0;
-                                                if (isset($data['promotion_counts']) && !empty($data['promotion_counts'])) {
+                                                if (isset($data['promotion_counts']) && is_array($data['promotion_counts']) && !empty($data['promotion_counts'])) {
                                                     foreach ($data['promotion_counts'] as $promotion) {
-                                                        $total += $promotion['student_count'];
+                                                        $total += isset($promotion['student_count']) ? (int)$promotion['student_count'] : 0;
                                                     }
                                                 }
                                                 echo $total . ' คน';
@@ -741,11 +890,13 @@
 </div>
 
 <script>
-    // เมื่อโหลดหน้าเสร็จ
+// เมื่อโหลดหน้าเสร็จ
 document.addEventListener('DOMContentLoaded', function() {
-    // เริ่มต้น DataTables สำหรับตารางชั้นเรียน
-    if (document.getElementById('classTable')) {
-        $('#classTable').DataTable({
+    console.log('DOM loaded - initializing DataTables');
+    
+    try {
+        // เริ่มต้น DataTables สำหรับตารางชั้นเรียน
+        const classTable = $('#classTable').DataTable({
             responsive: true,
             language: {
                 url: 'https://cdn.datatables.net/plug-ins/1.13.6/i18n/th.json',
@@ -756,12 +907,13 @@ document.addEventListener('DOMContentLoaded', function() {
             ],
             order: [[1, 'asc']], // เรียงลำดับตามชั้นเรียน
             pageLength: 10, // จำนวนแถวต่อหน้า
+            initComplete: function() {
+                console.log('Class DataTable initComplete');
+            }
         });
-    }
-    
-    // เริ่มต้น DataTables สำหรับตารางแผนกวิชา
-    if (document.getElementById('departmentTable')) {
-        $('#departmentTable').DataTable({
+        
+        // เริ่มต้น DataTables สำหรับตารางแผนกวิชา
+        const deptTable = $('#departmentTable').DataTable({
             responsive: true,
             language: {
                 url: 'https://cdn.datatables.net/plug-ins/1.13.6/i18n/th.json',
@@ -772,7 +924,14 @@ document.addEventListener('DOMContentLoaded', function() {
             ],
             order: [[1, 'asc']], // เรียงลำดับตามชื่อแผนกวิชา
             pageLength: 10,
+            initComplete: function() {
+                console.log('Department DataTable initComplete');
+            }
         });
+        
+        console.log('DataTables initialized successfully');
+    } catch (error) {
+        console.error('Error initializing DataTables:', error);
     }
     
     // เริ่มต้น DataTables สำหรับตารางนักเรียนในโมดัลรายละเอียดชั้นเรียน
