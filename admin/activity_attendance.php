@@ -20,7 +20,11 @@ if (!isset($_SESSION['user_id']) || !isset($_SESSION['user_role']) || !in_array(
 
 // เชื่อมต่อฐานข้อมูล
 $conn = getDB();
-
+$admin_info = [
+    'name' => $_SESSION['user_name'] ?? 'เจ้าหน้าที่',
+    'role' => $_SESSION['user_role'] ?? 'ผู้ดูแลระบบ',
+    'initials' => 'A',
+];
 // รับพารามิเตอร์
 $activity_id = isset($_GET['id']) ? intval($_GET['id']) : 0;
 

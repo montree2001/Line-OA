@@ -9,7 +9,7 @@
 
     <div class="sidebar-menu">
         <div class="menu-category">หน้าหลัก</div>
-        <a href="index.php" class="menu-item <?php echo ($current_page == 'dashboard') ? 'active' : ''; ?>">
+        <a href="index.php" class="menu-item <?php echo ($current_page == 'reports') ? 'active' : ''; ?>">
             <span class="material-icons">dashboard</span>
             <span class="menu-text">แดชบอร์ด</span>
         </a>
@@ -17,10 +17,7 @@
             <span class="material-icons">how_to_reg</span>
             <span class="menu-text">เช็คชื่อนักเรียน</span>
         </a>
-        <a href="reports.php" class="menu-item <?php echo ($current_page == 'reports') ? 'active' : ''; ?>">
-            <span class="material-icons">assessment</span>
-            <span class="menu-text">รายงานและสถิติ</span>
-        </a>
+
         <a href="enhanced_notification.php" class="menu-item <?php echo ($current_page == 'enhanced_notification') ? 'active' : ''; ?>">
             <span class="material-icons">send</span>
             <span class="menu-text">ส่งรายงานผู้ปกครอง</span>

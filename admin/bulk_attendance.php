@@ -13,11 +13,16 @@ require_once '../config/db_config.php';
 require_once '../db_connect.php';
 
 // ตรวจสอบการล็อกอิน (แสดงความคิดเห็นออกไปเพื่อการทดสอบ)
-/* if (!isset($_SESSION['user_id']) || !isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'admin') {
+ if (!isset($_SESSION['user_id']) || !isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'admin') {
     header('Location: ../login.php');
     exit;
-} */
-
+} 
+// ข้อมูลเกี่ยวกับเจ้าหน้าที่ (จริงๆ ควรดึงจากฐานข้อมูล)
+$admin_info = [
+    'name' => $_SESSION['user_name'] ?? 'เจ้าหน้าที่',
+    'role' => $_SESSION['user_role'] ?? 'ผู้ดูแลระบบ',
+    'initials' => 'A',
+];
 // เชื่อมต่อฐานข้อมูล
 $conn = getDB();
 
@@ -237,22 +242,7 @@ if (isset($_POST['save_attendance']) && isset($_POST['attendance']) && is_array(
             }
         }
         
-        // บันทึกการดำเนินการของผู้ดูแลระบบ
-        if ($processed_count > 0 && $user_id) {
-            $action_type = 'update_student_status';
-            $action_details = json_encode([
-                'type' => 'attendance',
-                'date' => $attendance_date,
-                'student_count' => $processed_count,
-                'method' => 'manual'
-            ]);
-            
-            $stmt = $conn->prepare("
-                INSERT INTO admin_actions (admin_id, action_type, action_details)
-                VALUES (?, ?, ?)
-            ");
-            $stmt->execute([$user_id, $action_type, $action_details]);
-        }
+      
         
         // Commit transaction
         $conn->commit();

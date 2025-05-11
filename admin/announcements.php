@@ -1,114 +1,46 @@
 <?php
-/**
- * announcements.php - หน้าจัดการประกาศถึงนักเรียน
- */
-
-// เริ่ม session
-session_start();
-
-// ตรวจสอบการล็อกอิน (แสดงความคิดเห็นออกไปเพื่อการทดสอบ)
-if (!isset($_SESSION['user_id']) || !isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'admin') {
-    header('Location: ../login.php');
-    exit;
+// กำหนดเส้นทางฐาน (BASE_PATH) ถ้ายังไม่ได้กำหนด
+if (!defined('BASE_PATH')) {
+    define('BASE_PATH', __DIR__);
 }
 
 // กำหนดข้อมูลสำหรับหน้าปัจจุบัน
 $current_page = 'announcements';
 $page_title = 'จัดการประกาศ';
-$page_header = 'จัดการประกาศถึงนักเรียน';
+$page_header = 'จัดการประกาศ';
 
-// ข้อมูลเกี่ยวกับเจ้าหน้าที่ (จริงๆ ควรดึงจากฐานข้อมูล)
+// ข้อมูลเกี่ยวกับเจ้าหน้าที่
 $admin_info = [
-    'name' => $_SESSION['user_name'] ?? 'เจ้าหน้าที่',
-    'role' => $_SESSION['user_role'] ?? 'ผู้ดูแลระบบ',
-    'initials' => 'A',
+    'name' => 'จารุวรรณ บุญมี',
+    'role' => 'เจ้าหน้าที่กิจการนักเรียน',
+    'initials' => 'จ'
 ];
 
 // ปุ่มบนส่วนหัว
 $header_buttons = [
     [
-        'text' => 'สร้างประกาศใหม่',
-        'icon' => 'plus',
-        'id' => 'create-announcement-btn',
-        'class' => 'btn btn-primary'
+        'text' => 'เพิ่มประกาศใหม่',
+        'icon' => 'add_circle_outline',
+        'onclick' => 'openAnnouncementModal()'
     ],
     [
-        'text' => 'รีเฟรช',
-        'icon' => 'sync',
-        'id' => 'refresh-announcements-btn',
-        'class' => 'btn btn-secondary'
+        'text' => 'ดาวน์โหลดรายงาน',
+        'icon' => 'file_download',
+        'onclick' => 'downloadAnnouncementReport()'
     ]
 ];
-
-// เชื่อมต่อฐานข้อมูล
-require_once '../db_connect.php';
-$conn = getDB();
-
-// ดึงข้อมูลประกาศทั้งหมด
-try {
-    $stmt = $conn->prepare("
-        SELECT a.*, u.first_name, u.last_name 
-        FROM announcements a
-        LEFT JOIN users u ON a.created_by = u.user_id
-        ORDER BY a.created_at DESC
-    ");
-    $stmt->execute();
-    $announcements = $stmt->fetchAll(PDO::FETCH_ASSOC);
-} catch (PDOException $e) {
-    $error_message = "เกิดข้อผิดพลาดในการดึงข้อมูลประกาศ: " . $e->getMessage();
-    error_log($error_message);
-    $announcements = [];
-}
-
-// ฟังก์ชันแปลงประเภทประกาศเป็นชื่อไทย
-function getAnnouncementTypeName($type) {
-    $types = [
-        'general' => 'ทั่วไป',
-        'urgent' => 'สำคัญ',
-        'event' => 'กิจกรรม',
-        'info' => 'ข้อมูล',
-        'success' => 'ความสำเร็จ',
-        'warning' => 'คำเตือน'
-    ];
-    
-    return isset($types[$type]) ? $types[$type] : 'ทั่วไป';
-}
-
-// ดึงข้อมูลแผนกวิชาสำหรับฟิลเตอร์
-try {
-    $stmt = $conn->prepare("SELECT department_id, department_name FROM departments ORDER BY department_name");
-    $stmt->execute();
-    $departments = $stmt->fetchAll(PDO::FETCH_ASSOC);
-} catch (PDOException $e) {
-    $error_message = "เกิดข้อผิดพลาดในการดึงข้อมูลแผนกวิชา: " . $e->getMessage();
-    error_log($error_message);
-    $departments = [];
-}
-
-// ดึงข้อมูลระดับชั้นสำหรับฟิลเตอร์
-$levels = ['ปวช.1', 'ปวช.2', 'ปวช.3', 'ปวส.1', 'ปวส.2'];
-
-// จำนวนนักเรียนที่เสี่ยงตกกิจกรรม (ตัวอย่าง - ควรดึงจากฐานข้อมูล)
-$at_risk_count = 12;
 
 // ไฟล์ CSS และ JS เพิ่มเติม
 $extra_css = [
     'assets/css/announcements.css',
-    'assets/css/modal.css',
-    'assets/css/modal-details.css',
-    'assets/css/button-effects.css',
-    'assets/css/theme-switch.css',
-    'assets/plugins/summernote/summernote-bs4.min.css',
-    'assets/plugins/sweetalert2/sweetalert2.min.css'
+    'assets/plugins/datatables/dataTables.bootstrap4.min.css',
+    'https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-bs4.min.css'
 ];
 
 $extra_js = [
-    'assets/plugins/jquery/jquery.min.js',
-    'assets/plugins/bootstrap/js/bootstrap.bundle.min.js',
-    'assets/plugins/summernote/summernote-bs4.min.js',
-    'assets/plugins/summernote/lang/summernote-th-TH.min.js',
-    'assets/plugins/sweetalert2/sweetalert2.min.js',
-    'assets/js/theme-switch.js',
+    'assets/plugins/datatables/jquery.dataTables.min.js',
+    'assets/plugins/datatables/dataTables.bootstrap4.min.js',
+    'https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-bs4.min.js',
     'assets/js/announcements.js'
 ];
 
@@ -118,6 +50,31 @@ $content_path = 'pages/announcements_content.php';
 // โหลดเทมเพลตส่วนหัว
 require_once 'templates/header.php';
 
+// เพิ่ม CDN fallback กรณีที่ไฟล์ local ไม่ทำงาน
+?>
+<script>
+// ตรวจสอบว่า jQuery ถูกโหลดหรือไม่
+if (typeof jQuery === 'undefined') {
+    document.write('<script src="https://code.jquery.com/jquery-3.6.0.min.js"><\/script>');
+}
+
+// ตรวจสอบว่า DataTable ถูกโหลดหรือไม่
+setTimeout(function() {
+    if (typeof jQuery !== 'undefined' && typeof jQuery.fn.DataTable === 'undefined') {
+        document.write('<script src="https://cdn.datatables.net/1.10.25/js/jquery.dataTables.min.js"><\/script>');
+        document.write('<script src="https://cdn.datatables.net/1.10.25/js/dataTables.bootstrap4.min.js"><\/script>');
+    }
+}, 500);
+
+// ตรวจสอบว่า Summernote ถูกโหลดหรือไม่
+setTimeout(function() {
+    if (typeof jQuery !== 'undefined' && typeof jQuery.fn.summernote === 'undefined') {
+        document.write('<link href="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-bs4.min.css" rel="stylesheet">');
+        document.write('<script src="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-bs4.min.js"><\/script>');
+    }
+}, 1000);
+</script>
+<?php
 // โหลดเทมเพลตเมนูด้านข้าง
 require_once 'templates/sidebar.php';
 
@@ -126,4 +83,4 @@ require_once 'templates/main_content.php';
 
 // โหลดเทมเพลตส่วนท้าย
 require_once 'templates/footer.php';
-?> 
+?>

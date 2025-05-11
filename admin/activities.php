@@ -29,7 +29,11 @@ $page_header = 'ระบบจัดการกิจกรรมกลาง'
 // ดึงข้อมูลผู้ใช้จาก session
 $user_id = $_SESSION['user_id'] ?? null;
 $user_role = $_SESSION['user_role'] ?? 'admin';
-
+$admin_info = [
+    'name' => $_SESSION['user_name'] ?? 'เจ้าหน้าที่',
+    'role' => $_SESSION['user_role'] ?? 'ผู้ดูแลระบบ',
+    'initials' => 'A',
+];
 // ดึงข้อมูลปีการศึกษาปัจจุบัน
 try {
     $stmt = $conn->prepare("SELECT academic_year_id, year, semester FROM academic_years WHERE is_active = 1 LIMIT 1");

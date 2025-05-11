@@ -216,7 +216,7 @@ function searchStudents() {
     if (attendanceSummary) attendanceSummary.style.display = 'none';
     
     // สร้าง URL สำหรับดึงข้อมูล
-    let url = 'ajax/get_students_for_attendance.php?';
+    let url = 'ajax/get_students_for_attendance-check.php?';
     let params = [];
     
     if (departmentId) {
