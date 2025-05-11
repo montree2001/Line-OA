@@ -115,11 +115,11 @@ if (isset($data['success_message'])): ?>
         </div>
 
         <div class="table-responsive">
-            <table class="table table-hover">
+        <table id="teachersTable" class="table table-hover table-striped dt-responsive nowrap" style="width:100%">
                 <thead class="table-light">
                     <tr>
                         <th scope="col" width="15%">ชื่อ-นามสกุล</th>
-                        <th scope="col" width="10%">รหัส</th>
+                        <th scope="col" width="10%">เลขบัตร</th>
                         <th scope="col" width="10%">แผนก</th>
                         <th scope="col" width="10%">ตำแหน่ง</th>
                         <th scope="col" width="8%">นักเรียน</th>
@@ -930,3 +930,90 @@ if (isset($data['success_message'])): ?>
         </div>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // เริ่มต้นใช้งาน DataTables
+    $('#teachersTable').DataTable({
+        responsive: true,
+        language: {
+            "lengthMenu": "แสดง _MENU_ รายการต่อหน้า",
+            "zeroRecords": "ไม่พบข้อมูล",
+            "info": "แสดงหน้า _PAGE_ จาก _PAGES_",
+            "infoEmpty": "ไม่มีข้อมูล",
+            "infoFiltered": "(กรองจากทั้งหมด _MAX_ รายการ)",
+            "search": "ค้นหา:",
+            "paginate": {
+                "first": "หน้าแรก",
+                "last": "หน้าสุดท้าย",
+                "next": "ถัดไป",
+                "previous": "ก่อนหน้า"
+            }
+        },
+        columnDefs: [
+            { targets: 'no-sort', orderable: false }
+        ],
+        order: [[0, 'asc']], // เรียงตามชื่อ-นามสกุลเริ่มต้น
+        initComplete: function() {
+            // เชื่อมการค้นหากับฟิลเตอร์ที่มีอยู่เดิม
+            const table = this.api();
+            
+            $('#searchTeacher').on('keyup', function() {
+                table.search(this.value).draw();
+            });
+            
+            $('#filterDepartment').on('change', function() {
+                const val = $(this).val();
+                table.column(2).search(val ? val : '', true, false).draw();
+            });
+            
+            $('#filterStatus').on('change', function() {
+                const val = $(this).val();
+                table.column(6).search(val === 'active' ? 'ปฏิบัติงาน' : 
+                                    (val === 'inactive' ? 'ไม่ปฏิบัติงาน' : ''), 
+                                    true, false).draw();
+            });
+            
+            $('#filterLineStatus').on('change', function() {
+                const val = $(this).val();
+                table.column(7).search(val === 'connected' ? 'เชื่อมต่อแล้ว' : 
+                                    (val === 'not_connected' ? 'ยังไม่เชื่อมต่อ' : ''), 
+                                    true, false).draw();
+            });
+        }
+    });
+    
+    // ปรับปรุงการทำงานของฟิลเตอร์
+    function applyFilters() {
+        // เปลี่ยนเป็นการค้นหาผ่าน DataTables API แทน
+        const table = $('#teachersTable').DataTable();
+        const searchValue = $('#searchTeacher').val();
+        const departmentValue = $('#filterDepartment').val();
+        const statusValue = $('#filterStatus').val();
+        const lineStatusValue = $('#filterLineStatus').val();
+        
+        // รีเซ็ตการค้นหาทั้งหมด
+        table.search('').columns().search('').draw();
+        
+        // ใช้การค้นหาแบบรวม
+        if (searchValue) {
+            table.search(searchValue).draw();
+        }
+        
+        // ค้นหาตามคอลัมน์เฉพาะ
+        if (departmentValue) {
+            table.column(2).search(departmentValue, true, false).draw();
+        }
+        
+        if (statusValue) {
+            const statusText = statusValue === 'active' ? 'ปฏิบัติงาน' : 'ไม่ปฏิบัติงาน';
+            table.column(6).search(statusValue ? statusText : '', true, false).draw();
+        }
+        
+        if (lineStatusValue) {
+            const lineText = lineStatusValue === 'connected' ? 'เชื่อมต่อแล้ว' : 'ยังไม่เชื่อมต่อ';
+            table.column(7).search(lineStatusValue ? lineText : '', true, false).draw();
+        }
+    }
+});
+</script>

@@ -49,19 +49,23 @@ $header_buttons = [
 
 // จำนวนนักเรียนที่เสี่ยงตกกิจกรรม
 $at_risk_count = 12;
-
-// เพิ่ม Bootstrap CSS แต่ยังคงใช้ CSS หลักของระบบ
 $extra_css = [
     'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css',
-    'assets/css/teachers.css', // CSS เฉพาะสำหรับหน้านี้
-    'assets/css/import.css' // เพิ่ม CSS สำหรับนำเข้าข้อมูล
+    'assets/css/teachers.css',
+    'assets/css/import.css',
+    'https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css', // เพิ่ม DataTables CSS
+    'https://cdn.datatables.net/responsive/2.4.1/css/responsive.bootstrap5.min.css' // เพิ่ม Responsive CSS
 ];
 
 $extra_js = [
     'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js',
-    'assets/js/teachers.js', // JS เฉพาะสำหรับหน้านี้
-    'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js', // เพิ่ม SheetJS
-    'assets/js/import-teachers.js' // เพิ่ม JS สำหรับนำเข้าข้อมูล
+    'assets/js/teachers.js',
+    'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',
+    'assets/js/import-teachers.js',
+    'https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js', // เพิ่ม DataTables Core
+    'https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js', // เพิ่ม Bootstrap 5 Integration
+    'https://cdn.datatables.net/responsive/2.4.1/js/dataTables.responsive.min.js', // เพิ่ม Responsive Extension
+    'https://cdn.datatables.net/responsive/2.4.1/js/responsive.bootstrap5.min.js' // เพิ่ม Responsive Bootstrap 5
 ];
 
 // กำหนดเส้นทางไปยังไฟล์เนื้อหาเฉพาะหน้า

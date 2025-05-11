@@ -1,7 +1,9 @@
 <?php
 /**
- * download_report.php - API สำหรับดาวน์โหลดรายงานการเข้าแถว
- * สำหรับระบบน้องสัตบรรณ ดูแลผู้เรียน
+ * download_report.php - API สำหรับดาวน์โหลดรายงานในรูปแบบต่างๆ
+ * 
+ * ส่วนหนึ่งของระบบน้องสัตบรรณ - ดูแลผู้เรียน
+ * วิทยาลัยการอาชีพปราสาท
  */
 
 // เริ่ม session
@@ -9,545 +11,1432 @@ session_start();
 
 // ตรวจสอบการล็อกอิน
 if (!isset($_SESSION['user_id']) || !isset($_SESSION['user_role']) || ($_SESSION['user_role'] != 'admin' && $_SESSION['user_role'] != 'teacher')) {
-    header('HTTP/1.1 403 Forbidden');
-    echo json_encode(['error' => 'คุณไม่มีสิทธิ์เข้าถึงข้อมูลนี้']);
-    exit;
+    header('HTTP/1.1 401 Unauthorized');
+    exit('Unauthorized access');
 }
 
 // เชื่อมต่อฐานข้อมูล
-require_once '../../db_connect.php';
+require_once '../db_connect.php';
 
-// ตรวจสอบการติดตั้ง PHPExcel (หรือใช้ไลบรารีอื่น)
-// ในอนาคตควรใช้ PhpSpreadsheet แทน PHPExcel
-if (!class_exists('PHPExcel')) {
-    include '../../vendor/autoload.php';
-}
+// ตรวจสอบพารามิเตอร์
+$format = isset($_GET['format']) ? strtolower($_GET['format']) : 'excel';
+$period = isset($_GET['period']) ? $_GET['period'] : 'month';
+$departmentId = isset($_GET['department_id']) ? (int)$_GET['department_id'] : null;
+$startDate = isset($_GET['start_date']) ? $_GET['start_date'] : null;
+$endDate = isset($_GET['end_date']) ? $_GET['end_date'] : null;
+$reportType = isset($_GET['type']) ? $_GET['type'] : 'attendance';
 
-// ฟังก์ชันดึงข้อมูลรายงานทั่วไป
-function getGeneralReport($filters = []) {
+// ดึงข้อมูลรายงาน
+try {
+    // ดึงปีการศึกษาปัจจุบัน
     $conn = getDB();
-    $data = [];
+    $query = "SELECT academic_year_id, year, semester FROM academic_years WHERE is_active = 1 LIMIT 1";
+    $stmt = $conn->query($query);
+    $academicYear = $stmt->fetch(PDO::FETCH_ASSOC);
     
-    // ดึงข้อมูลปีการศึกษาปัจจุบัน
-    $academicYearId = $filters['academic_year_id'] ?? null;
-    
-    if (!$academicYearId) {
-        $query = "SELECT academic_year_id FROM academic_years WHERE is_active = 1 LIMIT 1";
-        $stmt = $conn->query($query);
-        $academicYearId = $stmt->fetchColumn();
+    if (!$academicYear) {
+        throw new Exception('No active academic year found');
     }
     
-    // สร้าง query พื้นฐาน
-    $query = "SELECT 
-                s.student_id,
-                s.student_code,
-                s.title,
-                u.first_name,
-                u.last_name,
-                c.level,
-                c.group_number,
-                d.department_name,
-                COUNT(CASE WHEN a.attendance_status = 'present' THEN 1 ELSE NULL END) as present_count,
-                COUNT(a.attendance_id) as total_count,
-                ROUND(
-                    (COUNT(CASE WHEN a.attendance_status = 'present' THEN 1 ELSE NULL END) / COUNT(a.attendance_id)) * 100, 
-                    1
-                ) as attendance_rate
-             FROM students s
-             JOIN users u ON s.user_id = u.user_id
-             LEFT JOIN classes c ON s.current_class_id = c.class_id
-             LEFT JOIN departments d ON c.department_id = d.department_id
-             LEFT JOIN attendance a ON s.student_id = a.student_id AND a.academic_year_id = :academic_year_id
-             WHERE s.status = 'กำลังศึกษา'";
+    $academicYearId = $academicYear['academic_year_id'];
     
-    // กรองตามช่วงเวลา
-    if (!empty($filters['start_date']) && !empty($filters['end_date'])) {
-        $query .= " AND a.date BETWEEN :start_date AND :end_date";
+    // สร้างชื่อไฟล์
+    $filename = 'รายงาน_' . $reportType . '_' . date('Y-m-d');
+    
+    // กำหนดช่วงเวลาตามประเภทรายงาน
+    $dateFilter = '';
+    $dateParams = [];
+    
+    switch ($period) {
+        case 'day':
+            $dateFilter = " AND a.date = ?";
+            $dateParams[] = date('Y-m-d');
+            $filename .= '_วันนี้';
+            break;
+            
+        case 'week':
+            $dateFilter = " AND a.date BETWEEN ? AND ?";
+            $dateParams[] = date('Y-m-d', strtotime('monday this week'));
+            $dateParams[] = date('Y-m-d', strtotime('sunday this week'));
+            $filename .= '_สัปดาห์นี้';
+            break;
+            
+        case 'month':
+            $dateFilter = " AND a.date BETWEEN ? AND ?";
+            $dateParams[] = date('Y-m-01');
+            $dateParams[] = date('Y-m-t');
+            $filename .= '_เดือนนี้';
+            break;
+            
+        case 'semester':
+            $dateFilter = " AND a.date BETWEEN ? AND ?";
+            $dateParams[] = $academicYear['start_date'] ?? date('Y-m-d', strtotime('-3 months'));
+            $dateParams[] = $academicYear['end_date'] ?? date('Y-m-d');
+            $filename .= '_ภาคเรียน' . $academicYear['semester'] . '_' . ($academicYear['year'] + 543);
+            break;
+            
+        case 'custom':
+            if ($startDate && $endDate) {
+                $dateFilter = " AND a.date BETWEEN ? AND ?";
+                $dateParams[] = $startDate;
+                $dateParams[] = $endDate;
+                $filename .= '_' . date('d-m-Y', strtotime($startDate)) . '_ถึง_' . date('d-m-Y', strtotime($endDate));
+            }
+            break;
     }
     
-    // กรองตามแผนกวิชา
-    if (!empty($filters['department_id'])) {
-        $query .= " AND c.department_id = :department_id";
-    }
+    // กำหนดเงื่อนไขแผนก
+    $departmentFilter = '';
+    $departmentParams = [];
     
-    // กรองตามระดับชั้น
-    if (!empty($filters['level'])) {
-        $query .= " AND c.level = :level";
-    }
-    
-    // กรองตามห้องเรียน
-    if (!empty($filters['class_id'])) {
-        $query .= " AND s.current_class_id = :class_id";
-    }
-    
-    // จัดกลุ่มและเรียงลำดับ
-    $query .= " GROUP BY s.student_id
-               ORDER BY c.level, c.group_number, s.student_code";
-    
-    $stmt = $conn->prepare($query);
-    $stmt->bindParam(':academic_year_id', $academicYearId, PDO::PARAM_INT);
-    
-    if (!empty($filters['start_date']) && !empty($filters['end_date'])) {
-        $stmt->bindParam(':start_date', $filters['start_date']);
-        $stmt->bindParam(':end_date', $filters['end_date']);
-    }
-    
-    if (!empty($filters['department_id'])) {
-        $stmt->bindParam(':department_id', $filters['department_id'], PDO::PARAM_INT);
-    }
-    
-    if (!empty($filters['level'])) {
-        $stmt->bindParam(':level', $filters['level'], PDO::PARAM_STR);
-    }
-    
-    if (!empty($filters['class_id'])) {
-        $stmt->bindParam(':class_id', $filters['class_id'], PDO::PARAM_INT);
-    }
-    
-    $stmt->execute();
-    $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    
-    return $students;
-}
-
-// ฟังก์ชันดึงข้อมูลรายงานนักเรียนรายบุคคล
-function getStudentReport($studentId, $filters = []) {
-    $conn = getDB();
-    $data = [];
-    
-    // ดึงข้อมูลปีการศึกษาปัจจุบัน
-    $academicYearId = $filters['academic_year_id'] ?? null;
-    
-    if (!$academicYearId) {
-        $query = "SELECT academic_year_id FROM academic_years WHERE is_active = 1 LIMIT 1";
-        $stmt = $conn->query($query);
-        $academicYearId = $stmt->fetchColumn();
-    }
-    
-    // 1. ดึงข้อมูลพื้นฐานของนักเรียน
-    $query = "SELECT 
-                s.student_id,
-                s.student_code,
-                s.title,
-                u.first_name,
-                u.last_name,
-                c.level,
-                c.group_number,
-                d.department_name,
-                t.first_name as advisor_first_name,
-                t.last_name as advisor_last_name,
-                t.phone_number as advisor_phone
-              FROM students s
-              JOIN users u ON s.user_id = u.user_id
-              LEFT JOIN classes c ON s.current_class_id = c.class_id
-              LEFT JOIN departments d ON c.department_id = d.department_id
-              LEFT JOIN class_advisors ca ON c.class_id = ca.class_id AND ca.is_primary = 1
-              LEFT JOIN teachers t ON ca.teacher_id = t.teacher_id
-              WHERE s.student_id = :student_id";
-    
-    $stmt = $conn->prepare($query);
-    $stmt->bindParam(':student_id', $studentId, PDO::PARAM_INT);
-    $stmt->execute();
-    $student = $stmt->fetch(PDO::FETCH_ASSOC);
-    
-    if (!$student) {
-        return null;
-    }
-    
-    // 2. ดึงข้อมูลการเข้าแถวทั้งหมด
-    $query = "SELECT 
-                date,
-                attendance_status,
-                check_time,
-                check_method,
-                remarks
-              FROM attendance
-              WHERE student_id = :student_id AND academic_year_id = :academic_year_id";
-    
-    // กรองตามช่วงเวลา
-    if (!empty($filters['start_date']) && !empty($filters['end_date'])) {
-        $query .= " AND date BETWEEN :start_date AND :end_date";
-    }
-    
-    $query .= " ORDER BY date";
-    
-    $stmt = $conn->prepare($query);
-    $stmt->bindParam(':student_id', $studentId, PDO::PARAM_INT);
-    $stmt->bindParam(':academic_year_id', $academicYearId, PDO::PARAM_INT);
-    
-    if (!empty($filters['start_date']) && !empty($filters['end_date'])) {
-        $stmt->bindParam(':start_date', $filters['start_date']);
-        $stmt->bindParam(':end_date', $filters['end_date']);
-    }
-    
-    $stmt->execute();
-    $attendance = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    
-    // 3. คำนวณสถิติ
-    $totalDays = count($attendance);
-    $presentDays = 0;
-    $absentDays = 0;
-    $lateDays = 0;
-    $leaveDays = 0;
-    
-    foreach ($attendance as $record) {
-        switch ($record['attendance_status']) {
-            case 'present':
-                $presentDays++;
-                break;
-            case 'absent':
-                $absentDays++;
-                break;
-            case 'late':
-                $lateDays++;
-                break;
-            case 'leave':
-                $leaveDays++;
-                break;
+    if ($departmentId) {
+        // ดึงชื่อแผนก
+        $query = "SELECT department_name FROM departments WHERE department_id = ?";
+        $stmt = $conn->prepare($query);
+        $stmt->execute([$departmentId]);
+        $departmentName = $stmt->fetchColumn();
+        
+        if ($departmentName) {
+            $departmentFilter = " AND c.department_id = ?";
+            $departmentParams[] = $departmentId;
+            $filename .= '_' . $departmentName;
         }
     }
     
-    $attendanceRate = ($totalDays > 0) ? round(($presentDays / $totalDays) * 100, 1) : 0;
+    // ประมวลผลตามรูปแบบไฟล์
+    switch ($format) {
+        case 'excel':
+            generateExcelReport($conn, $academicYearId, $filename, $dateFilter, $dateParams, $departmentFilter, $departmentParams, $reportType);
+            break;
+            
+        case 'pdf':
+            generatePdfReport($conn, $academicYearId, $filename, $dateFilter, $dateParams, $departmentFilter, $departmentParams, $reportType);
+            break;
+            
+        case 'csv':
+            generateCsvReport($conn, $academicYearId, $filename, $dateFilter, $dateParams, $departmentFilter, $departmentParams, $reportType);
+            break;
+            
+        default:
+            throw new Exception('Unsupported format: ' . $format);
+    }
     
-    // 4. รวมข้อมูลทั้งหมด
-    $data = [
-        'profile' => [
-            'student_id' => $student['student_id'],
-            'student_code' => $student['student_code'],
-            'name' => $student['title'] . ' ' . $student['first_name'] . ' ' . $student['last_name'],
-            'class' => $student['level'] . '/' . $student['group_number'],
-            'department' => $student['department_name'],
-            'advisor' => ($student['advisor_first_name']) ? 'อ.' . $student['advisor_first_name'] . ' ' . $student['advisor_last_name'] : '-',
-            'advisor_phone' => $student['advisor_phone'] ?? '-'
+} catch (Exception $e) {
+    header('HTTP/1.1 500 Internal Server Error');
+    exit('Error generating report: ' . $e->getMessage());
+}
+
+/**
+ * สร้างรายงานในรูปแบบ Excel
+ */
+function generateExcelReport($conn, $academicYearId, $filename, $dateFilter, $dateParams, $departmentFilter, $departmentParams, $reportType) {
+    // ต้องติดตั้ง PhpSpreadsheet ก่อน
+    // composer require phpoffice/phpspreadsheet
+    
+    // ตรวจสอบว่ามีการติดตั้ง PhpSpreadsheet หรือไม่
+    if (!class_exists('PhpOffice\PhpSpreadsheet\Spreadsheet')) {
+        // ถ้าไม่มี ให้สร้างไฟล์ CSV แทน
+        generateCsvReport($conn, $academicYearId, $filename, $dateFilter, $dateParams, $departmentFilter, $departmentParams, $reportType);
+        return;
+    }
+    
+    // ใช้ PhpSpreadsheet
+    require 'vendor/autoload.php';
+    
+    use PhpOffice\PhpSpreadsheet\Spreadsheet;
+    use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+    use PhpOffice\PhpSpreadsheet\Style\Alignment;
+    use PhpOffice\PhpSpreadsheet\Style\Border;
+    use PhpOffice\PhpSpreadsheet\Style\Fill;
+    
+    // สร้าง Spreadsheet ใหม่
+    $spreadsheet = new Spreadsheet();
+    $sheet = $spreadsheet->getActiveSheet();
+    
+    // ตั้งค่า header ของไฟล์
+    $sheet->setCellValue('A1', 'วิทยาลัยการอาชีพปราสาท');
+    $sheet->setCellValue('A2', 'รายงาน' . getReportTypeName($reportType));
+    
+    // ตั้งค่าสไตล์
+    $headerStyle = [
+        'font' => [
+            'bold' => true,
+            'size' => 14
         ],
-        'statistics' => [
-            'total_days' => $totalDays,
-            'present_days' => $presentDays,
-            'absent_days' => $absentDays,
-            'late_days' => $lateDays,
-            'leave_days' => $leaveDays,
-            'attendance_rate' => $attendanceRate
-        ],
-        'attendance' => $attendance
+        'alignment' => [
+            'horizontal' => Alignment::HORIZONTAL_CENTER
+        ]
     ];
     
-    return $data;
-}
-
-// ฟังก์ชันสร้างไฟล์ Excel รายงานทั่วไป
-function generateGeneralExcel($data, $filters = []) {
-    // สร้าง instance ของ PHPExcel
-    $excel = new PHPExcel();
+    $sheet->getStyle('A1:F1')->applyFromArray($headerStyle);
+    $sheet->getStyle('A2:F2')->applyFromArray($headerStyle);
     
-    // ตั้งค่าเอกสาร
-    $excel->getProperties()
-        ->setCreator("ระบบน้องสัตบรรณ")
-        ->setLastModifiedBy("ระบบน้องสัตบรรณ")
-        ->setTitle("รายงานการเข้าแถว")
-        ->setSubject("รายงานการเข้าแถวนักเรียน")
-        ->setDescription("รายงานการเข้าแถวนักเรียน");
-    
-    // รับ active sheet
-    $sheet = $excel->getActiveSheet();
-    $sheet->setTitle("รายงานการเข้าแถว");
-    
-    // ตั้งค่า header
-    $sheet->setCellValue('A1', 'รายงานการเข้าแถวนักเรียน');
-    $sheet->mergeCells('A1:G1');
-    $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(16);
-    $sheet->getStyle('A1')->getAlignment()->setHorizontal(PHPExcel_Style_Alignment::HORIZONTAL_CENTER);
-    
-    // กำหนดชื่อรายงานตามตัวกรอง
-    $reportTitle = 'ข้อมูลเดือน' . date('F Y');
-    
-    if (isset($filters['period'])) {
-        switch ($filters['period']) {
-            case 'current_month':
-                $reportTitle = 'ข้อมูลเดือน' . date('F Y');
-                break;
-            case 'prev_month':
-                $reportTitle = 'ข้อมูลเดือน' . date('F Y', strtotime('-1 month'));
-                break;
-            case 'last3':
-                $reportTitle = 'ข้อมูล 3 เดือนย้อนหลัง';
-                break;
-            case 'semester':
-                $reportTitle = 'ข้อมูลภาคเรียนปัจจุบัน';
-                break;
-            case 'custom':
-                if (isset($filters['start_date']) && isset($filters['end_date'])) {
-                    $reportTitle = 'ข้อมูลระหว่างวันที่ ' . date('d/m/Y', strtotime($filters['start_date'])) . ' ถึง ' . date('d/m/Y', strtotime($filters['end_date']));
-                }
-                break;
-        }
+    // ขึ้นอยู่กับประเภทรายงาน
+    switch ($reportType) {
+        case 'attendance':
+            generateAttendanceExcelReport($conn, $sheet, $academicYearId, $dateFilter, $dateParams, $departmentFilter, $departmentParams);
+            break;
+            
+        case 'risk':
+            generateRiskExcelReport($conn, $sheet, $academicYearId, $dateFilter, $dateParams, $departmentFilter, $departmentParams);
+            break;
+            
+        case 'class':
+            generateClassExcelReport($conn, $sheet, $academicYearId, $dateFilter, $dateParams, $departmentFilter, $departmentParams);
+            break;
+            
+        default:
+            generateAttendanceExcelReport($conn, $sheet, $academicYearId, $dateFilter, $dateParams, $departmentFilter, $departmentParams);
     }
     
-    $sheet->setCellValue('A2', $reportTitle);
-    $sheet->mergeCells('A2:G2');
-    $sheet->getStyle('A2')->getFont()->setSize(14);
-    $sheet->getStyle('A2')->getAlignment()->setHorizontal(PHPExcel_Style_Alignment::HORIZONTAL_CENTER);
+    // สร้างไฟล์ Excel
+    $writer = new Xlsx($spreadsheet);
     
-    // ตั้งค่า header columns
+    // ตั้งค่า header ของ HTTP response
+    header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    header('Content-Disposition: attachment;filename="' . $filename . '.xlsx"');
+    header('Cache-Control: max-age=0');
+    
+    // ส่งไฟล์ไปยังเบราว์เซอร์
+    $writer->save('php://output');
+    exit;
+}
+
+/**
+ * สร้างรายงานในรูปแบบ PDF
+ */
+function generatePdfReport($conn, $academicYearId, $filename, $dateFilter, $dateParams, $departmentFilter, $departmentParams, $reportType) {
+    // ต้องติดตั้ง TCPDF หรือ mPDF ก่อน
+    // composer require mpdf/mpdf
+    
+    // ตรวจสอบว่ามีการติดตั้ง mPDF หรือไม่
+    if (!class_exists('Mpdf\Mpdf')) {
+        // ถ้าไม่มี ให้แจ้งเตือน
+        header('HTTP/1.1 500 Internal Server Error');
+        exit('mPDF library is not installed. Please install it using: composer require mpdf/mpdf');
+    }
+    
+    // ใช้ mPDF
+    require_once 'vendor/autoload.php';
+    
+    // สร้าง mPDF object
+    $mpdf = new \Mpdf\Mpdf([
+        'mode' => 'utf-8',
+        'format' => 'A4',
+        'margin_left' => 15,
+        'margin_right' => 15,
+        'margin_top' => 15,
+        'margin_bottom' => 15
+    ]);
+    
+    // ตั้งค่า metadata
+    $mpdf->SetTitle($filename);
+    $mpdf->SetAuthor('วิทยาลัยการอาชีพปราสาท');
+    $mpdf->SetCreator('ระบบน้องสัตบรรณ - ดูแลผู้เรียน');
+    
+    // สร้าง HTML content
+    $html = generateReportHtml($conn, $academicYearId, $dateFilter, $dateParams, $departmentFilter, $departmentParams, $reportType);
+    
+    // เพิ่ม CSS
+    $stylesheet = file_get_contents('../admin/assets/css/reports.css');
+    $mpdf->WriteHTML($stylesheet, \Mpdf\HTMLParserMode::HEADER_CSS);
+    
+    // เขียน HTML
+    $mpdf->WriteHTML($html, \Mpdf\HTMLParserMode::HTML_BODY);
+    
+    // ส่ง PDF ไปยังเบราว์เซอร์
+    $mpdf->Output($filename . '.pdf', 'D');
+    exit;
+}
+
+/**
+ * สร้างรายงานในรูปแบบ CSV
+ */
+function generateCsvReport($conn, $academicYearId, $filename, $dateFilter, $dateParams, $departmentFilter, $departmentParams, $reportType) {
+    // สร้างไฟล์ CSV
+    $output = fopen('php://output', 'w');
+    
+    // ตั้งค่า header ของ HTTP response
+    header('Content-Type: text/csv; charset=utf-8');
+    header('Content-Disposition: attachment;filename="' . $filename . '.csv"');
+    
+    // เพิ่ม BOM เพื่อให้ Excel อ่านภาษาไทยได้
+    fprintf($output, chr(0xEF).chr(0xBB).chr(0xBF));
+    
+    // ขึ้นอยู่กับประเภทรายงาน
+    switch ($reportType) {
+        case 'attendance':
+            generateAttendanceCsvReport($conn, $output, $academicYearId, $dateFilter, $dateParams, $departmentFilter, $departmentParams);
+            break;
+            
+        case 'risk':
+            generateRiskCsvReport($conn, $output, $academicYearId, $dateFilter, $dateParams, $departmentFilter, $departmentParams);
+            break;
+            
+        case 'class':
+            generateClassCsvReport($conn, $output, $academicYearId, $dateFilter, $dateParams, $departmentFilter, $departmentParams);
+            break;
+            
+        default:
+            generateAttendanceCsvReport($conn, $output, $academicYearId, $dateFilter, $dateParams, $departmentFilter, $departmentParams);
+    }
+    
+    // ปิดไฟล์
+    fclose($output);
+    exit;
+}
+
+/**
+ * สร้าง HTML สำหรับรายงาน PDF
+ */
+function generateReportHtml($conn, $academicYearId, $dateFilter, $dateParams, $departmentFilter, $departmentParams, $reportType) {
+    // ขึ้นอยู่กับประเภทรายงาน
+    switch ($reportType) {
+        case 'attendance':
+            return generateAttendanceHtml($conn, $academicYearId, $dateFilter, $dateParams, $departmentFilter, $departmentParams);
+            
+        case 'risk':
+            return generateRiskHtml($conn, $academicYearId, $dateFilter, $dateParams, $departmentFilter, $departmentParams);
+            
+        case 'class':
+            return generateClassHtml($conn, $academicYearId, $dateFilter, $dateParams, $departmentFilter, $departmentParams);
+            
+        default:
+            return generateAttendanceHtml($conn, $academicYearId, $dateFilter, $dateParams, $departmentFilter, $departmentParams);
+    }
+}
+
+/**
+ * สร้างรายงานการเข้าแถวในรูปแบบ Excel
+ */
+function generateAttendanceExcelReport($conn, $sheet, $academicYearId, $dateFilter, $dateParams, $departmentFilter, $departmentParams) {
+    // ตั้งค่าหัวตาราง
     $sheet->setCellValue('A4', 'ลำดับ');
     $sheet->setCellValue('B4', 'รหัสนักเรียน');
     $sheet->setCellValue('C4', 'ชื่อ-นามสกุล');
-    $sheet->setCellValue('D4', 'ชั้น/ห้อง');
-    $sheet->setCellValue('E4', 'แผนกวิชา');
-    $sheet->setCellValue('F4', 'วันที่เข้าแถว');
-    $sheet->setCellValue('G4', 'อัตราการเข้าแถว (%)');
-    $sheet->setCellValue('H4', 'สถานะ');
+    $sheet->setCellValue('D4', 'ชั้นเรียน');
+    $sheet->setCellValue('E4', 'จำนวนวันมา');
+    $sheet->setCellValue('F4', 'จำนวนวันขาด');
+    $sheet->setCellValue('G4', 'จำนวนวันสาย');
+    $sheet->setCellValue('H4', 'จำนวนวันลา');
+    $sheet->setCellValue('I4', 'อัตราการเข้าแถว');
+    $sheet->setCellValue('J4', 'สถานะ');
     
-    $sheet->getStyle('A4:H4')->getFont()->setBold(true);
-    $sheet->getStyle('A4:H4')->getAlignment()->setHorizontal(PHPExcel_Style_Alignment::HORIZONTAL_CENTER);
-    $sheet->getStyle('A4:H4')->getFill()->setFillType(PHPExcel_Style_Fill::FILL_SOLID)->getStartColor()->setRGB('D3D3D3');
+    // ตั้งค่าสไตล์หัวตาราง
+    $headerStyle = [
+        'font' => [
+            'bold' => true,
+        ],
+        'alignment' => [
+            'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
+        ],
+        'borders' => [
+            'allBorders' => [
+                'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
+            ],
+        ],
+        'fill' => [
+            'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+            'startColor' => [
+                'rgb' => 'E1F5FE',
+            ],
+        ],
+    ];
     
-    // ใส่ข้อมูล
+    $sheet->getStyle('A4:J4')->applyFromArray($headerStyle);
+    
+    // สร้าง query
+    $sql = "SELECT 
+                s.student_id,
+                s.student_code,
+                s.title,
+                u.first_name,
+                u.last_name,
+                c.level,
+                c.group_number,
+                CONCAT(c.level, '/', c.group_number) as class_name,
+                
+                (SELECT COUNT(*) FROM attendance a 
+                 WHERE a.student_id = s.student_id AND a.academic_year_id = ? 
+                 AND a.attendance_status = 'present' $dateFilter) as days_present,
+                
+                (SELECT COUNT(*) FROM attendance a 
+                 WHERE a.student_id = s.student_id AND a.academic_year_id = ? 
+                 AND a.attendance_status = 'absent' $dateFilter) as days_absent,
+                
+                (SELECT COUNT(*) FROM attendance a 
+                 WHERE a.student_id = s.student_id AND a.academic_year_id = ? 
+                 AND a.attendance_status = 'late' $dateFilter) as days_late,
+                
+                (SELECT COUNT(*) FROM attendance a 
+                 WHERE a.student_id = s.student_id AND a.academic_year_id = ? 
+                 AND a.attendance_status = 'leave' $dateFilter) as days_leave
+                
+            FROM students s
+            JOIN users u ON s.user_id = u.user_id
+            JOIN classes c ON s.current_class_id = c.class_id
+            WHERE s.status = 'กำลังศึกษา' $departmentFilter
+            ORDER BY c.level, c.group_number, s.student_code";
+    
+    // เตรียมพารามิเตอร์
+    $params = array_merge(
+        [$academicYearId], $dateParams,
+        [$academicYearId], $dateParams,
+        [$academicYearId], $dateParams,
+        [$academicYearId], $dateParams,
+        $departmentParams
+    );
+    
+    // ดึงข้อมูล
+    $stmt = $conn->prepare($sql);
+    $stmt->execute($params);
+    $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    // เขียนข้อมูลลงใน Excel
     $row = 5;
     $counter = 1;
     
-    foreach ($data as $student) {
-        $attendanceRate = $student['attendance_rate'];
-        
-        // กำหนดสถานะตามอัตราการเข้าแถว
-        $status = 'ปกติ';
-        if ($attendanceRate < 50) {
-            $status = 'ตกกิจกรรม';
-        } elseif ($attendanceRate < 70) {
-            $status = 'เสี่ยงตกกิจกรรม';
-        } elseif ($attendanceRate < 80) {
-            $status = 'ต้องระวัง';
-        }
+    foreach ($students as $student) {
+        $totalDays = $student['days_present'] + $student['days_absent'] + $student['days_late'] + $student['days_leave'];
+        $attendanceRate = ($totalDays > 0) ? ($student['days_present'] + $student['days_late'] + $student['days_leave']) / $totalDays * 100 : 0;
         
         $sheet->setCellValue('A' . $row, $counter);
         $sheet->setCellValue('B' . $row, $student['student_code']);
         $sheet->setCellValue('C' . $row, $student['title'] . ' ' . $student['first_name'] . ' ' . $student['last_name']);
-        $sheet->setCellValue('D' . $row, $student['level'] . '/' . $student['group_number']);
-        $sheet->setCellValue('E' . $row, $student['department_name']);
-        $sheet->setCellValue('F' . $row, $student['present_count']);
-        $sheet->setCellValue('G' . $row, $attendanceRate);
-        $sheet->setCellValue('H' . $row, $status);
+        $sheet->setCellValue('D' . $row, $student['class_name']);
+        $sheet->setCellValue('E' . $row, $student['days_present']);
+        $sheet->setCellValue('F' . $row, $student['days_absent']);
+        $sheet->setCellValue('G' . $row, $student['days_late']);
+        $sheet->setCellValue('H' . $row, $student['days_leave']);
+        $sheet->setCellValue('I' . $row, round($attendanceRate, 1) . '%');
         
-        // จัดรูปแบบสีสถานะ
-        if ($status == 'ตกกิจกรรม') {
-            $sheet->getStyle('H' . $row)->getFont()->getColor()->setRGB('FF0000');
-        } elseif ($status == 'เสี่ยงตกกิจกรรม') {
-            $sheet->getStyle('H' . $row)->getFont()->getColor()->setRGB('FF9900');
-        } elseif ($status == 'ต้องระวัง') {
-            $sheet->getStyle('H' . $row)->getFont()->getColor()->setRGB('FFCC00');
+        // กำหนดสถานะ
+        if ($attendanceRate >= 80) {
+            $sheet->setCellValue('J' . $row, 'ปกติ');
+        } elseif ($attendanceRate >= 70) {
+            $sheet->setCellValue('J' . $row, 'เสี่ยงตกกิจกรรม');
+        } else {
+            $sheet->setCellValue('J' . $row, 'ตกกิจกรรม');
         }
         
         $row++;
         $counter++;
     }
     
-    // ปรับขนาดคอลัมน์อัตโนมัติ
-    foreach (range('A', 'H') as $column) {
-        $sheet->getColumnDimension($column)->setAutoSize(true);
-    }
+    // ปรับความกว้างคอลัมน์
+    $sheet->getColumnDimension('A')->setWidth(10);
+    $sheet->getColumnDimension('B')->setWidth(15);
+    $sheet->getColumnDimension('C')->setWidth(30);
+    $sheet->getColumnDimension('D')->setWidth(15);
+    $sheet->getColumnDimension('E')->setWidth(15);
+    $sheet->getColumnDimension('F')->setWidth(15);
+    $sheet->getColumnDimension('G')->setWidth(15);
+    $sheet->getColumnDimension('H')->setWidth(15);
+    $sheet->getColumnDimension('I')->setWidth(15);
+    $sheet->getColumnDimension('J')->setWidth(20);
     
-    // สร้างไฟล์ Excel
-    $writer = PHPExcel_IOFactory::createWriter($excel, 'Excel2007');
-    $filename = 'รายงานการเข้าแถว_' . date('Y-m-d_His') . '.xlsx';
+    // ตั้งค่าสไตล์ของข้อมูล
+    $dataStyle = [
+        'borders' => [
+            'allBorders' => [
+                'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
+            ],
+        ],
+    ];
     
-    // ตั้งค่า header สำหรับการดาวน์โหลด
-    header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    header('Content-Disposition: attachment;filename="' . $filename . '"');
-    header('Cache-Control: max-age=0');
+    $sheet->getStyle('A5:J' . ($row - 1))->applyFromArray($dataStyle);
     
-    // ส่งไฟล์ไปยัง browser
-    $writer->save('php://output');
-    exit;
+    // จัดตำแหน่งข้อมูล
+    $sheet->getStyle('A5:A' . ($row - 1))->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+    $sheet->getStyle('B5:B' . ($row - 1))->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+    $sheet->getStyle('D5:J' . ($row - 1))->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
 }
 
-// ฟังก์ชันสร้างไฟล์ Excel รายงานนักเรียนรายบุคคล
-function generateStudentExcel($data) {
-    // สร้าง instance ของ PHPExcel
-    $excel = new PHPExcel();
+/**
+ * สร้างรายงานนักเรียนเสี่ยงในรูปแบบ Excel
+ */
+function generateRiskExcelReport($conn, $sheet, $academicYearId, $dateFilter, $dateParams, $departmentFilter, $departmentParams) {
+    // ตั้งค่าหัวตาราง
+    $sheet->setCellValue('A4', 'ลำดับ');
+    $sheet->setCellValue('B4', 'รหัสนักเรียน');
+    $sheet->setCellValue('C4', 'ชื่อ-นามสกุล');
+    $sheet->setCellValue('D4', 'ชั้นเรียน');
+    $sheet->setCellValue('E4', 'ครูที่ปรึกษา');
+    $sheet->setCellValue('F4', 'อัตราการเข้าแถว');
+    $sheet->setCellValue('G4', 'วันที่มา');
+    $sheet->setCellValue('H4', 'วันที่ขาด');
+    $sheet->setCellValue('I4', 'สถานะ');
     
-    // ตั้งค่าเอกสาร
-    $excel->getProperties()
-        ->setCreator("ระบบน้องสัตบรรณ")
-        ->setLastModifiedBy("ระบบน้องสัตบรรณ")
-        ->setTitle("รายงานการเข้าแถวนักเรียนรายบุคคล")
-        ->setSubject("รายงานการเข้าแถวนักเรียนรายบุคคล")
-        ->setDescription("รายงานการเข้าแถวนักเรียนรายบุคคล");
+    // ตั้งค่าสไตล์หัวตาราง
+    $headerStyle = [
+        'font' => [
+            'bold' => true,
+        ],
+        'alignment' => [
+            'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
+        ],
+        'borders' => [
+            'allBorders' => [
+                'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
+            ],
+        ],
+        'fill' => [
+            'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+            'startColor' => [
+                'rgb' => 'FFF3E0',
+            ],
+        ],
+    ];
     
-    // รับ active sheet
-    $sheet = $excel->getActiveSheet();
-    $sheet->setTitle("รายงานนักเรียนรายบุคคล");
+    $sheet->getStyle('A4:I4')->applyFromArray($headerStyle);
     
-    // ตั้งค่า header
-    $sheet->setCellValue('A1', 'รายงานการเข้าแถวนักเรียนรายบุคคล');
-    $sheet->mergeCells('A1:F1');
-    $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(16);
-    $sheet->getStyle('A1')->getAlignment()->setHorizontal(PHPExcel_Style_Alignment::HORIZONTAL_CENTER);
+    // สร้าง query
+    $sql = "SELECT 
+                s.student_id,
+                s.student_code,
+                s.title,
+                u.first_name,
+                u.last_name,
+                c.level,
+                c.group_number,
+                CONCAT(c.level, '/', c.group_number) as class_name,
+                
+                (SELECT CONCAT(t.title, ' ', t.first_name, ' ', t.last_name) 
+                 FROM teachers t 
+                 JOIN class_advisors ca ON t.teacher_id = ca.teacher_id 
+                 WHERE ca.class_id = c.class_id AND ca.is_primary = 1 
+                 LIMIT 1) as advisor_name,
+                
+                (SELECT COUNT(*) FROM attendance a 
+                 WHERE a.student_id = s.student_id AND a.academic_year_id = ? 
+                 AND a.attendance_status = 'present' $dateFilter) as days_present,
+                
+                (SELECT COUNT(*) FROM attendance a 
+                 WHERE a.student_id = s.student_id AND a.academic_year_id = ? 
+                 AND a.attendance_status = 'absent' $dateFilter) as days_absent,
+                
+                (SELECT COUNT(*) FROM attendance a 
+                 WHERE a.student_id = s.student_id AND a.academic_year_id = ? 
+                 AND a.attendance_status IN ('late', 'leave') $dateFilter) as days_other
+                
+            FROM students s
+            JOIN users u ON s.user_id = u.user_id
+            JOIN classes c ON s.current_class_id = c.class_id
+            WHERE s.status = 'กำลังศึกษา' $departmentFilter
+            HAVING 
+                (days_present + days_other) / NULLIF(days_present + days_absent + days_other, 0) * 100 <= 80
+            ORDER BY (days_present + days_other) / NULLIF(days_present + days_absent + days_other, 0) * 100";
     
-    // ข้อมูลนักเรียน
-    $sheet->setCellValue('A3', 'ข้อมูลนักเรียน:');
-    $sheet->getStyle('A3')->getFont()->setBold(true);
+    // เตรียมพารามิเตอร์
+    $params = array_merge(
+        [$academicYearId], $dateParams,
+        [$academicYearId], $dateParams,
+        [$academicYearId], $dateParams,
+        $departmentParams
+    );
     
-    $sheet->setCellValue('A4', 'รหัสนักเรียน:');
-    $sheet->setCellValue('B4', $data['profile']['student_code']);
-    $sheet->setCellValue('A5', 'ชื่อ-นามสกุล:');
-    $sheet->setCellValue('B5', $data['profile']['name']);
-    $sheet->setCellValue('A6', 'ชั้น/ห้อง:');
-    $sheet->setCellValue('B6', $data['profile']['class']);
-    $sheet->setCellValue('A7', 'แผนกวิชา:');
-    $sheet->setCellValue('B7', $data['profile']['department']);
-    $sheet->setCellValue('A8', 'ครูที่ปรึกษา:');
-    $sheet->setCellValue('B8', $data['profile']['advisor']);
+    // ดึงข้อมูล
+    $stmt = $conn->prepare($sql);
+    $stmt->execute($params);
+    $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
-    // สรุปการเข้าแถว
-    $sheet->setCellValue('D4', 'วันที่เข้าแถวทั้งหมด:');
-    $sheet->setCellValue('E4', $data['statistics']['present_days'] . ' วัน');
-    $sheet->setCellValue('D5', 'วันที่ขาดแถว:');
-    $sheet->setCellValue('E5', $data['statistics']['absent_days'] . ' วัน');
-    $sheet->setCellValue('D6', 'วันที่มาสาย:');
-    $sheet->setCellValue('E6', $data['statistics']['late_days'] . ' วัน');
-    $sheet->setCellValue('D7', 'วันที่ลา:');
-    $sheet->setCellValue('E7', $data['statistics']['leave_days'] . ' วัน');
-    $sheet->setCellValue('D8', 'อัตราการเข้าแถว:');
-    $sheet->setCellValue('E8', $data['statistics']['attendance_rate'] . '%');
-    
-    // กำหนดสีตามอัตราการเข้าแถว
-    if ($data['statistics']['attendance_rate'] < 70) {
-        $sheet->getStyle('E8')->getFont()->getColor()->setRGB('FF0000');
-    } elseif ($data['statistics']['attendance_rate'] < 80) {
-        $sheet->getStyle('E8')->getFont()->getColor()->setRGB('FF9900');
-    } else {
-        $sheet->getStyle('E8')->getFont()->getColor()->setRGB('00AA00');
-    }
-    
-    // ตั้งค่า header ของประวัติการเข้าแถว
-    $sheet->setCellValue('A10', 'ประวัติการเข้าแถวรายวัน:');
-    $sheet->getStyle('A10')->getFont()->setBold(true);
-    
-    $sheet->setCellValue('A11', 'ลำดับ');
-    $sheet->setCellValue('B11', 'วันที่');
-    $sheet->setCellValue('C11', 'สถานะ');
-    $sheet->setCellValue('D11', 'เวลา');
-    $sheet->setCellValue('E11', 'วิธีการเช็ค');
-    $sheet->setCellValue('F11', 'หมายเหตุ');
-    
-    $sheet->getStyle('A11:F11')->getFont()->setBold(true);
-    $sheet->getStyle('A11:F11')->getAlignment()->setHorizontal(PHPExcel_Style_Alignment::HORIZONTAL_CENTER);
-    $sheet->getStyle('A11:F11')->getFill()->setFillType(PHPExcel_Style_Fill::FILL_SOLID)->getStartColor()->setRGB('D3D3D3');
-    
-    // ใส่ข้อมูลประวัติการเข้าแถว
-    $row = 12;
+    // เขียนข้อมูลลงใน Excel
+    $row = 5;
     $counter = 1;
     
-    foreach ($data['attendance'] as $record) {
-        $status = $record['attendance_status'];
-        
-        // แปลงสถานะให้เป็นภาษาไทย
-        switch ($status) {
-            case 'present':
-                $statusText = 'มา';
-                break;
-            case 'absent':
-                $statusText = 'ขาด';
-                break;
-            case 'late':
-                $statusText = 'มาสาย';
-                break;
-            case 'leave':
-                $statusText = 'ลา';
-                break;
-            default:
-                $statusText = $status;
-                break;
-        }
-        
-        // แปลงวิธีการเช็คให้เป็นภาษาไทย
-        $checkMethod = $record['check_method'];
-        switch ($checkMethod) {
-            case 'GPS':
-                $methodText = 'พิกัด GPS';
-                break;
-            case 'QR_Code':
-                $methodText = 'สแกน QR Code';
-                break;
-            case 'PIN':
-                $methodText = 'รหัส PIN';
-                break;
-            case 'Manual':
-                $methodText = 'เช็คด้วยครู';
-                break;
-            default:
-                $methodText = $checkMethod;
-                break;
-        }
+    foreach ($students as $student) {
+        $totalDays = $student['days_present'] + $student['days_absent'] + $student['days_other'];
+        $attendanceRate = ($totalDays > 0) ? ($student['days_present'] + $student['days_other']) / $totalDays * 100 : 0;
         
         $sheet->setCellValue('A' . $row, $counter);
-        $sheet->setCellValue('B' . $row, date('d/m/Y', strtotime($record['date'])));
-        $sheet->setCellValue('C' . $row, $statusText);
-        $sheet->setCellValue('D' . $row, $record['check_time']);
-        $sheet->setCellValue('E' . $row, $methodText);
-        $sheet->setCellValue('F' . $row, $record['remarks'] ?: '-');
+        $sheet->setCellValue('B' . $row, $student['student_code']);
+        $sheet->setCellValue('C' . $row, $student['title'] . ' ' . $student['first_name'] . ' ' . $student['last_name']);
+        $sheet->setCellValue('D' . $row, $student['class_name']);
+        $sheet->setCellValue('E' . $row, $student['advisor_name'] ?? '-');
+        $sheet->setCellValue('F' . $row, round($attendanceRate, 1) . '%');
+        $sheet->setCellValue('G' . $row, $student['days_present']);
+        $sheet->setCellValue('H' . $row, $student['days_absent']);
         
-        // จัดรูปแบบสีสถานะ
-        if ($statusText == 'ขาด') {
-            $sheet->getStyle('C' . $row)->getFont()->getColor()->setRGB('FF0000');
-        } elseif ($statusText == 'มาสาย') {
-            $sheet->getStyle('C' . $row)->getFont()->getColor()->setRGB('FF9900');
-        } elseif ($statusText == 'ลา') {
-            $sheet->getStyle('C' . $row)->getFont()->getColor()->setRGB('0000FF');
+        // กำหนดสถานะ
+        if ($attendanceRate >= 70) {
+            $sheet->setCellValue('I' . $row, 'เสี่ยงตกกิจกรรม');
         } else {
-            $sheet->getStyle('C' . $row)->getFont()->getColor()->setRGB('00AA00');
+            $sheet->setCellValue('I' . $row, 'ตกกิจกรรม');
         }
         
         $row++;
         $counter++;
     }
     
-    // ปรับขนาดคอลัมน์อัตโนมัติ
-    foreach (range('A', 'F') as $column) {
-        $sheet->getColumnDimension($column)->setAutoSize(true);
-    }
+    // ปรับความกว้างคอลัมน์
+    $sheet->getColumnDimension('A')->setWidth(10);
+    $sheet->getColumnDimension('B')->setWidth(15);
+    $sheet->getColumnDimension('C')->setWidth(30);
+    $sheet->getColumnDimension('D')->setWidth(15);
+    $sheet->getColumnDimension('E')->setWidth(30);
+    $sheet->getColumnDimension('F')->setWidth(15);
+    $sheet->getColumnDimension('G')->setWidth(15);
+    $sheet->getColumnDimension('H')->setWidth(15);
+    $sheet->getColumnDimension('I')->setWidth(20);
     
-    // สร้างไฟล์ Excel
-    $writer = PHPExcel_IOFactory::createWriter($excel, 'Excel2007');
-    $filename = 'รายงานนักเรียน_' . $data['profile']['student_code'] . '_' . date('Y-m-d_His') . '.xlsx';
+    // ตั้งค่าสไตล์ของข้อมูล
+    $dataStyle = [
+        'borders' => [
+            'allBorders' => [
+                'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
+            ],
+        ],
+    ];
     
-    // ตั้งค่า header สำหรับการดาวน์โหลด
-    header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    header('Content-Disposition: attachment;filename="' . $filename . '"');
-    header('Cache-Control: max-age=0');
+    $sheet->getStyle('A5:I' . ($row - 1))->applyFromArray($dataStyle);
     
-    // ส่งไฟล์ไปยัง browser
-    $writer->save('php://output');
-    exit;
+    // จัดตำแหน่งข้อมูล
+    $sheet->getStyle('A5:A' . ($row - 1))->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+    $sheet->getStyle('B5:B' . ($row - 1))->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+    $sheet->getStyle('D5:I' . ($row - 1))->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
 }
 
-// รับพารามิเตอร์
-$reportType = $_GET['type'] ?? 'all';
-$studentId = $_GET['student_id'] ?? null;
+/**
+ * สร้างรายงานชั้นเรียนในรูปแบบ Excel
+ */
+function generateClassExcelReport($conn, $sheet, $academicYearId, $dateFilter, $dateParams, $departmentFilter, $departmentParams) {
+    // ตั้งค่าหัวตาราง
+    $sheet->setCellValue('A4', 'ลำดับ');
+    $sheet->setCellValue('B4', 'ชั้นเรียน');
+    $sheet->setCellValue('C4', 'แผนกวิชา');
+    $sheet->setCellValue('D4', 'ครูที่ปรึกษา');
+    $sheet->setCellValue('E4', 'จำนวนนักเรียน');
+    $sheet->setCellValue('F4', 'จำนวนมา');
+    $sheet->setCellValue('G4', 'จำนวนขาด');
+    $sheet->setCellValue('H4', 'จำนวนสาย');
+    $sheet->setCellValue('I4', 'จำนวนลา');
+    $sheet->setCellValue('J4', 'อัตราการเข้าแถว');
+    
+    // ตั้งค่าสไตล์หัวตาราง
+    $headerStyle = [
+        'font' => [
+            'bold' => true,
+        ],
+        'alignment' => [
+            'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
+        ],
+        'borders' => [
+            'allBorders' => [
+                'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
+            ],
+        ],
+        'fill' => [
+            'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+            'startColor' => [
+                'rgb' => 'E8F5E9',
+            ],
+        ],
+    ];
+    
+    $sheet->getStyle('A4:J4')->applyFromArray($headerStyle);
+    
+    // สร้าง query
+    $sql = "SELECT 
+                c.class_id,
+                c.level,
+                c.group_number,
+                CONCAT(c.level, '/', c.group_number) as class_name,
+                d.department_name,
+                
+                (SELECT CONCAT(t.title, ' ', t.first_name, ' ', t.last_name) 
+                 FROM teachers t 
+                 JOIN class_advisors ca ON t.teacher_id = ca.teacher_id 
+                 WHERE ca.class_id = c.class_id AND ca.is_primary = 1 
+                 LIMIT 1) as advisor_name,
+                
+                (SELECT COUNT(*) FROM students s 
+                 WHERE s.current_class_id = c.class_id AND s.status = 'กำลังศึกษา') as student_count,
+                
+                (SELECT COUNT(*) FROM attendance a 
+                 JOIN students s ON a.student_id = s.student_id
+                 WHERE s.current_class_id = c.class_id 
+                 AND a.academic_year_id = ? 
+                 AND a.attendance_status = 'present' $dateFilter) as days_present,
+                
+                (SELECT COUNT(*) FROM attendance a 
+                 JOIN students s ON a.student_id = s.student_id
+                 WHERE s.current_class_id = c.class_id 
+                 AND a.academic_year_id = ? 
+                 AND a.attendance_status = 'absent' $dateFilter) as days_absent,
+                
+                (SELECT COUNT(*) FROM attendance a 
+                 JOIN students s ON a.student_id = s.student_id
+                 WHERE s.current_class_id = c.class_id 
+                 AND a.academic_year_id = ? 
+                 AND a.attendance_status = 'late' $dateFilter) as days_late,
+                
+                (SELECT COUNT(*) FROM attendance a 
+                 JOIN students s ON a.student_id = s.student_id
+                 WHERE s.current_class_id = c.class_id 
+                 AND a.academic_year_id = ? 
+                 AND a.attendance_status = 'leave' $dateFilter) as days_leave
+                
+            FROM classes c
+            JOIN departments d ON c.department_id = d.department_id
+            WHERE c.academic_year_id = ? AND c.is_active = 1 $departmentFilter
+            ORDER BY d.department_name, c.level, c.group_number";
+    
+    // เตรียมพารามิเตอร์
+    $params = array_merge(
+        [$academicYearId], $dateParams,
+        [$academicYearId], $dateParams,
+        [$academicYearId], $dateParams,
+        [$academicYearId], $dateParams,
+        [$academicYearId],
+        $departmentParams
+    );
+    
+    // ดึงข้อมูล
+    $stmt = $conn->prepare($sql);
+    $stmt->execute($params);
+    $classes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    // เขียนข้อมูลลงใน Excel
+    $row = 5;
+    $counter = 1;
+    
+    foreach ($classes as $class) {
+        $totalDays = $class['days_present'] + $class['days_absent'] + $class['days_late'] + $class['days_leave'];
+        $attendanceRate = ($totalDays > 0) ? ($class['days_present'] + $class['days_late'] + $class['days_leave']) / $totalDays * 100 : 0;
+        
+        $sheet->setCellValue('A' . $row, $counter);
+        $sheet->setCellValue('B' . $row, $class['class_name']);
+        $sheet->setCellValue('C' . $row, $class['department_name']);
+        $sheet->setCellValue('D' . $row, $class['advisor_name'] ?? '-');
+        $sheet->setCellValue('E' . $row, $class['student_count']);
+        $sheet->setCellValue('F' . $row, $class['days_present']);
+        $sheet->setCellValue('G' . $row, $class['days_absent']);
+        $sheet->setCellValue('H' . $row, $class['days_late']);
+        $sheet->setCellValue('I' . $row, $class['days_leave']);
+        $sheet->setCellValue('J' . $row, round($attendanceRate, 1) . '%');
+        
+        $row++;
+        $counter++;
+    }
+    
+    // ปรับความกว้างคอลัมน์
+    $sheet->getColumnDimension('A')->setWidth(10);
+    $sheet->getColumnDimension('B')->setWidth(15);
+    $sheet->getColumnDimension('C')->setWidth(25);
+    $sheet->getColumnDimension('D')->setWidth(30);
+    $sheet->getColumnDimension('E')->setWidth(15);
+    $sheet->getColumnDimension('F')->setWidth(15);
+    $sheet->getColumnDimension('G')->setWidth(15);
+    $sheet->getColumnDimension('H')->setWidth(15);
+    $sheet->getColumnDimension('I')->setWidth(15);
+    $sheet->getColumnDimension('J')->setWidth(15);
+    
+    // ตั้งค่าสไตล์ของข้อมูล
+    $dataStyle = [
+        'borders' => [
+            'allBorders' => [
+                'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
+            ],
+        ],
+    ];
+    
+    $sheet->getStyle('A5:J' . ($row - 1))->applyFromArray($dataStyle);
+    
+    // จัดตำแหน่งข้อมูล
+    $sheet->getStyle('A5:J' . ($row - 1))->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+    $sheet->getStyle('C5:D' . ($row - 1))->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT);
+}
 
-// รับตัวกรองจาก URL
-$filters = [];
-$possibleFilters = ['academic_year_id', 'period', 'start_date', 'end_date', 'department_id', 'level', 'class_id'];
-
-foreach ($possibleFilters as $filter) {
-    if (isset($_GET[$filter]) && !empty($_GET[$filter])) {
-        $filters[$filter] = $_GET[$filter];
+/**
+ * สร้างรายงานการเข้าแถวในรูปแบบ CSV
+ */
+function generateAttendanceCsvReport($conn, $output, $academicYearId, $dateFilter, $dateParams, $departmentFilter, $departmentParams) {
+    // เขียนหัวตาราง
+    fputcsv($output, [
+        'ลำดับ',
+        'รหัสนักเรียน',
+        'ชื่อ-นามสกุล',
+        'ชั้นเรียน',
+        'จำนวนวันมา',
+        'จำนวนวันขาด',
+        'จำนวนวันสาย',
+        'จำนวนวันลา',
+        'อัตราการเข้าแถว',
+        'สถานะ'
+    ]);
+    
+    // สร้าง query
+    $sql = "SELECT 
+                s.student_id,
+                s.student_code,
+                s.title,
+                u.first_name,
+                u.last_name,
+                c.level,
+                c.group_number,
+                CONCAT(c.level, '/', c.group_number) as class_name,
+                
+                (SELECT COUNT(*) FROM attendance a 
+                 WHERE a.student_id = s.student_id AND a.academic_year_id = ? 
+                 AND a.attendance_status = 'present' $dateFilter) as days_present,
+                
+                (SELECT COUNT(*) FROM attendance a 
+                 WHERE a.student_id = s.student_id AND a.academic_year_id = ? 
+                 AND a.attendance_status = 'absent' $dateFilter) as days_absent,
+                
+                (SELECT COUNT(*) FROM attendance a 
+                 WHERE a.student_id = s.student_id AND a.academic_year_id = ? 
+                 AND a.attendance_status = 'late' $dateFilter) as days_late,
+                
+                (SELECT COUNT(*) FROM attendance a 
+                 WHERE a.student_id = s.student_id AND a.academic_year_id = ? 
+                 AND a.attendance_status = 'leave' $dateFilter) as days_leave
+                
+            FROM students s
+            JOIN users u ON s.user_id = u.user_id
+            JOIN classes c ON s.current_class_id = c.class_id
+            WHERE s.status = 'กำลังศึกษา' $departmentFilter
+            ORDER BY c.level, c.group_number, s.student_code";
+    
+    // เตรียมพารามิเตอร์
+    $params = array_merge(
+        [$academicYearId], $dateParams,
+        [$academicYearId], $dateParams,
+        [$academicYearId], $dateParams,
+        [$academicYearId], $dateParams,
+        $departmentParams
+    );
+    
+    // ดึงข้อมูล
+    $stmt = $conn->prepare($sql);
+    $stmt->execute($params);
+    $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    // เขียนข้อมูลลงใน CSV
+    $counter = 1;
+    
+    foreach ($students as $student) {
+        $totalDays = $student['days_present'] + $student['days_absent'] + $student['days_late'] + $student['days_leave'];
+        $attendanceRate = ($totalDays > 0) ? ($student['days_present'] + $student['days_late'] + $student['days_leave']) / $totalDays * 100 : 0;
+        
+        // กำหนดสถานะ
+        if ($attendanceRate >= 80) {
+            $status = 'ปกติ';
+        } elseif ($attendanceRate >= 70) {
+            $status = 'เสี่ยงตกกิจกรรม';
+        } else {
+            $status = 'ตกกิจกรรม';
+        }
+        
+        fputcsv($output, [
+            $counter,
+            $student['student_code'],
+            $student['title'] . ' ' . $student['first_name'] . ' ' . $student['last_name'],
+            $student['class_name'],
+            $student['days_present'],
+            $student['days_absent'],
+            $student['days_late'],
+            $student['days_leave'],
+            round($attendanceRate, 1) . '%',
+            $status
+        ]);
+        
+        $counter++;
     }
 }
 
-// ดำเนินการตามประเภทรายงาน
-if ($reportType === 'student' && $studentId) {
-    // ดึงข้อมูลนักเรียนรายบุคคล
-    $data = getStudentReport($studentId, $filters);
+/**
+ * สร้างรายงานนักเรียนเสี่ยงในรูปแบบ CSV
+ */
+function generateRiskCsvReport($conn, $output, $academicYearId, $dateFilter, $dateParams, $departmentFilter, $departmentParams) {
+    // เขียนหัวตาราง
+    fputcsv($output, [
+        'ลำดับ',
+        'รหัสนักเรียน',
+        'ชื่อ-นามสกุล',
+        'ชั้นเรียน',
+        'ครูที่ปรึกษา',
+        'อัตราการเข้าแถว',
+        'วันที่มา',
+        'วันที่ขาด',
+        'สถานะ'
+    ]);
     
-    if ($data) {
-        generateStudentExcel($data);
-    } else {
-        header('HTTP/1.1 404 Not Found');
-        echo json_encode(['error' => 'ไม่พบข้อมูลนักเรียน']);
-        exit;
+    // สร้าง query
+    $sql = "SELECT 
+                s.student_id,
+                s.student_code,
+                s.title,
+                u.first_name,
+                u.last_name,
+                c.level,
+                c.group_number,
+                CONCAT(c.level, '/', c.group_number) as class_name,
+                
+                (SELECT CONCAT(t.title, ' ', t.first_name, ' ', t.last_name) 
+                 FROM teachers t 
+                 JOIN class_advisors ca ON t.teacher_id = ca.teacher_id 
+                 WHERE ca.class_id = c.class_id AND ca.is_primary = 1 
+                 LIMIT 1) as advisor_name,
+                
+                (SELECT COUNT(*) FROM attendance a 
+                 WHERE a.student_id = s.student_id AND a.academic_year_id = ? 
+                 AND a.attendance_status = 'present' $dateFilter) as days_present,
+                
+                (SELECT COUNT(*) FROM attendance a 
+                 WHERE a.student_id = s.student_id AND a.academic_year_id = ? 
+                 AND a.attendance_status = 'absent' $dateFilter) as days_absent,
+                
+                (SELECT COUNT(*) FROM attendance a 
+                 WHERE a.student_id = s.student_id AND a.academic_year_id = ? 
+                 AND a.attendance_status IN ('late', 'leave') $dateFilter) as days_other
+                
+            FROM students s
+            JOIN users u ON s.user_id = u.user_id
+            JOIN classes c ON s.current_class_id = c.class_id
+            WHERE s.status = 'กำลังศึกษา' $departmentFilter
+            HAVING 
+                (days_present + days_other) / NULLIF(days_present + days_absent + days_other, 0) * 100 <= 80
+            ORDER BY (days_present + days_other) / NULLIF(days_present + days_absent + days_other, 0) * 100";
+    
+    // เตรียมพารามิเตอร์
+    $params = array_merge(
+        [$academicYearId], $dateParams,
+        [$academicYearId], $dateParams,
+        [$academicYearId], $dateParams,
+        $departmentParams
+    );
+    
+    // ดึงข้อมูล
+    $stmt = $conn->prepare($sql);
+    $stmt->execute($params);
+    $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    // เขียนข้อมูลลงใน CSV
+    $counter = 1;
+    
+    foreach ($students as $student) {
+        $totalDays = $student['days_present'] + $student['days_absent'] + $student['days_other'];
+        $attendanceRate = ($totalDays > 0) ? ($student['days_present'] + $student['days_other']) / $totalDays * 100 : 0;
+        
+        // กำหนดสถานะ
+        if ($attendanceRate >= 70) {
+            $status = 'เสี่ยงตกกิจกรรม';
+        } else {
+            $status = 'ตกกิจกรรม';
+        }
+        
+        fputcsv($output, [
+            $counter,
+            $student['student_code'],
+            $student['title'] . ' ' . $student['first_name'] . ' ' . $student['last_name'],
+            $student['class_name'],
+            $student['advisor_name'] ?? '-',
+            round($attendanceRate, 1) . '%',
+            $student['days_present'],
+            $student['days_absent'],
+            $status
+        ]);
+        
+        $counter++;
     }
-} else {
-    // ดึงข้อมูลรายงานทั่วไป
-    $data = getGeneralReport($filters);
-    generateGeneralExcel($data, $filters);
+}
+
+/**
+ * สร้างรายงานชั้นเรียนในรูปแบบ CSV
+ */
+function generateClassCsvReport($conn, $output, $academicYearId, $dateFilter, $dateParams, $departmentFilter, $departmentParams) {
+    // เขียนหัวตาราง
+    fputcsv($output, [
+        'ลำดับ',
+        'ชั้นเรียน',
+        'แผนกวิชา',
+        'ครูที่ปรึกษา',
+        'จำนวนนักเรียน',
+        'จำนวนมา',
+        'จำนวนขาด',
+        'จำนวนสาย',
+        'จำนวนลา',
+        'อัตราการเข้าแถว'
+    ]);
+    
+    // สร้าง query
+    $sql = "SELECT 
+                c.class_id,
+                c.level,
+                c.group_number,
+                CONCAT(c.level, '/', c.group_number) as class_name,
+                d.department_name,
+                
+                (SELECT CONCAT(t.title, ' ', t.first_name, ' ', t.last_name) 
+                 FROM teachers t 
+                 JOIN class_advisors ca ON t.teacher_id = ca.teacher_id 
+                 WHERE ca.class_id = c.class_id AND ca.is_primary = 1 
+                 LIMIT 1) as advisor_name,
+                
+                (SELECT COUNT(*) FROM students s 
+                 WHERE s.current_class_id = c.class_id AND s.status = 'กำลังศึกษา') as student_count,
+                
+                (SELECT COUNT(*) FROM attendance a 
+                 JOIN students s ON a.student_id = s.student_id
+                 WHERE s.current_class_id = c.class_id 
+                 AND a.academic_year_id = ? 
+                 AND a.attendance_status = 'present' $dateFilter) as days_present,
+                
+                (SELECT COUNT(*) FROM attendance a 
+                 JOIN students s ON a.student_id = s.student_id
+                 WHERE s.current_class_id = c.class_id 
+                 AND a.academic_year_id = ? 
+                 AND a.attendance_status = 'absent' $dateFilter) as days_absent,
+                
+                (SELECT COUNT(*) FROM attendance a 
+                 JOIN students s ON a.student_id = s.student_id
+                 WHERE s.current_class_id = c.class_id 
+                 AND a.academic_year_id = ? 
+                 AND a.attendance_status = 'late' $dateFilter) as days_late,
+                
+                (SELECT COUNT(*) FROM attendance a 
+                 JOIN students s ON a.student_id = s.student_id
+                 WHERE s.current_class_id = c.class_id 
+                 AND a.academic_year_id = ? 
+                 AND a.attendance_status = 'leave' $dateFilter) as days_leave
+                
+            FROM classes c
+            JOIN departments d ON c.department_id = d.department_id
+            WHERE c.academic_year_id = ? AND c.is_active = 1 $departmentFilter
+            ORDER BY d.department_name, c.level, c.group_number";
+    
+    // เตรียมพารามิเตอร์
+    $params = array_merge(
+        [$academicYearId], $dateParams,
+        [$academicYearId], $dateParams,
+        [$academicYearId], $dateParams,
+        [$academicYearId], $dateParams,
+        [$academicYearId],
+        $departmentParams
+    );
+    
+    // ดึงข้อมูล
+    $stmt = $conn->prepare($sql);
+    $stmt->execute($params);
+    $classes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    // เขียนข้อมูลลงใน CSV
+    $counter = 1;
+    
+    foreach ($classes as $class) {
+        $totalDays = $class['days_present'] + $class['days_absent'] + $class['days_late'] + $class['days_leave'];
+        $attendanceRate = ($totalDays > 0) ? ($class['days_present'] + $class['days_late'] + $class['days_leave']) / $totalDays * 100 : 0;
+        
+        fputcsv($output, [
+            $counter,
+            $class['class_name'],
+            $class['department_name'],
+            $class['advisor_name'] ?? '-',
+            $class['student_count'],
+            $class['days_present'],
+            $class['days_absent'],
+            $class['days_late'],
+            $class['days_leave'],
+            round($attendanceRate, 1) . '%'
+        ]);
+        
+        $counter++;
+    }
+}
+
+/**
+ * สร้าง HTML สำหรับรายงานการเข้าแถว
+ */
+function generateAttendanceHtml($conn, $academicYearId, $dateFilter, $dateParams, $departmentFilter, $departmentParams) {
+    // สร้าง HTML header
+    $html = '
+    <div class="print-header">
+        <img src="../admin/assets/img/logo.png" alt="Logo">
+        <div class="print-header-text">
+            <h1>วิทยาลัยการอาชีพปราสาท</h1>
+            <p>รายงานการเข้าแถว</p>
+        </div>
+    </div>
+    
+    <table class="data-table" width="100%" border="1" cellspacing="0" cellpadding="5">
+        <thead>
+            <tr>
+                <th>ลำดับ</th>
+                <th>รหัสนักเรียน</th>
+                <th>ชื่อ-นามสกุล</th>
+                <th>ชั้นเรียน</th>
+                <th>มา</th>
+                <th>ขาด</th>
+                <th>สาย</th>
+                <th>ลา</th>
+                <th>อัตรา</th>
+                <th>สถานะ</th>
+            </tr>
+        </thead>
+        <tbody>';
+    
+    // สร้าง query
+    $sql = "SELECT 
+                s.student_id,
+                s.student_code,
+                s.title,
+                u.first_name,
+                u.last_name,
+                c.level,
+                c.group_number,
+                CONCAT(c.level, '/', c.group_number) as class_name,
+                
+                (SELECT COUNT(*) FROM attendance a 
+                 WHERE a.student_id = s.student_id AND a.academic_year_id = ? 
+                 AND a.attendance_status = 'present' $dateFilter) as days_present,
+                
+                (SELECT COUNT(*) FROM attendance a 
+                 WHERE a.student_id = s.student_id AND a.academic_year_id = ? 
+                 AND a.attendance_status = 'absent' $dateFilter) as days_absent,
+                
+                (SELECT COUNT(*) FROM attendance a 
+                 WHERE a.student_id = s.student_id AND a.academic_year_id = ? 
+                 AND a.attendance_status = 'late' $dateFilter) as days_late,
+                
+                (SELECT COUNT(*) FROM attendance a 
+                 WHERE a.student_id = s.student_id AND a.academic_year_id = ? 
+                 AND a.attendance_status = 'leave' $dateFilter) as days_leave
+                
+            FROM students s
+            JOIN users u ON s.user_id = u.user_id
+            JOIN classes c ON s.current_class_id = c.class_id
+            WHERE s.status = 'กำลังศึกษา' $departmentFilter
+            ORDER BY c.level, c.group_number, s.student_code";
+    
+    // เตรียมพารามิเตอร์
+    $params = array_merge(
+        [$academicYearId], $dateParams,
+        [$academicYearId], $dateParams,
+        [$academicYearId], $dateParams,
+        [$academicYearId], $dateParams,
+        $departmentParams
+    );
+    
+    // ดึงข้อมูล
+    $stmt = $conn->prepare($sql);
+    $stmt->execute($params);
+    $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    // เขียนข้อมูลลงใน HTML
+    $counter = 1;
+    
+    foreach ($students as $student) {
+        $totalDays = $student['days_present'] + $student['days_absent'] + $student['days_late'] + $student['days_leave'];
+        $attendanceRate = ($totalDays > 0) ? ($student['days_present'] + $student['days_late'] + $student['days_leave']) / $totalDays * 100 : 0;
+        
+        // กำหนดสถานะและสี
+        if ($attendanceRate >= 80) {
+            $statusClass = 'success';
+            $status = 'ปกติ';
+        } elseif ($attendanceRate >= 70) {
+            $statusClass = 'warning';
+            $status = 'เสี่ยง';
+        } else {
+            $statusClass = 'danger';
+            $status = 'ตกกิจกรรม';
+        }
+        
+        $html .= "
+            <tr>
+                <td style='text-align: center;'>{$counter}</td>
+                <td style='text-align: center;'>{$student['student_code']}</td>
+                <td>{$student['title']} {$student['first_name']} {$student['last_name']}</td>
+                <td style='text-align: center;'>{$student['class_name']}</td>
+                <td style='text-align: center;'>{$student['days_present']}</td>
+                <td style='text-align: center;'>{$student['days_absent']}</td>
+                <td style='text-align: center;'>{$student['days_late']}</td>
+                <td style='text-align: center;'>{$student['days_leave']}</td>
+                <td style='text-align: center;'>" . round($attendanceRate, 1) . "%</td>
+                <td style='text-align: center;' class='{$statusClass}'>{$status}</td>
+            </tr>";
+        
+        $counter++;
+    }
+    
+    $html .= '
+        </tbody>
+    </table>
+    
+    <div class="print-footer">
+        <p>พิมพ์เมื่อ: ' . date('d/m/Y H:i:s') . '</p>
+        <p>ระบบน้องสัตบรรณ - ดูแลผู้เรียน</p>
+    </div>';
+    
+    return $html;
+}
+
+/**
+ * สร้าง HTML สำหรับรายงานนักเรียนเสี่ยง
+ */
+function generateRiskHtml($conn, $academicYearId, $dateFilter, $dateParams, $departmentFilter, $departmentParams) {
+    // สร้าง HTML header
+    $html = '
+    <div class="print-header">
+        <img src="../admin/assets/img/logo.png" alt="Logo">
+        <div class="print-header-text">
+            <h1>วิทยาลัยการอาชีพปราสาท</h1>
+            <p>รายงานนักเรียนที่มีความเสี่ยงตกกิจกรรม</p>
+        </div>
+    </div>
+    
+    <table class="data-table" width="100%" border="1" cellspacing="0" cellpadding="5">
+        <thead>
+            <tr>
+                <th>ลำดับ</th>
+                <th>รหัสนักเรียน</th>
+                <th>ชื่อ-นามสกุล</th>
+                <th>ชั้นเรียน</th>
+                <th>ครูที่ปรึกษา</th>
+                <th>อัตราการเข้าแถว</th>
+                <th>วันที่มา</th>
+                <th>วันที่ขาด</th>
+                <th>สถานะ</th>
+            </tr>
+        </thead>
+        <tbody>';
+    
+    // คล้ายกับฟังก์ชัน generateRiskExcelReport
+    // สร้าง query
+    $sql = "SELECT 
+                s.student_id,
+                s.student_code,
+                s.title,
+                u.first_name,
+                u.last_name,
+                c.level,
+                c.group_number,
+                CONCAT(c.level, '/', c.group_number) as class_name,
+                
+                (SELECT CONCAT(t.title, ' ', t.first_name, ' ', t.last_name) 
+                 FROM teachers t 
+                 JOIN class_advisors ca ON t.teacher_id = ca.teacher_id 
+                 WHERE ca.class_id = c.class_id AND ca.is_primary = 1 
+                 LIMIT 1) as advisor_name,
+                
+                (SELECT COUNT(*) FROM attendance a 
+                 WHERE a.student_id = s.student_id AND a.academic_year_id = ? 
+                 AND a.attendance_status = 'present' $dateFilter) as days_present,
+                
+                (SELECT COUNT(*) FROM attendance a 
+                 WHERE a.student_id = s.student_id AND a.academic_year_id = ? 
+                 AND a.attendance_status = 'absent' $dateFilter) as days_absent,
+                
+                (SELECT COUNT(*) FROM attendance a 
+                 WHERE a.student_id = s.student_id AND a.academic_year_id = ? 
+                 AND a.attendance_status IN ('late', 'leave') $dateFilter) as days_other
+                
+            FROM students s
+            JOIN users u ON s.user_id = u.user_id
+            JOIN classes c ON s.current_class_id = c.class_id
+            WHERE s.status = 'กำลังศึกษา' $departmentFilter
+            HAVING 
+                (days_present + days_other) / NULLIF(days_present + days_absent + days_other, 0) * 100 <= 80
+            ORDER BY (days_present + days_other) / NULLIF(days_present + days_absent + days_other, 0) * 100";
+    
+    // เตรียมพารามิเตอร์
+    $params = array_merge(
+        [$academicYearId], $dateParams,
+        [$academicYearId], $dateParams,
+        [$academicYearId], $dateParams,
+        $departmentParams
+    );
+    
+    // ดึงข้อมูล
+    $stmt = $conn->prepare($sql);
+    $stmt->execute($params);
+    $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    // เขียนข้อมูลลงใน HTML
+    $counter = 1;
+    
+    foreach ($students as $student) {
+        $totalDays = $student['days_present'] + $student['days_absent'] + $student['days_other'];
+        $attendanceRate = ($totalDays > 0) ? ($student['days_present'] + $student['days_other']) / $totalDays * 100 : 0;
+        
+        // กำหนดสถานะและสี
+        if ($attendanceRate >= 70) {
+            $statusClass = 'warning';
+            $status = 'เสี่ยงตกกิจกรรม';
+        } else {
+            $statusClass = 'danger';
+            $status = 'ตกกิจกรรม';
+        }
+        
+        $html .= "
+            <tr>
+                <td style='text-align: center;'>{$counter}</td>
+                <td style='text-align: center;'>{$student['student_code']}</td>
+                <td>{$student['title']} {$student['first_name']} {$student['last_name']}</td>
+                <td style='text-align: center;'>{$student['class_name']}</td>
+                <td>" . ($student['advisor_name'] ?? '-') . "</td>
+                <td style='text-align: center;'>" . round($attendanceRate, 1) . "%</td>
+                <td style='text-align: center;'>{$student['days_present']}</td>
+                <td style='text-align: center;'>{$student['days_absent']}</td>
+                <td style='text-align: center;' class='{$statusClass}'>{$status}</td>
+            </tr>";
+        
+        $counter++;
+    }
+    
+    $html .= '
+        </tbody>
+    </table>
+    
+    <div class="print-footer">
+        <p>พิมพ์เมื่อ: ' . date('d/m/Y H:i:s') . '</p>
+        <p>ระบบน้องสัตบรรณ - ดูแลผู้เรียน</p>
+    </div>';
+    
+    return $html;
+}
+
+/**
+ * สร้าง HTML สำหรับรายงานชั้นเรียน
+ */
+function generateClassHtml($conn, $academicYearId, $dateFilter, $dateParams, $departmentFilter, $departmentParams) {
+    // สร้าง HTML header
+    $html = '
+    <div class="print-header">
+        <img src="../admin/assets/img/logo.png" alt="Logo">
+        <div class="print-header-text">
+            <h1>วิทยาลัยการอาชีพปราสาท</h1>
+            <p>รายงานการเข้าแถวตามชั้นเรียน</p>
+        </div>
+    </div>
+    
+    <table class="data-table" width="100%" border="1" cellspacing="0" cellpadding="5">
+        <thead>
+            <tr>
+                <th>ลำดับ</th>
+                <th>ชั้นเรียน</th>
+                <th>แผนกวิชา</th>
+                <th>ครูที่ปรึกษา</th>
+                <th>จำนวนนักเรียน</th>
+                <th>จำนวนมา</th>
+                <th>จำนวนขาด</th>
+                <th>จำนวนสาย</th>
+                <th>จำนวนลา</th>
+                <th>อัตราการเข้าแถว</th>
+            </tr>
+        </thead>
+        <tbody>';
+    
+    // คล้ายกับฟังก์ชัน generateClassExcelReport
+    // สร้าง query
+    $sql = "SELECT 
+                c.class_id,
+                c.level,
+                c.group_number,
+                CONCAT(c.level, '/', c.group_number) as class_name,
+                d.department_name,
+                
+                (SELECT CONCAT(t.title, ' ', t.first_name, ' ', t.last_name) 
+                 FROM teachers t 
+                 JOIN class_advisors ca ON t.teacher_id = ca.teacher_id 
+                 WHERE ca.class_id = c.class_id AND ca.is_primary = 1 
+                 LIMIT 1) as advisor_name,
+                
+                (SELECT COUNT(*) FROM students s 
+                 WHERE s.current_class_id = c.class_id AND s.status = 'กำลังศึกษา') as student_count,
+                
+                (SELECT COUNT(*) FROM attendance a 
+                 JOIN students s ON a.student_id = s.student_id
+                 WHERE s.current_class_id = c.class_id 
+                 AND a.academic_year_id = ? 
+                 AND a.attendance_status = 'present' $dateFilter) as days_present,
+                
+                (SELECT COUNT(*) FROM attendance a 
+                 JOIN students s ON a.student_id = s.student_id
+                 WHERE s.current_class_id = c.class_id 
+                 AND a.academic_year_id = ? 
+                 AND a.attendance_status = 'absent' $dateFilter) as days_absent,
+                
+                (SELECT COUNT(*) FROM attendance a 
+                 JOIN students s ON a.student_id = s.student_id
+                 WHERE s.current_class_id = c.class_id 
+                 AND a.academic_year_id = ? 
+                 AND a.attendance_status = 'late' $dateFilter) as days_late,
+                
+                (SELECT COUNT(*) FROM attendance a 
+                 JOIN students s ON a.student_id = s.student_id
+                 WHERE s.current_class_id = c.class_id 
+                 AND a.academic_year_id = ? 
+                 AND a.attendance_status = 'leave' $dateFilter) as days_leave
+                
+            FROM classes c
+            JOIN departments d ON c.department_id = d.department_id
+            WHERE c.academic_year_id = ? AND c.is_active = 1 $departmentFilter
+            ORDER BY d.department_name, c.level, c.group_number";
+    
+    // เตรียมพารามิเตอร์
+    $params = array_merge(
+        [$academicYearId], $dateParams,
+        [$academicYearId], $dateParams,
+        [$academicYearId], $dateParams,
+        [$academicYearId], $dateParams,
+        [$academicYearId],
+        $departmentParams
+    );
+    
+    // ดึงข้อมูล
+    $stmt = $conn->prepare($sql);
+    $stmt->execute($params);
+    $classes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    // เขียนข้อมูลลงใน HTML
+    $counter = 1;
+    
+    foreach ($classes as $class) {
+        $totalDays = $class['days_present'] + $class['days_absent'] + $class['days_late'] + $class['days_leave'];
+        $attendanceRate = ($totalDays > 0) ? ($class['days_present'] + $class['days_late'] + $class['days_leave']) / $totalDays * 100 : 0;
+        
+        $html .= "
+            <tr>
+                <td style='text-align: center;'>{$counter}</td>
+                <td style='text-align: center;'>{$class['class_name']}</td>
+                <td>{$class['department_name']}</td>
+                <td>" . ($class['advisor_name'] ?? '-') . "</td>
+                <td style='text-align: center;'>{$class['student_count']}</td>
+                <td style='text-align: center;'>{$class['days_present']}</td>
+                <td style='text-align: center;'>{$class['days_absent']}</td>
+                <td style='text-align: center;'>{$class['days_late']}</td>
+                <td style='text-align: center;'>{$class['days_leave']}</td>
+                <td style='text-align: center;'>" . round($attendanceRate, 1) . "%</td>
+            </tr>";
+        
+        $counter++;
+    }
+    
+    $html .= '
+        </tbody>
+    </table>
+    
+    <div class="print-footer">
+        <p>พิมพ์เมื่อ: ' . date('d/m/Y H:i:s') . '</p>
+        <p>ระบบน้องสัตบรรณ - ดูแลผู้เรียน</p>
+    </div>';
+    
+    return $html;
+}
+
+/**
+ * แปลงประเภทรายงานเป็นชื่อภาษาไทย
+ */
+function getReportTypeName($reportType) {
+    switch ($reportType) {
+        case 'attendance':
+            return 'การเข้าแถว';
+        case 'risk':
+            return 'นักเรียนที่มีความเสี่ยงตกกิจกรรม';
+        case 'class':
+            return 'การเข้าแถวตามชั้นเรียน';
+        default:
+            return 'การเข้าแถว';
+    }
 }

@@ -1,19 +1,8 @@
 <?php
-/**
- * reports_content.php - เนื้อหาหน้าแดชบอร์ดสรุปข้อมูลการเข้าแถว
- * ระบบน้องสัตบรรณ - ดูแลผู้เรียน
- * วิทยาลัยการอาชีพปราสาท
- */
-
 // ตรวจสอบว่ามีตัวแปร $report_data หรือไม่
 if (!isset($report_data)) {
     echo "<div class='alert alert-danger'>ไม่พบข้อมูลสำหรับการแสดงผลรายงาน</div>";
     return;
-}
-
-// ตรวจสอบว่ามีข้อผิดพลาดหรือไม่
-if (isset($report_data['error'])) {
-    echo "<div class='alert alert-danger'>{$report_data['error']}</div>";
 }
 
 // ดึงข้อมูลจาก $report_data
@@ -24,13 +13,25 @@ $department_stats = $report_data['department_stats'];
 $risk_students = $report_data['risk_students'];
 $class_ranking = $report_data['class_ranking'];
 $weekly_trends = $report_data['weekly_trends'];
-$absence_reasons = $report_data['absence_reasons'];
+$attendance_status = $report_data['attendance_status']; // เปลี่ยนจาก absence_reasons
 
 // ข้อมูลปีการศึกษาปัจจุบัน
 $current_academic_year = $academic_year['year'] + 543; // แปลงเป็น พ.ศ.
 $current_semester = $academic_year['semester'];
 $current_month = date('n');
 $current_year = date('Y') + 543; // แปลงเป็น พ.ศ.
+
+// ฟังก์ชันแปลงเดือนเป็นภาษาไทย
+function getThaiMonth($month) {
+    $thaiMonths = [
+        1 => 'มกราคม', 2 => 'กุมภาพันธ์', 3 => 'มีนาคม', 4 => 'เมษายน',
+        5 => 'พฤษภาคม', 6 => 'มิถุนายน', 7 => 'กรกฎาคม', 8 => 'สิงหาคม',
+        9 => 'กันยายน', 10 => 'ตุลาคม', 11 => 'พฤศจิกายน', 12 => 'ธันวาคม'
+    ];
+    return $thaiMonths[$month] ?? '';
+}
+
+// ชื่อเดือนปัจจุบันภาษาไทย
 $current_thai_month = getThaiMonth($current_month);
 ?>
 
@@ -118,37 +119,33 @@ $current_thai_month = getThaiMonth($current_month);
 
 <!-- Department stats -->
 <div class="department-stats" id="departmentStats">
-    <?php if (empty($department_stats)): ?>
-    <div class="empty-data-message">ไม่พบข้อมูลแผนกวิชา</div>
-    <?php else: ?>
-        <?php foreach ($department_stats as $dept): ?>
-        <div class="department-card">
-            <div class="department-name">
-                <span><?php echo $dept['department_name']; ?></span>
-                <span class="attendance-rate <?php echo $dept['rate_class']; ?>"><?php echo $dept['attendance_rate']; ?>%</span>
+    <?php foreach ($department_stats as $dept): ?>
+    <div class="department-card">
+        <div class="department-name">
+            <span><?php echo $dept['department_name']; ?></span>
+            <span class="attendance-rate <?php echo $dept['rate_class']; ?>"><?php echo $dept['attendance_rate']; ?>%</span>
+        </div>
+        <div class="department-stats-row">
+            <div class="department-stat">
+                <div class="department-stat-label">นักเรียน</div>
+                <div class="department-stat-value"><?php echo $dept['student_count']; ?></div>
             </div>
-            <div class="department-stats-row">
-                <div class="department-stat">
-                    <div class="department-stat-label">นักเรียน</div>
-                    <div class="department-stat-value"><?php echo $dept['student_count']; ?></div>
-                </div>
-                <div class="department-stat">
-                    <div class="department-stat-label">เข้าแถว</div>
-                    <div class="department-stat-value"><?php echo $dept['total_attendance']; ?></div>
-                </div>
-                <div class="department-stat">
-                    <div class="department-stat-label">เสี่ยง</div>
-                    <div class="department-stat-value"><?php echo $dept['risk_count']; ?></div>
-                </div>
+            <div class="department-stat">
+                <div class="department-stat-label">เข้าแถว</div>
+                <div class="department-stat-value"><?php echo $dept['total_attendance']; ?></div>
             </div>
-            <div class="department-progress">
-                <div class="progress-bar">
-                    <div class="progress-fill <?php echo $dept['rate_class']; ?>" style="width: <?php echo $dept['attendance_rate']; ?>%;"></div>
-                </div>
+            <div class="department-stat">
+                <div class="department-stat-label">เสี่ยง</div>
+                <div class="department-stat-value"><?php echo $dept['risk_count']; ?></div>
             </div>
         </div>
-        <?php endforeach; ?>
-    <?php endif; ?>
+        <div class="department-progress">
+            <div class="progress-bar">
+                <div class="progress-fill <?php echo $dept['rate_class']; ?>" style="width: <?php echo $dept['attendance_rate']; ?>%;"></div>
+            </div>
+        </div>
+    </div>
+    <?php endforeach; ?>
 </div>
 
 <!-- Charts Row -->
@@ -175,17 +172,17 @@ $current_thai_month = getThaiMonth($current_month);
         <div class="chart-header">
             <div class="chart-title">
                 <span class="material-icons">pie_chart</span>
-                สาเหตุการขาดแถว
+                สถานะการเข้าแถว
             </div>
         </div>
         
         <div class="chart-container">
             <canvas id="attendancePieChart"></canvas>
             <div class="pie-legend">
-                <?php foreach ($absence_reasons as $reason): ?>
+                <?php foreach ($attendance_status as $status): ?>
                 <div class="legend-item">
-                    <div class="legend-color" style="background-color: <?php echo $reason['color']; ?>"></div>
-                    <span><?php echo $reason['reason']; ?> (<?php echo $reason['percent']; ?>%)</span>
+                    <div class="legend-color" style="background-color: <?php echo $status['color']; ?>"></div>
+                    <span><?php echo $status['status']; ?> (<?php echo $status['percent']; ?>%)</span>
                 </div>
                 <?php endforeach; ?>
             </div>
@@ -226,7 +223,7 @@ $current_thai_month = getThaiMonth($current_month);
     </div>
     
     <div class="table-responsive">
-        <table id="risk-students-table">
+        <table id="risk-students-table" class="display dataTable">
             <thead>
                 <tr>
                     <th>นักเรียน</th>
@@ -239,9 +236,7 @@ $current_thai_month = getThaiMonth($current_month);
             </thead>
             <tbody>
                 <?php if (empty($risk_students)): ?>
-                <tr>
-                    <td colspan="6" class="text-center">ไม่พบข้อมูลนักเรียนที่มีความเสี่ยง</td>
-                </tr>
+           
                 <?php else: ?>
                     <?php foreach ($risk_students as $student): ?>
                     <tr data-student-id="<?php echo $student['student_id']; ?>">
@@ -257,7 +252,7 @@ $current_thai_month = getThaiMonth($current_month);
                             </div>
                         </td>
                         <td><?php echo $student['class_name']; ?></td>
-                        <td><?php echo $student['advisor_name'] ?: 'ไม่ระบุ'; ?></td>
+                        <td><?php echo $student['advisor_name']; ?></td>
                         <td><span class="attendance-rate <?php echo $student['status']; ?>"><?php echo $student['attendance_rate']; ?>%</span></td>
                         <td><span class="status-badge <?php echo $student['status']; ?>"><?php echo $student['status_text']; ?></span></td>
                         <td>
@@ -299,7 +294,7 @@ $current_thai_month = getThaiMonth($current_month);
     </div>
     
     <div class="table-responsive">
-        <table class="class-rank-table">
+        <table id="class-rank-table" class="display dataTable class-rank-table">
             <thead>
                 <tr>
                     <th>ชั้นเรียน</th>
@@ -319,7 +314,7 @@ $current_thai_month = getThaiMonth($current_month);
                     <?php foreach ($class_ranking as $class): ?>
                     <tr data-class-id="<?php echo $class['class_id']; ?>" data-level="<?php echo $class['level_group']; ?>">
                         <td><?php echo $class['class_name']; ?></td>
-                        <td><?php echo $class['advisor_name'] ?: 'ไม่ระบุ'; ?></td>
+                        <td><?php echo $class['advisor_name']; ?></td>
                         <td><?php echo $class['student_count']; ?></td>
                         <td><?php echo $class['present_count']; ?></td>
                         <td><span class="attendance-rate <?php echo $class['rate_class']; ?>"><?php echo $class['attendance_rate']; ?>%</span></td>
@@ -342,7 +337,7 @@ $current_thai_month = getThaiMonth($current_month);
         <span class="close" id="closeStudentModal">&times;</span>
         <h2 id="modal-student-name">ข้อมูลการเข้าแถว</h2>
         <div id="student-detail-content">
-            <!-- ข้อมูลนักเรียนจะถูกโหลดผ่าน AJAX -->
+            <!-- ข้อมูลนักเรียนจะถูกแสดงที่นี่ -->
             <div class="loading">กำลังโหลดข้อมูล...</div>
         </div>
     </div>
@@ -407,8 +402,8 @@ $current_thai_month = getThaiMonth($current_month);
 // ข้อมูลเส้นกราฟสำหรับการเข้าแถว 7 วันล่าสุด
 const weeklyTrendsData = <?php echo json_encode($weekly_trends); ?>;
 
-// ข้อมูลสาเหตุการขาดแถว
-const absenceReasonsData = <?php echo json_encode($absence_reasons); ?>;
+// ข้อมูลสถานะการเข้าแถว
+const attendanceStatusData = <?php echo json_encode($attendance_status); ?>;
 
 // ข้อมูลปีการศึกษาปัจจุบัน
 const academicYearData = {
