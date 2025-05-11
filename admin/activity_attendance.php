@@ -51,6 +51,9 @@ try {
         header('Location: activities.php');
         exit;
     }
+        // เพิ่มค่าเริ่มต้นให้กับค่าที่อาจเป็น null
+        $activity['target_departments'] = [];
+        $activity['target_levels'] = [];
     
     // ดึงแผนกวิชาเป้าหมาย
     $stmt = $conn->prepare("
@@ -90,46 +93,7 @@ $user_id = $_SESSION['user_id'] ?? null;
 $user_role = $_SESSION['user_role'] ?? 'admin';
 
 // ดึงข้อมูลผู้ใช้จากฐานข้อมูล
-try {
-    if ($user_role == 'admin') {
-        $stmt = $conn->prepare("SELECT user_id, first_name, last_name, profile_picture FROM users WHERE user_id = ?");
-        $stmt->execute([$user_id]);
-        $user = $stmt->fetch(PDO::FETCH_ASSOC);
-        
-        $admin_info = [
-            'name' => $user['first_name'] . ' ' . $user['last_name'],
-            'role' => 'ผู้ดูแลระบบ',
-            'initials' => mb_substr($user['first_name'], 0, 1, 'UTF-8')
-        ];
-    } else {
-        // ผู้ใช้เป็นครู - ดึงข้อมูลครูเพิ่มเติม
-        $stmt = $conn->prepare("
-            SELECT t.teacher_id, u.first_name, u.last_name, t.title, u.profile_picture, 
-                   t.position, d.department_name
-            FROM users u
-            JOIN teachers t ON u.user_id = t.user_id
-            LEFT JOIN departments d ON t.department_id = d.department_id
-            WHERE u.user_id = ?
-        ");
-        $stmt->execute([$user_id]);
-        $teacher = $stmt->fetch(PDO::FETCH_ASSOC);
-        
-        $admin_info = [
-            'name' => $teacher['title'] . $teacher['first_name'] . ' ' . $teacher['last_name'],
-            'role' => $teacher['position'] . ' ' . $teacher['department_name'],
-            'initials' => mb_substr($teacher['first_name'], 0, 1, 'UTF-8'),
-            'teacher_id' => $teacher['teacher_id']
-        ];
-    }
-} catch (PDOException $e) {
-    // กรณีเกิดข้อผิดพลาดในการดึงข้อมูล
-    error_log("Database error: " . $e->getMessage());
-    $admin_info = [
-        'name' => 'ไม่พบข้อมูล',
-        'role' => 'ไม่พบข้อมูล',
-        'initials' => 'x'
-    ];
-}
+
 
 // ดึงข้อมูลปีการศึกษาปัจจุบัน
 try {
@@ -192,7 +156,7 @@ if (isset($_POST['save_attendance']) && isset($_POST['attendance']) && is_array(
             }
         }
         
-        // บันทึกการดำเนินการของผู้ดูแลระบบ
+        /* // บันทึกการดำเนินการของผู้ดูแลระบบ
         $action_type = 'record_activity_attendance';
         $action_details = json_encode([
             'activity_id' => $activity_id,
@@ -204,7 +168,7 @@ if (isset($_POST['save_attendance']) && isset($_POST['attendance']) && is_array(
             INSERT INTO admin_actions (admin_id, action_type, action_details)
             VALUES (?, ?, ?)
         ");
-        $stmt->execute([$user_id, $action_type, $action_details]);
+        $stmt->execute([$user_id, $action_type, $action_details]); */
         
         // Commit transaction
         $conn->commit();

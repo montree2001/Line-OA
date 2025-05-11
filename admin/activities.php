@@ -30,47 +30,7 @@ $page_header = 'ระบบจัดการกิจกรรมกลาง'
 $user_id = $_SESSION['user_id'] ?? null;
 $user_role = $_SESSION['user_role'] ?? 'admin';
 
-// ดึงข้อมูลผู้ใช้จากฐานข้อมูล
-try {
-    if ($user_role == 'admin') {
-        $stmt = $conn->prepare("SELECT user_id, first_name, last_name, profile_picture FROM users WHERE user_id = ?");
-        $stmt->execute([$user_id]);
-        $user = $stmt->fetch(PDO::FETCH_ASSOC);
-        
-        $admin_info = [
-            'name' => $user['first_name'] . ' ' . $user['last_name'],
-            'role' => 'ผู้ดูแลระบบ',
-            'initials' => mb_substr($user['first_name'], 0, 1, 'UTF-8')
-        ];
-    } else {
-        // ผู้ใช้เป็นครู - ดึงข้อมูลครูเพิ่มเติม
-        $stmt = $conn->prepare("
-            SELECT t.teacher_id, u.first_name, u.last_name, t.title, u.profile_picture, 
-                   t.position, d.department_name
-            FROM users u
-            JOIN teachers t ON u.user_id = t.user_id
-            LEFT JOIN departments d ON t.department_id = d.department_id
-            WHERE u.user_id = ?
-        ");
-        $stmt->execute([$user_id]);
-        $teacher = $stmt->fetch(PDO::FETCH_ASSOC);
-        
-        $admin_info = [
-            'name' => $teacher['title'] . $teacher['first_name'] . ' ' . $teacher['last_name'],
-            'role' => $teacher['position'] . ' ' . $teacher['department_name'],
-            'initials' => mb_substr($teacher['first_name'], 0, 1, 'UTF-8'),
-            'teacher_id' => $teacher['teacher_id']
-        ];
-    }
-} catch (PDOException $e) {
-    // กรณีเกิดข้อผิดพลาดในการดึงข้อมูล
-    error_log("Database error: " . $e->getMessage());
-    $admin_info = [
-        'name' => 'ไม่พบข้อมูล',
-        'role' => 'ไม่พบข้อมูล',
-        'initials' => 'x'
-    ];
-}
+
 
 // ดึงข้อมูลปีการศึกษาปัจจุบัน
 try {
@@ -169,7 +129,7 @@ if (isset($_POST['save_activity'])) {
             $stmt->execute($values);
         }
         
-        // บันทึกการดำเนินการของผู้ดูแลระบบ
+        /* // บันทึกการดำเนินการของผู้ดูแลระบบ
         $action_type = 'create_activity';
         $action_details = json_encode([
             'activity_id' => $activity_id,
@@ -182,7 +142,7 @@ if (isset($_POST['save_activity'])) {
             VALUES (?, ?, ?)
         ");
         $stmt->execute([$user_id, $action_type, $action_details]);
-        
+         */
         // Commit transaction
         $conn->commit();
         
@@ -283,7 +243,7 @@ if (isset($_POST['edit_activity'])) {
             $stmt->execute($values);
         }
         
-        // บันทึกการดำเนินการของผู้ดูแลระบบ
+    /*     // บันทึกการดำเนินการของผู้ดูแลระบบ
         $action_type = 'edit_activity';
         $action_details = json_encode([
             'activity_id' => $activity_id,
@@ -295,7 +255,7 @@ if (isset($_POST['edit_activity'])) {
             INSERT INTO admin_actions (admin_id, action_type, action_details)
             VALUES (?, ?, ?)
         ");
-        $stmt->execute([$user_id, $action_type, $action_details]);
+        $stmt->execute([$user_id, $action_type, $action_details]); */
         
         // Commit transaction
         $conn->commit();
@@ -351,24 +311,26 @@ if (isset($_POST['delete_activity'])) {
         $stmt = $conn->prepare("DELETE FROM activities WHERE activity_id = ?");
         $stmt->execute([$activity_id]);
         
-        // บันทึกการดำเนินการของผู้ดูแลระบบ
+ /*        // บันทึกการดำเนินการของผู้ดูแลระบบ
         $action_type = 'delete_activity';
+        // แก้ไขบรรทัดนี้ - เพิ่มการตรวจสอบว่า $activity เป็น array หรือไม่
+        $activity_name = $activity && isset($activity['activity_name']) ? $activity['activity_name'] : '';
         $action_details = json_encode([
             'activity_id' => $activity_id,
-            'activity_name' => $activity['activity_name']
+            'activity_name' => $activity_name
         ]);
         
         $stmt = $conn->prepare("
             INSERT INTO admin_actions (admin_id, action_type, action_details)
             VALUES (?, ?, ?)
-        ");
-        $stmt->execute([$user_id, $action_type, $action_details]);
+        "); 
+        $stmt->execute([$user_id, $action_type, $action_details]);*/
         
         // Commit transaction
         $conn->commit();
         
         $save_success = true;
-        $response_message = "ลบกิจกรรม '{$activity['activity_name']}' เรียบร้อยแล้ว";
+        $response_message = "ลบกิจกรรม เรียบร้อยแล้ว";
     } catch (PDOException $e) {
         // Rollback ในกรณีที่เกิดข้อผิดพลาด
         $conn->rollBack();
@@ -412,7 +374,7 @@ try {
 // ดึงรายการกิจกรรม
 try {
     $stmt = $conn->prepare("
-        SELECT 
+        SELECT DISTINCT
             a.activity_id, a.activity_name, a.activity_date, a.activity_location, 
             a.description, a.required_attendance, a.created_at,
             u.first_name, u.last_name,
@@ -420,6 +382,7 @@ try {
         FROM activities a
         LEFT JOIN users u ON a.created_by = u.user_id
         WHERE a.academic_year_id = ?
+        GROUP BY a.activity_id
         ORDER BY a.activity_date DESC
     ");
     $stmt->execute([$current_academic_year_id]);

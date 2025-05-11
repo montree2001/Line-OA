@@ -1,4 +1,22 @@
 <?php
+// ตรวจสอบและกำจัดความซ้ำซ้อนของกิจกรรม
+$unique_activities = [];
+$seen_activity_ids = [];
+
+// วนลูปเพื่อตรวจสอบความซ้ำซ้อนโดยใช้ activity_id เป็นเกณฑ์
+if (!empty($activities) && is_array($activities)) {
+    foreach ($activities as $act) {
+        if (!in_array($act['activity_id'], $seen_activity_ids)) {
+            $seen_activity_ids[] = $act['activity_id'];
+            // ทำความสะอาดชื่อกิจกรรม ตัดเครื่องหมาย / ที่ท้ายชื่อออก
+            $act['activity_name'] = rtrim($act['activity_name'], '/');
+            $unique_activities[] = $act;
+        }
+    }
+    // ใช้ข้อมูลที่ไม่ซ้ำแทนข้อมูลเดิม
+    $activities = $unique_activities;
+}
+
 // ตรวจสอบว่ามีข้อความแจ้งเตือนความสำเร็จหรือข้อผิดพลาดเพื่อแสดง
 $alert_success = $save_success ?? false;
 $alert_error = $save_error ?? false;
@@ -102,7 +120,19 @@ $alert_error = $save_error ?? false;
         </div>
         <?php else: ?>
         <div class="activity-list">
-            <?php foreach ($activities as $activity): 
+            <?php 
+            // ตรวจสอบว่าไม่มีรายการกิจกรรมซ้ำกัน
+            $displayed_activity_ids = []; 
+            
+            foreach ($activities as $activity): 
+                // ข้ามรายการที่ซ้ำกัน
+                if (in_array($activity['activity_id'], $displayed_activity_ids)) {
+                    continue;
+                }
+                
+                // เพิ่ม ID ที่กำลังแสดงในรายการที่แสดงแล้ว
+                $displayed_activity_ids[] = $activity['activity_id'];
+                
                 $activity_date = new DateTime($activity['activity_date']);
                 $today = new DateTime(date('Y-m-d'));
                 $is_passed = $activity_date < $today;
@@ -116,7 +146,8 @@ $alert_error = $save_error ?? false;
             <div class="activity-item" 
                  data-month="<?php echo date('m', strtotime($activity['activity_date'])); ?>"
                  data-status="<?php echo $is_passed ? 'passed' : ($is_today ? 'today' : 'upcoming'); ?>"
-                 data-name="<?php echo strtolower($activity['activity_name']); ?>">
+                 data-name="<?php echo strtolower($activity['activity_name']); ?>"
+                 data-id="<?php echo $activity['activity_id']; ?>">
                 <div class="activity-date">
                     <div class="date-day"><?php echo date('d', strtotime($activity['activity_date'])); ?></div>
                     <div class="date-month"><?php echo date('M', strtotime($activity['activity_date'])); ?></div>
@@ -130,7 +161,10 @@ $alert_error = $save_error ?? false;
                     <?php endif; ?>
                 </div>
                 <div class="activity-details">
-                    <h3 class="activity-name"><?php echo htmlspecialchars($activity['activity_name']); ?></h3>
+                    <h3 class="activity-name">
+                        <?php echo htmlspecialchars($activity['activity_name']); ?>
+                        <small class="activity-id">(รหัส: <?php echo $activity['activity_id']; ?>)</small>
+                    </h3>
                     <div class="activity-info">
                         <div class="info-item">
                             <span class="material-icons">place</span>
@@ -397,7 +431,6 @@ $alert_error = $save_error ?? false;
     </div>
 </div>
 
-
 <!-- สรุปภาพรวมกิจกรรม -->
 <div class="card">
     <div class="card-title">
@@ -572,18 +605,283 @@ $alert_error = $save_error ?? false;
     margin-bottom: 15px;
     color: #333;
 }
+
+.activity-id {
+    font-size: 0.75em;
+    color: #666;
+    font-weight: normal;
+    margin-left: 5px;
+}
 </style>
 
-<!-- สคริปต์สำหรับสร้างกราฟ -->
+<!-- JavaScript เพื่อสนับสนุนฟังก์ชันการทำงาน -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // ตรวจสอบว่ามี Chart.js หรือไม่
+    // ซ่อนแจ้งเตือนหลังจาก 3 วินาที
+    const alerts = document.querySelectorAll('.alert');
+    alerts.forEach(alert => {
+        setTimeout(function() {
+            alert.style.opacity = '0';
+            setTimeout(function() {
+                alert.style.display = 'none';
+            }, 500);
+        }, 3000);
+    });
+    
+    // ตั้งค่าวันที่เริ่มต้นเป็นวันนี้สำหรับฟอร์มเพิ่มกิจกรรม
+    const addDateInput = document.getElementById('activity_date');
+    if (addDateInput) {
+        addDateInput.value = new Date().toISOString().split('T')[0];
+    }
+    
+    // ตรวจสอบ Select2 และเริ่มต้นถ้ามี
+    if (typeof $ !== 'undefined' && typeof $.fn.select2 !== 'undefined') {
+        // เริ่มต้น Select2 สำหรับ dropdown แบบเลือกหลายรายการ
+        $('#target_departments, #edit_target_departments').select2({
+            placeholder: 'เลือกแผนกวิชา',
+            allowClear: true
+        });
+        
+        $('#target_levels, #edit_target_levels').select2({
+            placeholder: 'เลือกระดับชั้น',
+            allowClear: true
+        });
+    }
+    
+    // เพิ่ม event listener สำหรับการตรวจสอบการส่งฟอร์ม
+    const addForm = document.getElementById('addActivityForm');
+    if (addForm) {
+        addForm.addEventListener('submit', function(event) {
+            if (!validateActivityForm(this)) {
+                event.preventDefault();
+            }
+        });
+    }
+    
+    const editForm = document.getElementById('editActivityForm');
+    if (editForm) {
+        editForm.addEventListener('submit', function(event) {
+            if (!validateActivityForm(this)) {
+                event.preventDefault();
+            }
+        });
+    }
+    
+    // ตัวกรองกิจกรรมเริ่มต้น - ตรวจสอบ URL พารามิเตอร์
+    initializeFilters();
+    
+    // สร้างกราฟถ้ามีไลบรารี Chart.js
     if (typeof Chart !== 'undefined') {
-        // ข้อมูลสำหรับกราฟแผนกวิชา
         createDepartmentChart();
         createLevelChart();
     }
 });
+
+/**
+ * ตรวจสอบความถูกต้องของฟอร์มกิจกรรม
+ */
+function validateActivityForm(form) {
+    const name = form.querySelector('[name="activity_name"]').value.trim();
+    const date = form.querySelector('[name="activity_date"]').value.trim();
+    
+    if (!name) {
+        alert('กรุณาระบุชื่อกิจกรรม');
+        return false;
+    }
+    
+    if (!date) {
+        alert('กรุณาระบุวันที่จัดกิจกรรม');
+        return false;
+    }
+    
+    return true;
+}
+
+/**
+ * เปิดโมดัลเพิ่มกิจกรรม
+ */
+function openAddActivityModal() {
+    // รีเซ็ตฟอร์ม
+    document.getElementById('addActivityForm').reset();
+    
+    // กำหนดวันที่เป็นวันนี้
+    document.getElementById('activity_date').value = new Date().toISOString().split('T')[0];
+    
+    // รีเซ็ต Select2 ถ้ามี
+    if (typeof $ !== 'undefined' && typeof $.fn.select2 !== 'undefined') {
+        $('#target_departments').val(null).trigger('change');
+        $('#target_levels').val(null).trigger('change');
+    }
+    
+    // เปิดโมดัล
+    document.getElementById('addActivityModal').style.display = 'flex';
+}
+
+/**
+ * เปิดโมดัลแก้ไขกิจกรรม
+ */
+function openEditActivityModal(activityId) {
+    // แสดงการโหลด
+    const modal = document.getElementById('editActivityModal');
+    const form = document.getElementById('editActivityForm');
+    
+    // แสดงโมดัล
+    modal.style.display = 'flex';
+    
+    // ดึงข้อมูลกิจกรรม
+    fetch(`ajax/get_activity.php?activity_id=${activityId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const activity = data.activity;
+                
+                // กำหนดค่าให้ฟอร์ม
+                document.getElementById('edit_activity_id').value = activity.activity_id;
+                document.getElementById('edit_activity_name').value = rtrim(activity.activity_name, '/');
+                document.getElementById('edit_activity_date').value = activity.activity_date;
+                document.getElementById('edit_activity_location').value = activity.activity_location || '';
+                document.getElementById('edit_required_attendance').checked = (activity.required_attendance == 1);
+                document.getElementById('edit_activity_description').value = activity.description || '';
+                
+                // กำหนดแผนกวิชาและระดับชั้นเป้าหมาย
+                if (typeof $ !== 'undefined' && typeof $.fn.select2 !== 'undefined') {
+                    $('#edit_target_departments').val(activity.target_departments).trigger('change');
+                    $('#edit_target_levels').val(activity.target_levels).trigger('change');
+                } else {
+                    // กำหนดค่าแบบทั่วไปหากไม่มี Select2
+                    const deptSelect = document.getElementById('edit_target_departments');
+                    if (deptSelect) {
+                        Array.from(deptSelect.options).forEach(option => {
+                            option.selected = activity.target_departments.includes(parseInt(option.value));
+                        });
+                    }
+                    
+                    const levelSelect = document.getElementById('edit_target_levels');
+                    if (levelSelect) {
+                        Array.from(levelSelect.options).forEach(option => {
+                            option.selected = activity.target_levels.includes(option.value);
+                        });
+                    }
+                }
+            } else {
+                // แสดงข้อความผิดพลาด
+                alert(data.error || 'ไม่สามารถดึงข้อมูลกิจกรรมได้');
+                closeModal('editActivityModal');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('เกิดข้อผิดพลาดในการดึงข้อมูลกิจกรรม');
+            closeModal('editActivityModal');
+        });
+}
+
+/**
+ * ยืนยันการลบกิจกรรม
+ */
+function confirmDeleteActivity(activityId, activityName) {
+    document.getElementById('delete_activity_id').value = activityId;
+    document.getElementById('delete_activity_name').textContent = activityName;
+    document.getElementById('deleteActivityModal').style.display = 'flex';
+}
+
+/**
+ * ปิดโมดัล
+ */
+function closeModal(modalId) {
+    document.getElementById(modalId).style.display = 'none';
+}
+
+/**
+ * กรองรายการกิจกรรม
+ */
+function filterActivities() {
+    const month = document.getElementById('filterMonth').value;
+    const status = document.getElementById('filterStatus').value;
+    const search = document.getElementById('filterSearch').value.toLowerCase();
+    
+    // บันทึกค่าลงใน URL เพื่อให้สามารถคงค่าการกรองได้เมื่อโหลดหน้าใหม่
+    const url = new URL(window.location);
+    if (month) url.searchParams.set('month', month);
+    else url.searchParams.delete('month');
+    
+    if (status) url.searchParams.set('status', status);
+    else url.searchParams.delete('status');
+    
+    if (search) url.searchParams.set('search', search);
+    else url.searchParams.delete('search');
+    
+    window.history.replaceState({}, '', url);
+    
+    // กรองรายการกิจกรรม
+    const activities = document.querySelectorAll('.activity-item');
+    let visibleCount = 0;
+    
+    activities.forEach(activity => {
+        const activityMonth = activity.dataset.month;
+        const activityStatus = activity.dataset.status;
+        const activityName = activity.dataset.name;
+        const activityId = activity.dataset.id || '';
+        
+        let isVisible = true;
+        
+        if (month && activityMonth !== month) {
+            isVisible = false;
+        }
+        
+        if (status && activityStatus !== status) {
+            isVisible = false;
+        }
+        
+        // ค้นหาทั้งในชื่อและรหัสกิจกรรม
+        if (search && !activityName.includes(search) && !activityId.includes(search)) {
+            isVisible = false;
+        }
+        
+        activity.style.display = isVisible ? 'flex' : 'none';
+        
+        if (isVisible) {
+            visibleCount++;
+        }
+    });
+    
+    // แสดงข้อความเมื่อไม่พบกิจกรรม
+    document.getElementById('no-results-message').style.display = (visibleCount === 0) ? 'block' : 'none';
+}
+
+/**
+ * เริ่มต้นตัวกรองจาก URL
+ */
+function initializeFilters() {
+    const url = new URL(window.location);
+    
+    // ตั้งค่าตัวกรองตาม URL
+    if (url.searchParams.has('month')) {
+        document.getElementById('filterMonth').value = url.searchParams.get('month');
+    }
+    
+    if (url.searchParams.has('status')) {
+        document.getElementById('filterStatus').value = url.searchParams.get('status');
+    }
+    
+    if (url.searchParams.has('search')) {
+        document.getElementById('filterSearch').value = url.searchParams.get('search');
+    }
+    
+    // ใช้ตัวกรองทันที
+    if (url.searchParams.has('month') || url.searchParams.has('status') || url.searchParams.has('search')) {
+        filterActivities();
+    }
+}
+
+/**
+ * ฟังก์ชันตัดอักขระที่ระบุออกจากท้ายข้อความ
+ */
+function rtrim(str, chars) {
+    chars = chars || '\\s';
+    str = str || '';
+    return str.replace(new RegExp('[' + chars + ']+$', 'g'), '');
+}
 
 /**
  * สร้างกราฟการเข้าร่วมกิจกรรมตามแผนกวิชา
@@ -766,139 +1064,4 @@ function createLevelChart() {
             });
         });
 }
-</script>
-<!-- สคริปต์เพิ่มเติมเฉพาะหน้านี้ -->
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // ซ่อนแจ้งเตือนหลังจาก 3 วินาที
-    const alerts = document.querySelectorAll('.alert');
-    alerts.forEach(alert => {
-        setTimeout(function() {
-            alert.style.opacity = '0';
-            setTimeout(function() {
-                alert.style.display = 'none';
-            }, 500);
-        }, 3000);
-    });
-});
-
-// ฟังก์ชันเปิดโมดัลเพิ่มกิจกรรม
-function openAddActivityModal() {
-    // รีเซ็ตฟอร์ม
-    document.getElementById('addActivityForm').reset();
-    
-    // กำหนดวันที่เป็นวันนี้
-    document.getElementById('activity_date').value = new Date().toISOString().split('T')[0];
-    
-    // เปิดโมดัล
-    document.getElementById('addActivityModal').style.display = 'flex';
-}
-
-// ฟังก์ชันเปิดโมดัลแก้ไขกิจกรรม
-function openEditActivityModal(activityId) {
-    // ดึงข้อมูลกิจกรรม
-    fetch(`ajax/get_activity.php?activity_id=${activityId}`)
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                const activity = data.activity;
-                
-                // กำหนดค่าให้ฟอร์ม
-                document.getElementById('edit_activity_id').value = activity.activity_id;
-                document.getElementById('edit_activity_name').value = activity.activity_name;
-                document.getElementById('edit_activity_date').value = activity.activity_date;
-                document.getElementById('edit_activity_location').value = activity.activity_location;
-                document.getElementById('edit_required_attendance').checked = (activity.required_attendance == 1);
-                document.getElementById('edit_activity_description').value = activity.description;
-                
-                // กำหนดแผนกวิชาเป้าหมาย
-                const deptSelect = document.getElementById('edit_target_departments');
-                for (let i = 0; i < deptSelect.options.length; i++) {
-                    deptSelect.options[i].selected = activity.target_departments.includes(parseInt(deptSelect.options[i].value));
-                }
-                
-                // กำหนดระดับชั้นเป้าหมาย
-                const levelSelect = document.getElementById('edit_target_levels');
-                for (let i = 0; i < levelSelect.options.length; i++) {
-                    levelSelect.options[i].selected = activity.target_levels.includes(levelSelect.options[i].value);
-                }
-                
-                // เปิดโมดัล
-                document.getElementById('editActivityModal').style.display = 'flex';
-            } else {
-                alert(data.error || 'ไม่สามารถดึงข้อมูลกิจกรรมได้');
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('เกิดข้อผิดพลาดในการดึงข้อมูลกิจกรรม');
-        });
-}
-
-// ฟังก์ชันยืนยันการลบกิจกรรม
-function confirmDeleteActivity(activityId, activityName) {
-    document.getElementById('delete_activity_id').value = activityId;
-    document.getElementById('delete_activity_name').textContent = activityName;
-    document.getElementById('deleteActivityModal').style.display = 'flex';
-}
-
-// ฟังก์ชันปิดโมดัล
-function closeModal(modalId) {
-    document.getElementById(modalId).style.display = 'none';
-}
-
-// ฟังก์ชันกรองกิจกรรม
-function filterActivities() {
-    const month = document.getElementById('filterMonth').value;
-    const status = document.getElementById('filterStatus').value;
-    const search = document.getElementById('filterSearch').value.toLowerCase();
-    
-    const activities = document.querySelectorAll('.activity-item');
-    let visibleCount = 0;
-    
-    activities.forEach(activity => {
-        const activityMonth = activity.dataset.month;
-        const activityStatus = activity.dataset.status;
-        const activityName = activity.dataset.name;
-        
-        let isVisible = true;
-        
-        if (month && activityMonth !== month) {
-            isVisible = false;
-        }
-        
-        if (status && activityStatus !== status) {
-            isVisible = false;
-        }
-        
-        if (search && !activityName.includes(search)) {
-            isVisible = false;
-        }
-        
-        activity.style.display = isVisible ? 'flex' : 'none';
-        
-        if (isVisible) {
-            visibleCount++;
-        }
-    });
-    
-    // แสดงข้อความเมื่อไม่พบกิจกรรม
-    document.getElementById('no-results-message').style.display = (visibleCount === 0) ? 'block' : 'none';
-}
-
-// ฟังก์ชันสำหรับการกำหนดวันที่เดือนไทย
-const thMonths = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
-
-// ตั้งค่า select2 สำหรับการเลือกหลายรายการ
-$(document).ready(function() {
-    $('#target_departments, #edit_target_departments').select2({
-        placeholder: 'เลือกแผนกวิชา',
-        allowClear: true
-    });
-    
-    $('#target_levels, #edit_target_levels').select2({
-        placeholder: 'เลือกระดับชั้น',
-        allowClear: true
-    });
-});
 </script>

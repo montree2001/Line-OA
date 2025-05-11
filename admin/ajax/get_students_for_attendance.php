@@ -17,11 +17,23 @@ require_once '../../config/db_config.php';
 require_once '../../db_connect.php';
 
 // รับพารามิเตอร์
+// แก้ไขใน get_students_for_activity.php - เพิ่มการตรวจสอบค่า
+$activity_id = isset($_GET['activity_id']) ? intval($_GET['activity_id']) : 0;
 $department_id = isset($_GET['department_id']) ? intval($_GET['department_id']) : 0;
 $level = isset($_GET['level']) ? $_GET['level'] : '';
 $class_id = isset($_GET['class_id']) ? intval($_GET['class_id']) : 0;
-$date = isset($_GET['date']) ? $_GET['date'] : date('Y-m-d');
+$search = isset($_GET['search']) ? trim($_GET['search']) : '';
+// ตรวจสอบว่ามีรหัสกิจกรรมหรือไม่
+if (!$activity_id) {
+    echo json_encode(['success' => false, 'error' => 'ไม่ระบุรหัสกิจกรรม']);
+    exit;
+}
 
+// ตรวจสอบว่ามีเงื่อนไขการค้นหาอย่างน้อย 1 อย่าง
+if (!$department_id && !$level && !$class_id && !$search) {
+    echo json_encode(['success' => false, 'error' => 'กรุณาระบุเงื่อนไขการค้นหา']);
+    exit;
+}
 // บันทึกข้อมูลพารามิเตอร์สำหรับการตรวจสอบ
 error_log("get_students_for_attendance.php - Parameters: department_id=$department_id, level=" . 
           urlencode($level) . ", class_id=$class_id, date=$date");
