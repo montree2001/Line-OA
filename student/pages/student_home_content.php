@@ -66,6 +66,11 @@
         <?php echo $attendance_status['is_checked_in'] ? 'เช็คชื่อแล้ววันนี้' : 'เช็คชื่อเข้าแถววันนี้'; ?>
     </button>
 
+    <!-- ปุ่มกิจกรรม -->
+    <button class="activity-button" onclick="location.href='activities.php'">
+        <span class="material-icons">event</span> ดูกิจกรรมทั้งหมด
+    </button>
+
     <!-- ประวัติการเช็คชื่อล่าสุด -->
     <div class="card">
         <div class="card-header">
@@ -101,7 +106,6 @@
             <?php endif; ?>
         </ul>
     </div>
-
 
 <!-- ประกาศจากวิทยาลัย -->
 <div class="card">
@@ -146,3 +150,38 @@
 </div>
 
 </div>
+
+<style>
+/* เพิ่มสไตล์สำหรับปุ่มกิจกรรม */
+.activity-button {
+    background-color: #2196f3;
+    color: white;
+    border: none;
+    border-radius: 15px;
+    padding: 15px;
+    font-size: 16px;
+    font-weight: bold;
+    width: 100%;
+    margin-bottom: 20px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s;
+}
+
+.activity-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+.activity-button .material-icons {
+    margin-right: 10px;
+}
+
+/* ปรับแต่งปุ่มเช็คชื่อให้เมเข้ากับปุ่มกิจกรรม */
+.check-in-button {
+    margin-bottom: 10px;
+}
+</style>

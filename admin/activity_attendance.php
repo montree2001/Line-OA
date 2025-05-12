@@ -1,4 +1,5 @@
 <?php
+
 /**
  * activity_attendance.php - หน้าบันทึกการเข้าร่วมกิจกรรมกลาง
  * 
@@ -37,28 +38,28 @@ if (!$activity_id) {
 // ดึงข้อมูลกิจกรรม
 try {
     $stmt = $conn->prepare("
-        SELECT 
-            a.activity_id, a.activity_name, a.activity_date, a.activity_location, 
-            a.description, a.required_attendance, a.created_at,
-            a.academic_year_id, a.created_by,
-            u.first_name, u.last_name
-        FROM activities a
-        LEFT JOIN users u ON a.created_by = u.user_id
-        WHERE a.activity_id = ?
+         SELECT 
+        a.activity_id, a.activity_name, a.activity_date, a.activity_location, 
+        a.description, a.required_attendance, a.created_at,
+        a.academic_year_id, a.created_by,
+        au.title, au.first_name, au.last_name
+    FROM activities a
+    LEFT JOIN admin_users au ON a.created_by = au.admin_id
+    WHERE a.activity_id = ?
     ");
     $stmt->execute([$activity_id]);
     $activity = $stmt->fetch(PDO::FETCH_ASSOC);
-    
+
     if (!$activity) {
         // กรณีไม่พบข้อมูลกิจกรรม
         $_SESSION['error_message'] = 'ไม่พบข้อมูลกิจกรรมที่ต้องการ';
         header('Location: activities.php');
         exit;
     }
-        // เพิ่มค่าเริ่มต้นให้กับค่าที่อาจเป็น null
-        $activity['target_departments'] = [];
-        $activity['target_levels'] = [];
-    
+    // เพิ่มค่าเริ่มต้นให้กับค่าที่อาจเป็น null
+    $activity['target_departments'] = [];
+    $activity['target_levels'] = [];
+
     // ดึงแผนกวิชาเป้าหมาย
     $stmt = $conn->prepare("
         SELECT d.department_name
@@ -69,7 +70,7 @@ try {
     $stmt->execute([$activity_id]);
     $target_departments = $stmt->fetchAll(PDO::FETCH_COLUMN);
     $activity['target_departments'] = $target_departments;
-    
+
     // ดึงระดับชั้นเป้าหมาย
     $stmt = $conn->prepare("
         SELECT level
@@ -79,7 +80,6 @@ try {
     $stmt->execute([$activity_id]);
     $target_levels = $stmt->fetchAll(PDO::FETCH_COLUMN);
     $activity['target_levels'] = $target_levels;
-    
 } catch (PDOException $e) {
     error_log("Database error: " . $e->getMessage());
     $_SESSION['error_message'] = 'เกิดข้อผิดพลาดในการดึงข้อมูลกิจกรรม';
@@ -104,12 +104,12 @@ try {
     $stmt = $conn->prepare("SELECT academic_year_id, year, semester FROM academic_years WHERE is_active = 1 LIMIT 1");
     $stmt->execute();
     $academic_year = $stmt->fetch(PDO::FETCH_ASSOC);
-    
+
     if (!$academic_year) {
         // ไม่พบข้อมูลปีการศึกษาที่เปิดใช้งาน
         throw new Exception("ไม่พบข้อมูลปีการศึกษาที่เปิดใช้งาน");
     }
-    
+
     $current_academic_year_id = $academic_year['academic_year_id'];
     $academic_year_display = $academic_year['year'] . '/' . $academic_year['semester'];
 } catch (Exception $e) {
@@ -128,11 +128,11 @@ if (isset($_POST['save_attendance']) && isset($_POST['attendance']) && is_array(
     try {
         // เริ่ม transaction
         $conn->beginTransaction();
-        
+
         foreach ($_POST['attendance'] as $student_id => $data) {
             $status = $data['status'] ?? 'absent';
             $remarks = $data['remarks'] ?? '';
-            
+
             // ตรวจสอบว่ามีข้อมูลการเข้าร่วมกิจกรรมของนักเรียนแล้วหรือไม่
             $stmt = $conn->prepare("
                 SELECT attendance_id FROM activity_attendance 
@@ -140,7 +140,7 @@ if (isset($_POST['save_attendance']) && isset($_POST['attendance']) && is_array(
             ");
             $stmt->execute([$student_id, $activity_id]);
             $existing = $stmt->fetch(PDO::FETCH_ASSOC);
-            
+
             if ($existing) {
                 // อัปเดตข้อมูลเดิม
                 $stmt = $conn->prepare("
@@ -159,7 +159,7 @@ if (isset($_POST['save_attendance']) && isset($_POST['attendance']) && is_array(
                 $stmt->execute([$student_id, $activity_id, $status, $user_id, $remarks]);
             }
         }
-        
+
         /* // บันทึกการดำเนินการของผู้ดูแลระบบ
         $action_type = 'record_activity_attendance';
         $action_details = json_encode([
@@ -173,10 +173,10 @@ if (isset($_POST['save_attendance']) && isset($_POST['attendance']) && is_array(
             VALUES (?, ?, ?)
         ");
         $stmt->execute([$user_id, $action_type, $action_details]); */
-        
+
         // Commit transaction
         $conn->commit();
-        
+
         $save_success = true;
         $response_message = "บันทึกการเข้าร่วมกิจกรรมเรียบร้อยแล้ว จำนวน " . count($_POST['attendance']) . " คน";
     } catch (PDOException $e) {
@@ -193,7 +193,7 @@ try {
     $stmt = $conn->prepare("SELECT department_id, department_name FROM departments WHERE is_active = 1 ORDER BY department_name");
     $stmt->execute();
     $departments = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    
+
     // ดึงระดับชั้นที่มีในระบบ
     $stmt = $conn->prepare("
         SELECT DISTINCT level 
@@ -254,5 +254,3 @@ require_once 'templates/main_content.php';
 
 // โหลดเทมเพลตส่วนท้าย
 require_once 'templates/footer.php';
-?>
-

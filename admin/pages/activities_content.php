@@ -1,22 +1,4 @@
 <?php
-// ตรวจสอบและกำจัดความซ้ำซ้อนของกิจกรรม
-$unique_activities = [];
-$seen_activity_ids = [];
-
-// วนลูปเพื่อตรวจสอบความซ้ำซ้อนโดยใช้ activity_id เป็นเกณฑ์
-if (!empty($activities) && is_array($activities)) {
-    foreach ($activities as $act) {
-        if (!in_array($act['activity_id'], $seen_activity_ids)) {
-            $seen_activity_ids[] = $act['activity_id'];
-            // ทำความสะอาดชื่อกิจกรรม ตัดเครื่องหมาย / ที่ท้ายชื่อออก
-            $act['activity_name'] = rtrim($act['activity_name'], '/');
-            $unique_activities[] = $act;
-        }
-    }
-    // ใช้ข้อมูลที่ไม่ซ้ำแทนข้อมูลเดิม
-    $activities = $unique_activities;
-}
-
 // ตรวจสอบว่ามีข้อความแจ้งเตือนความสำเร็จหรือข้อผิดพลาดเพื่อแสดง
 $alert_success = $save_success ?? false;
 $alert_error = $save_error ?? false;
@@ -24,23 +6,23 @@ $alert_error = $save_error ?? false;
 
 <!-- แสดงข้อความแจ้งเตือนความสำเร็จหรือข้อผิดพลาด -->
 <?php if ($alert_success): ?>
-<div class="alert alert-success" id="success-alert">
-    <span class="material-icons">check_circle</span>
-    <div class="alert-message"><?php echo $response_message ?? 'บันทึกข้อมูลเรียบร้อยแล้ว'; ?></div>
-    <button class="alert-close" onclick="this.parentElement.style.display='none'">
-        <span class="material-icons">close</span>
-    </button>
-</div>
+    <div class="alert alert-success" id="success-alert">
+        <span class="material-icons">check_circle</span>
+        <div class="alert-message"><?php echo $response_message ?? 'บันทึกข้อมูลเรียบร้อยแล้ว'; ?></div>
+        <button class="alert-close" onclick="this.parentElement.style.display='none'">
+            <span class="material-icons">close</span>
+        </button>
+    </div>
 <?php endif; ?>
 
 <?php if ($alert_error): ?>
-<div class="alert alert-error" id="error-alert">
-    <span class="material-icons">error</span>
-    <div class="alert-message">เกิดข้อผิดพลาด: <?php echo htmlspecialchars($error_message ?? 'ไม่สามารถบันทึกข้อมูลได้'); ?></div>
-    <button class="alert-close" onclick="this.parentElement.style.display='none'">
-        <span class="material-icons">close</span>
-    </button>
-</div>
+    <div class="alert alert-error" id="error-alert">
+        <span class="material-icons">error</span>
+        <div class="alert-message">เกิดข้อผิดพลาด: <?php echo htmlspecialchars($error_message ?? 'ไม่สามารถบันทึกข้อมูลได้'); ?></div>
+        <button class="alert-close" onclick="this.parentElement.style.display='none'">
+            <span class="material-icons">close</span>
+        </button>
+    </div>
 <?php endif; ?>
 
 <!-- คำอธิบายหน้าเว็บ -->
@@ -112,121 +94,112 @@ $alert_error = $save_error ?? false;
                 </div>
             </div>
         </div>
-        
+
         <?php if (empty($activities)): ?>
-        <div class="empty-state">
-            <span class="material-icons">event_busy</span>
-            <p>ไม่พบข้อมูลกิจกรรม กรุณาเพิ่มกิจกรรมใหม่</p>
-        </div>
+            <div class="empty-state">
+                <span class="material-icons">event_busy</span>
+                <p>ไม่พบข้อมูลกิจกรรม กรุณาเพิ่มกิจกรรมใหม่</p>
+            </div>
         <?php else: ?>
-        <div class="activity-list">
-            <?php 
-            // ตรวจสอบว่าไม่มีรายการกิจกรรมซ้ำกัน
-            $displayed_activity_ids = []; 
-            
-            foreach ($activities as $activity): 
-                // ข้ามรายการที่ซ้ำกัน
-                if (in_array($activity['activity_id'], $displayed_activity_ids)) {
-                    continue;
-                }
-                
-                // เพิ่ม ID ที่กำลังแสดงในรายการที่แสดงแล้ว
-                $displayed_activity_ids[] = $activity['activity_id'];
-                
-                $activity_date = new DateTime($activity['activity_date']);
-                $today = new DateTime(date('Y-m-d'));
-                $is_passed = $activity_date < $today;
-                $is_today = $activity_date->format('Y-m-d') === $today->format('Y-m-d');
-                
-                $attendance_percent = 0;
-                if ($activity['target_students'] > 0) {
-                    $attendance_percent = ($activity['attendance_count'] / $activity['target_students']) * 100;
-                }
-            ?>
-            <div class="activity-item" 
-                 data-month="<?php echo date('m', strtotime($activity['activity_date'])); ?>"
-                 data-status="<?php echo $is_passed ? 'passed' : ($is_today ? 'today' : 'upcoming'); ?>"
-                 data-name="<?php echo strtolower($activity['activity_name']); ?>"
-                 data-id="<?php echo $activity['activity_id']; ?>">
-                <div class="activity-date">
-                    <div class="date-day"><?php echo date('d', strtotime($activity['activity_date'])); ?></div>
-                    <div class="date-month"><?php echo date('M', strtotime($activity['activity_date'])); ?></div>
-                    <div class="date-year"><?php echo date('Y', strtotime($activity['activity_date'])); ?></div>
-                    <?php if ($is_today): ?>
-                    <div class="date-badge today">วันนี้</div>
-                    <?php elseif ($is_passed): ?>
-                    <div class="date-badge passed">ผ่านไปแล้ว</div>
-                    <?php else: ?>
-                    <div class="date-badge upcoming">กำลังจะมาถึง</div>
-                    <?php endif; ?>
-                </div>
-                <div class="activity-details">
-                    <h3 class="activity-name">
-                        <?php echo htmlspecialchars($activity['activity_name']); ?>
-                        <small class="activity-id">(รหัส: <?php echo $activity['activity_id']; ?>)</small>
-                    </h3>
-                    <div class="activity-info">
-                        <div class="info-item">
-                            <span class="material-icons">place</span>
-                            <span><?php echo htmlspecialchars($activity['activity_location'] ?: 'ไม่ระบุสถานที่'); ?></span>
+            <div class="activity-list">
+                <?php foreach ($activities as $activity): ?>
+                    <div class="activity-item"
+                        data-month="<?php echo date('m', strtotime($activity['activity_date'])); ?>"
+                        data-status="<?php
+                                        $activity_date = new DateTime($activity['activity_date']);
+                                        $today = new DateTime(date('Y-m-d'));
+                                        $is_passed = $activity_date < $today;
+                                        $is_today = $activity_date->format('Y-m-d') === $today->format('Y-m-d');
+                                        echo $is_passed ? 'passed' : ($is_today ? 'today' : 'upcoming');
+                                        ?>"
+                        data-name="<?php echo strtolower($activity['activity_name']); ?>"
+                        data-id="<?php echo $activity['activity_id']; ?>">
+                        <div class="activity-date">
+                            <div class="date-day"><?php echo date('d', strtotime($activity['activity_date'])); ?></div>
+                            <div class="date-month"><?php echo date('M', strtotime($activity['activity_date'])); ?></div>
+                            <div class="date-year"><?php echo date('Y', strtotime($activity['activity_date'])); ?></div>
+                            <?php if ($is_today): ?>
+                                <div class="date-badge today">วันนี้</div>
+                            <?php elseif ($is_passed): ?>
+                                <div class="date-badge passed">ผ่านไปแล้ว</div>
+                            <?php else: ?>
+                                <div class="date-badge upcoming">กำลังจะมาถึง</div>
+                            <?php endif; ?>
                         </div>
-                        <div class="info-item">
-                            <span class="material-icons">group</span>
-                            <span>
-                                กลุ่มเป้าหมาย: 
-                                <?php 
-                                if (empty($activity['target_departments']) && empty($activity['target_levels'])) {
-                                    echo 'ทุกแผนก/ทุกระดับชั้น';
-                                } else {
-                                    $targets = [];
-                                    if (!empty($activity['target_departments'])) {
-                                        $targets[] = implode(', ', $activity['target_departments']);
-                                    }
-                                    if (!empty($activity['target_levels'])) {
-                                        $targets[] = implode(', ', $activity['target_levels']);
-                                    }
-                                    echo implode(' / ', $targets);
-                                }
-                                ?>
-                            </span>
+                        <div class="activity-details">
+                            <h3 class="activity-name">
+                                <?php echo htmlspecialchars($activity['activity_name']); ?>
+                                <small class="activity-id">(รหัส: <?php echo $activity['activity_id']; ?>)</small>
+                            </h3>
+                            <div class="activity-info">
+                                <div class="info-item">
+                                    <span class="material-icons">place</span>
+                                    <span><?php echo htmlspecialchars($activity['activity_location'] ?: 'ไม่ระบุสถานที่'); ?></span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="material-icons">group</span>
+                                    <span>
+                                        กลุ่มเป้าหมาย:
+                                        <?php
+                                        if (empty($activity['target_departments']) && empty($activity['target_levels'])) {
+                                            echo 'ทุกแผนก/ทุกระดับชั้น';
+                                        } else {
+                                            $targets = [];
+                                            if (!empty($activity['target_departments'])) {
+                                                $targets[] = implode(', ', $activity['target_departments']);
+                                            }
+                                            if (!empty($activity['target_levels'])) {
+                                                $targets[] = implode(', ', $activity['target_levels']);
+                                            }
+                                            echo implode(' / ', $targets);
+                                        }
+                                        ?>
+                                    </span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="material-icons">how_to_reg</span>
+                                    <span>
+                                        เช็คชื่อแล้ว: <?php echo $activity['attendance_count'] ?? 0; ?> คน
+                                        (<?php
+                                            $attendance_percent = 0;
+                                            if (isset($activity['target_students']) && $activity['target_students'] > 0) {
+                                                $attendance_percent = ($activity['attendance_count'] / $activity['target_students']) * 100;
+                                            }
+                                            echo number_format($attendance_percent, 1);
+                                            ?>%)
+                                    </span>
+                                </div>
+                                <!-- ในส่วนที่แสดงข้อมูลผู้สร้างกิจกรรม -->
+                                <div class="info-item">
+                                    <span class="material-icons">person</span>
+                                    <span>สร้างโดย: <?php echo htmlspecialchars(($activity['title'] ? $activity['title'] . ' ' : '') . $activity['first_name'] . ' ' . $activity['last_name']); ?></span>
+                                </div>
+                            </div>
+                            <?php if (!empty($activity['description'])): ?>
+                                <div class="activity-description">
+                                    <?php echo nl2br(htmlspecialchars($activity['description'])); ?>
+                                </div>
+                            <?php endif; ?>
                         </div>
-                        <div class="info-item">
-                            <span class="material-icons">how_to_reg</span>
-                            <span>
-                                เช็คชื่อแล้ว: <?php echo $activity['attendance_count']; ?> คน 
-                                (<?php echo number_format($attendance_percent, 1); ?>%)
-                            </span>
-                        </div>
-                        <div class="info-item">
-                            <span class="material-icons">person</span>
-                            <span>สร้างโดย: <?php echo htmlspecialchars($activity['first_name'] . ' ' . $activity['last_name']); ?></span>
+                        <div class="activity-actions">
+                            <a href="activity_attendance.php?id=<?php echo $activity['activity_id']; ?>" class="btn btn-primary" title="บันทึกการเข้าร่วม">
+                                <span class="material-icons">how_to_reg</span>
+                            </a>
+                            <button class="btn btn-info" onclick="openEditActivityModal(<?php echo $activity['activity_id']; ?>)" title="แก้ไข">
+                                <span class="material-icons">edit</span>
+                            </button>
+                            <button class="btn btn-danger" onclick="confirmDeleteActivity(<?php echo $activity['activity_id']; ?>, '<?php echo addslashes($activity['activity_name']); ?>')" title="ลบ">
+                                <span class="material-icons">delete</span>
+                            </button>
                         </div>
                     </div>
-                    <?php if (!empty($activity['description'])): ?>
-                    <div class="activity-description">
-                        <?php echo nl2br(htmlspecialchars($activity['description'])); ?>
-                    </div>
-                    <?php endif; ?>
-                </div>
-                <div class="activity-actions">
-                    <a href="activity_attendance.php?id=<?php echo $activity['activity_id']; ?>" class="btn btn-primary" title="บันทึกการเข้าร่วม">
-                        <span class="material-icons">how_to_reg</span>
-                    </a>
-                    <button class="btn btn-info" onclick="openEditActivityModal(<?php echo $activity['activity_id']; ?>)" title="แก้ไข">
-                        <span class="material-icons">edit</span>
-                    </button>
-                    <button class="btn btn-danger" onclick="confirmDeleteActivity(<?php echo $activity['activity_id']; ?>, '<?php echo addslashes($activity['activity_name']); ?>')" title="ลบ">
-                        <span class="material-icons">delete</span>
-                    </button>
+                <?php endforeach; ?>
+
+                <div id="no-results-message" class="empty-state" style="display: none;">
+                    <span class="material-icons">search_off</span>
+                    <p>ไม่พบกิจกรรมที่ตรงกับเงื่อนไขการค้นหา</p>
                 </div>
             </div>
-            <?php endforeach; ?>
-            
-            <div id="no-results-message" class="empty-state" style="display: none;">
-                <span class="material-icons">search_off</span>
-                <p>ไม่พบกิจกรรมที่ตรงกับเงื่อนไขการค้นหา</p>
-            </div>
-        </div>
         <?php endif; ?>
     </div>
 </div>
@@ -254,7 +227,7 @@ $alert_error = $save_error ?? false;
                         </div>
                     </div>
                 </div>
-                
+
                 <div class="row">
                     <div class="col-md-8">
                         <div class="form-group">
@@ -272,17 +245,17 @@ $alert_error = $save_error ?? false;
                         </div>
                     </div>
                 </div>
-                
+
                 <div class="row">
                     <div class="col-md-6">
                         <div class="form-group">
                             <label for="target_departments" class="form-label">แผนกวิชาเป้าหมาย</label>
                             <div class="checkbox-container">
                                 <?php foreach ($departments as $department): ?>
-                                <div class="form-check">
-                                    <input type="checkbox" id="dept_<?php echo $department['department_id']; ?>" name="target_departments[]" value="<?php echo $department['department_id']; ?>" class="form-check-input">
-                                    <label for="dept_<?php echo $department['department_id']; ?>" class="form-check-label"><?php echo $department['department_name']; ?></label>
-                                </div>
+                                    <div class="form-check">
+                                        <input type="checkbox" id="dept_<?php echo $department['department_id']; ?>" name="target_departments[]" value="<?php echo $department['department_id']; ?>" class="form-check-input">
+                                        <label for="dept_<?php echo $department['department_id']; ?>" class="form-check-label"><?php echo $department['department_name']; ?></label>
+                                    </div>
                                 <?php endforeach; ?>
                             </div>
                             <small class="form-text text-muted">ไม่เลือก = ทุกแผนก</small>
@@ -293,22 +266,22 @@ $alert_error = $save_error ?? false;
                             <label for="target_levels" class="form-label">ระดับชั้นเป้าหมาย</label>
                             <div class="checkbox-container">
                                 <?php foreach ($levels as $level): ?>
-                                <div class="form-check">
-                                    <input type="checkbox" id="level_<?php echo str_replace('.', '_', $level); ?>" name="target_levels[]" value="<?php echo $level; ?>" class="form-check-input">
-                                    <label for="level_<?php echo str_replace('.', '_', $level); ?>" class="form-check-label"><?php echo $level; ?></label>
-                                </div>
+                                    <div class="form-check">
+                                        <input type="checkbox" id="level_<?php echo str_replace('.', '_', $level); ?>" name="target_levels[]" value="<?php echo $level; ?>" class="form-check-input">
+                                        <label for="level_<?php echo str_replace('.', '_', $level); ?>" class="form-check-label"><?php echo $level; ?></label>
+                                    </div>
                                 <?php endforeach; ?>
                             </div>
                             <small class="form-text text-muted">ไม่เลือก = ทุกระดับชั้น</small>
                         </div>
                     </div>
                 </div>
-                
+
                 <div class="form-group">
                     <label for="activity_description" class="form-label">รายละเอียดกิจกรรม</label>
                     <textarea id="activity_description" name="activity_description" class="form-control" rows="4"></textarea>
                 </div>
-                
+
                 <div class="form-actions">
                     <button type="button" class="btn btn-secondary" onclick="closeModal('addActivityModal')">ยกเลิก</button>
                     <button type="submit" name="save_activity" class="btn btn-primary">
@@ -331,7 +304,7 @@ $alert_error = $save_error ?? false;
         <div class="modal-body">
             <form id="editActivityForm" method="post">
                 <input type="hidden" id="edit_activity_id" name="activity_id">
-                
+
                 <div class="row">
                     <div class="col-md-8">
                         <div class="form-group">
@@ -346,7 +319,7 @@ $alert_error = $save_error ?? false;
                         </div>
                     </div>
                 </div>
-                
+
                 <div class="row">
                     <div class="col-md-8">
                         <div class="form-group">
@@ -364,17 +337,17 @@ $alert_error = $save_error ?? false;
                         </div>
                     </div>
                 </div>
-                
+
                 <div class="row">
                     <div class="col-md-6">
                         <div class="form-group">
                             <label class="form-label">แผนกวิชาเป้าหมาย</label>
                             <div class="checkbox-container" id="edit_departments_container">
                                 <?php foreach ($departments as $department): ?>
-                                <div class="form-check">
-                                    <input type="checkbox" id="edit_dept_<?php echo $department['department_id']; ?>" name="target_departments[]" value="<?php echo $department['department_id']; ?>" class="form-check-input">
-                                    <label for="edit_dept_<?php echo $department['department_id']; ?>" class="form-check-label"><?php echo $department['department_name']; ?></label>
-                                </div>
+                                    <div class="form-check">
+                                        <input type="checkbox" id="edit_dept_<?php echo $department['department_id']; ?>" name="target_departments[]" value="<?php echo $department['department_id']; ?>" class="form-check-input">
+                                        <label for="edit_dept_<?php echo $department['department_id']; ?>" class="form-check-label"><?php echo $department['department_name']; ?></label>
+                                    </div>
                                 <?php endforeach; ?>
                             </div>
                             <small class="form-text text-muted">ไม่เลือก = ทุกแผนก</small>
@@ -385,22 +358,22 @@ $alert_error = $save_error ?? false;
                             <label class="form-label">ระดับชั้นเป้าหมาย</label>
                             <div class="checkbox-container" id="edit_levels_container">
                                 <?php foreach ($levels as $level): ?>
-                                <div class="form-check">
-                                    <input type="checkbox" id="edit_level_<?php echo str_replace('.', '_', $level); ?>" name="target_levels[]" value="<?php echo $level; ?>" class="form-check-input">
-                                    <label for="edit_level_<?php echo str_replace('.', '_', $level); ?>" class="form-check-label"><?php echo $level; ?></label>
-                                </div>
+                                    <div class="form-check">
+                                        <input type="checkbox" id="edit_level_<?php echo str_replace('.', '_', $level); ?>" name="target_levels[]" value="<?php echo $level; ?>" class="form-check-input">
+                                        <label for="edit_level_<?php echo str_replace('.', '_', $level); ?>" class="form-check-label"><?php echo $level; ?></label>
+                                    </div>
                                 <?php endforeach; ?>
                             </div>
                             <small class="form-text text-muted">ไม่เลือก = ทุกระดับชั้น</small>
                         </div>
                     </div>
                 </div>
-                
+
                 <div class="form-group">
                     <label for="edit_activity_description" class="form-label">รายละเอียดกิจกรรม</label>
                     <textarea id="edit_activity_description" name="activity_description" class="form-control" rows="4"></textarea>
                 </div>
-                
+
                 <div class="form-actions">
                     <button type="button" class="btn btn-secondary" onclick="closeModal('editActivityModal')">ยกเลิก</button>
                     <button type="submit" name="edit_activity" class="btn btn-primary">
@@ -423,14 +396,14 @@ $alert_error = $save_error ?? false;
         <div class="modal-body">
             <form id="deleteActivityForm" method="post">
                 <input type="hidden" id="delete_activity_id" name="activity_id">
-                
+
                 <div class="alert alert-warning">
                     <span class="material-icons">warning</span>
                     <span>คุณกำลังจะลบกิจกรรม: <strong id="delete_activity_name"></strong></span>
                 </div>
-                
+
                 <p>การลบกิจกรรมจะลบข้อมูลการเข้าร่วมกิจกรรมของนักเรียนทั้งหมดด้วย และไม่สามารถเรียกคืนได้</p>
-                
+
                 <div class="form-actions">
                     <button type="button" class="btn btn-secondary" onclick="closeModal('deleteActivityModal')">ยกเลิก</button>
                     <button type="submit" name="delete_activity" class="btn btn-danger">
@@ -545,195 +518,195 @@ $alert_error = $save_error ?? false;
 
 <!-- สไตล์สำหรับส่วนสรุป -->
 <style>
-.activity-summary {
-    margin-bottom: 20px;
-}
-
-.summary-card {
-    display: flex;
-    align-items: center;
-    background-color: white;
-    border-radius: 8px;
-    padding: 15px;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-    height: 100%;
-}
-
-.summary-icon {
-    background-color: var(--primary-color, #06c755);
-    color: white;
-    border-radius: 50%;
-    width: 50px;
-    height: 50px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-right: 15px;
-}
-
-.summary-icon.upcoming {
-    background-color: #4caf50;
-}
-
-.summary-icon.today {
-    background-color: #ff9800;
-}
-
-.summary-icon.passed {
-    background-color: #9e9e9e;
-}
-
-.summary-icon .material-icons {
-    font-size: 24px;
-}
-
-.summary-content {
-    display: flex;
-    flex-direction: column;
-}
-
-.summary-value {
-    font-size: 24px;
-    font-weight: bold;
-    color: #333;
-}
-
-.summary-label {
-    font-size: 14px;
-    color: #666;
-}
-
-.chart-container {
-    background-color: white;
-    border-radius: 8px;
-    padding: 20px;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-    height: 100%;
-}
-
-.chart-title {
-    font-size: 16px;
-    text-align: center;
-    margin-bottom: 15px;
-    color: #333;
-}
-
-.activity-id {
-    font-size: 0.75em;
-    color: #666;
-    font-weight: normal;
-    margin-left: 5px;
-}
-
-/* กล่องตัวเลือกแบบ checkbox */
-.checkbox-container {
-    max-height: 200px;
-    overflow-y: auto;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    padding: 10px;
-    background-color: #f9f9f9;
-}
-
-.checkbox-container .form-check {
-    margin-bottom: 8px;
-}
-
-.checkbox-container .form-check:last-child {
-    margin-bottom: 0;
-}
-
-/* ปรับปรุงรูปแบบโมดัล */
-.modal {
-    display: none;
-    position: fixed;
-    z-index: 1000;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    overflow: auto;
-    background-color: rgba(0,0,0,0.5);
-    align-items: center;
-    justify-content: center;
-}
-
-.modal-content {
-    position: relative;
-    background-color: #fff;
-    margin: auto;
-    border-radius: 8px;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-    max-width: 800px;
-    width: 90%;
-    max-height: 90vh;
-    overflow-y: auto;
-}
-
-/* ป้องกันการปิดโมดัลเมื่อคลิกภายนอก */
-.modal.prevent-close {
-    pointer-events: none;
-}
-
-.modal.prevent-close .modal-content {
-    pointer-events: auto;
-}
-
-@media (max-width: 768px) {
-    .modal-content {
-        width: 95%;
-        max-height: 95vh;
+    .activity-summary {
+        margin-bottom: 20px;
     }
-    
-    .checkbox-container {
-        max-height: 150px;
+
+    .summary-card {
+        display: flex;
+        align-items: center;
+        background-color: white;
+        border-radius: 8px;
+        padding: 15px;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        height: 100%;
     }
-    
-    .row {
+
+    .summary-icon {
+        background-color: var(--primary-color, #06c755);
+        color: white;
+        border-radius: 50%;
+        width: 50px;
+        height: 50px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 15px;
+    }
+
+    .summary-icon.upcoming {
+        background-color: #4caf50;
+    }
+
+    .summary-icon.today {
+        background-color: #ff9800;
+    }
+
+    .summary-icon.passed {
+        background-color: #9e9e9e;
+    }
+
+    .summary-icon .material-icons {
+        font-size: 24px;
+    }
+
+    .summary-content {
+        display: flex;
         flex-direction: column;
     }
-    
-    .col-md-3, .col-md-4, .col-md-6, .col-md-8 {
-        width: 100%;
-        margin-bottom: 15px;
+
+    .summary-value {
+        font-size: 24px;
+        font-weight: bold;
+        color: #333;
     }
-}
+
+    .summary-label {
+        font-size: 14px;
+        color: #666;
+    }
+
+    .chart-container {
+        background-color: white;
+        border-radius: 8px;
+        padding: 20px;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        height: 100%;
+    }
+
+    .chart-title {
+        font-size: 16px;
+        text-align: center;
+        margin-bottom: 15px;
+        color: #333;
+    }
+
+    .activity-id {
+        font-size: 0.75em;
+        color: #666;
+        font-weight: normal;
+        margin-left: 5px;
+    }
+
+    /* กล่องตัวเลือกแบบ checkbox */
+    .checkbox-container {
+        max-height: 200px;
+        overflow-y: auto;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        padding: 10px;
+        background-color: #f9f9f9;
+    }
+
+    .checkbox-container .form-check {
+        margin-bottom: 8px;
+    }
+
+    .checkbox-container .form-check:last-child {
+        margin-bottom: 0;
+    }
+
+    /* ปรับปรุงรูปแบบโมดัล */
+    .modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        background-color: rgba(0, 0, 0, 0.5);
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal-content {
+        position: relative;
+        background-color: #fff;
+        margin: auto;
+        border-radius: 8px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        max-width: 800px;
+        width: 90%;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+
+    /* ป้องกันการปิดโมดัลเมื่อคลิกภายนอก */
+    .modal.prevent-close {
+        pointer-events: none;
+    }
+
+    .modal.prevent-close .modal-content {
+        pointer-events: auto;
+    }
+
+    @media (max-width: 768px) {
+        .modal-content {
+            width: 95%;
+            max-height: 95vh;
+        }
+
+        .checkbox-container {
+            max-height: 150px;
+        }
+
+        .row {
+            flex-direction: column;
+        }
+
+        .col-md-3,
+        .col-md-4,
+        .col-md-6,
+        .col-md-8 {
+            width: 100%;
+            margin-bottom: 15px;
+        }
+    }
 </style>
 
 <!-- JavaScript เพื่อสนับสนุนฟังก์ชันการทำงาน -->
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // ซ่อนแจ้งเตือนหลังจาก 3 วินาที
-    const alerts = document.querySelectorAll('.alert:not(.alert-warning)');
-    alerts.forEach(alert => {
-        setTimeout(function() {
-            alert.style.opacity = '0';
+    document.addEventListener('DOMContentLoaded', function() {
+        // ซ่อนแจ้งเตือนหลังจาก 3 วินาที
+        const alerts = document.querySelectorAll('.alert:not(.alert-warning)');
+        alerts.forEach(alert => {
             setTimeout(function() {
-                alert.style.display = 'none';
-            }, 500);
-        }, 3000);
-    });
-    
-    // ป้องกันการปิดโมดัลเมื่อคลิกภายนอก
-    const modals = document.querySelectorAll('.modal');
-    modals.forEach(modal => {
-        modal.addEventListener('click', function(event) {
-            if (event.target === modal) {
-                // ไม่ให้ปิดโมดัลเมื่อคลิกพื้นหลัง
-                event.stopPropagation();
+                alert.style.opacity = '0';
+                setTimeout(function() {
+                    alert.style.display = 'none';
+                }, 500);
+            }, 3000);
+        });
+
+        // ป้องกันการปิดโมดัลเมื่อคลิกภายนอก
+        const modals = document.querySelectorAll('.modal');
+        modals.forEach(modal => {
+            modal.addEventListener('click', function(event) {
+                if (event.target === this) {
+                    // ไม่ให้ปิดโมดัลเมื่อคลิกพื้นหลัง
+                    event.stopPropagation();
+                }
+            });
+        });
+
+        // ป้องกันการกด ESC เพื่อปิดโมดัล
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                return false;
             }
         });
-        
-        // เพิ่มคลาสเพื่อป้องกันการปิดเมื่อคลิกภายนอก
-        modal.classList.add('prevent-close');
     });
-    
-    // ป้องกันการกด ESC เพื่อปิดโมดัล
-    document.addEventListener('keydown', function(event) {
-        if (event.key === 'Escape') {
-            event.preventDefault();
-            return false;
-        }
-    });
-});
 </script>

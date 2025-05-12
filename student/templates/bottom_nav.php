@@ -15,6 +15,11 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
         <span>เช็คชื่อ</span>
     </a>
     
+    <a href="activities.php" class="nav-item <?php echo $current_page == 'activities' ? 'active' : ''; ?>">
+        <span class="material-icons nav-icon">event</span>
+        <span>กิจกรรม</span>
+    </a>
+    
     <a href="history.php" class="nav-item <?php echo $current_page == 'history' ? 'active' : ''; ?>">
         <span class="material-icons nav-icon">history</span>
         <span>ประวัติ</span>
