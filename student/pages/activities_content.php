@@ -85,7 +85,7 @@
                             <div class="activity-header">
                                 <h3 class="activity-title"><?php echo htmlspecialchars($activity['activity_name']); ?></h3>
                                 <?php if (isset($activity['required_attendance']) && $activity['required_attendance']): ?>
-                                    <span class="required-badge">จำเป็น</span>
+                                    <span class="required-badge">กิจกรรมบังคับ</span>
                                 <?php endif; ?>
                             </div>
                             
