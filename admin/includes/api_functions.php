@@ -443,7 +443,7 @@ function updateClassAdvisors($classId, $changes) {
 }
 
 /**
- * ดาวน์โหลดรายงานชั้นเรียน
+ * ดาวน์โหลดรายงานชั้นเรียน - แก้ไขให้ใช้งานได้กับ PHP 8.3
  * @param int $classId รหัสชั้นเรียน
  * @param string $type ประเภทรายงาน
  */
@@ -451,6 +451,16 @@ function downloadClassReport($classId, $type = 'full') {
     global $conn;
     
     try {
+        // ล้าง output buffer ทั้งหมดที่อาจมีอยู่
+        while (ob_get_level()) {
+            ob_end_clean();
+        }
+        
+        // ตรวจสอบการเชื่อมต่อฐานข้อมูล
+        if (!$conn) {
+            throw new Exception("ไม่สามารถเชื่อมต่อฐานข้อมูลได้");
+        }
+        
         // ดึงข้อมูลชั้นเรียน
         $stmt = $conn->prepare("
             SELECT 
@@ -466,13 +476,18 @@ function downloadClassReport($classId, $type = 'full') {
         $class = $stmt->fetch(PDO::FETCH_ASSOC);
         
         if (!$class) {
-            echo "ไม่พบข้อมูลชั้นเรียน";
-            return;
+            throw new Exception("ไม่พบข้อมูลชั้นเรียน");
         }
         
-        // สร้างชื่อไฟล์
-        $className = "{$class['level']}_group{$class['group_number']}_{$class['department_name']}";
+        // สร้างชื่อไฟล์และแทนที่อักขระพิเศษที่อาจทำให้เกิดปัญหา
+        $className = preg_replace('/[^\w\.\-]/u', '_', "{$class['level']}_group{$class['group_number']}_{$class['department_name']}");
         $fileName = "class_report_{$className}_{$class['year']}_{$class['semester']}.csv";
+        
+        // เตรียมไฟล์ CSV ในหน่วยความจำ
+        $csv = fopen('php://temp', 'r+');
+        
+        // เขียน BOM (Byte Order Mark) สำหรับ UTF-8
+        fprintf($csv, chr(0xEF).chr(0xBB).chr(0xBF));
         
         // ดึงข้อมูลครูที่ปรึกษา
         $stmt = $conn->prepare("
@@ -492,8 +507,8 @@ function downloadClassReport($classId, $type = 'full') {
             SELECT 
                 s.student_id, s.student_code,
                 u.title, u.first_name, u.last_name,
-                sar.total_attendance_days as attendance,
-                sar.total_absence_days as absence,
+                COALESCE(sar.total_attendance_days, 0) as attendance,
+                COALESCE(sar.total_absence_days, 0) as absence,
                 CASE 
                     WHEN (COALESCE(sar.total_attendance_days, 0) + COALESCE(sar.total_absence_days, 0)) = 0 THEN 0
                     ELSE (COALESCE(sar.total_attendance_days, 0) / (COALESCE(sar.total_attendance_days, 0) + COALESCE(sar.total_absence_days, 0))) * 100
@@ -512,36 +527,26 @@ function downloadClassReport($classId, $type = 'full') {
         $stmt->execute([$classId, $classId]);
         $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
-        // สร้างไฟล์ CSV
-        header('Content-Type: text/csv; charset=utf-8');
-        header('Content-Disposition: attachment; filename="' . $fileName . '"');
-        
-        // เปิด output stream
-        $output = fopen('php://output', 'w');
-        
-        // เขียน BOM (Byte Order Mark) สำหรับ UTF-8
-        fprintf($output, chr(0xEF).chr(0xBB).chr(0xBF));
-        
         // เขียนหัวข้อรายงาน
-        fputcsv($output, [
+        fputcsv($csv, [
             "รายงานข้อมูลชั้นเรียน: {$class['level']} กลุ่ม {$class['group_number']} {$class['department_name']} " .
             "ปีการศึกษา {$class['year']} ภาคเรียนที่ {$class['semester']}"
         ]);
         
-        fputcsv($output, [""]);
+        fputcsv($csv, [""]);
         
         // เขียนข้อมูลครูที่ปรึกษา
-        fputcsv($output, ["ครูที่ปรึกษา:"]);
+        fputcsv($csv, ["ครูที่ปรึกษา:"]);
         foreach ($advisors as $advisor) {
-            fputcsv($output, [
+            fputcsv($csv, [
                 $advisor['name'] . ($advisor['is_primary'] ? ' (ที่ปรึกษาหลัก)' : '')
             ]);
         }
         
-        fputcsv($output, [""]);
+        fputcsv($csv, [""]);
         
         // เขียนหัวตาราง
-        fputcsv($output, [
+        fputcsv($csv, [
             "รหัสนักศึกษา", "คำนำหน้า", "ชื่อ", "นามสกุล", 
             "วันที่เข้าแถว", "วันที่ขาด", "รวมวัน", "ร้อยละ", "สถานะกิจกรรม"
         ]);
@@ -549,7 +554,7 @@ function downloadClassReport($classId, $type = 'full') {
         // เขียนข้อมูลนักเรียน
         foreach ($students as $student) {
             $totalDays = ($student['attendance'] ?? 0) + ($student['absence'] ?? 0);
-            fputcsv($output, [
+            fputcsv($csv, [
                 $student['student_code'],
                 $student['title'],
                 $student['first_name'],
@@ -562,20 +567,39 @@ function downloadClassReport($classId, $type = 'full') {
             ]);
         }
         
-        // ปิด output stream
-        fclose($output);
+        // ย้อนกลับไปที่จุดเริ่มต้นของไฟล์
+        rewind($csv);
+        
+        // อ่านข้อมูลทั้งหมดจากไฟล์
+        $csvContent = stream_get_contents($csv);
+        fclose($csv);
+        
+        // ส่ง headers
+        header("Content-Type: text/csv; charset=utf-8");
+        header("Content-Disposition: attachment; filename=\"{$fileName}\"");
+        header("Pragma: no-cache");
+        header("Expires: 0");
+        header("Content-Length: " . strlen($csvContent));
+        
+        // ส่งข้อมูล CSV
+        echo $csvContent;
         exit;
+        
     } catch (PDOException $e) {
         error_log("Error in downloadClassReport: " . $e->getMessage());
-        header('Content-Type: text/plain; charset=utf-8');
+        
+        // แสดงข้อผิดพลาดในรูปแบบที่อ่านง่าย
+        header("Content-Type: text/plain; charset=utf-8");
         echo "เกิดข้อผิดพลาดในการดึงข้อมูล: " . $e->getMessage();
+        exit;
     } catch (Exception $e) {
         error_log("Unexpected error in downloadClassReport: " . $e->getMessage());
-        header('Content-Type: text/plain; charset=utf-8');
+        
+        header("Content-Type: text/plain; charset=utf-8");
         echo "เกิดข้อผิดพลาดที่ไม่คาดคิด: " . $e->getMessage();
+        exit;
     }
 }
-
 /**
  * เลื่อนชั้นนักเรียน
  * @param array $data ข้อมูลการเลื่อนชั้น

@@ -1,4 +1,5 @@
 <?php
+
 /**
  * reports.php - แดชบอร์ดสรุปข้อมูลและสถิติการเข้าแถว
  * 
@@ -17,50 +18,58 @@ if (!isset($_SESSION['user_id']) || !isset($_SESSION['user_role']) || ($_SESSION
 
 // เชื่อมต่อฐานข้อมูล
 require_once '../db_connect.php';
+// ข้อมูลเกี่ยวกับเจ้าหน้าที่ (จริงๆ ควรดึงจากฐานข้อมูล)
+$admin_info = [
+    'name' => $_SESSION['user_name'] ?? 'เจ้าหน้าที่',
+    'role' => $_SESSION['user_role'] ?? 'ผู้ดูแลระบบ',
+    'initials' => 'A',
+];
 
 // ดึงข้อมูลสำหรับหน้ารายงาน
-function getReportData() {
+function getReportData()
+{
     $conn = getDB();
     $data = [];
-    
+
     // ข้อมูลปีการศึกษาปัจจุบัน
     $query = "SELECT academic_year_id, year, semester FROM academic_years WHERE is_active = 1 LIMIT 1";
     $stmt = $conn->query($query);
     $data['academic_year'] = $stmt->fetch(PDO::FETCH_ASSOC);
 
     // ข้อมูลแผนกวิชา
-    $query = "SELECT department_id, department_code, department_name FROM departments WHERE is_active = 1 ORDER BY department_name";
+    $query = "SELECT department_id, department_code, department_name FROM departments WHERE is_active = 1 AND department_name NOT IN ('สามัญ', 'บริหาร') ORDER BY department_name";
     $stmt = $conn->query($query);
     $data['departments'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     // ข้อมูลสถิติภาพรวม
     $data['overview'] = getOverviewStats($conn, $data['academic_year']['academic_year_id']);
-    
+
     // ข้อมูลการเข้าแถวแยกตามแผนก
     $data['department_stats'] = getDepartmentStats($conn, $data['academic_year']['academic_year_id']);
-    
+
     // ข้อมูลนักเรียนที่มีความเสี่ยง
     $data['risk_students'] = getRiskStudents($conn, $data['academic_year']['academic_year_id'], 5);
-    
+
     // ข้อมูลอันดับห้องเรียน
     $data['class_ranking'] = getClassRanking($conn, $data['academic_year']['academic_year_id']);
-    
+
     // ข้อมูลแนวโน้มการเข้าแถว 7 วันล่าสุด
     $data['weekly_trends'] = getWeeklyTrends($conn, $data['academic_year']['academic_year_id']);
-    
+
     // ข้อมูลสถานะการเข้าแถว (แทนสาเหตุการขาดแถว)
     $data['attendance_status'] = getAttendanceStatus($conn, $data['academic_year']['academic_year_id']);
-    
+
     return $data;
 }
 
 // ฟังก์ชันดึงข้อมูลสถิติภาพรวม
-function getOverviewStats($conn, $academicYearId) {
+function getOverviewStats($conn, $academicYearId)
+{
     // จำนวนนักเรียนทั้งหมด
     $query = "SELECT COUNT(*) FROM students WHERE status = 'กำลังศึกษา'";
     $stmt = $conn->query($query);
     $totalStudents = $stmt->fetchColumn();
-    
+
     // อัตราการเข้าแถวเฉลี่ย
     $query = "SELECT 
                 AVG(CASE 
@@ -74,7 +83,7 @@ function getOverviewStats($conn, $academicYearId) {
     $stmt = $conn->prepare($query);
     $stmt->execute([$academicYearId]);
     $avgAttendanceRate = $stmt->fetchColumn();
-    
+
     // จำนวนนักเรียนตกกิจกรรม
     $query = "SELECT COUNT(*) FROM student_academic_records sar
               JOIN students s ON sar.student_id = s.student_id
@@ -89,7 +98,7 @@ function getOverviewStats($conn, $academicYearId) {
     $stmt = $conn->prepare($query);
     $stmt->execute([$academicYearId]);
     $failedStudents = $stmt->fetchColumn();
-    
+
     // จำนวนนักเรียนเสี่ยงตกกิจกรรม
     $query = "SELECT COUNT(*) FROM student_academic_records sar
               JOIN students s ON sar.student_id = s.student_id
@@ -104,22 +113,23 @@ function getOverviewStats($conn, $academicYearId) {
     $stmt = $conn->prepare($query);
     $stmt->execute([$academicYearId]);
     $riskStudents = $stmt->fetchColumn();
-    
+
     // เทียบกับเดือนที่แล้ว (ตัวอย่าง - ในระบบจริงต้องคำนวณจากข้อมูลจริง)
     $lastMonthRate = $avgAttendanceRate - (rand(-2, 2));
     $rateChange = $avgAttendanceRate - $lastMonthRate;
-    
+
     return [
         'total_students' => $totalStudents,
-        'avg_attendance_rate' => round($avgAttendanceRate, 1),
-        'rate_change' => round($rateChange, 1),
+        'avg_attendance_rate' => round($avgAttendanceRate ?? 0, 1),
+        'rate_change' => round($rateChange ?? 0, 1),
         'failed_students' => $failedStudents,
         'risk_students' => $riskStudents
     ];
 }
 
 // ฟังก์ชันดึงข้อมูลการเข้าแถวแยกตามแผนก
-function getDepartmentStats($conn, $academicYearId) {
+function getDepartmentStats($conn, $academicYearId)
+{
     $query = "SELECT 
                 d.department_id,
                 d.department_name,
@@ -133,18 +143,20 @@ function getDepartmentStats($conn, $academicYearId) {
               LEFT JOIN classes c ON d.department_id = c.department_id
               LEFT JOIN students s ON c.class_id = s.current_class_id AND s.status = 'กำลังศึกษา'
               LEFT JOIN student_academic_records sar ON s.student_id = sar.student_id AND sar.academic_year_id = ?
+              WHERE d.department_name NOT IN ('สามัญ', 'บริหาร')
               GROUP BY d.department_id
               ORDER BY d.department_name";
-    
+
     $stmt = $conn->prepare($query);
     $stmt->execute([$academicYearId]);
     $departments = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    
+
     // คำนวณอัตราการเข้าแถวและจัดรูปแบบข้อมูล
     foreach ($departments as &$dept) {
         $totalDays = $dept['total_attendance'] + $dept['total_absence'];
-        $dept['attendance_rate'] = ($totalDays > 0) ? round(($dept['total_attendance'] / $totalDays) * 100, 1) : 100;
-        
+        $attendance = $dept['total_attendance'] ?? 0;
+$dept['attendance_rate'] = ($totalDays > 0) ? round(($attendance / $totalDays) * 100, 1) : 100;
+
         // กำหนดคลาสสำหรับอัตราการเข้าแถว
         if ($dept['attendance_rate'] >= 90) {
             $dept['rate_class'] = 'good';
@@ -154,12 +166,13 @@ function getDepartmentStats($conn, $academicYearId) {
             $dept['rate_class'] = 'danger';
         }
     }
-    
+
     return $departments;
 }
 
 // ฟังก์ชันดึงข้อมูลนักเรียนที่มีความเสี่ยง
-function getRiskStudents($conn, $academicYearId, $limit = 5) {
+function getRiskStudents($conn, $academicYearId, $limit = 5)
+{
     $query = "SELECT 
                 s.student_id,
                 s.student_code,
@@ -195,16 +208,16 @@ function getRiskStudents($conn, $academicYearId, $limit = 5) {
               ) <= 80
               ORDER BY attendance_rate ASC
               LIMIT ?";
-    
+
     $stmt = $conn->prepare($query);
     $stmt->execute([$academicYearId, $limit]);
     $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    
+
     // จัดรูปแบบข้อมูล
     foreach ($students as &$student) {
-        $student['attendance_rate'] = round($student['attendance_rate'], 1);
+        $student['attendance_rate'] = round($student['attendance_rate'] ?? 0, 1);
         $student['initial'] = mb_substr($student['first_name'], 0, 1, 'UTF-8');
-        
+
         // กำหนดสถานะความเสี่ยง
         if ($student['attendance_rate'] < 70) {
             $student['status'] = 'danger';
@@ -214,12 +227,13 @@ function getRiskStudents($conn, $academicYearId, $limit = 5) {
             $student['status_text'] = 'เสี่ยงตกกิจกรรม';
         }
     }
-    
+
     return $students;
 }
 
 // ฟังก์ชันดึงข้อมูลอันดับห้องเรียน
-function getClassRanking($conn, $academicYearId) {
+function getClassRanking($conn, $academicYearId)
+{
     $query = "SELECT 
                 c.class_id,
                 c.level,
@@ -246,22 +260,22 @@ function getClassRanking($conn, $academicYearId) {
               GROUP BY c.class_id
               ORDER BY attendance_rate DESC
               LIMIT 10";
-    
+
     $stmt = $conn->prepare($query);
     $stmt->execute([$academicYearId, $academicYearId]);
     $classes = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    
+
     // จัดรูปแบบข้อมูล
     foreach ($classes as &$class) {
-        $class['attendance_rate'] = round($class['attendance_rate'], 1);
-        
+        $class['attendance_rate'] = round($class['attendance_rate'] ?? 0, 1);
+
         // กำหนดระดับชั้น (ปวช. หรือ ปวส.)
         if (strpos($class['level'], 'ปวช.') !== false) {
             $class['level_group'] = 'middle';
         } else {
             $class['level_group'] = 'high';
         }
-        
+
         // กำหนดคลาสสำหรับอัตราการเข้าแถว
         if ($class['attendance_rate'] >= 90) {
             $class['rate_class'] = 'good';
@@ -274,19 +288,20 @@ function getClassRanking($conn, $academicYearId) {
             $class['bar_class'] = 'red';
         }
     }
-    
+
     return $classes;
 }
 
 // ฟังก์ชันดึงข้อมูลแนวโน้มการเข้าแถว 7 วันล่าสุด
-function getWeeklyTrends($conn, $academicYearId) {
+function getWeeklyTrends($conn, $academicYearId)
+{
     $trends = [];
     $thaiDays = ['อา.', 'จ.', 'อ.', 'พ.', 'พฤ.', 'ศ.', 'ส.'];
-    
+
     for ($i = 6; $i >= 0; $i--) {
         $date = date('Y-m-d', strtotime("-$i days"));
         $dayOfWeek = date('w', strtotime($date));
-        
+
         // ดึงข้อมูลการเข้าแถวในวันนี้
         $query = "SELECT 
                     COUNT(DISTINCT CASE WHEN attendance_status = 'present' THEN student_id END) as present_count,
@@ -296,28 +311,29 @@ function getWeeklyTrends($conn, $academicYearId) {
         $stmt = $conn->prepare($query);
         $stmt->execute([$academicYearId, $date]);
         $data = $stmt->fetch(PDO::FETCH_ASSOC);
-        
+
         // คำนวณอัตราการเข้าแถว
         $rate = 0;
         if ($data['total_students'] > 0) {
             $rate = ($data['present_count'] / $data['total_students']) * 100;
         }
-        
+
         // จัดรูปแบบวันที่
         $displayDate = $thaiDays[$dayOfWeek] . ' ' . date('j/n', strtotime($date));
-        
+
         $trends[] = [
             'date' => $displayDate,
-            'attendance_rate' => round($rate, 1),
+            'attendance_rate' => round($rate ?? 0, 1),
             'is_weekend' => ($dayOfWeek == 0 || $dayOfWeek == 6)
         ];
     }
-    
+
     return $trends;
 }
 
 // ฟังก์ชันดึงข้อมูลสถานะการเข้าแถว (ใหม่)
-function getAttendanceStatus($conn, $academicYearId) {
+function getAttendanceStatus($conn, $academicYearId)
+{
     // ดึงข้อมูลสถานะการเข้าแถวจากตาราง attendance
     $query = "SELECT 
                 attendance_status,
@@ -325,17 +341,17 @@ function getAttendanceStatus($conn, $academicYearId) {
               FROM attendance
               WHERE academic_year_id = ?
               GROUP BY attendance_status";
-    
+
     $stmt = $conn->prepare($query);
     $stmt->execute([$academicYearId]);
     $statusCounts = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    
+
     // คำนวณจำนวนรวม
     $total = 0;
     foreach ($statusCounts as $status) {
         $total += $status['count'];
     }
-    
+
     // จัดรูปแบบข้อมูล
     $result = [];
     $colors = [
@@ -344,14 +360,14 @@ function getAttendanceStatus($conn, $academicYearId) {
         'late' => '#ff9800',    // ส้ม
         'leave' => '#2196f3'    // น้ำเงิน
     ];
-    
+
     $statusMap = [
         'present' => 'มาปกติ',
         'absent' => 'ขาด',
         'late' => 'มาสาย',
         'leave' => 'ลา'
     ];
-    
+
     // ถ้าไม่มีข้อมูล ให้ใช้ข้อมูลจำลอง
     if ($total == 0) {
         return [
@@ -361,19 +377,21 @@ function getAttendanceStatus($conn, $academicYearId) {
             ['status' => 'ลา', 'percent' => 3, 'color' => '#2196f3']
         ];
     }
-    
+
     // จัดรูปแบบข้อมูลจริง
     foreach ($statusCounts as $status) {
         $statusKey = $status['attendance_status'];
-        $percent = round(($status['count'] / $total) * 100);
-        
+        $count = $status['count'] ?? 0;
+$total = $total ?: 1; // ป้องกันหารด้วยศูนย์
+$percent = round(($count / $total) * 100);
+
         $result[] = [
             'status' => $statusMap[$statusKey] ?? $statusKey,
             'percent' => $percent,
             'color' => $colors[$statusKey] ?? '#9e9e9e'
         ];
     }
-    
+
     return $result;
 }
 

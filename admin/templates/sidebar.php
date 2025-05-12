@@ -29,6 +29,11 @@
                 <span class="badge"><?php echo $at_risk_count; ?></span>
             <?php endif; ?>
         </a>
+        <a href="users.php" class="menu-item <?php echo ($current_page == 'users') ? 'active' : ''; ?>">
+            <span class="material-icons">people</span>
+            <span class="menu-text">จัดการผู้ใช้งาน</span>
+        </a>
+     
 
         <div class="menu-category">จัดการกิจกรรม</div>
         <a href="activities.php" class="menu-item <?php echo ($current_page == 'activities') ? 'active' : ''; ?>">
@@ -74,7 +79,7 @@
             <span class="material-icons">campaign</span>
             <span class="menu-text">จัดการประกาศ</span>
         </a>
-        
+
     </div>
 
     <div class="admin-info">
