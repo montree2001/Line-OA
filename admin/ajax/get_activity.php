@@ -1,4 +1,5 @@
 <?php
+
 /**
  * get_activity.php - ไฟล์สำหรับดึงข้อมูลกิจกรรมผ่าน AJAX
  */
@@ -28,24 +29,26 @@ if (!$activity_id) {
 try {
     // เชื่อมต่อฐานข้อมูล
     $conn = getDB();
-    
+
     // ดึงข้อมูลกิจกรรม
     $stmt = $conn->prepare("
-        SELECT 
-            a.activity_id, a.activity_name, a.activity_date, a.activity_location, 
-            a.description, a.required_attendance, a.created_at,
-            a.academic_year_id, a.created_by
-        FROM activities a
-        WHERE a.activity_id = ?
+    SELECT 
+        a.activity_id, a.activity_name, a.activity_date, a.activity_location, 
+        a.description, a.required_attendance, a.created_at,
+        a.academic_year_id, a.created_by,
+        au.title, au.first_name, au.last_name
+    FROM activities a
+    LEFT JOIN admin_users au ON a.created_by = au.admin_id
+    WHERE a.activity_id = ?
     ");
     $stmt->execute([$activity_id]);
     $activity = $stmt->fetch(PDO::FETCH_ASSOC);
-    
+
     if (!$activity) {
         echo json_encode(['success' => false, 'error' => 'ไม่พบข้อมูลกิจกรรม']);
         exit;
     }
-    
+
     // ดึงแผนกวิชาเป้าหมาย
     $stmt = $conn->prepare("
         SELECT department_id
@@ -55,7 +58,7 @@ try {
     $stmt->execute([$activity_id]);
     $target_departments = $stmt->fetchAll(PDO::FETCH_COLUMN);
     $activity['target_departments'] = $target_departments;
-    
+
     // ดึงระดับชั้นเป้าหมาย
     $stmt = $conn->prepare("
         SELECT level
@@ -65,17 +68,15 @@ try {
     $stmt->execute([$activity_id]);
     $target_levels = $stmt->fetchAll(PDO::FETCH_COLUMN);
     $activity['target_levels'] = $target_levels;
-    
+
     // ส่งข้อมูลกลับในรูปแบบ JSON
     echo json_encode(['success' => true, 'activity' => $activity]);
-    
 } catch (PDOException $e) {
     // กรณีเกิดข้อผิดพลาดในการเชื่อมต่อหรือคิวรี่
     error_log("Database error in get_activity.php: " . $e->getMessage());
     echo json_encode([
-        'success' => false, 
+        'success' => false,
         'error' => 'เกิดข้อผิดพลาดในการดึงข้อมูล: ' . $e->getMessage(),
         'sql_error' => $e->getMessage()
     ]);
 }
-?>

@@ -1,5 +1,4 @@
 <?php
-
 /**
  * activity_attendance.php - หน้าบันทึกการเข้าร่วมกิจกรรมกลาง
  * 
@@ -130,6 +129,10 @@ if (isset($_POST['save_attendance']) && isset($_POST['attendance']) && is_array(
         $conn->beginTransaction();
 
         foreach ($_POST['attendance'] as $student_id => $data) {
+            if (!isset($data['check']) || $data['check'] != 1) {
+                continue;  // ข้ามนักเรียนที่ไม่ได้เลือก
+            }
+            
             $status = $data['status'] ?? 'absent';
             $remarks = $data['remarks'] ?? '';
 
@@ -159,20 +162,6 @@ if (isset($_POST['save_attendance']) && isset($_POST['attendance']) && is_array(
                 $stmt->execute([$student_id, $activity_id, $status, $user_id, $remarks]);
             }
         }
-
-        /* // บันทึกการดำเนินการของผู้ดูแลระบบ
-        $action_type = 'record_activity_attendance';
-        $action_details = json_encode([
-            'activity_id' => $activity_id,
-            'activity_name' => $activity['activity_name'],
-            'student_count' => count($_POST['attendance'])
-        ]);
-        
-        $stmt = $conn->prepare("
-            INSERT INTO admin_actions (admin_id, action_type, action_details)
-            VALUES (?, ?, ?)
-        ");
-        $stmt->execute([$user_id, $action_type, $action_details]); */
 
         // Commit transaction
         $conn->commit();

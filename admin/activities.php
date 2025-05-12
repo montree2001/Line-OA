@@ -330,74 +330,88 @@ try {
     $levels = [];
 }
 
-
 // ดึงรายการกิจกรรม
 try {
     $stmt = $conn->prepare("
-    SELECT DISTINCT
-         a.activity_id, a.activity_name, a.activity_date, a.activity_location, 
-        a.description, a.required_attendance, a.created_at,
-        au.title, au.first_name, au.last_name,
-        (SELECT COUNT(*) FROM activity_attendance aa WHERE aa.activity_id = a.activity_id) AS attendance_count
-    FROM activities a
-    LEFT JOIN admin_users au ON a.created_by = au.admin_id
-    WHERE a.academic_year_id = ?
-    GROUP BY a.activity_id
-    ORDER BY a.activity_date DESC
+      SELECT DISTINCT
+    a.activity_id, a.activity_name, a.activity_date, a.activity_location, 
+    a.description, a.required_attendance, a.created_at,
+    a.academic_year_id, a.created_by,
+    au.title, au.first_name, au.last_name,
+    (SELECT COUNT(*) FROM activity_attendance aa WHERE aa.activity_id = a.activity_id) AS attendance_count
+FROM activities a
+LEFT JOIN admin_users au ON a.created_by = au.admin_id
+WHERE a.academic_year_id = ?
+GROUP BY a.activity_id
+ORDER BY a.activity_date DESC
     ");
     $stmt->execute([$current_academic_year_id]);
     $activities = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
-    // ดึงกลุ่มเป้าหมายของแต่ละกิจกรรม
-   // ในไฟล์ activities.php
-// แก้ไขส่วนที่คำนวณเป้าหมายนักเรียนทั้งหมด
-foreach ($activities as &$activity) {
-    // ส่วนการดึงแผนกวิชาและระดับชั้นเป้าหมายยังคงเหมือนเดิม
-    
-    // กำหนดค่าเริ่มต้นให้กับ target_students
-    $activity['target_students'] = 0;
-    
-    // คำนวณเป้าหมายนักเรียนทั้งหมด
-    $where_clauses = [];
-    $params = [];
-    
-    if (!empty($activity['target_departments'])) {
-        $dept_placeholders = implode(',', array_fill(0, count($activity['target_departments']), '?'));
-        $where_clauses[] = "d.department_name IN ($dept_placeholders)";
-        $params = array_merge($params, $activity['target_departments']);
-    }
-    
-    if (!empty($activity['target_levels'])) {
-        $level_placeholders = implode(',', array_fill(0, count($activity['target_levels']), '?'));
-        $where_clauses[] = "c.level IN ($level_placeholders)";
-        $params = array_merge($params, $activity['target_levels']);
-    }
-    
-    if (!empty($where_clauses)) {
-        $where_sql = implode(' AND ', $where_clauses);
+   /*  // ดึงกลุ่มเป้าหมายของแต่ละกิจกรรม
+    foreach ($activities as &$activity) {
+        // ดึงแผนกวิชาเป้าหมาย
+        $stmt = $conn->prepare("
+            SELECT d.department_name
+            FROM activity_target_departments atd
+            JOIN departments d ON atd.department_id = d.department_id
+            WHERE atd.activity_id = ?
+        ");
+        $stmt->execute([$activity['activity_id']]);
+        $target_depts = $stmt->fetchAll(PDO::FETCH_COLUMN);
+        $activity['target_departments'] = $target_depts;
         
+        // ดึงระดับชั้นเป้าหมาย
         $stmt = $conn->prepare("
-            SELECT COUNT(DISTINCT s.student_id) as total_students
-            FROM students s
-            JOIN classes c ON s.current_class_id = c.class_id
-            JOIN departments d ON c.department_id = d.department_id
-            WHERE s.status = 'กำลังศึกษา' AND $where_sql
+            SELECT level
+            FROM activity_target_levels
+            WHERE activity_id = ?
         ");
-        $stmt->execute($params);
-        $result = $stmt->fetch(PDO::FETCH_ASSOC);
-        $activity['target_students'] = $result['total_students'] ?? 0;
-    } else {
-        // ถ้าไม่มีเงื่อนไข นับนักเรียนทั้งหมด
-        $stmt = $conn->prepare("
-            SELECT COUNT(*) as total_students
-            FROM students 
-            WHERE status = 'กำลังศึกษา'
-        ");
-        $stmt->execute();
-        $result = $stmt->fetch(PDO::FETCH_ASSOC);
-        $activity['target_students'] = $result['total_students'] ?? 0;
-    }
-}
+        $stmt->execute([$activity['activity_id']]);
+        $target_levels = $stmt->fetchAll(PDO::FETCH_COLUMN);
+        $activity['target_levels'] = $target_levels;
+        
+        // คำนวณเป้าหมายนักเรียนทั้งหมด
+        $where_clauses = [];
+        $params = [];
+        
+        if (!empty($target_depts)) {
+            $dept_placeholders = implode(',', array_fill(0, count($target_depts), '?'));
+            $where_clauses[] = "d.department_name IN ($dept_placeholders)";
+            $params = array_merge($params, $target_depts);
+        }
+        
+        if (!empty($target_levels)) {
+            $level_placeholders = implode(',', array_fill(0, count($target_levels), '?'));
+            $where_clauses[] = "c.level IN ($level_placeholders)";
+            $params = array_merge($params, $target_levels);
+        }
+        
+        if (!empty($where_clauses)) {
+            $where_sql = implode(' AND ', $where_clauses);
+            
+            $stmt = $conn->prepare("
+                SELECT COUNT(DISTINCT s.student_id) as total_students
+                FROM students s
+                JOIN classes c ON s.current_class_id = c.class_id
+                JOIN departments d ON c.department_id = d.department_id
+                WHERE s.status = 'กำลังศึกษา' AND $where_sql
+            ");
+            $stmt->execute($params);
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+            $activity['target_students'] = $result['total_students'] ?? 0;
+        } else {
+            // ถ้าไม่มีเงื่อนไข นับนักเรียนทั้งหมด
+            $stmt = $conn->prepare("
+                SELECT COUNT(*) as total_students
+                FROM students 
+                WHERE status = 'กำลังศึกษา'
+            ");
+            $stmt->execute();
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+            $activity['target_students'] = $result['total_students'] ?? 0;
+        }
+    } */
 } catch (PDOException $e) {
     error_log("Database error: " . $e->getMessage());
     $activities = [];
@@ -564,9 +578,9 @@ require_once 'templates/sidebar.php';
                     $is_today = $activity_date->format('Y-m-d') === $today->format('Y-m-d');
                     
                     $attendance_percent = 0;
-                    if ($activity['target_students'] > 0) {
+                   /*  if ($activity['target_students'] > 0) {
                         $attendance_percent = ($activity['attendance_count'] / $activity['target_students']) * 100;
-                    }
+                    } */
                 ?>
                 <div class="activity-item" 
                      data-month="<?php echo date('m', strtotime($activity['activity_date'])); ?>"

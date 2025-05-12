@@ -38,6 +38,7 @@ $alert_error = $save_error ?? false;
     </div>
 </div>
 
+
 <!-- ปุ่มเพิ่มกิจกรรมใหม่ -->
 <div class="action-buttons">
     <button class="btn btn-primary" onclick="openAddActivityModal()">
@@ -101,6 +102,10 @@ $alert_error = $save_error ?? false;
                 <p>ไม่พบข้อมูลกิจกรรม กรุณาเพิ่มกิจกรรมใหม่</p>
             </div>
         <?php else: ?>
+
+
+
+
             <div class="activity-list">
                 <?php foreach ($activities as $activity): ?>
                     <div class="activity-item"
