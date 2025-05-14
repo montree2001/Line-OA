@@ -59,11 +59,11 @@ try {
     $academicYearData = getAcademicYearsFromDB();
     $teachers = getTeachersFromDB();
     
-    // ใช้ข้อมูลตัวอย่างหากดึงข้อมูลไม่สำเร็จ
+    /* // ใช้ข้อมูลตัวอย่างหากดึงข้อมูลไม่สำเร็จ
     $classes = $classes ?: getSampleClasses();
     $departments = $departments ?: getSampleDepartments();
     $academicYearData = $academicYearData ?: getSampleAcademicYears();
-    $teachers = $teachers ?: getSampleTeachers();
+    $teachers = $teachers ?: getSampleTeachers(); */
     
     $academic_years = $academicYearData['academic_years'];
     $has_new_academic_year = $academicYearData['has_new_academic_year'];

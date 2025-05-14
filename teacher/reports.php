@@ -498,6 +498,80 @@ try {
     error_log("Error fetching calendar data: " . $e->getMessage());
 }
 
+
+// เพิ่มส่วนนี้หลังการดึงข้อมูลนักเรียนในห้องเรียน
+
+// ดึงข้อมูลกิจกรรมกลางของนักเรียนในห้องเรียน
+try {
+    $activities_query = "SELECT a.activity_id, a.activity_name, a.activity_date, a.description,
+                         a.required_attendance, 
+                         COUNT(DISTINCT aa.student_id) as participating_students,
+                         (SELECT COUNT(*) FROM students WHERE current_class_id = :class_id AND status = 'กำลังศึกษา') as total_students
+                         FROM activities a
+                         LEFT JOIN activity_attendance aa ON a.activity_id = aa.activity_id
+                         LEFT JOIN activity_target_levels atl ON a.activity_id = atl.activity_id
+                         LEFT JOIN classes c ON FIND_IN_SET(c.level, atl.level) > 0
+                         WHERE (c.class_id = :class_id OR atl.level IS NULL)
+                         AND a.academic_year_id = :academic_year_id
+                         GROUP BY a.activity_id
+                         ORDER BY a.activity_date DESC
+                         LIMIT 10";
+    
+    $stmt = $db->prepare($activities_query);
+    $stmt->bindParam(':class_id', $current_class_id, PDO::PARAM_INT);
+    $stmt->bindParam(':academic_year_id', $academic_year_id, PDO::PARAM_INT);
+    $stmt->execute();
+    $class_activities = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (Exception $e) {
+    $class_activities = [];
+    error_log("Error fetching activities: " . $e->getMessage());
+}
+
+// ดึงข้อมูลนักเรียนที่มีความเสี่ยงตกกิจกรรม
+try {
+    $risk_query = "SELECT s.student_id, s.student_code, s.title, u.first_name, u.last_name,
+                  (SELECT COUNT(*) + 1 FROM students WHERE current_class_id = s.current_class_id AND student_code < s.student_code) as number,
+                  (SELECT COUNT(*) FROM attendance WHERE student_id = s.student_id AND attendance_status = 'absent') as absent_count,
+                  (SELECT COUNT(*) FROM attendance WHERE student_id = s.student_id AND attendance_status IN ('present', 'late')) as present_count,
+                  (SELECT COUNT(DISTINCT date) FROM attendance WHERE MONTH(date) = :month AND YEAR(date) = :year) as total_days,
+                  (SELECT ROUND((COUNT(CASE WHEN attendance_status IN ('present', 'late') THEN 1 END) * 100.0 / 
+                                NULLIF(COUNT(DISTINCT date), 0)), 1)
+                   FROM attendance 
+                   WHERE student_id = s.student_id) as attendance_percentage
+                  FROM students s
+                  JOIN users u ON s.user_id = u.user_id
+                  WHERE s.current_class_id = :class_id
+                  AND s.status = 'กำลังศึกษา'
+                  HAVING attendance_percentage < 80
+                  ORDER BY attendance_percentage ASC
+                  LIMIT 15";
+    
+    $stmt = $db->prepare($risk_query);
+    $stmt->bindParam(':class_id', $current_class_id, PDO::PARAM_INT);
+    $stmt->bindParam(':month', $current_month, PDO::PARAM_INT);
+    $stmt->bindParam(':year', $current_year, PDO::PARAM_INT);
+    $stmt->execute();
+    $risk_students = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (Exception $e) {
+    $risk_students = [];
+    error_log("Error fetching risk students: " . $e->getMessage());
+}
+
+// ดึงข้อมูลเทมเพลตข้อความแจ้งเตือน
+try {
+    $templates_query = "SELECT id, name, content FROM message_templates 
+                       WHERE type = 'individual' AND category = 'attendance'
+                       ORDER BY id ASC";
+    $stmt = $db->query($templates_query);
+    $message_templates = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (Exception $e) {
+    $message_templates = [];
+    error_log("Error fetching message templates: " . $e->getMessage());
+}
+
+
+
+
 // สร้างข้อมูลวันที่ก่อนหน้าเดือนปัจจุบัน
 for ($i = 0; $i < $first_day - 1; $i++) {
     $calendar_data[] = [

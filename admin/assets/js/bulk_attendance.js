@@ -1,70 +1,43 @@
 /**
  * bulk_attendance.js - จัดการการเช็คชื่อนักเรียนแบบกลุ่ม
+ * ปรับปรุงใหม่: รองรับแท็บ, ค้นหาโดยชื่อ, แสดงไอคอนวิธีการเช็ค
  */
 
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('Initializing bulk attendance JS');
-    
     // เชื่อมต่อปุ่มค้นหา
-    const searchBtn = document.getElementById('btnSearch');
-    if (searchBtn) {
-        searchBtn.addEventListener('click', searchStudents);
-        console.log('Search button initialized');
-    } else {
-        console.error('Search button not found');
-    }
+    document.getElementById('btnSearch').addEventListener('click', searchStudents);
     
     // เชื่อมต่อ event สำหรับการเปลี่ยนแปลงแผนกและระดับชั้น
-    const deptSelector = document.getElementById('filterDepartment');
-    const levelSelector = document.getElementById('filterLevel');
+    document.getElementById('filterDepartment').addEventListener('change', updateClasses);
+    document.getElementById('filterLevel').addEventListener('change', updateClasses);
     
-    if (deptSelector) {
-        deptSelector.addEventListener('change', function() {
-            console.log('Department changed to:', this.value);
-            updateClasses();
-        });
-    } else {
-        console.error('Department selector not found');
-    }
-    
-    if (levelSelector) {
-        levelSelector.addEventListener('change', function() {
-            console.log('Level changed to:', this.value);
-            updateClasses();
-        });
-    } else {
-        console.error('Level selector not found');
-    }
+    // เชื่อมต่อ event สำหรับค้นหาด้วยชื่อหรือรหัส
+    document.getElementById('searchStudent').addEventListener('keyup', function(event) {
+        // ถ้ากด Enter ให้ค้นหาทันที
+        if (event.key === 'Enter') {
+            searchStudents();
+        }
+    });
     
     // เชื่อมต่อ event สำหรับฟอร์ม
-    const attendanceForm = document.getElementById('attendanceForm');
-    if (attendanceForm) {
-        attendanceForm.addEventListener('submit', function(event) {
-            // ตรวจสอบว่ามีการเลือกนักเรียนหรือไม่
-            const checkedStudents = document.querySelectorAll('input[name^="attendance"][type="checkbox"]:checked');
-            if (checkedStudents.length === 0) {
-                event.preventDefault();
-                alert('กรุณาเลือกนักเรียนอย่างน้อย 1 คน');
-                return false;
-            }
-            
-            // อัปเดตวันที่ให้ตรงกับที่เลือก
-            const dateInput = document.getElementById('filterDate');
-            const attendanceDateInput = document.getElementById('attendance_date');
-            
-            if (dateInput && attendanceDateInput) {
-                attendanceDateInput.value = dateInput.value;
-            }
-            
-            // ถามยืนยันก่อนบันทึก
-            if (!confirm('ยืนยันการบันทึกการเช็คชื่อ?')) {
-                event.preventDefault();
-                return false;
-            }
-        });
-    } else {
-        console.error('Attendance form not found');
-    }
+    document.getElementById('attendanceForm').addEventListener('submit', function(event) {
+        // ตรวจสอบว่ามีการเลือกนักเรียนหรือไม่
+        const checkedStudents = document.querySelectorAll('input[name^="attendance"][type="checkbox"]:checked');
+        if (checkedStudents.length === 0) {
+            event.preventDefault();
+            alert('กรุณาเลือกนักเรียนอย่างน้อย 1 คน');
+            return false;
+        }
+        
+        // อัปเดตวันที่ให้ตรงกับที่เลือก
+        document.getElementById('attendance_date').value = document.getElementById('filterDate').value;
+        
+        // ถามยืนยันก่อนบันทึก
+        if (!confirm('ยืนยันการบันทึกการเช็คชื่อ?')) {
+            event.preventDefault();
+            return false;
+        }
+    });
     
     // ปรับปรุงตัวเลือกห้องเรียนเริ่มต้น
     updateClasses();
@@ -79,25 +52,24 @@ document.addEventListener('DOMContentLoaded', function() {
             }, 500);
         }, 3000);
     }
+    
+    // เพิ่มแบดจ์จำนวนเริ่มต้นสำหรับแท็บต่างๆ
+    document.getElementById('tab-all').innerHTML = '<span class="material-icons">people</span> ทั้งหมด';
+    document.getElementById('tab-checked').innerHTML = '<span class="material-icons">check_circle</span> เช็คชื่อแล้ว <span class="badge bg-primary">0</span>';
+    document.getElementById('tab-unchecked').innerHTML = '<span class="material-icons">pending</span> ยังไม่เช็คชื่อ <span class="badge bg-secondary">0</span>';
+    document.getElementById('tab-present').innerHTML = '<span class="material-icons">verified</span> มาเรียน <span class="badge bg-success">0</span>';
+    document.getElementById('tab-absent').innerHTML = '<span class="material-icons">cancel</span> ขาดเรียน <span class="badge bg-danger">0</span>';
+    document.getElementById('tab-late').innerHTML = '<span class="material-icons">watch_later</span> มาสาย <span class="badge bg-warning">0</span>';
+    document.getElementById('tab-leave').innerHTML = '<span class="material-icons">event_note</span> ลา <span class="badge bg-info">0</span>';
 });
 
 /**
  * อัปเดตรายการห้องเรียนตามแผนกและระดับชั้นที่เลือก
  */
 function updateClasses() {
-    console.log('Updating classes...');
-    
-    const departmentSelect = document.getElementById('filterDepartment');
-    const levelSelect = document.getElementById('filterLevel');
+    const departmentId = document.getElementById('filterDepartment').value;
+    const level = document.getElementById('filterLevel').value;
     const classSelect = document.getElementById('filterClass');
-    
-    if (!departmentSelect || !levelSelect || !classSelect) {
-        console.error('One or more form elements not found');
-        return;
-    }
-    
-    const departmentId = departmentSelect.value;
-    const level = levelSelect.value;
     
     // ล้างตัวเลือกเดิมยกเว้นตัวแรก
     while (classSelect.options.length > 1) {
@@ -105,60 +77,28 @@ function updateClasses() {
     }
     
     // ถ้าไม่ได้เลือกแผนกหรือระดับชั้น ไม่ต้องดึงข้อมูลเพิ่ม
-    if (!departmentId && !level) {
-        console.log('No department or level selected, skipping fetch');
-        return;
-    }
+    if (!departmentId && !level) return;
     
     // แสดง loading
     classSelect.disabled = true;
     
     // สร้าง URL สำหรับดึงข้อมูล
     let url = 'ajax/get_classes.php?';
-    let params = [];
-    
-    if (departmentId) {
-        params.push('department_id=' + departmentId);
-    }
-    
-    if (level) {
-        params.push('level=' + encodeURIComponent(level));
-    }
-    
-    url += params.join('&');
-    
-    console.log('Fetching classes from URL:', url);
+    if (departmentId) url += 'department_id=' + departmentId + '&';
+    if (level) url += 'level=' + level;
     
     // ดึงข้อมูลห้องเรียน
     fetch(url)
-        .then(response => {
-            console.log('Response status:', response.status);
-            if (!response.ok) {
-                throw new Error('Network response was not ok: ' + response.status);
-            }
-            return response.text(); // ดึงข้อมูลเป็น text ก่อนเพื่อดูข้อผิดพลาด
-        })
-        .then(text => {
-            try {
-                console.log('Raw response:', text.substring(0, 200) + '...');
-                const data = JSON.parse(text);
-                console.log('JSON data:', data);
-                
-                if (data.success && data.classes && Array.isArray(data.classes)) {
-                    // เพิ่มตัวเลือกห้องเรียน
-                    data.classes.forEach(classItem => {
-                        const option = document.createElement('option');
-                        option.value = classItem.class_id;
-                        option.textContent = `${classItem.level}/${classItem.group_number} ${classItem.department_name}`;
-                        classSelect.appendChild(option);
-                    });
-                    console.log(`Added ${data.classes.length} classes to dropdown`);
-                } else {
-                    console.warn('No classes found or data structure invalid:', data);
-                }
-            } catch (e) {
-                console.error('Error parsing JSON:', e);
-                console.log('Raw text received:', text);
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.classes) {
+                // เพิ่มตัวเลือกห้องเรียน
+                data.classes.forEach(classItem => {
+                    const option = document.createElement('option');
+                    option.value = classItem.class_id;
+                    option.textContent = `${classItem.level}/${classItem.group_number} ${classItem.department_name}`;
+                    classSelect.appendChild(option);
+                });
             }
         })
         .catch(error => {
@@ -173,258 +113,86 @@ function updateClasses() {
  * ค้นหานักเรียนตามเงื่อนไขที่เลือก
  */
 function searchStudents() {
-    console.log('Searching for students...');
+    const departmentId = document.getElementById('filterDepartment').value;
+    const level = document.getElementById('filterLevel').value;
+    const classId = document.getElementById('filterClass').value;
+    const date = document.getElementById('filterDate').value;
+    const searchTerm = document.getElementById('searchStudent').value.trim();
     
-    const departmentSelect = document.getElementById('filterDepartment');
-    const levelSelect = document.getElementById('filterLevel');
-    const classSelect = document.getElementById('filterClass');
-    const dateInput = document.getElementById('filterDate');
-    
-    if (!departmentSelect || !levelSelect || !classSelect || !dateInput) {
-        console.error('One or more form elements not found');
-        return;
-    }
-    
-    const departmentId = departmentSelect.value;
-    const level = levelSelect.value;
-    const classId = classSelect.value;
-    const date = dateInput.value;
-    
-    // ตรวจสอบว่าเลือกเงื่อนไขการค้นหาอย่างน้อย 1 อย่าง
-    if (!departmentId && !level && !classId) {
-        alert('กรุณาเลือกแผนกวิชา ระดับชั้น หรือกลุ่มเรียนอย่างน้อย 1 อย่าง');
-        return;
-    }
-    
-    // ตรวจสอบว่าเลือกวันที่
-    if (!date) {
-        alert('กรุณาเลือกวันที่');
+    // ตรวจสอบว่าเลือกเงื่อนไขการค้นหาอย่างน้อย 1 อย่างหรือมีคำค้นหา
+    if (!departmentId && !level && !classId && !searchTerm) {
+        alert('กรุณาเลือกแผนกวิชา ระดับชั้น กลุ่มเรียน หรือระบุคำค้นหาอย่างน้อย 1 อย่าง');
         return;
     }
     
     // ซ่อนข้อความและแสดง loading
-    const studentListContainer = document.getElementById('studentListContainer');
-    const noStudentsMessage = document.getElementById('noStudentsMessage');
-    const loadingIndicator = document.getElementById('loadingIndicator');
-    const formActions = document.getElementById('formActions');
-    const attendanceSummary = document.getElementById('attendanceSummary');
-    
-    if (studentListContainer) studentListContainer.style.display = 'none';
-    if (noStudentsMessage) noStudentsMessage.style.display = 'none';
-    if (loadingIndicator) loadingIndicator.style.display = 'block';
-    if (formActions) formActions.style.display = 'none';
-    if (attendanceSummary) attendanceSummary.style.display = 'none';
+    document.getElementById('studentListContainer').style.display = 'none';
+    document.getElementById('noStudentsMessage').style.display = 'none';
+    document.getElementById('loadingIndicator').style.display = 'block';
+    document.getElementById('formActions').style.display = 'none';
+    document.getElementById('attendanceSummary').style.display = 'none';
     
     // สร้าง URL สำหรับดึงข้อมูล
-    let url = 'ajax/get_students_for_attendance-check.php?';
-    let params = [];
-    
-    if (departmentId) {
-        params.push('department_id=' + departmentId);
-    }
-    
-    if (level) {
-        params.push('level=' + encodeURIComponent(level));
-    }
-    
-    if (classId) {
-        params.push('class_id=' + classId);
-    }
-    
-    params.push('date=' + date);
-    
-    url += params.join('&');
-    
-    console.log('Fetching students from URL:', url);
+    let url = 'ajax/get_students_for_attendance.php?';
+    if (departmentId) url += 'department_id=' + departmentId + '&';
+    if (level) url += 'level=' + level + '&';
+    if (classId) url += 'class_id=' + classId + '&';
+    url += 'date=' + date;
+    if (searchTerm) url += '&search=' + encodeURIComponent(searchTerm);
     
     // ดึงข้อมูลนักเรียน
     fetch(url)
-        .then(response => {
-            console.log('Response status:', response.status);
-            if (!response.ok) {
-                throw new Error('Network response was not ok: ' + response.status);
-            }
-            return response.text(); // ดึงข้อมูลเป็น text ก่อนเพื่อดูข้อผิดพลาด
-        })
-        .then(text => {
-            try {
-                console.log('Raw response:', text.substring(0, 200) + '...');
-                const data = JSON.parse(text);
-                console.log('Students data received:', data);
-                
-                if (data.success) {
-                    const classTitleElement = document.getElementById('classTitle');
-                    if (classTitleElement) {
-                        classTitleElement.textContent = data.class_info || '';
-                    }
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                if (data.students && data.students.length > 0) {
+                    // แสดงชื่อห้องหรือกลุ่มที่เลือก
+                    document.getElementById('classTitle').textContent = data.class_info || '';
                     
                     // บันทึก class_id ถ้ามี
-                    const classIdInput = document.getElementById('class_id');
-                    if (classIdInput && data.class_id) {
-                        classIdInput.value = data.class_id;
+                    if (data.class_id) {
+                        document.getElementById('class_id').value = data.class_id;
                     }
                     
-                    if (data.students && Array.isArray(data.students) && data.students.length > 0) {
-                        // แสดงรายชื่อนักเรียน
-                        renderStudentList(data.students);
-                        if (studentListContainer) studentListContainer.style.display = 'block';
-                        if (formActions) formActions.style.display = 'flex';
-                        if (attendanceSummary) attendanceSummary.style.display = 'block';
-                        
-                        // อัปเดตสรุปการเช็คชื่อ
-                        updateAttendanceSummary();
-                    } else {
-                        // ไม่พบนักเรียน
-                        if (noStudentsMessage) noStudentsMessage.style.display = 'block';
+                    // แสดงรายชื่อนักเรียน
+                    renderStudentList(data.students);
+                    document.getElementById('studentListContainer').style.display = 'block';
+                    document.getElementById('formActions').style.display = 'flex';
+                    
+                    // แสดงสรุปการเช็คชื่อทันที
+                    document.getElementById('attendanceSummary').style.display = 'block';
+                    updateAttendanceSummary();
+                    
+                    // กรองข้อมูลตามแท็บที่กำลังเลือกอยู่
+                    const activeTab = document.querySelector('.tab.active').id.replace('tab-', '');
+                    if (activeTab !== 'all') {
+                        filterStudentsByTab(activeTab);
                     }
                 } else {
-                    // เกิดข้อผิดพลาด
-                    console.error('API error:', data.error);
-                    alert(data.error || 'เกิดข้อผิดพลาดในการดึงข้อมูล');
-                    if (noStudentsMessage) noStudentsMessage.style.display = 'block';
+                    // ไม่พบนักเรียน
+                    document.getElementById('noStudentsMessage').style.display = 'block';
                 }
-            } catch (e) {
-                console.error('Error parsing JSON:', e);
-                console.log('Raw text received:', text);
-                alert('เกิดข้อผิดพลาดในการประมวลผลข้อมูล: ' + e.message);
-                if (noStudentsMessage) noStudentsMessage.style.display = 'block';
+            } else {
+                // เกิดข้อผิดพลาด
+                alert(data.error || 'เกิดข้อผิดพลาดในการดึงข้อมูล');
+                document.getElementById('noStudentsMessage').style.display = 'block';
             }
         })
         .catch(error => {
             console.error('Error fetching students:', error);
-            alert('เกิดข้อผิดพลาดในการดึงข้อมูล: ' + error.message);
-            if (noStudentsMessage) noStudentsMessage.style.display = 'block';
+            alert('เกิดข้อผิดพลาดในการดึงข้อมูล');
+            document.getElementById('noStudentsMessage').style.display = 'block';
         })
         .finally(() => {
-            if (loadingIndicator) loadingIndicator.style.display = 'none';
+            document.getElementById('loadingIndicator').style.display = 'none';
         });
 }
 
-
-
 /**
- * อัปเดต highlight แถวตามการเลือก
- */
-function updateRowHighlight(checkbox) {
-    if (!checkbox) return;
-    
-    const row = checkbox.closest('tr');
-    if (!row) return;
-    
-    if (checkbox.checked) {
-        row.classList.add('selected-row');
-    } else {
-        row.classList.remove('selected-row');
-    }
-    
-    // อัปเดตสรุปการเช็คชื่อ
-    updateAttendanceSummary();
-}
-
-/**
- * อัปเดตสรุปการเช็คชื่อ
- */
-function updateAttendanceSummary() {
-    console.log('Updating attendance summary');
-    
-    const checkboxes = document.querySelectorAll('input[name^="attendance"][type="checkbox"]');
-    let presentCount = 0;
-    let lateCount = 0;
-    let absentCount = 0;
-    let leaveCount = 0;
-    
-    checkboxes.forEach(checkbox => {
-        if (checkbox.checked) {
-            const studentIdMatch = checkbox.name.match(/\[(\d+)\]/);
-            if (!studentIdMatch) return;
-            
-            const studentId = studentIdMatch[1];
-            const statusSelect = document.querySelector(`select[name="attendance[${studentId}][status]"]`);
-            
-            if (statusSelect) {
-                const status = statusSelect.value;
-                
-                switch (status) {
-                    case 'present':
-                        presentCount++;
-                        break;
-                    case 'late':
-                        lateCount++;
-                        break;
-                    case 'absent':
-                        absentCount++;
-                        break;
-                    case 'leave':
-                        leaveCount++;
-                        break;
-                }
-            }
-        }
-    });
-    
-    // อัปเดตค่าในหน้าเว็บ
-    const presentCountElement = document.getElementById('presentCount');
-    const lateCountElement = document.getElementById('lateCount');
-    const absentCountElement = document.getElementById('absentCount');
-    const leaveCountElement = document.getElementById('leaveCount');
-    
-    if (presentCountElement) presentCountElement.textContent = presentCount;
-    if (lateCountElement) lateCountElement.textContent = lateCount;
-    if (absentCountElement) absentCountElement.textContent = absentCount;
-    if (leaveCountElement) leaveCountElement.textContent = leaveCount;
-    
-    console.log('Attendance summary updated:', {
-        present: presentCount,
-        late: lateCount,
-        absent: absentCount,
-        leave: leaveCount
-    });
-}
-
-/**
- * เลือกนักเรียนทั้งหมด
- */
-function checkAllStudents() {
-    console.log('Checking all students');
-    
-    const checkboxes = document.querySelectorAll('input[name^="attendance"][type="checkbox"]');
-    checkboxes.forEach(checkbox => {
-        checkbox.checked = true;
-        const row = checkbox.closest('tr');
-        if (row) row.classList.add('selected-row');
-    });
-    
-    // อัปเดตสรุปการเช็คชื่อ
-    updateAttendanceSummary();
-}
-
-/**
- * ยกเลิกการเลือกนักเรียนทั้งหมด
- */
-function uncheckAllStudents() {
-    console.log('Unchecking all students');
-    
-    const checkboxes = document.querySelectorAll('input[name^="attendance"][type="checkbox"]');
-    checkboxes.forEach(checkbox => {
-        checkbox.checked = false;
-        const row = checkbox.closest('tr');
-        if (row) row.classList.remove('selected-row');
-    });
-    
-    // อัปเดตสรุปการเช็คชื่อ
-    updateAttendanceSummary();
-}
-/**
- * function renderStudentList - แสดงรายชื่อนักเรียนพร้อม icon วิธีการเช็คชื่อ
+ * แสดงรายชื่อนักเรียน
  */
 function renderStudentList(students) {
-    console.log('Rendering student list:', students.length, 'students');
-    
     const studentList = document.getElementById('studentList');
-    if (!studentList) {
-        console.error('Student list container not found');
-        return;
-    }
     
     // ล้างรายการเดิม
     studentList.innerHTML = '';
@@ -433,78 +201,55 @@ function renderStudentList(students) {
     students.forEach((student, index) => {
         const row = document.createElement('tr');
         
+        // กำหนดคุณสมบัติสำหรับการกรอง
+        row.classList.add('student-row');
+        row.setAttribute('data-student-id', student.student_id);
+        row.setAttribute('data-student-code', student.student_code);
+        row.setAttribute('data-student-name', (student.title || '') + student.first_name + ' ' + student.last_name);
+        row.setAttribute('data-status', student.attendance_status || 'absent');
+        row.setAttribute('data-checked', student.attendance_status ? 'true' : 'false');
+        
         // สถานะการเช็คชื่อเดิม (ถ้ามี)
         const checkedAttr = student.attendance_status ? 'checked' : '';
         const status = student.attendance_status || 'absent';
         
-        // กำหนด icon และสีตามวิธีการเช็คชื่อ
-        let checkMethodIcon = '';
-        let checkMethodColor = '';
-        let checkMethodTitle = '';
-        
-        if (student.attendance_status) {
-            // กำหนด icon ตามวิธีการเช็คชื่อ
-            switch (student.check_method) {
-                case 'GPS':
-                    checkMethodIcon = 'location_on';
-                    checkMethodColor = 'text-success';
-                    checkMethodTitle = 'เช็คชื่อด้วย GPS';
-                    break;
-                case 'QR_Code':
-                    checkMethodIcon = 'qr_code_scanner';
-                    checkMethodColor = 'text-primary';
-                    checkMethodTitle = 'เช็คชื่อด้วย QR Code';
-                    break;
-                case 'PIN':
-                    checkMethodIcon = 'pin';
-                    checkMethodColor = 'text-warning';
-                    checkMethodTitle = 'เช็คชื่อด้วยรหัส PIN';
-                    break;
-                case 'Manual':
-                    checkMethodIcon = 'edit';
-                    checkMethodColor = 'text-info';
-                    checkMethodTitle = 'เช็คชื่อด้วยผู้ดูแลระบบ';
-                    break;
-                default:
-                    checkMethodIcon = 'check_circle';
-                    checkMethodColor = 'text-muted';
-                    checkMethodTitle = 'เช็คชื่อแล้ว';
-            }
-        } else {
-            checkMethodIcon = 'radio_button_unchecked';
-            checkMethodColor = 'text-muted';
-            checkMethodTitle = 'ยังไม่ได้เช็คชื่อ';
+        // ไอคอนสำหรับวิธีเช็คชื่อ
+        let methodIcon = '';
+        switch(student.check_method) {
+            case 'GPS':
+                methodIcon = '<span class="material-icons" style="color: #28a745;" title="เช็คชื่อผ่าน GPS">gps_fixed</span>';
+                break;
+            case 'QR_Code':
+                methodIcon = '<span class="material-icons" style="color: #007bff;" title="เช็คชื่อผ่าน QR Code">qr_code_scanner</span>';
+                break;
+            case 'PIN':
+                methodIcon = '<span class="material-icons" style="color: #fd7e14;" title="เช็คชื่อผ่านรหัส PIN">pin</span>';
+                break;
+            case 'Manual':
+                methodIcon = '<span class="material-icons" style="color: #6c757d;" title="เช็คชื่อด้วยตนเอง">edit</span>';
+                break;
+            default:
+                methodIcon = '';
         }
-        
-        // สร้าง HTML สำหรับ icon
-        const methodIconHtml = `
-            <span class="material-icons ${checkMethodColor} check-method-icon" 
-                  title="${checkMethodTitle}" style="font-size: 20px; vertical-align: middle;">
-                ${checkMethodIcon}
-            </span>
-        `;
-        
-        // กำหนดเวลาเช็คชื่อ (ถ้ามี)
-        const checkTime = student.check_time ? `<small class="text-muted">(${student.check_time})</small>` : '';
         
         row.innerHTML = `
             <td>${index + 1}</td>
             <td>
                 <input type="checkbox" name="attendance[${student.student_id}][check]" value="1" ${checkedAttr} onchange="updateRowHighlight(this)">
             </td>
-            <td>${student.student_code || ''}</td>
-            <td>${student.title || ''}${student.first_name || ''} ${student.last_name || ''}</td>
-            <td>${student.level || ''}</td>
-            <td class="text-center">${methodIconHtml}</td>
+            <td>${student.student_code}</td>
+            <td>${student.title || ''}${student.first_name} ${student.last_name}</td>
+            <td>${student.level || ''}/${student.group_number || ''}</td>
             <td>
-                <select class="form-control form-control-sm" name="attendance[${student.student_id}][status]" onchange="updateAttendanceSummary()">
-                    <option value="present" ${status === 'present' ? 'selected' : ''}>เข้าแถว</option>
-                    <option value="absent" ${status === 'absent' ? 'selected' : ''}>ขาดแถว</option>
-                    <option value="late" ${status === 'late' ? 'selected' : ''}>สาย</option>
+                <select class="form-control form-control-sm" name="attendance[${student.student_id}][status]" onchange="updateRowStatus(this)">
+                    <option value="present" ${status === 'present' ? 'selected' : ''}>มาเรียน</option>
+                    <option value="late" ${status === 'late' ? 'selected' : ''}>มาสาย</option>
+                    <option value="absent" ${status === 'absent' ? 'selected' : ''}>ขาดเรียน</option>
                     <option value="leave" ${status === 'leave' ? 'selected' : ''}>ลา</option>
                 </select>
-                ${checkTime}
             </td>
+            <td>${student.check_time || '-'}</td>
+            <td>${methodIcon}</td>
             <td>
                 <input type="text" class="form-control form-control-sm" name="attendance[${student.student_id}][remarks]" 
                        placeholder="หมายเหตุ" value="${student.remarks || ''}">
@@ -516,44 +261,231 @@ function renderStudentList(students) {
             row.classList.add('selected-row');
         }
         
+        // เพิ่มสีพื้นหลังตามสถานะ
+        if (student.attendance_status) {
+            switch(student.attendance_status) {
+                case 'present':
+                    row.classList.add('status-present');
+                    break;
+                case 'late':
+                    row.classList.add('status-late');
+                    break;
+                case 'absent':
+                    row.classList.add('status-absent');
+                    break;
+                case 'leave':
+                    row.classList.add('status-leave');
+                    break;
+            }
+        }
+        
         studentList.appendChild(row);
     });
     
-    console.log('Student list rendered successfully');
+    // แสดงสรุปจำนวนต่างๆ ทันที
+    document.getElementById('attendanceSummary').style.display = 'block';
+    updateAttendanceSummary();
+    
+    // หลังจากแสดงข้อมูลแล้ว ให้กรองข้อมูลตามแท็บอีกครั้ง
+    const activeTab = document.querySelector('.tab.active');
+    if (activeTab) {
+        const tabId = activeTab.id;
+        const tabName = tabId.replace('tab-', '');
+        if (tabName !== 'all') {
+            filterStudentsByTab(tabName);
+        }
+    }
 }
 
 /**
- * แก้ไขฟังก์ชัน setAllStatus เพื่อใช้ชื่อตัวเลือกใหม่ในการแสดงข้อความยืนยัน
+ * อัปเดต highlight แถวตามการเลือก
  */
-function setAllStatus(status) {
-    // แปลงสถานะเป็นข้อความภาษาไทย
-    let statusText = '';
-    switch (status) {
-        case 'present':
-            statusText = 'เข้าแถว';
-            break;
-        case 'absent':
-            statusText = 'ขาดแถว';
-            break;
-        case 'late':
-            statusText = 'สาย';
-            break;
-        case 'leave':
-            statusText = 'ลา';
-            break;
-        default:
-            statusText = status;
+function updateRowHighlight(checkbox) {
+    const row = checkbox.closest('tr');
+    if (checkbox.checked) {
+        row.classList.add('selected-row');
+    } else {
+        row.classList.remove('selected-row');
     }
     
-    console.log('Setting all students to status:', statusText);
+    // อัปเดตสรุปการเช็คชื่อ
+    updateAttendanceSummary();
+}
+
+/**
+ * อัปเดตสถานะการเช็คชื่อและสีพื้นหลัง
+ */
+function updateRowStatus(select) {
+    const row = select.closest('tr');
+    const status = select.value;
     
+    // ลบคลาสสถานะเดิม
+    row.classList.remove('status-present', 'status-late', 'status-absent', 'status-leave');
+    
+    // เพิ่มคลาสสถานะใหม่
+    row.classList.add('status-' + status);
+    
+    // อัปเดตข้อมูลสถานะ
+    row.setAttribute('data-status', status);
+    
+    // ถ้าเปลี่ยนสถานะ ต้องเช็คกล่องด้วย
+    const checkbox = row.querySelector('input[type="checkbox"]');
+    if (!checkbox.checked) {
+        checkbox.checked = true;
+        row.classList.add('selected-row');
+    }
+    
+    // อัปเดตสรุปการเช็คชื่อ
+    updateAttendanceSummary();
+}
+
+/**
+ * อัปเดตสรุปการเช็คชื่อ
+ */
+function updateAttendanceSummary() {
+    // นับจำนวนสถานะทั้งหมด (ไม่ว่าจะเช็ค checkbox หรือไม่)
+    const rows = document.querySelectorAll('#studentList tr.student-row');
+    let totalPresent = 0;
+    let totalLate = 0;
+    let totalAbsent = 0;
+    let totalLeave = 0;
+    
+    rows.forEach(row => {
+        // ดูว่าสถานะปัจจุบันเป็นอะไร
+        const select = row.querySelector('select');
+        if (select) {
+            switch (select.value) {
+                case 'present':
+                    totalPresent++;
+                    break;
+                case 'late':
+                    totalLate++;
+                    break;
+                case 'absent':
+                    totalAbsent++;
+                    break;
+                case 'leave':
+                    totalLeave++;
+                    break;
+            }
+        }
+    });
+    
+    // อัปเดตค่าในหน้าเว็บ
+    document.getElementById('presentCount').textContent = totalPresent;
+    document.getElementById('lateCount').textContent = totalLate;
+    document.getElementById('absentCount').textContent = totalAbsent;
+    document.getElementById('leaveCount').textContent = totalLeave;
+    
+    // อัปเดตข้อมูลในแท็บ (ถ้ามีฟังก์ชันนี้)
+    if (typeof updateTabCounts === 'function') {
+        updateTabCounts(totalPresent, totalLate, totalAbsent, totalLeave);
+    }
+    
+    // อัปเดตจำนวนในแท็บเพื่อแสดงสถิติ
+    document.getElementById('tab-present').innerHTML = '<span class="material-icons">verified</span> มาเรียน <span class="badge bg-success">' + totalPresent + '</span>';
+    document.getElementById('tab-late').innerHTML = '<span class="material-icons">watch_later</span> มาสาย <span class="badge bg-warning">' + totalLate + '</span>';
+    document.getElementById('tab-absent').innerHTML = '<span class="material-icons">cancel</span> ขาดเรียน <span class="badge bg-danger">' + totalAbsent + '</span>';
+    document.getElementById('tab-leave').innerHTML = '<span class="material-icons">event_note</span> ลา <span class="badge bg-info">' + totalLeave + '</span>';
+    
+    // คำนวณจำนวนที่เช็คชื่อแล้วและยังไม่ได้เช็ค
+    const checked = totalPresent + totalLate + totalAbsent + totalLeave;
+    const total = rows.length;
+    const unchecked = total - checked;
+    
+    document.getElementById('tab-checked').innerHTML = '<span class="material-icons">check_circle</span> เช็คชื่อแล้ว <span class="badge bg-primary">' + checked + '</span>';
+    document.getElementById('tab-unchecked').innerHTML = '<span class="material-icons">pending</span> ยังไม่เช็คชื่อ <span class="badge bg-secondary">' + unchecked + '</span>';
+}
+
+/**
+ * อัปเดตจำนวนในแท็บ
+ */
+function updateTabCounts(presentCount, lateCount, absentCount, leaveCount) {
+    const checkedCount = presentCount + lateCount + absentCount + leaveCount;
+    const totalCount = document.querySelectorAll('.student-row').length;
+    const uncheckedCount = totalCount - checkedCount;
+    
+    // อัปเดตจำนวนในแท็บ (ถ้าต้องการแสดงจำนวน)
+    // สามารถเพิ่มองค์ประกอบใน HTML เพื่อแสดงจำนวน
+}
+
+/**
+ * กรองนักเรียนตามคำค้นหา
+ */
+function filterStudentsBySearch(searchTerm) {
+    const rows = document.querySelectorAll('.student-row');
+    const searchLower = searchTerm.toLowerCase();
+    
+    rows.forEach(row => {
+        const studentCode = row.getAttribute('data-student-code').toLowerCase();
+        const studentName = row.getAttribute('data-student-name').toLowerCase();
+        
+        if (studentCode.includes(searchLower) || studentName.includes(searchLower)) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+}
+
+/**
+ * เลือกนักเรียนทั้งหมด
+ */
+function checkAllStudents() {
+    const checkboxes = document.querySelectorAll('input[name^="attendance"][type="checkbox"]');
+    checkboxes.forEach(checkbox => {
+        if (checkbox.closest('tr').style.display !== 'none') { // เลือกเฉพาะแถวที่แสดงอยู่
+            checkbox.checked = true;
+            const row = checkbox.closest('tr');
+            row.classList.add('selected-row');
+        }
+    });
+    
+    // อัปเดตสรุปการเช็คชื่อ
+    updateAttendanceSummary();
+}
+
+/**
+ * ยกเลิกการเลือกนักเรียนทั้งหมด
+ */
+function uncheckAllStudents() {
+    const checkboxes = document.querySelectorAll('input[name^="attendance"][type="checkbox"]');
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = false;
+        const row = checkbox.closest('tr');
+        row.classList.remove('selected-row');
+    });
+    
+    // อัปเดตสรุปการเช็คชื่อ
+    updateAttendanceSummary();
+}
+
+/**
+ * กำหนดสถานะการเช็คชื่อทั้งหมด
+ */
+function setAllStatus(status) {
     // เลือกนักเรียนทั้งหมดก่อน
     checkAllStudents();
     
     // กำหนดสถานะให้ทั้งหมด
     const selects = document.querySelectorAll('select[name^="attendance"][name$="[status]"]');
     selects.forEach(select => {
-        select.value = status;
+        // เปลี่ยนเฉพาะแถวที่แสดงอยู่
+        if (select.closest('tr').style.display !== 'none') {
+            select.value = status;
+            
+            // อัปเดตสีพื้นหลังตามสถานะ
+            const row = select.closest('tr');
+            
+            // ลบคลาสสถานะเดิม
+            row.classList.remove('status-present', 'status-late', 'status-absent', 'status-leave');
+            
+            // เพิ่มคลาสสถานะใหม่
+            row.classList.add('status-' + status);
+            
+            // อัปเดตข้อมูลสถานะ
+            row.setAttribute('data-status', status);
+        }
     });
     
     // อัปเดตสรุปการเช็คชื่อ
@@ -564,17 +496,14 @@ function setAllStatus(status) {
  * รีเซ็ตฟอร์ม
  */
 function resetForm() {
-    console.log('Resetting form');
-    
-    const form = document.getElementById('attendanceForm');
-    if (form) form.reset();
-    
+    document.getElementById('attendanceForm').reset();
     uncheckAllStudents();
     
     // อัปเดต highlight ของแถว
     const rows = document.querySelectorAll('#studentList tr');
     rows.forEach(row => {
         row.classList.remove('selected-row');
+        row.classList.remove('status-present', 'status-late', 'status-absent', 'status-leave');
     });
     
     // อัปเดตสรุปการเช็คชื่อ

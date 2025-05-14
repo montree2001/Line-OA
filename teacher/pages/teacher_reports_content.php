@@ -75,12 +75,16 @@
 
         <div class="chart-container">
             <div class="chart-bars">
-                <?php foreach ($daily_attendance as $day): ?>
-                    <div class="chart-bar" style="height: <?php echo $day['percentage']; ?>%">
-                        <div class="chart-bar-value"><?php echo $day['percentage']; ?>%</div>
-                        <div class="chart-bar-label"><?php echo $day['day']; ?><br><?php echo $day['date']; ?></div>
-                    </div>
-                <?php endforeach; ?>
+                <?php if (is_array($daily_attendance) && !empty($daily_attendance)): ?>
+                    <?php foreach ($daily_attendance as $day): ?>
+                        <div class="chart-bar" style="height: <?php echo isset($day['percentage']) ? $day['percentage'] : 0; ?>%">
+                            <div class="chart-bar-value"><?php echo isset($day['percentage']) ? $day['percentage'] : 0; ?>%</div>
+                            <div class="chart-bar-label"><?php echo isset($day['day']) ? $day['day'] : ''; ?><br><?php echo isset($day['date']) ? $day['date'] : ''; ?></div>
+                        </div>
+                    <?php endforeach; ?>
+                <?php else: ?>
+                    <div class="no-data-message">ไม่มีข้อมูลการเข้าแถวในช่วงนี้</div>
+                <?php endif; ?>
             </div>
             <div class="chart-x-axis"></div>
         </div>
@@ -102,7 +106,141 @@
         <div class="tab-button active" data-tab="table" onclick="switchTab('table')">รายการ</div>
         <div class="tab-button" data-tab="graph" onclick="switchTab('graph')">กราฟ</div>
         <div class="tab-button" data-tab="calendar" onclick="switchTab('calendar')">ปฏิทิน</div>
+        <div class="tab-button" data-tab="activities" onclick="switchTab('activities')">กิจกรรมกลาง</div>
+        <div class="tab-button" data-tab="risk" onclick="switchTab('risk')">ความเสี่ยง</div>
     </div>
+
+<!-- เพิ่มส่วนแสดงผลกิจกรรมกลาง -->
+<div class="activities-card" id="activities-view" style="display: none;">
+    <div class="activities-header">
+        <div class="activities-title">กิจกรรมกลางของนักเรียน</div>
+        <div class="chart-controls">
+            <button class="chart-button" onclick="downloadActivitiesReport()">
+                <span class="material-icons">file_download</span> ดาวน์โหลด
+            </button>
+            <button class="chart-button" onclick="printActivitiesReport()">
+                <span class="material-icons">print</span> พิมพ์
+            </button>
+        </div>
+    </div>
+
+    <div class="activities-table-wrapper">
+        <?php if (empty($class_activities)): ?>
+            <div class="no-data-message">ไม่พบข้อมูลกิจกรรมกลางในภาคเรียนนี้</div>
+        <?php else: ?>
+            <table class="activities-table">
+                <thead>
+                    <tr>
+                        <th>กิจกรรม</th>
+                        <th>วันที่</th>
+                        <th>สถานะ</th>
+                        <th>นักเรียนเข้าร่วม</th>
+                        <th>จัดการ</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($class_activities as $activity): ?>
+                        <?php 
+                            $participation_rate = ($activity['total_students'] > 0) ? 
+                                round(($activity['participating_students'] / $activity['total_students']) * 100, 1) : 0;
+                            
+                            if ($participation_rate >= 80) {
+                                $status_class = 'good';
+                                $status_text = 'ดี';
+                            } elseif ($participation_rate >= 70) {
+                                $status_class = 'warning';
+                                $status_text = 'พอใช้';
+                            } else {
+                                $status_class = 'danger';
+                                $status_text = 'น้อย';
+                            }
+                            
+                            // แปลงวันที่เป็นรูปแบบไทย
+                            $activity_date = new DateTime($activity['activity_date']);
+                            $thai_date = $activity_date->format('d/m/') . ($activity_date->format('Y') + 543);
+                        ?>
+                        <tr>
+                            <td data-label="กิจกรรม"><?php echo $activity['activity_name']; ?></td>
+                            <td data-label="วันที่"><?php echo $thai_date; ?></td>
+                            <td data-label="สถานะ"><span class="status <?php echo $status_class; ?>"><?php echo $status_text; ?></span></td>
+                            <td data-label="นักเรียนเข้าร่วม"><?php echo $activity['participating_students']; ?>/<?php echo $activity['total_students']; ?> (<?php echo $participation_rate; ?>%)</td>
+                            <td data-label="จัดการ">
+                                <div class="action-buttons">
+                                    <button class="action-button" title="ดูรายละเอียด" onclick="viewActivityDetail(<?php echo $activity['activity_id']; ?>)">
+                                        <span class="material-icons">visibility</span>
+                                    </button>
+                                    <button class="action-button" title="แจ้งเตือนผู้ปกครอง" onclick="notifyActivityParents(<?php echo $activity['activity_id']; ?>)">
+                                        <span class="material-icons">notification_important</span>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        <?php endif; ?>
+    </div>
+</div>
+
+<!-- เพิ่มส่วนแสดงนักเรียนที่เสี่ยงตกกิจกรรม -->
+<div class="risk-card" id="risk-view" style="display: none;">
+    <div class="risk-header">
+        <div class="risk-title">นักเรียนที่มีความเสี่ยงตกกิจกรรมเข้าแถว</div>
+        <div class="chart-controls">
+            <button class="control-button orange" onclick="notifyParents()">
+                <span class="material-icons">notification_important</span> แจ้งเตือนผู้ปกครอง
+            </button>
+        </div>
+    </div>
+
+    <div class="risk-table-wrapper">
+        <?php if (empty($risk_students)): ?>
+            <div class="no-data-message">ไม่พบนักเรียนที่มีความเสี่ยงในขณะนี้</div>
+        <?php else: ?>
+            <table class="risk-table">
+                <thead>
+                    <tr>
+                        <th>เลขที่</th>
+                        <th>ชื่อ-นามสกุล</th>
+                        <th>จำนวนวันขาด</th>
+                        <th>อัตราการเข้าแถว</th>
+                        <th>จัดการ</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($risk_students as $student): ?>
+                        <?php 
+                            $attendance_rate = $student['attendance_percentage'];
+                            if ($attendance_rate >= 70) {
+                                $status_class = 'warning';
+                            } else {
+                                $status_class = 'danger';
+                            }
+                        ?>
+                        <tr>
+                            <td data-label="เลขที่"><?php echo $student['number']; ?></td>
+                            <td data-label="ชื่อ-นามสกุล"><?php echo $student['title'] . $student['first_name'] . ' ' . $student['last_name']; ?></td>
+                            <td data-label="จำนวนวันขาด"><?php echo $student['absent_count']; ?></td>
+                            <td data-label="อัตราการเข้าแถว"><span class="attendance-percent <?php echo $status_class; ?>"><?php echo $attendance_rate; ?>%</span></td>
+                            <td data-label="จัดการ">
+                                <div class="action-buttons">
+                                    <button class="action-button" title="ดูรายละเอียด" onclick="viewStudentDetail(<?php echo $student['student_id']; ?>)">
+                                        <span class="material-icons">visibility</span>
+                                    </button>
+                                    <button class="action-button" title="ส่งข้อความถึงผู้ปกครอง" onclick="contactParent(<?php echo $student['student_id']; ?>)">
+                                        <span class="material-icons">mail</span>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        <?php endif; ?>
+    </div>
+</div>
+
+
     <!-- ตารางรายชื่อนักเรียน -->
     <div class="student-table-card" id="table-view">
         <div class="table-header">

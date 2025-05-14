@@ -26,7 +26,7 @@ $admin_info = [
 ];
 
 // ดึงข้อมูลสำหรับหน้ารายงาน
-function getReportData()
+function getReportData($period = 'month', $departmentId = null) 
 {
     $conn = getDB();
     $data = [];
@@ -155,7 +155,7 @@ function getDepartmentStats($conn, $academicYearId)
     foreach ($departments as &$dept) {
         $totalDays = $dept['total_attendance'] + $dept['total_absence'];
         $attendance = $dept['total_attendance'] ?? 0;
-$dept['attendance_rate'] = ($totalDays > 0) ? round(($attendance / $totalDays) * 100, 1) : 100;
+        $dept['attendance_rate'] = ($totalDays > 0) ? round(($dept['total_attendance'] / $totalDays) * 100, 1) : 0;
 
         // กำหนดคลาสสำหรับอัตราการเข้าแถว
         if ($dept['attendance_rate'] >= 90) {

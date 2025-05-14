@@ -215,27 +215,29 @@ try {
     
     // อัพเดทสถิติการเข้าแถวของนักเรียน
     $update_stats_query = "
-        UPDATE student_academic_records sar
-        JOIN (
-            SELECT 
-                student_id,
-                SUM(CASE WHEN attendance_status IN ('present', 'late', 'leave') THEN 1 ELSE 0 END) as total_present,
-                SUM(CASE WHEN attendance_status = 'absent' THEN 1 ELSE 0 END) as total_absent
-            FROM attendance
-            WHERE student_id = :student_id AND academic_year_id = :academic_year_id
-            GROUP BY student_id
-        ) att ON sar.student_id = att.student_id
-        SET 
-            sar.total_attendance_days = att.total_present,
-            sar.total_absence_days = att.total_absent,
-            sar.updated_at = NOW()
-        WHERE sar.student_id = :student_id AND sar.academic_year_id = :academic_year_id
-    ";
-    
-    $stmt = $db->prepare($update_stats_query);
-    $stmt->bindParam(':student_id', $student_id, PDO::PARAM_INT);
-    $stmt->bindParam(':academic_year_id', $academic_year_id, PDO::PARAM_INT);
-    $stmt->execute();
+    UPDATE student_academic_records sar
+    JOIN (
+        SELECT 
+            student_id,
+            SUM(CASE WHEN attendance_status IN ('present', 'late', 'leave') THEN 1 ELSE 0 END) as total_present,
+            SUM(CASE WHEN attendance_status = 'absent' THEN 1 ELSE 0 END) as total_absent
+        FROM attendance
+        WHERE student_id = :subquery_student_id AND academic_year_id = :subquery_academic_year_id
+        GROUP BY student_id
+    ) att ON sar.student_id = att.student_id
+    SET 
+        sar.total_attendance_days = att.total_present,
+        sar.total_absence_days = att.total_absent,
+        sar.updated_at = NOW()
+    WHERE sar.student_id = :main_student_id AND sar.academic_year_id = :main_academic_year_id
+";
+
+$stmt = $db->prepare($update_stats_query);
+$stmt->bindParam(':subquery_student_id', $student_id, PDO::PARAM_INT);
+$stmt->bindParam(':subquery_academic_year_id', $academic_year_id, PDO::PARAM_INT);
+$stmt->bindParam(':main_student_id', $student_id, PDO::PARAM_INT);
+$stmt->bindParam(':main_academic_year_id', $academic_year_id, PDO::PARAM_INT);
+$stmt->execute();
     
     // ดึงข้อมูลนักเรียนเพื่อส่งกลับ
     $student_query = "SELECT s.student_code, s.title, u.first_name, u.last_name, u.profile_picture

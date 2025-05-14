@@ -28,6 +28,13 @@ $page = isset($_GET['page']) ? intval($_GET['page']) : 1;
 $items_per_page = 30; // จำนวนรายการต่อหน้า
 $offset = ($page - 1) * $items_per_page;
 
+
+
+
+
+
+
+
 try {
     $db = getDB();
     
@@ -227,12 +234,80 @@ try {
         ],
         'history' => $history
     ];
+
+
+
+
+
+
+
+
+
+
     
     // ส่งข้อมูลกลับ
     header('Content-Type: application/json');
     echo json_encode($result);
     
 } catch (Exception $e) {
+    header('Content-Type: application/json');
+    echo json_encode([
+        'success' => false,
+        'message' => 'เกิดข้อผิดพลาด: ' . $e->getMessage()
+    ]);
+}
+
+try {
+    // เดิม: หลังจากดึงข้อมูลนักเรียนและประวัติการเข้าแถว
+
+    // ดึงข้อมูลกิจกรรมที่เข้าร่วม
+    $activities_query = "SELECT 
+                        a.activity_id, a.activity_name, a.activity_date, aa.attendance_status,
+                        a.description, a.activity_location
+                        FROM activities a
+                        LEFT JOIN activity_attendance aa ON a.activity_id = aa.activity_id AND aa.student_id = :student_id
+                        WHERE a.academic_year_id = :academic_year_id
+                        ORDER BY a.activity_date DESC";
+
+    $stmt = $db->prepare($activities_query);
+    $stmt->bindParam(':student_id', $student_id, PDO::PARAM_INT);
+    $stmt->bindParam(':academic_year_id', $academic_year_id, PDO::PARAM_INT);
+    $stmt->execute();
+    $activities_data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // แปลงข้อมูลกิจกรรม
+    $activities = [];
+    foreach ($activities_data as $activity) {
+        // แปลงวันที่เป็นรูปแบบไทย
+        $activity_date = date_create($activity['activity_date']);
+        $thai_date = date_format($activity_date, 'd/m/') . (date_format($activity_date, 'Y') + 543);
+        
+        // แปลงสถานะเป็นภาษาไทย
+        $status_text = $activity['attendance_status'] === 'present' ? 'เข้าร่วม' : 'ไม่เข้าร่วม';
+        $status_class = $activity['attendance_status'] === 'present' ? 'present' : 'absent';
+        
+        $activities[] = [
+            'id' => $activity['activity_id'],
+            'name' => $activity['activity_name'],
+            'date' => $activity['activity_date'],
+            'thai_date' => $thai_date,
+            'status' => $activity['attendance_status'] ?? 'absent',
+            'status_text' => $status_text,
+            'status_class' => $status_class,
+            'location' => $activity['activity_location'],
+            'description' => $activity['description']
+        ];
+    }
+
+    // เพิ่มข้อมูลกิจกรรมลงในผลลัพธ์
+    $result['activities'] = $activities;
+    
+    // ตามด้วยการส่งข้อมูลกลับ
+    header('Content-Type: application/json');
+    echo json_encode($result);
+    
+} catch (Exception $e) {
+    // จัดการข้อผิดพลาด
     header('Content-Type: application/json');
     echo json_encode([
         'success' => false,

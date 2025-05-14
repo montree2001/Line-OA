@@ -3,6 +3,8 @@
  * bulk_attendance.php - หน้าเช็คชื่อนักเรียนแบบกลุ่มสำหรับผู้ดูแลระบบและครู
  * 
  * ส่วนหนึ่งของระบบ น้องชูใจ AI ดูแลผู้เรียน
+ * ปรับปรุงใหม่: แยกแท็บระหว่างเช็คชื่อแล้วและยังไม่เช็ค, แสดงไอคอนวิธีการเช็ค, 
+ * ค้นหาโดยชื่อ, และกรองตามแผนก/ชั้น/กลุ่ม
  */
 
 // เริ่ม session
@@ -12,17 +14,12 @@ session_start();
 require_once '../config/db_config.php';
 require_once '../db_connect.php';
 
-// ตรวจสอบการล็อกอิน (แสดงความคิดเห็นออกไปเพื่อการทดสอบ)
- if (!isset($_SESSION['user_id']) || !isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'admin') {
+// ตรวจสอบการล็อกอิน
+if (!isset($_SESSION['user_id']) || !isset($_SESSION['user_role']) || !in_array($_SESSION['user_role'], ['admin', 'teacher'])) {
     header('Location: ../login.php');
     exit;
-} 
-// ข้อมูลเกี่ยวกับเจ้าหน้าที่ (จริงๆ ควรดึงจากฐานข้อมูล)
-$admin_info = [
-    'name' => $_SESSION['user_name'] ?? 'เจ้าหน้าที่',
-    'role' => $_SESSION['user_role'] ?? 'ผู้ดูแลระบบ',
-    'initials' => 'A',
-];
+}
+
 // เชื่อมต่อฐานข้อมูล
 $conn = getDB();
 
@@ -42,19 +39,17 @@ try {
         $stmt->execute([$user_id]);
         $user = $stmt->fetch(PDO::FETCH_ASSOC);
         
-        // ตรวจสอบว่า $user ไม่ใช่ false ก่อนใช้งาน
-        if ($user !== false) {
+        if ($user) {
             $admin_info = [
                 'name' => $user['first_name'] . ' ' . $user['last_name'],
                 'role' => 'ผู้ดูแลระบบ',
                 'initials' => mb_substr($user['first_name'], 0, 1, 'UTF-8')
             ];
         } else {
-            // กรณีไม่พบข้อมูลผู้ใช้
             $admin_info = [
-                'name' => 'ไม่พบข้อมูลผู้ใช้',
+                'name' => 'ผู้ดูแลระบบ',
                 'role' => 'ผู้ดูแลระบบ',
-                'initials' => 'N'
+                'initials' => 'A'
             ];
         }
     } else {
@@ -70,19 +65,17 @@ try {
         $stmt->execute([$user_id]);
         $teacher = $stmt->fetch(PDO::FETCH_ASSOC);
         
-        // ตรวจสอบว่า $teacher ไม่ใช่ false ก่อนใช้งาน
-        if ($teacher !== false) {
+        if ($teacher) {
             $admin_info = [
                 'name' => $teacher['title'] . $teacher['first_name'] . ' ' . $teacher['last_name'],
-                'role' => $teacher['position'] . ' ' . ($teacher['department_name'] ?? 'ไม่ระบุแผนก'),
+                'role' => $teacher['position'] . ' ' . $teacher['department_name'],
                 'initials' => mb_substr($teacher['first_name'], 0, 1, 'UTF-8'),
                 'teacher_id' => $teacher['teacher_id']
             ];
         } else {
-            // กรณีไม่พบข้อมูลครู
             $admin_info = [
-                'name' => 'ไม่พบข้อมูลครู',
-                'role' => 'ครู',
+                'name' => 'ครูผู้สอน',
+                'role' => 'ครูผู้สอน',
                 'initials' => 'T'
             ];
         }
@@ -103,7 +96,7 @@ try {
     $stmt->execute();
     $academic_year = $stmt->fetch(PDO::FETCH_ASSOC);
     
-    if ($academic_year === false) {
+    if (!$academic_year) {
         // ไม่พบข้อมูลปีการศึกษาที่เปิดใช้งาน
         throw new Exception("ไม่พบข้อมูลปีการศึกษาที่เปิดใช้งาน");
     }
@@ -122,36 +115,22 @@ try {
     $stmt->execute();
     $departments = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
-    // ตรวจสอบว่า $departments ไม่ใช่ false
-    if ($departments === false) {
-        $departments = [];
-    }
-    
-    // ถ้ามีปีการศึกษาที่เปิดใช้งาน จึงดึงระดับชั้น
-    if (isset($current_academic_year_id) && $current_academic_year_id !== null) {
-        $stmt = $conn->prepare("
-            SELECT DISTINCT level 
-            FROM classes 
-            WHERE academic_year_id = ? 
-            ORDER BY CASE 
-                WHEN level = 'ปวช.1' THEN 1
-                WHEN level = 'ปวช.2' THEN 2
-                WHEN level = 'ปวช.3' THEN 3
-                WHEN level = 'ปวส.1' THEN 4
-                WHEN level = 'ปวส.2' THEN 5
-                ELSE 6
-            END
-        ");
-        $stmt->execute([$current_academic_year_id]);
-        $levels = $stmt->fetchAll(PDO::FETCH_COLUMN);
-        
-        // ตรวจสอบว่า $levels ไม่ใช่ false
-        if ($levels === false) {
-            $levels = [];
-        }
-    } else {
-        $levels = [];
-    }
+    // ดึงระดับชั้นที่มีในระบบ
+    $stmt = $conn->prepare("
+        SELECT DISTINCT level 
+        FROM classes 
+        WHERE academic_year_id = ? 
+        ORDER BY CASE 
+            WHEN level = 'ปวช.1' THEN 1
+            WHEN level = 'ปวช.2' THEN 2
+            WHEN level = 'ปวช.3' THEN 3
+            WHEN level = 'ปวส.1' THEN 4
+            WHEN level = 'ปวส.2' THEN 5
+            ELSE 6
+        END
+    ");
+    $stmt->execute([$current_academic_year_id]);
+    $levels = $stmt->fetchAll(PDO::FETCH_COLUMN);
 } catch (PDOException $e) {
     error_log("Database error: " . $e->getMessage());
     $departments = [];
@@ -170,19 +149,8 @@ if (isset($_POST['save_attendance']) && isset($_POST['attendance']) && is_array(
         $conn->beginTransaction();
         
         $attendance_date = $_POST['attendance_date'] ?? date('Y-m-d');
-        $processed_count = 0;
         
         foreach ($_POST['attendance'] as $student_id => $data) {
-            // ตรวจสอบว่ามีการเลือกนักเรียนหรือไม่
-            if (!isset($data['check']) || $data['check'] != 1) {
-                continue;
-            }
-            
-            $student_id = (int)$student_id; // แปลงเป็นตัวเลข
-            if ($student_id <= 0) {
-                continue; // ข้ามหากไม่ใช่ ID ที่ถูกต้อง
-            }
-            
             $status = $data['status'] ?? 'absent';
             $remarks = $data['remarks'] ?? '';
             
@@ -194,7 +162,7 @@ if (isset($_POST['save_attendance']) && isset($_POST['attendance']) && is_array(
             $stmt->execute([$student_id, $attendance_date]);
             $existing = $stmt->fetch(PDO::FETCH_ASSOC);
             
-            if ($existing !== false) {
+            if ($existing) {
                 // อัปเดตข้อมูลเดิม
                 $stmt = $conn->prepare("
                     UPDATE attendance 
@@ -212,8 +180,6 @@ if (isset($_POST['save_attendance']) && isset($_POST['attendance']) && is_array(
                 $stmt->execute([$student_id, $current_academic_year_id, $attendance_date, $status, $user_id, $remarks]);
             }
             
-            $processed_count++;
-            
             // อัปเดตข้อมูลสรุปการเข้าแถวของนักเรียน
             $stmt = $conn->prepare("
                 SELECT record_id FROM student_academic_records 
@@ -222,7 +188,7 @@ if (isset($_POST['save_attendance']) && isset($_POST['attendance']) && is_array(
             $stmt->execute([$student_id, $current_academic_year_id]);
             $record = $stmt->fetch(PDO::FETCH_ASSOC);
             
-            if ($record !== false) {
+            if ($record) {
                 // อัปเดตจำนวนวันที่เข้าแถวและขาดแถว
                 $stmt = $conn->prepare("
                     UPDATE student_academic_records 
@@ -242,18 +208,33 @@ if (isset($_POST['save_attendance']) && isset($_POST['attendance']) && is_array(
             }
         }
         
-      
+        // บันทึกการดำเนินการของผู้ดูแลระบบ (ถ้าต้องการบันทึก)
+        $skip_admin_action = isset($_POST['skip_admin_action']) && $_POST['skip_admin_action'] == 1;
+        
+        if (!$skip_admin_action) {
+            $action_type = 'update_student_status';
+            $action_details = json_encode([
+                'type' => 'attendance',
+                'date' => $attendance_date,
+                'student_count' => count($_POST['attendance']),
+                'method' => 'manual'
+            ]);
+            
+            $stmt = $conn->prepare("
+                INSERT INTO admin_actions (admin_id, action_type, action_details)
+                VALUES (?, ?, ?)
+            ");
+            $stmt->execute([$user_id, $action_type, $action_details]);
+        }
         
         // Commit transaction
         $conn->commit();
         
         $save_success = true;
-        $response_message = "บันทึกการเช็คชื่อเรียบร้อยแล้ว จำนวน " . $processed_count . " คน";
+        $response_message = "บันทึกการเช็คชื่อเรียบร้อยแล้ว จำนวน " . count($_POST['attendance']) . " คน";
     } catch (PDOException $e) {
         // Rollback ในกรณีที่เกิดข้อผิดพลาด
-        if ($conn->inTransaction()) {
-            $conn->rollBack();
-        }
+        $conn->rollBack();
         error_log("Database error: " . $e->getMessage());
         $save_error = true;
         $error_message = $e->getMessage();

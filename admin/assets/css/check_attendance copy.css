@@ -1,0 +1,487 @@
+/* Tabs Container Styling */
+.tabs-container {
+    margin-bottom: 20px;
+    background-color: white;
+    border-radius: 10px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+.tabs-header {
+    display: flex;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.tab {
+    flex: 1;
+    padding: 15px 20px;
+    text-align: center;
+    cursor: pointer;
+    font-weight: 600;
+    color: #666;
+    transition: all 0.3s ease;
+    position: relative;
+    border-bottom: 3px solid transparent;
+}
+
+.tab:hover {
+    background-color: #f5f5f5;
+    color: #333;
+}
+
+.tab.active {
+    color: var(--primary-color, #06c755);
+    border-bottom-color: var(--primary-color, #06c755);
+    background-color: #f9f9f9;
+}
+
+.tab-content {
+    display: none;
+    padding: 20px;
+}
+
+.tab-content.active {
+    display: block;
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Add some responsiveness */
+@media (max-width: 768px) {
+    .tabs-header {
+        flex-wrap: wrap;
+    }
+
+    .tab {
+        flex-basis: 50%;
+        padding: 12px 15px;
+    }
+}
+
+/* Camera Container Styling */
+.camera-container {
+    background-color: #f9f9f9;
+    border-radius: 10px;
+    padding: 20px;
+    text-align: center;
+}
+
+.camera-preview {
+    position: relative;
+    background-color: #f0f0f0;
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 15px;
+    min-height: 300px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+.camera-placeholder {
+    text-align: center;
+    color: #666;
+}
+
+.camera-placeholder .material-icons {
+    font-size: 48px;
+    color: #999;
+    margin-bottom: 10px;
+}
+
+.scanner-border {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 200px;
+    height: 200px;
+    border: 2px dashed var(--primary-color, #06c755);
+    border-radius: 10px;
+    pointer-events: none;
+}
+
+/* Camera Controls */
+.camera-controls {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+}
+
+.camera-controls .btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.camera-controls .btn .material-icons {
+    margin-right: 5px;
+}
+
+/* Scan Results */
+.scan-results {
+    margin-top: 20px;
+    background-color: white;
+    border-radius: 8px;
+    padding: 15px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+.scan-result-empty {
+    text-align: center;
+    color: #999;
+    padding: 20px;
+    background-color: #f9f9f9;
+    border-radius: 8px;
+}
+
+/* Pin Generator */
+.pin-generator {
+    background-color: #f9f9f9;
+    border-radius: 10px;
+    padding: 20px;
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.pin-display {
+    margin-bottom: 15px;
+}
+
+.pin-code {
+    font-size: 48px;
+    font-weight: bold;
+    color: var(--primary-color, #06c755);
+    letter-spacing: 10px;
+}
+
+.pin-timer {
+    color: #f44336;
+    font-size: 16px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 5px;
+}
+
+.pin-actions {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin-top: 15px;
+}
+
+/* Instructional Text */
+.pin-instruction {
+    background-color: white;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+.pin-instruction ol {
+    padding-left: 20px;
+    margin-bottom: 15px;
+}
+
+.pin-instruction li {
+    margin-bottom: 8px;
+}
+
+.pin-note {
+    font-size: 12px;
+    color: #666;
+    font-style: italic;
+}
+
+/* Bulk Actions */
+.bulk-actions {
+    display: flex;
+    justify-content: flex-start;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+/* Filter Button Styling */
+.filter-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 15px;
+    background-color: var(--primary-color, #06c755);
+    color: white;
+    border: none;
+    border-radius: 5px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    margin-top: 26px; /* Aligns with form inputs */
+    gap: 8px;
+}
+
+.filter-button:hover {
+    background-color: var(--primary-color-dark, #05a647);
+}
+
+.filter-button .material-icons {
+    margin-right: 5px;
+}
+
+/* Responsive Filter Button */
+@media (max-width: 768px) {
+    .filter-button {
+        width: 100%;
+        margin-top: 10px;
+    }
+}
+
+/* Attendance Summary */
+.attendance-summary {
+    background-color: #f9f9f9;
+    border-radius: 8px;
+    padding: 15px;
+    margin-top: 20px;
+}
+
+.attendance-stat {
+    text-align: center;
+    background-color: white;
+    border-radius: 5px;
+    padding: 10px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+.attendance-stat-value {
+    font-size: 24px;
+    font-weight: bold;
+    color: var(--primary-color, #06c755);
+    margin-bottom: 5px;
+}
+
+.attendance-stat-label {
+    font-size: 12px;
+    color: #666;
+}
+
+/* GPS Settings */
+.gps-settings {
+    background-color: #f9f9f9;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.gps-settings h3 {
+    margin-bottom: 15px;
+    border-bottom: 1px solid #e0e0e0;
+    padding-bottom: 10px;
+}
+
+.map-container {
+    background-color: white;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+.map-info {
+    background-color: #f9f9f9;
+    border-radius: 8px;
+    padding: 15px;
+    margin-top: 15px;
+}
+
+.map-info p {
+    margin-bottom: 8px;
+    color: #666;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+    .pin-code {
+        font-size: 36px;
+        letter-spacing: 5px;
+    }
+
+    .pin-instruction {
+        padding: 10px;
+    }
+
+    .camera-preview {
+        min-height: 250px;
+    }
+
+    .scanner-border {
+        width: 150px;
+        height: 150px;
+    }
+}
+
+/* CSS สำหรับไอคอนวิธีการเช็คชื่อ */
+
+/* ขนาดและการจัดวางของไอคอน */
+.check-method-icon {
+    font-size: 16px !important;
+    vertical-align: middle !important;
+    margin-left: 5px;
+    cursor: help;
+}
+
+/* สีสำหรับแต่ละวิธีการเช็คชื่อ */
+.text-gps {
+    color: #28a745 !important; /* สีเขียวสำหรับ GPS */
+}
+
+.text-qr {
+    color: #007bff !important; /* สีน้ำเงินสำหรับ QR Code */
+}
+
+.text-pin {
+    color: #ffc107 !important; /* สีเหลืองสำหรับ PIN */
+}
+
+.text-manual {
+    color: #17a2b8 !important; /* สีฟ้าสำหรับการเช็คชื่อด้วยผู้ดูแลระบบ */
+}
+
+/* ป้ายบอกวิธีการเช็คชื่อเมื่อเลื่อนเมาส์ผ่าน */
+.tooltip-inner {
+    max-width: 200px;
+    padding: 5px 10px;
+    color: #fff;
+    text-align: center;
+    background-color: #000;
+    border-radius: 4px;
+}
+
+/* ส่วนของคำอธิบาย */
+.legend-list {
+    list-style-type: none;
+    padding-left: 0;
+}
+
+.legend-list li {
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+}
+
+.legend-list .material-icons {
+    margin-right: 8px;
+}
+
+/* ปรับปรุงสีพื้นหลังสำหรับแถวที่มีการเช็คชื่อแล้ว */
+.selected-row {
+    background-color: #f0f9f0 !important; /* สีเขียวอ่อนๆ สำหรับแถวที่เลือก */
+}
+
+/* เพิ่มเอฟเฟกต์เมื่อเลื่อนเมาส์ผ่าน */
+.check-method-icon:hover {
+    opacity: 0.8;
+    transform: scale(1.2);
+    transition: all 0.2s ease;
+}
+
+/* ตกแต่งส่วนแสดงวิธีการเช็คชื่อ */
+#checkMethodLegend {
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    margin-bottom: 20px;
+}
+
+#checkMethodLegend .card-title {
+    display: flex;
+    align-items: center;
+    font-weight: 600;
+}
+
+#checkMethodLegend .card-title .material-icons {
+    margin-right: 8px;
+}
+/* CSS สำหรับไอคอนวิธีการเช็คชื่อในตาราง */
+
+/* ปรับแต่งคอลัมน์วิธีการเช็คชื่อ */
+.data-table td.text-center {
+    text-align: center;
+    vertical-align: middle;
+}
+
+/* ขนาดและการจัดวางของไอคอน */
+.check-method-icon {
+    font-size: 20px !important;
+    vertical-align: middle !important;
+    cursor: help;
+    transition: transform 0.2s, opacity 0.2s;
+}
+
+/* เอฟเฟกต์เมื่อเลื่อนเมาส์ผ่านไอคอน */
+.check-method-icon:hover {
+    transform: scale(1.2);
+    opacity: 0.8;
+}
+
+/* สีสำหรับแต่ละวิธีการเช็คชื่อ */
+.text-success {
+    color: #28a745 !important; /* สีเขียวสำหรับ GPS */
+}
+
+.text-primary {
+    color: #007bff !important; /* สีน้ำเงินสำหรับ QR Code */
+}
+
+.text-warning {
+    color: #ffc107 !important; /* สีเหลืองสำหรับ PIN */
+}
+
+.text-info {
+    color: #17a2b8 !important; /* สีฟ้าสำหรับการเช็คชื่อด้วยผู้ดูแลระบบ */
+}
+
+.text-muted {
+    color: #6c757d !important; /* สีเทาสำหรับยังไม่ได้เช็คชื่อ */
+}
+
+/* ป้ายบอกวิธีการเช็คชื่อเมื่อเลื่อนเมาส์ผ่าน */
+[title] {
+    position: relative;
+}
+
+[title]:hover::after {
+    content: attr(title);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    white-space: nowrap;
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    z-index: 100;
+    pointer-events: none;
+}
+
+/* ปรับปรุงการแสดงผลในหน้าจอขนาดเล็ก */
+@media (max-width: 768px) {
+    .check-method-icon {
+        font-size: 18px !important;
+    }
+    
+    [title]:hover::after {
+        font-size: 10px;
+        padding: 3px 6px;
+    }
+}
