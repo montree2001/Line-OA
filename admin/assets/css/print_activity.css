@@ -1,0 +1,383 @@
+/**
+ * print_activity.css - สไตล์สำหรับหน้าพิมพ์รายงานผลกิจกรรมเข้าแถว
+ * 
+ * ส่วนหนึ่งของระบบน้องชูใจ - ดูแลผู้เรียน
+ * วิทยาลัยการอาชีพปราสาท
+ */
+
+/* นำเข้าฟอนต์ TH Sarabun */
+@font-face {
+    font-family: 'TH Sarabun';
+    src: url('../fonts/THSarabun.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'TH Sarabun';
+    src: url('../fonts/THSarabun-Bold.ttf') format('truetype');
+    font-weight: bold;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'TH Sarabun';
+    src: url('../fonts/THSarabun-Italic.ttf') format('truetype');
+    font-weight: normal;
+    font-style: italic;
+}
+
+@font-face {
+    font-family: 'TH Sarabun';
+    src: url('../fonts/THSarabun-BoldItalic.ttf') format('truetype');
+    font-weight: bold;
+    font-style: italic;
+}
+
+/* ===== ตัวแปรสี ===== */
+:root {
+    --primary-color: #28a745;
+    --secondary-color: #6c757d;
+    --info-color: #17a2b8;
+    --warning-color: #ffc107;
+    --danger-color: #dc3545;
+    --success-color: #28a745;
+    --light-color: #f8f9fa;
+    --dark-color: #343a40;
+    --body-bg: #f5f8fa;
+    --card-bg: #ffffff;
+    --card-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+/* ===== ลบปุ่มนำทางเมื่อพิมพ์ ===== */
+@media print {
+    .report-params,
+    .sidebar,
+    .admin-dropdown,
+    .main-header,
+    #printReportBtn,
+    #exportPdfBtn,
+    #exportExcelBtn,
+    #generateReportBtn,
+    button {
+        display: none !important;
+    }
+    
+    body, html {
+        width: 100%;
+        margin: 0;
+        padding: 0;
+        background: white;
+        font-family: 'TH Sarabun', sans-serif;
+        font-size: 16pt;
+    }
+    
+    .main-content {
+        margin-left: 0 !important;
+        padding: 0 !important;
+    }
+    
+    .report-container {
+        padding: 0 !important;
+        margin: 0 !important;
+        width: 100% !important;
+    }
+    
+    .report-content {
+        box-shadow: none !important;
+        border: none !important;
+    }
+    
+    /* ตั้งค่าหน้ากระดาษ A4 */
+    @page {
+        size: A4;
+        margin: 1cm;
+    }
+    
+    /* ทำซ้ำหัวตารางในทุกหน้า */
+    .attendance-table thead {
+        display: table-header-group;
+    }
+    
+    /* ทำซ้ำส่วนหัวรายงานทุกหน้า */
+    .report-header {
+        display: table-header-group;
+    }
+    
+    /* ไม่แบ่งหน้าในแถวเดียวกัน */
+    .attendance-table tr {
+        page-break-inside: avoid;
+    }
+    
+    /* ทำซ้ำส่วนท้ายรายงานในหน้าสุดท้าย */
+    .report-footer {
+        display: table-footer-group;
+    }
+}
+
+/* ===== สไตล์หน้ารายงาน ===== */
+.report-params {
+    margin-bottom: 20px;
+}
+
+.report-container {
+    display: block;
+    margin-bottom: 20px;
+}
+
+.report-content {
+    background-color: var(--card-bg);
+    box-shadow: var(--card-shadow);
+    border-radius: 5px;
+    padding: 20px;
+    margin-bottom: 20px;
+    font-family: 'TH Sarabun', sans-serif;
+}
+
+.report-placeholder {
+    text-align: center;
+    padding: 50px 0;
+}
+
+.report-example {
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.report-example img {
+    max-width: 100%;
+    height: auto;
+    margin-bottom: 20px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+}
+
+.report-example p {
+    color: var(--secondary-color);
+    font-style: italic;
+}
+
+/* ===== สไตล์รายงาน ===== */
+.report-header {
+    text-align: center;
+    margin-bottom: 20px;
+    font-family: 'TH Sarabun', sans-serif;
+}
+
+.report-logo {
+    margin-bottom: 10px;
+}
+
+.report-logo img {
+    height: 80px;
+    width: auto;
+}
+
+.report-title h1 {
+    font-size: 24pt;
+    font-weight: bold;
+    margin-bottom: 10px;
+    font-family: 'TH Sarabun', sans-serif;
+}
+
+.report-title h2 {
+    font-size: 22pt;
+    margin-bottom: 10px;
+    font-family: 'TH Sarabun', sans-serif;
+}
+
+.report-title h3 {
+    font-size: 20pt;
+    margin-bottom: 5px;
+    font-family: 'TH Sarabun', sans-serif;
+}
+
+.attendance-table-container {
+    overflow-x: auto;
+    margin-bottom: 20px;
+}
+
+.attendance-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: 'TH Sarabun', sans-serif;
+    font-size: 18pt;
+}
+
+.attendance-table th,
+.attendance-table td {
+    border: 1px solid #000;
+    padding: 8px;
+    text-align: center;
+}
+
+.attendance-table th {
+    background-color: #f0f0f0;
+    font-weight: bold;
+    font-family: 'TH Sarabun', sans-serif;
+}
+
+.attendance-table .no-col {
+    width: 50px;
+}
+
+.attendance-table .code-col {
+    width: 100px;
+}
+
+.attendance-table .name-col {
+    width: 200px;
+    text-align: left;
+}
+
+.attendance-table .day-col {
+    width: 50px;
+}
+
+.attendance-table .total-col {
+    width: 50px;
+}
+
+.attendance-table .remark-col {
+    width: 150px;
+    text-align: left;
+}
+
+.attendance-table tbody tr:nth-child(even) {
+    background-color: #f9f9f9;
+}
+
+.attendance-table td.present {
+    color: var(--success-color);
+    font-weight: bold;
+}
+
+.attendance-table td.absent {
+    color: var(--danger-color);
+    font-weight: bold;
+}
+
+.attendance-table td.late {
+    color: var(--warning-color);
+    font-weight: bold;
+}
+
+.attendance-table td.leave {
+    color: var(--info-color);
+    font-weight: bold;
+}
+
+.attendance-table td.holiday {
+    background-color: #f0f0f0;
+    font-style: italic;
+}
+
+.report-summary {
+    margin-bottom: 20px;
+    font-family: 'TH Sarabun', sans-serif;
+    font-size: 18pt;
+}
+
+.report-summary p {
+    margin-bottom: 5px;
+}
+
+.report-footer {
+    margin-top: 30px;
+    font-family: 'TH Sarabun', sans-serif;
+    font-size: 18pt;
+}
+
+.signature-section {
+    display: flex;
+    justify-content: space-between;
+    flex-direction: row; /* แนวนอน */
+    flex-wrap: nowrap;
+    width: 100%;
+    margin-top: 40px;
+}
+
+.signature-box {
+    text-align: center;
+    width: 33%;
+    padding: 0 10px;
+}
+
+.signature-line {
+    margin-bottom: 40px;
+    font-size: 18pt;
+}
+
+.signature-name {
+    margin-bottom: 5px;
+    font-size: 18pt;
+}
+
+.signature-title {
+    margin-bottom: 5px;
+    font-size: 18pt;
+}
+
+.signature-subtitle {
+    font-size: 18pt;
+}
+
+/* ===== Loading Overlay ===== */
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(255, 255, 255, 0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+}
+
+.spinner-container {
+    text-align: center;
+}
+
+.spinner {
+    border: 5px solid #f3f3f3;
+    border-top: 5px solid var(--primary-color);
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 20px;
+}
+
+.loading-text {
+    font-size: 16px;
+    color: var(--dark-color);
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* ===== Responsive ===== */
+@media (max-width: 768px) {
+    .signature-section {
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .signature-box {
+        width: 100%;
+        margin-bottom: 20px;
+    }
+    
+    .card-footer {
+        flex-direction: column;
+    }
+    
+    .card-footer button {
+        margin-bottom: 10px;
+        width: 100%;
+    }
+}

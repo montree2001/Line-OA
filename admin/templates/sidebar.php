@@ -33,7 +33,7 @@
             <span class="material-icons">people</span>
             <span class="menu-text">จัดการผู้ใช้งาน</span>
         </a>
-     
+
 
         <div class="menu-category">จัดการกิจกรรม</div>
         <a href="activities.php" class="menu-item <?php echo ($current_page == 'activities') ? 'active' : ''; ?>">
@@ -44,6 +44,11 @@
             <span class="material-icons">category</span>
             <span class="menu-text">บันทึกเข้าร่วมกิจกรรม</span>
         </a>
+        <a href="print_activity_report.php" class="menu-item <?php echo ($current_page == 'print_activity_report') ? 'active' : ''; ?>">
+            <span class="material-icons">print</span>
+            <span class="menu-text">พิมพ์ผลกิจกรรม</span>
+        </a>
+
 
 
         <div class="menu-category">จัดการข้อมูล</div>
