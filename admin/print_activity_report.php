@@ -52,25 +52,18 @@ function getClassesByDepartment($department_id, $academic_year_id) {
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
-// คำนวณสัปดาห์จากวันที่
-function calculateWeeks($start_date, $current_date) {
-    $start = new DateTime($start_date);
-    $current = new DateTime($current_date);
-    $interval = $start->diff($current);
-    
-    // คำนวณจำนวนวันและหารด้วย 7 เพื่อให้ได้จำนวนสัปดาห์
-    $days = $interval->days;
-    return floor($days / 7) + 1;
-}
-
 // ดึงข้อมูลสัปดาห์ทั้งหมดในภาคเรียน
 function getAllWeeks($academic_year) {
     $start_date = new DateTime($academic_year['start_date']);
     $end_date = new DateTime($academic_year['end_date']);
     
+    // ตรวจสอบว่าเป็นระดับ ปวช. หรือ ปวส.
+    $is_high_level = strpos($academic_year['description'] ?? '', 'ปวส.') !== false;
+    $max_weeks = $is_high_level ? 15 : 18; // ปวส. 15 สัปดาห์, ปวช. 18 สัปดาห์
+    
     $interval = $start_date->diff($end_date);
     $total_days = $interval->days;
-    $total_weeks = ceil($total_days / 7);
+    $total_weeks = min(ceil($total_days / 7), $max_weeks); // จำกัดจำนวนสัปดาห์
     
     $weeks = [];
     for ($i = 1; $i <= $total_weeks; $i++) {
@@ -85,122 +78,122 @@ function getAllWeeks($academic_year) {
             $week_end = clone $end_date;
         }
         
+        // แปลงวันที่เป็นรูปแบบ d/m/Y ภาษาไทย
+        $thai_start = thaiDate($week_start->format('Y-m-d'));
+        $thai_end = thaiDate($week_end->format('Y-m-d'));
+        
         $weeks[] = [
             'week_number' => $i,
             'start_date' => $week_start->format('Y-m-d'),
             'end_date' => $week_end->format('Y-m-d'),
-            'start_date_display' => $week_start->format('d/m/Y'),
-            'end_date_display' => $week_end->format('d/m/Y')
+            'start_date_display' => $thai_start,
+            'end_date_display' => $thai_end
         ];
     }
     
     return $weeks;
 }
 
-// ดึงข้อมูลวันหยุดนักขัตฤกษ์
-function getHolidays($academic_year_id) {
-    // ในระบบจริงควรดึงจากฐานข้อมูล
-    // สำหรับตัวอย่างนี้ใช้วันหยุดประจำปี 2568 (2025)
-    return [
-        '2025-01-01' => 'วันขึ้นปีใหม่',
-        '2025-02-10' => 'วันมาฆบูชา',
-        '2025-04-06' => 'วันจักรี',
-        '2025-04-13' => 'วันสงกรานต์',
-        '2025-04-14' => 'วันสงกรานต์',
-        '2025-04-15' => 'วันสงกรานต์',
-        '2025-05-01' => 'วันแรงงานแห่งชาติ',
-        '2025-05-05' => 'วันฉัตรมงคล',
-        '2025-06-03' => 'วันเฉลิมพระชนมพรรษาสมเด็จพระราชินี',
-        '2025-07-28' => 'วันเฉลิมพระชนมพรรษา ร.10',
-        '2025-08-12' => 'วันแม่แห่งชาติ',
-        '2025-10-13' => 'วันคล้ายวันสวรรคต ร.9',
-        '2025-12-05' => 'วันพ่อแห่งชาติ',
-        '2025-12-10' => 'วันรัฐธรรมนูญ',
-        '2025-12-31' => 'วันสิ้นปี'
+// ฟังก์ชันแปลงวันที่เป็นรูปแบบไทย
+function thaiDate($date) {
+    $thai_months = [
+        '01' => 'ม.ค.', '02' => 'ก.พ.', '03' => 'มี.ค.', '04' => 'เม.ย.',
+        '05' => 'พ.ค.', '06' => 'มิ.ย.', '07' => 'ก.ค.', '08' => 'ส.ค.',
+        '09' => 'ก.ย.', '10' => 'ต.ค.', '11' => 'พ.ย.', '12' => 'ธ.ค.'
     ];
+    
+    list($year, $month, $day) = explode('-', $date);
+    $thai_year = (int)$year + 543;
+    $thai_month = $thai_months[$month];
+    
+    return $day . ' ' . $thai_month . ' ' . $thai_year;
 }
 
-// ดึงข้อมูลการเข้าแถวของนักเรียนในชั้นเรียนและช่วงวันที่กำหนด
-function getAttendanceData($class_id, $start_date, $end_date) {
+// ดึงข้อมูลวันหยุดนักขัตฤกษ์และวันหยุดเพิ่มเติม
+function getHolidays($academic_year_id) {
     $db = getDB();
+    $holidays = [];
     
-    // ดึงข้อมูลนักเรียนในชั้นเรียน
-    $query = "SELECT s.student_id, s.student_code, s.title, u.first_name, u.last_name 
-              FROM students s 
-              JOIN users u ON s.user_id = u.user_id 
-              WHERE s.current_class_id = ? AND s.status = 'กำลังศึกษา' 
-              ORDER BY s.student_code";
-    $stmt = $db->prepare($query);
-    $stmt->execute([$class_id]);
-    $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    
-    // ดึงข้อมูลการเข้าแถวในช่วงวันที่กำหนด
-    foreach ($students as &$student) {
-        $query = "SELECT date, attendance_status, remarks 
-                  FROM attendance 
-                  WHERE student_id = ? AND date BETWEEN ? AND ?";
+    // ดึงวันหยุดจากฐานข้อมูล (ถ้ามี)
+    try {
+        $query = "SELECT holiday_date, holiday_name FROM holidays WHERE academic_year_id = ?";
         $stmt = $db->prepare($query);
-        $stmt->execute([$student['student_id'], $start_date, $end_date]);
-        $attendances = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $stmt->execute([$academic_year_id]);
+        $db_holidays = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
-        // จัดรูปแบบข้อมูลการเข้าแถวตามวัน
-        $student['attendances'] = [];
-        foreach ($attendances as $att) {
-            $student['attendances'][$att['date']] = [
-                'status' => $att['attendance_status'],
-                'remarks' => $att['remarks']
-            ];
+        foreach ($db_holidays as $holiday) {
+            $holidays[$holiday['holiday_date']] = $holiday['holiday_name'];
+        }
+    } catch (PDOException $e) {
+        // ถ้าไม่มีตาราง holidays ให้ใช้ข้อมูลจำลอง
+    }
+    
+    // ถ้าไม่มีข้อมูลวันหยุดในฐานข้อมูล ใช้วันหยุดนักขัตฤกษ์พื้นฐาน
+    if (empty($holidays)) {
+        $holidays = [
+            '2025-01-01' => 'วันขึ้นปีใหม่',
+            '2025-02-10' => 'วันมาฆบูชา',
+            '2025-04-06' => 'วันจักรี',
+            '2025-04-13' => 'วันสงกรานต์',
+            '2025-04-14' => 'วันสงกรานต์',
+            '2025-04-15' => 'วันสงกรานต์',
+            '2025-05-01' => 'วันแรงงานแห่งชาติ',
+            '2025-05-05' => 'วันฉัตรมงคล',
+            '2025-06-03' => 'วันเฉลิมพระชนมพรรษาสมเด็จพระราชินี',
+            '2025-07-28' => 'วันเฉลิมพระชนมพรรษา ร.10',
+            '2025-08-12' => 'วันแม่แห่งชาติ',
+            '2025-10-13' => 'วันคล้ายวันสวรรคต ร.9',
+            '2025-12-05' => 'วันพ่อแห่งชาติ',
+            '2025-12-10' => 'วันรัฐธรรมนูญ',
+            '2025-12-31' => 'วันสิ้นปี'
+        ];
+    }
+    
+    // ดึงวันหยุดเพิ่มเติมจากการตั้งค่า
+    $exemption_dates = getSetting('exemption_dates');
+    if ($exemption_dates) {
+        $dates = explode(',', $exemption_dates);
+        foreach ($dates as $date) {
+            $date = trim($date);
+            if (!empty($date)) {
+                // แปลงรูปแบบ dd/mm/yyyy เป็น yyyy-mm-dd ถ้าจำเป็น
+                if (strpos($date, '/') !== false) {
+                    list($d, $m, $y) = explode('/', $date);
+                    $date = "$y-$m-$d";
+                }
+                
+                if (!isset($holidays[$date])) {
+                    $holidays[$date] = 'วันหยุดพิเศษ';
+                }
+            }
         }
     }
     
-    return $students;
+    return $holidays;
 }
 
-// ดึงข้อมูลครูที่ปรึกษาของชั้นเรียน
-function getClassAdvisors($class_id) {
+// ดึงค่าการตั้งค่าจากฐานข้อมูล
+function getSetting($key, $default = '') {
     $db = getDB();
-    $query = "SELECT t.teacher_id, t.title, t.first_name, t.last_name, ca.is_primary 
-              FROM class_advisors ca 
-              JOIN teachers t ON ca.teacher_id = t.teacher_id 
-              WHERE ca.class_id = ? 
-              ORDER BY ca.is_primary DESC";
+    $query = "SELECT setting_value FROM system_settings WHERE setting_key = ? LIMIT 1";
     $stmt = $db->prepare($query);
-    $stmt->execute([$class_id]);
-    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $stmt->execute([$key]);
+    $result = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    return $result ? $result['setting_value'] : $default;
 }
 
 // ดึงข้อมูลการตั้งค่าระบบสำหรับรายงาน
 function getReportSettings() {
-    $db = getDB();
     $settings = [
-        'activity_head_name' => 'นายมนตรี ศรีสุข',
-        'activity_head_title' => 'หัวหน้างานกิจกรรมนักเรียน นักศึกษา',
-        'director_deputy_name' => 'นายพงษ์ศักดิ์ สนโศรก',
-        'director_deputy_title' => 'รองผู้อำนวยการฝ่ายพัฒนากิจการนักเรียนนักศึกษา',
-        'director_name' => 'นายชัยพงษ์ พงษ์พิทักษ์',
-        'director_title' => 'ผู้อำนวยการวิทยาลัยการอาชีพปราสาท',
-        'logo_path' => 'assets/images/school_logo.png'
+        'activity_head_name' => getSetting('activity_head_name', 'นายมนตรี ศรีสุข'),
+        'activity_head_title' => getSetting('activity_head_title', 'หัวหน้างานกิจกรรมนักเรียน นักศึกษา'),
+        'director_deputy_name' => getSetting('director_deputy_name', 'นายพงษ์ศักดิ์ สนโศรก'),
+        'director_deputy_title' => getSetting('director_deputy_title', 'รองผู้อำนวยการฝ่ายพัฒนากิจการนักเรียนนักศึกษา'),
+        'director_name' => getSetting('director_name', 'นายชัยพงษ์ พงษ์พิทักษ์'),
+        'director_title' => getSetting('director_title', 'ผู้อำนวยการวิทยาลัยการอาชีพปราสาท'),
+        'logo_path' => getSetting('school_logo', 'assets/images/school_logo.png')
     ];
-    
-    // ในระบบจริงควรดึงจากฐานข้อมูล
-    $query = "SELECT * FROM system_settings WHERE setting_key IN 
-              ('activity_head_name', 'activity_head_title', 'director_deputy_name', 
-               'director_deputy_title', 'director_name', 'director_title', 'school_logo')";
-    
-    try {
-        $stmt = $db->query($query);
-        $dbSettings = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
-        foreach ($dbSettings as $setting) {
-            if ($setting['setting_key'] === 'school_logo') {
-                $settings['logo_path'] = $setting['setting_value'];
-            } else {
-                $settings[$setting['setting_key']] = $setting['setting_value'];
-            }
-        }
-    } catch (PDOException $e) {
-        // ถ้าไม่มีการตั้งค่าในฐานข้อมูล ใช้ค่าเริ่มต้น
-    }
     
     return $settings;
 }
@@ -212,6 +205,17 @@ $current_week = calculateWeeks($academic_year['start_date'], date('Y-m-d'));
 $all_weeks = getAllWeeks($academic_year);
 $holidays = getHolidays($academic_year['academic_year_id']);
 $report_settings = getReportSettings();
+
+// คำนวณสัปดาห์ปัจจุบันจากวันที่เริ่มต้นภาคเรียน
+function calculateWeeks($start_date, $current_date) {
+    $start = new DateTime($start_date);
+    $current = new DateTime($current_date);
+    $interval = $start->diff($current);
+    
+    // คำนวณจำนวนวันและหารด้วย 7 เพื่อให้ได้จำนวนสัปดาห์
+    $days = $interval->days;
+    return floor($days / 7) + 1;
+}
 
 // กำหนดข้อมูลสำหรับหน้าปัจจุบัน
 $current_page = 'print_activity_report';
@@ -226,7 +230,8 @@ $extra_css = [
 $extra_js = [
     'assets/js/print_activity.js',
     'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js',
-    'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'
+    'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',
+    'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js'
 ];
 
 // กำหนดเส้นทางไปยังไฟล์เนื้อหา
@@ -237,3 +242,4 @@ require_once 'templates/header.php';
 require_once 'templates/sidebar.php';
 require_once 'templates/main_content.php';
 require_once 'templates/footer.php';
+?>

@@ -59,7 +59,8 @@
     #exportPdfBtn,
     #exportExcelBtn,
     #generateReportBtn,
-    button {
+    button,
+    .charts-container {
         display: none !important;
     }
     
@@ -322,6 +323,34 @@
     font-size: 18pt;
 }
 
+/* ===== ส่วนกราฟสรุป ===== */
+.charts-container {
+    margin-top: 20px;
+    margin-bottom: 20px;
+}
+
+.chart-card {
+    background-color: var(--card-bg);
+    box-shadow: var(--card-shadow);
+    border-radius: 5px;
+    padding: 20px;
+}
+
+.chart-header {
+    margin-bottom: 20px;
+}
+
+.chart-header h3 {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--dark-color);
+}
+
+.chart-body {
+    height: 400px;
+    position: relative;
+}
+
 /* ===== Loading Overlay ===== */
 .loading-overlay {
     position: fixed;
@@ -379,5 +408,72 @@
     .card-footer button {
         margin-bottom: 10px;
         width: 100%;
+    }
+}
+
+/**
+ * print_activity.css - สไตล์สำหรับหน้าพิมพ์รายงานผลกิจกรรมเข้าแถว
+ * 
+ * ส่วนหนึ่งของระบบน้องชูใจ - ดูแลผู้เรียน
+ * วิทยาลัยการอาชีพปราสาท
+ */
+
+/* ... รักษาส่วนอื่นๆ ตามเดิม ... */
+
+/* ลบคอลัมน์หมายเหตุออกไป */
+.attendance-table .remark-col {
+    display: none;
+}
+
+/* ปรับความกว้างของคอลัมน์ให้สมดุลมากขึ้น */
+.attendance-table .no-col {
+    width: 7%; /* ปรับความกว้างให้พอดี */
+}
+
+.attendance-table .code-col {
+    width: 15%; /* ปรับความกว้างให้พอดี */
+}
+
+.attendance-table .name-col {
+    width: 30%; /* ปรับความกว้างให้พอดี */
+    text-align: left;
+}
+
+.attendance-table .day-col {
+    width: 8%; /* ปรับความกว้างให้พอดี */
+}
+
+.attendance-table .total-col {
+    width: 8%; /* ปรับความกว้างให้พอดี */
+}
+
+/* ปรับความสมดุลในโหมดพิมพ์ */
+@media print {
+    .attendance-table {
+        width: 100%;
+        table-layout: fixed; /* ช่วยให้ความกว้างคอลัมน์คงที่ */
+    }
+    
+    .attendance-table .day-col {
+        font-size: 16pt; /* ขนาดตัวอักษรเล็กลงเล็กน้อยเพื่อให้พอดี */
+    }
+    
+    /* ... รักษาส่วนอื่นๆ ตามเดิม ... */
+}
+
+/* ปรับแต่งสำหรับจอขนาดเล็ก */
+@media (max-width: 768px) {
+    .attendance-table {
+        font-size: 14pt; /* ลดขนาดตัวอักษรลงเล็กน้อย */
+    }
+    
+    .signature-section {
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .signature-box {
+        width: 100%;
+        margin-bottom: 20px;
     }
 }

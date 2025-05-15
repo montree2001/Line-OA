@@ -20,42 +20,6 @@ function getThaiMonth($month) {
     return $thai_months[(int)$month] ?? '';
 }
 
-// แปลง Y-m-d เป็นรูปแบบวันที่ไทย
-function formatThaiDate($date) {
-    if (empty($date)) return '';
-    
-    $date_parts = explode('-', $date);
-    if (count($date_parts) != 3) return $date;
-    
-    $year = (int)$date_parts[0] + 543; // แปลงเป็น พ.ศ.
-    $month = getThaiMonth((int)$date_parts[1]);
-    $day = (int)$date_parts[2];
-    
-    return "$day $month $year";
-}
-
-// แปลงสถานะการเข้าแถวเป็นภาษาไทย
-function getAttendanceStatusThai($status) {
-    $status_map = [
-        'present' => 'มา',
-        'absent' => 'ขาด',
-        'late' => 'สาย',
-        'leave' => 'ลา'
-    ];
-    return $status_map[$status] ?? '-';
-}
-
-// แปลงสถานะการเข้าแถวเป็นสัญลักษณ์
-function getAttendanceSymbol($status) {
-    $symbol_map = [
-        'present' => '✓',
-        'absent' => 'x',
-        'late' => 'ส',
-        'leave' => 'ล'
-    ];
-    return $symbol_map[$status] ?? '-';
-}
-
 // ระดับหลักสูตรทั้งหมด
 $education_levels = ['ปวช.1', 'ปวช.2', 'ปวช.3', 'ปวส.1', 'ปวส.2'];
 ?>
@@ -75,9 +39,9 @@ $education_levels = ['ปวช.1', 'ปวช.2', 'ปวช.3', 'ปวส.1',
                     <label for="academic-year">ภาคเรียน</label>
                     <div class="input-readonly">
                         <?php 
-    $thai_year = $academic_year['year'] + 543;
-    echo "ภาคเรียนที่ {$academic_year['semester']}/{$thai_year}"; 
-?>
+                            $thai_year = $academic_year['year'] + 543;
+                            echo "ภาคเรียนที่ {$academic_year['semester']}/{$thai_year}"; 
+                        ?>
                     </div>
                 </div>
             </div>
@@ -140,6 +104,18 @@ $education_levels = ['ปวช.1', 'ปวช.2', 'ปวช.3', 'ปวส.1',
     <div id="report-content" class="report-content">
         <!-- รายงานจะถูกแสดงที่นี่ -->
     </div>
+    
+    <!-- ส่วนกราฟสรุป -->
+    <div id="charts-container" class="charts-container" style="display: none;">
+        <div class="chart-card">
+            <div class="chart-header">
+                <h3>กราฟสรุปการเข้าแถว</h3>
+            </div>
+            <div class="chart-body">
+                <canvas id="attendance-chart" height="300"></canvas>
+            </div>
+        </div>
+    </div>
 </div>
 
 <!-- ส่วนแสดงรายงานตัวอย่าง -->
@@ -150,6 +126,8 @@ $education_levels = ['ปวช.1', 'ปวช.2', 'ปวช.3', 'ปวส.1',
     </div>
 </div>
 
+
+<!-- เทมเพลตรายงาน -->
 <!-- เทมเพลตรายงาน -->
 <template id="report-template">
     <div class="print-wrapper">
@@ -173,14 +151,10 @@ $education_levels = ['ปวช.1', 'ปวช.2', 'ปวช.3', 'ปวส.1',
                         <th rowspan="2" class="code-col">รหัสนักศึกษา</th>
                         <th rowspan="2" class="name-col">ชื่อ-สกุล</th>
                         <th colspan="5" class="week-header">สัปดาห์ที่ {week}</th>
-                        <th rowspan="2" class="remark-col">หมายเหตุ</th>
+                        <th rowspan="2" class="total-col">รวม</th>
                     </tr>
                     <tr class="day-header">
-                        <th class="day-col">1<br>จ.</th>
-                        <th class="day-col">2<br>อ.</th>
-                        <th class="day-col">3<br>พ.</th>
-                        <th class="day-col">4<br>พฤ.</th>
-                        <th class="day-col">5<br>ศ.</th>
+                        <!-- ช่องวันจะถูกเพิ่มแบบไดนามิกโดย JavaScript -->
                     </tr>
                 </thead>
                 <tbody>
