@@ -16,6 +16,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const exportExcelBtn = document.getElementById('export-excel-btn');
     const reportContainer = document.getElementById('report-container');
     const reportContent = document.getElementById('report-content');
+    const chartsContainer = document.getElementById('charts-container');
     const reportPlaceholder = document.getElementById('report-placeholder');
     const reportTemplate = document.getElementById('report-template');
     const loadingOverlay = document.getElementById('loading-overlay');
@@ -38,6 +39,9 @@ document.addEventListener('DOMContentLoaded', function() {
     printReportBtn.addEventListener('click', printReport);
     exportPdfBtn.addEventListener('click', exportToPdf);
     exportExcelBtn.addEventListener('click', exportToExcel);
+    
+    // ตัวแปรสำหรับเก็บข้อมูลรายงานล่าสุด
+    let lastReportData = null;
     
     // ดึงข้อมูลห้องเรียนเมื่อเลือกแผนกวิชา
     function fetchClasses() {
@@ -69,6 +73,19 @@ document.addEventListener('DOMContentLoaded', function() {
                     
                     // เปิดใช้งานตัวเลือกชั้นเรียน
                     classSelect.disabled = false;
+                    
+                    // ถ้ามีการกำหนด exportClassId (สำหรับการส่งออกอัตโนมัติ)
+                    if (typeof autoExportToExcel === 'function') {
+                        // ค้นหาและเลือกชั้นเรียนสำหรับการส่งออก
+                        for (let i = 0; i < classSelect.options.length; i++) {
+                            if (classSelect.options[i].value === exportClassId) {
+                                classSelect.selectedIndex = i;
+                                updateGenerateButtonState();
+                                setTimeout(autoExportToExcel, 500);
+                                break;
+                            }
+                        }
+                    }
                 } else {
                     alert('ไม่สามารถดึงข้อมูลชั้นเรียนได้: ' + (data.message || 'เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ'));
                 }
@@ -111,6 +128,19 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // เปิดใช้งานตัวเลือกชั้นเรียน
         classSelect.disabled = false;
+        
+        // ถ้ามีการกำหนด exportClassId (สำหรับการส่งออกอัตโนมัติ)
+        if (typeof autoExportToExcel === 'function') {
+            // ค้นหาและเลือกชั้นเรียนสำหรับการส่งออก
+            for (let i = 0; i < classSelect.options.length; i++) {
+                if (classSelect.options[i].value === exportClassId) {
+                    classSelect.selectedIndex = i;
+                    updateGenerateButtonState();
+                    setTimeout(autoExportToExcel, 500);
+                    break;
+                }
+            }
+        }
     }
     
     // อัปเดตสถานะปุ่ม "แสดงรายงาน"
@@ -119,7 +149,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // สร้างรายงาน
-    function generateReport() {
+    async function generateReport() {
         // ตรวจสอบว่าเลือกข้อมูลครบถ้วน
         if (!classSelect.value || !weekSelect.value) {
             alert('กรุณาเลือกชั้นเรียนและสัปดาห์');
@@ -149,32 +179,59 @@ document.addEventListener('DOMContentLoaded', function() {
             academic_year_id: academicYear.academic_year_id
         };
         
-        // ดึงข้อมูลรายงานจาก API
-        fetch('api/attendance.php?action=get_report', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(data)
-        })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    // สร้างรายงาน
-                    createReportContent(data.report_data, classLevel, groupNumber, departmentName, weekNumber, startDate, endDate);
-                } else {
-                    alert('ไม่สามารถดึงข้อมูลรายงานได้: ' + (data.message || 'เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ'));
-                }
-                hideLoading();
-            })
-            .catch(error => {
-                console.error('Error fetching report data:', error);
-                alert('เกิดข้อผิดพลาดในการดึงข้อมูลรายงาน');
-                hideLoading();
-                
-                // กรณีทดสอบระบบโดยไม่มี API
-                simulateReportData(classLevel, groupNumber, departmentName, weekNumber, startDate, endDate);
+        try {
+            // ดึงข้อมูลรายงานจาก API
+            const response = await fetch('api/attendance.php?action=get_report', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
             });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                // เก็บข้อมูลรายงานล่าสุด
+                lastReportData = {
+                    report_data: result.report_data,
+                    class_level: classLevel,
+                    group_number: groupNumber,
+                    department_name: departmentName,
+                    week_number: weekNumber,
+                    start_date: startDate,
+                    end_date: endDate
+                };
+                
+                // สร้างรายงาน
+                createReportContent(
+                    result.report_data, 
+                    classLevel, 
+                    groupNumber, 
+                    departmentName, 
+                    weekNumber, 
+                    startDate, 
+                    endDate
+                );
+                
+                // เปิดใช้งานปุ่มพิมพ์และส่งออก
+                printReportBtn.disabled = false;
+                exportPdfBtn.disabled = false;
+                exportExcelBtn.disabled = false;
+            } else {
+                alert('ไม่สามารถดึงข้อมูลรายงานได้: ' + (result.message || 'เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ'));
+            }
+        } catch (error) {
+            console.error('Error fetching report data:', error);
+            alert('เกิดข้อผิดพลาดในการดึงข้อมูลรายงาน');
+            
+            // กรณีทดสอบระบบโดยไม่มี API
+            simulateReportData(classLevel, groupNumber, departmentName, weekNumber, startDate, endDate);
+        } finally {
+            hideLoading();
+        }
+        
+        return lastReportData; // ส่งคืนข้อมูลรายงานล่าสุดเพื่อใช้ในการส่งออก
     }
     
     // จำลองข้อมูลรายงานสำหรับการทดสอบ
@@ -248,8 +305,24 @@ document.addEventListener('DOMContentLoaded', function() {
             week_days: weekDays
         };
         
+        // เก็บข้อมูลรายงานล่าสุด
+        lastReportData = {
+            report_data: reportData,
+            class_level: classLevel,
+            group_number: groupNumber,
+            department_name: departmentName,
+            week_number: weekNumber,
+            start_date: startDate,
+            end_date: endDate
+        };
+        
         // สร้างเนื้อหารายงาน
         createReportContent(reportData, classLevel, groupNumber, departmentName, weekNumber, startDate, endDate);
+        
+        // เปิดใช้งานปุ่มพิมพ์และส่งออก
+        printReportBtn.disabled = false;
+        exportPdfBtn.disabled = false;
+        exportExcelBtn.disabled = false;
     }
     
     // สร้างเนื้อหารายงาน
@@ -302,7 +375,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
         
         // อัปเดต colspan ของหัวตาราง
-        weekHeaderCell.setAttribute('colspan', workDays.length + 2); // +2 สำหรับคอลัมน์รวมและหมายเหตุ
+        weekHeaderCell.setAttribute('colspan', workDays.length + 1); // +1 สำหรับคอลัมน์รวม
         
         // เพิ่มหัวข้อวันในตาราง
         workDays.forEach((day, index) => {
@@ -310,7 +383,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const dayOfWeek = dayDate.getDay();
             const dayCell = document.createElement('th');
             dayCell.className = 'day-col';
-            dayCell.innerHTML = `${index + 1}<br>${thaiDaysShort[dayOfWeek]}`;
+            dayCell.innerHTML = `${index + 1}<br>${thaiDaysShort[dayOfWeek]}<br>${dayDate.getDate()}`;
             dayHeaderRow.appendChild(dayCell);
         });
         
@@ -426,50 +499,33 @@ document.addEventListener('DOMContentLoaded', function() {
         const rateText = reportDOM.querySelector('.report-summary p:nth-child(3)');
         rateText.textContent = `สรุปจำนวนนักเรียนเข้าแถวร้อยละ ${attendanceRate}`;
         
-        // เพิ่มกราฟแสดงอัตราการเข้าแถว
-        const graphContainer = document.createElement('div');
-        graphContainer.className = 'attendance-graph-container';
-        graphContainer.innerHTML = `
-            <h3>กราฟแสดงอัตราการเข้าแถวรายวัน</h3>
-            <div class="attendance-graph">
-                <canvas id="attendanceChart" width="800" height="300"></canvas>
-            </div>
-        `;
-        
-        // แทรกกราฟก่อนส่วนสรุป
-        const reportFooter = reportDOM.querySelector('.report-footer');
-        reportFooter.parentNode.insertBefore(graphContainer, reportFooter);
-        
         // แสดงรายงาน
         reportContent.innerHTML = '';
         reportContent.appendChild(reportDOM);
         reportContainer.style.display = 'block';
         reportPlaceholder.style.display = 'none';
         
-        // เปิดใช้งานปุ่มพิมพ์และส่งออก
-        printReportBtn.disabled = false;
-        exportPdfBtn.disabled = false;
-        exportExcelBtn.disabled = false;
-        
-        // สร้างกราฟหลังจากที่ DOM ถูกเพิ่มเข้าไปในเอกสาร
-        setTimeout(() => {
-            createAttendanceChart(workDays, reportData.students);
-        }, 100);
+        // สร้างกราฟแสดงอัตราการเข้าแถว
+        createAttendanceChart(workDays, reportData.students);
+        chartsContainer.style.display = 'block';
     }
     
     // สร้างกราฟแสดงอัตราการเข้าแถว
     function createAttendanceChart(days, students) {
-        const canvas = document.getElementById('attendanceChart');
+        const canvas = document.getElementById('attendance-chart');
         if (!canvas) return;
         
         // คำนวณอัตราการเข้าแถวในแต่ละวัน
-        const dailyRates = days.map(day => {
+        const dailyRates = [];
+        const labels = [];
+        
+        days.forEach(day => {
             // ข้ามวันเสาร์-อาทิตย์
             const dayOfWeek = new Date(day).getDay();
-            if (dayOfWeek === 0 || dayOfWeek === 6) return null;
+            if (dayOfWeek === 0 || dayOfWeek === 6) return;
             
             // ข้ามวันหยุด
-            if (holidays[day]) return null;
+            if (holidays[day]) return;
             
             // นับจำนวนนักเรียนที่มาเรียนในวันนี้
             let presentCount = 0;
@@ -486,21 +542,22 @@ document.addEventListener('DOMContentLoaded', function() {
             });
             
             // คำนวณอัตราการเข้าแถว
-            return totalCount > 0 ? (presentCount / totalCount) * 100 : 0;
-        }).filter(rate => rate !== null);
-        
-        // สร้างข้อมูลวันที่
-        const labels = days.filter(day => {
-            const dayOfWeek = new Date(day).getDay();
-            return dayOfWeek >= 1 && dayOfWeek <= 5 && !holidays[day];
-        }).map(day => {
-            const date = new Date(day);
-            const dayOfWeek = date.getDay();
-            return `${date.getDate()}/${date.getMonth() + 1} (${thaiDaysShort[dayOfWeek]})`;
+            if (totalCount > 0) {
+                dailyRates.push((presentCount / totalCount) * 100);
+                
+                const date = new Date(day);
+                const dayOfWeek = date.getDay();
+                labels.push(`${date.getDate()} ${thaiMonths[date.getMonth()].substring(0, 3)} (${thaiDaysShort[dayOfWeek]})`);
+            }
         });
         
+        // ลบกราฟเดิมถ้ามี
+        if (window.attendanceChart) {
+            window.attendanceChart.destroy();
+        }
+        
         // สร้างกราฟโดยใช้ Chart.js
-        new Chart(canvas, {
+        window.attendanceChart = new Chart(canvas, {
             type: 'line',
             data: {
                 labels: labels,
@@ -508,10 +565,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     label: 'อัตราการเข้าแถว (%)',
                     data: dailyRates,
                     fill: true,
-                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
-                    borderColor: 'rgba(75, 192, 192, 1)',
+                    backgroundColor: 'rgba(40, 167, 69, 0.2)',
+                    borderColor: 'rgba(40, 167, 69, 1)',
                     tension: 0.4,
-                    pointBackgroundColor: 'rgba(75, 192, 192, 1)',
+                    pointBackgroundColor: 'rgba(40, 167, 69, 1)',
                     pointBorderColor: '#fff',
                     pointRadius: 5,
                     pointHoverRadius: 7
@@ -577,7 +634,6 @@ document.addEventListener('DOMContentLoaded', function() {
         
         return days;
     }
-    
     // พิมพ์รายงาน
     function printReport() {
         // ซ่อนปุ่มและส่วนควบคุมก่อนพิมพ์
@@ -597,6 +653,24 @@ document.addEventListener('DOMContentLoaded', function() {
     function exportToPdf() {
         showLoading();
         
+        // ตรวจสอบว่ามีข้อมูลรายงานหรือไม่
+        if (!lastReportData) {
+            alert('กรุณาสร้างรายงานก่อนส่งออก');
+            hideLoading();
+            return;
+        }
+        
+        // วิธีที่ 1: ใช้ server-side PDF generation (MPDF)
+        const classId = classSelect.value;
+        const weekNumber = weekSelect.value;
+        window.location.href = `print_activity_report.php?export=pdf&class_id=${classId}&week=${weekNumber}`;
+        
+        // ซ่อน loading หลังจากเปิดหน้าใหม่
+        setTimeout(() => {
+            hideLoading();
+        }, 1000);
+        
+        /* วิธีที่ 2: ใช้ client-side PDF generation (html2pdf)
         // เตรียม DOM สำหรับส่งออก
         const reportElement = document.getElementById('report-content');
         document.body.classList.add('exporting-pdf');
@@ -604,7 +678,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // ตั้งค่าสำหรับ html2pdf
         const opt = {
             margin: [10, 10, 10, 10],
-            filename: `รายงานเช็คชื่อเข้าแถว_${classSelect.options[classSelect.selectedIndex].textContent}_สัปดาห์${weekSelect.value}.pdf`,
+            filename: `รายงานเช็คชื่อเข้าแถว_${lastReportData.class_level}${lastReportData.group_number}_สัปดาห์${lastReportData.week_number}.pdf`,
             image: { type: 'jpeg', quality: 0.98 },
             html2canvas: { 
                 scale: 2,
@@ -623,31 +697,24 @@ document.addEventListener('DOMContentLoaded', function() {
         html2pdf()
             .from(reportElement)
             .set(opt)
-            .toPdf()
-            .get('pdf')
-            .then((pdf) => {
-                // กำหนดฟอนต์สำหรับภาษาไทย (ถ้ามี)
-                if (typeof pdf.addFont === 'function') {
-                    try {
-                        pdf.addFont('THSarabun.ttf', 'THSarabun', 'normal');
-                        pdf.addFont('THSarabun-Bold.ttf', 'THSarabun', 'bold');
-                        pdf.setFont('THSarabun');
-                    } catch (e) {
-                        console.warn('Could not set Thai font:', e);
-                    }
-                }
-                return pdf;
-            })
             .save()
             .then(() => {
                 document.body.classList.remove('exporting-pdf');
                 hideLoading();
             });
+        */
     }
     
     // ส่งออกเป็น Excel
     function exportToExcel() {
         showLoading();
+        
+        // ตรวจสอบว่ามีข้อมูลรายงานหรือไม่
+        if (!lastReportData) {
+            alert('กรุณาสร้างรายงานก่อนส่งออก');
+            hideLoading();
+            return;
+        }
         
         try {
             // ดึงข้อมูลจากตาราง
@@ -662,7 +729,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const dayHeaders = headerRow.querySelectorAll('th');
             dayHeaders.forEach(th => {
                 if (th.classList.contains('day-col')) {
-                    headers.push(th.innerText.replace('\n', ' '));
+                    headers.push(th.innerText.replace(/\n/g, ' '));
                 } else if (th.classList.contains('total-col')) {
                     headers.push('รวม');
                 } else if (th.classList.contains('remark-col')) {
@@ -695,7 +762,6 @@ document.addEventListener('DOMContentLoaded', function() {
             // เพิ่มข้อมูลลายเซ็น
             data.push(['']);
             data.push(['']);
-            data.push(['']);
             data.push(['ลงชื่อ.........................................', '', '', '', '', 'ลงชื่อ.........................................', '', '', '', '', 'ลงชื่อ........................................']);
             data.push(['(', document.querySelector('.signature-name').textContent.replace(/[()]/g, ''), ')', '', '', '(', document.querySelectorAll('.signature-name')[1].textContent.replace(/[()]/g, ''), ')', '', '', '(', document.querySelectorAll('.signature-name')[2].textContent.replace(/[()]/g, ''), ')']);
             data.push([document.querySelector('.signature-title').textContent, '', '', '', '', document.querySelectorAll('.signature-title')[1].textContent, '', '', '', '', document.querySelectorAll('.signature-title')[2].textContent]);
@@ -722,8 +788,8 @@ document.addEventListener('DOMContentLoaded', function() {
             XLSX.utils.book_append_sheet(wb, ws, 'รายงานเช็คชื่อเข้าแถว');
             
             // ดึงข้อมูลชั้นเรียนและสัปดาห์
-            const className = classSelect.options[classSelect.selectedIndex].textContent;
-            const weekNum = weekSelect.value;
+            const className = `${lastReportData.class_level}${lastReportData.group_number}`;
+            const weekNum = lastReportData.week_number;
             
             // บันทึกไฟล์ Excel
             XLSX.writeFile(wb, `รายงานเช็คชื่อเข้าแถว_${className}_สัปดาห์${weekNum}.xlsx`);
@@ -734,6 +800,111 @@ document.addEventListener('DOMContentLoaded', function() {
             alert('เกิดข้อผิดพลาดในการสร้างไฟล์ Excel: ' + error.message);
             hideLoading();
         }
+    }
+    
+    // ฟังก์ชันสำหรับส่งออกกราฟเป็นภาพ PNG
+    function exportChartAsPNG() {
+        const canvas = document.getElementById('attendance-chart');
+        if (!canvas) return null;
+        
+        return new Promise((resolve, reject) => {
+            try {
+                const dataUrl = canvas.toDataURL('image/png');
+                resolve(dataUrl);
+            } catch (error) {
+                console.error('Error exporting chart:', error);
+                reject(error);
+            }
+        });
+    }
+    
+    // สร้างรายงานเฉพาะกราฟ
+    function printChartOnly() {
+        if (!lastReportData) {
+            alert('กรุณาสร้างรายงานก่อนพิมพ์กราฟ');
+            return;
+        }
+        
+        // สร้างหน้าเอกสารใหม่สำหรับพิมพ์กราฟ
+        const printWin = window.open('', '_blank');
+        
+        // ดึงข้อมูลจากรายงานล่าสุด
+        const { class_level, group_number, department_name, week_number } = lastReportData;
+        
+        // ข้อมูลเดือนและปี
+        const reportDate = new Date();
+        const month = thaiMonths[reportDate.getMonth()];
+        const year = reportDate.getFullYear();
+        const thaiYear = year + 543;
+        
+        // สร้าง HTML สำหรับหน้าพิมพ์กราฟ
+        printWin.document.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>กราฟการเข้าแถว</title>
+                <style>
+                    body {
+                        font-family: 'TH Sarabun New', sans-serif;
+                        text-align: center;
+                        padding: 20px;
+                    }
+                    .report-header h1 {
+                        font-size: 20pt;
+                        margin-bottom: 10px;
+                    }
+                    .report-header h2 {
+                        font-size: 18pt;
+                        margin-bottom: 10px;
+                    }
+                    .report-header h3 {
+                        font-size: 16pt;
+                        margin-bottom: 5px;
+                    }
+                    .chart-container {
+                        margin: 20px auto;
+                        max-width: 800px;
+                    }
+                    img {
+                        max-width: 100%;
+                        height: auto;
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="report-header">
+                    <h1>งานกิจกรรมนักเรียน นักศึกษา ฝ่ายพัฒนากิจการนักเรียน นักศึกษา วิทยาลัยการอาชีพปราสาท</h1>
+                    <h2>กราฟแสดงอัตราการเข้าแถวรายวัน</h2>
+                    <h3>ภาคเรียนที่ ${academicYear.semester} ปีการศึกษา ${academicYear.year + 543} สัปดาห์ที่ ${week_number}</h3>
+                    <h3>ระดับชั้น ${class_level} กลุ่ม ${group_number} แผนกวิชา${department_name}</h3>
+                </div>
+                <div class="chart-container">
+                    <img id="chart-image" src="" alt="กราฟอัตราการเข้าแถว">
+                </div>
+            </body>
+            </html>
+        `);
+        
+        // นำภาพกราฟไปใส่ในหน้าพิมพ์
+        exportChartAsPNG().then(dataUrl => {
+            const img = printWin.document.getElementById('chart-image');
+            img.src = dataUrl;
+            
+            // พิมพ์เมื่อภาพโหลดเสร็จ
+            img.onload = function() {
+                setTimeout(() => {
+                    printWin.print();
+                    // ปิดหน้าต่างหลังจากพิมพ์
+                    setTimeout(() => {
+                        printWin.close();
+                    }, 500);
+                }, 500);
+            };
+        }).catch(error => {
+            console.error('Error preparing chart for print:', error);
+            printWin.close();
+            alert('เกิดข้อผิดพลาดในการเตรียมกราฟสำหรับการพิมพ์');
+        });
     }
     
     // แสดง loading

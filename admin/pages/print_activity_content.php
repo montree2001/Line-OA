@@ -22,6 +22,12 @@ function getThaiMonth($month) {
 
 // ระดับหลักสูตรทั้งหมด
 $education_levels = ['ปวช.1', 'ปวช.2', 'ปวช.3', 'ปวส.1', 'ปวส.2'];
+
+// ข้อมูลเดือนปัจจุบัน
+$current_month = date('n');
+$current_thai_month = getThaiMonth($current_month);
+$current_year = date('Y');
+$current_thai_year = $current_year + 543;
 ?>
 
 <!-- ส่วนการเลือกพารามิเตอร์รายงาน -->
@@ -126,7 +132,6 @@ $education_levels = ['ปวช.1', 'ปวช.2', 'ปวช.3', 'ปวส.1',
     </div>
 </div>
 
-
 <!-- ปรับปรุงเทมเพลตรายงาน -->
 <template id="report-template">
     <div class="print-wrapper">
@@ -217,8 +222,55 @@ const holidays = <?php echo json_encode($holidays); ?>;
 // ข้อมูลการตั้งค่ารายงาน
 const reportSettings = <?php echo json_encode($report_settings); ?>;
 
+// ตรวจสอบว่าต้องการส่งออกเป็น Excel หรือไม่
+<?php if (isset($_GET['export']) && $_GET['export'] === 'excel'): ?>
+const autoExportExcel = true;
+const exportClassId = '<?php echo $_GET['class_id'] ?? ''; ?>';
+const exportWeek = '<?php echo $_GET['week'] ?? ''; ?>';
+<?php else: ?>
+const autoExportExcel = false;
+const exportClassId = '';
+const exportWeek = '';
+<?php endif; ?>
+
 // นำเข้าฟังก์ชันการสร้างรายงานจากไฟล์ print_activity.js
 document.addEventListener('DOMContentLoaded', function() {
     // อีเวนต์จะถูกจัดการในไฟล์ print_activity.js
+    
+    // ถ้ามีคำสั่งส่งออกอัตโนมัติ
+    if (autoExportExcel && exportClassId && exportWeek) {
+        // ตั้งค่าการเลือกแผนกและชั้นเรียนเพื่อส่งออก
+        setTimeout(() => {
+            // ค้นหา data-attributes เพื่อตั้งค่าการเลือก
+            const classSelect = document.getElementById('class-select');
+            const weekSelect = document.getElementById('week-select');
+            
+            // เลือกสัปดาห์
+            for (let i = 0; i < weekSelect.options.length; i++) {
+                if (weekSelect.options[i].value === exportWeek) {
+                    weekSelect.selectedIndex = i;
+                    break;
+                }
+            }
+            
+            // จำลองการคลิกเพื่อสร้างรายงานและส่งออก
+            // (จะต้องมีการดักจับในฟังก์ชัน exportToExcel ในไฟล์ print_activity.js)
+            // การเลือกชั้นเรียนจะต้องทำหลังจากโหลดข้อมูลแผนกแล้ว
+            
+            // สร้างฟังก์ชันสำหรับส่งออกอัตโนมัติ
+            window.autoExportToExcel = function() {
+                if (classSelect.value === exportClassId) {
+                    // เรียกฟังก์ชันสร้างรายงานและส่งออกเป็น Excel
+                    if (typeof generateReport === 'function') {
+                        generateReport().then(() => {
+                            if (typeof exportToExcel === 'function') {
+                                setTimeout(exportToExcel, 1000);
+                            }
+                        });
+                    }
+                }
+            };
+        }, 500);
+    }
 });
 </script>
