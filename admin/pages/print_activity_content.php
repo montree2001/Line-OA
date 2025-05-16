@@ -127,8 +127,7 @@ $education_levels = ['ปวช.1', 'ปวช.2', 'ปวช.3', 'ปวส.1',
 </div>
 
 
-<!-- เทมเพลตรายงาน -->
-<!-- เทมเพลตรายงาน -->
+<!-- ปรับปรุงเทมเพลตรายงาน -->
 <template id="report-template">
     <div class="print-wrapper">
         <div class="report-header">
@@ -151,14 +150,14 @@ $education_levels = ['ปวช.1', 'ปวช.2', 'ปวช.3', 'ปวส.1',
                         <th rowspan="2" class="code-col">รหัสนักศึกษา</th>
                         <th rowspan="2" class="name-col">ชื่อ-สกุล</th>
                         <th colspan="5" class="week-header">สัปดาห์ที่ {week}</th>
-                        <th rowspan="2" class="total-col">รวม</th>
+                        <th rowspan="2" class="remark-col">หมายเหตุ</th>
                     </tr>
                     <tr class="day-header">
-                        <!-- ช่องวันจะถูกเพิ่มแบบไดนามิกโดย JavaScript -->
+                        <!-- วันจะถูกสร้างโดย JavaScript -->
                     </tr>
                 </thead>
                 <tbody>
-                    <!-- ข้อมูลนักเรียนจะถูกแทรกที่นี่ -->
+                    <!-- ข้อมูลนักเรียนจะถูกสร้างโดย JavaScript -->
                 </tbody>
                 <tfoot>
                     <tr>

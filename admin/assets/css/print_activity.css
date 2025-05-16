@@ -1,5 +1,5 @@
 /**
- * print_activity.css - สไตล์สำหรับหน้าพิมพ์รายงานผลกิจกรรมเข้าแถว
+ * print_activity.css - สไตล์สำหรับหน้าพิมพ์รายงานผลกิจกรรมเข้าแถว (ปรับปรุง)
  * 
  * ส่วนหนึ่งของระบบน้องชูใจ - ดูแลผู้เรียน
  * วิทยาลัยการอาชีพปราสาท
@@ -49,6 +49,16 @@
     --card-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
 }
 
+/* ทั้งหน้าเว็บ */
+body {
+    font-family: 'Prompt', sans-serif;
+}
+
+/* ระบบพิมพ์ */
+body.printing {
+    background-color: white !important;
+}
+
 /* ===== ลบปุ่มนำทางเมื่อพิมพ์ ===== */
 @media print {
     .report-params,
@@ -60,7 +70,7 @@
     #exportExcelBtn,
     #generateReportBtn,
     button,
-    .charts-container {
+    .attendance-graph-container {
         display: none !important;
     }
     
@@ -68,9 +78,9 @@
         width: 100%;
         margin: 0;
         padding: 0;
-        background: white;
-        font-family: 'TH Sarabun', sans-serif;
-        font-size: 16pt;
+        background: white !important;
+        font-family: 'TH Sarabun', sans-serif !important;
+        font-size: 16pt !important;
     }
     
     .main-content {
@@ -91,7 +101,7 @@
     
     /* ตั้งค่าหน้ากระดาษ A4 */
     @page {
-        size: A4;
+        size: A4 portrait;
         margin: 1cm;
     }
     
@@ -110,9 +120,14 @@
         page-break-inside: avoid;
     }
     
-    /* ทำซ้ำส่วนท้ายรายงานในหน้าสุดท้าย */
-    .report-footer {
-        display: table-footer-group;
+    /* ไม่แบ่งหน้าในส่วนท้ายรายงาน */
+    .signature-section {
+        page-break-inside: avoid;
+    }
+    
+    /* เพิ่มช่องว่างสำหรับลายเซ็น */
+    .signature-line {
+        margin-bottom: 60px !important;
     }
 }
 
@@ -323,32 +338,25 @@
     font-size: 18pt;
 }
 
-/* ===== ส่วนกราฟสรุป ===== */
-.charts-container {
-    margin-top: 20px;
-    margin-bottom: 20px;
-}
-
-.chart-card {
-    background-color: var(--card-bg);
-    box-shadow: var(--card-shadow);
+/* ===== กราฟสรุปการเข้าแถว ===== */
+.attendance-graph-container {
+    margin: 20px 0 30px;
+    padding: 15px;
+    border: 1px solid #ddd;
     border-radius: 5px;
-    padding: 20px;
+    background-color: #fff;
 }
 
-.chart-header {
-    margin-bottom: 20px;
+.attendance-graph-container h3 {
+    text-align: center;
+    margin-bottom: 15px;
+    font-size: 18pt;
+    font-family: 'TH Sarabun', sans-serif;
 }
 
-.chart-header h3 {
-    font-size: 18px;
-    font-weight: 600;
-    color: var(--dark-color);
-}
-
-.chart-body {
-    height: 400px;
-    position: relative;
+.attendance-graph {
+    height: 300px;
+    width: 100%;
 }
 
 /* ===== Loading Overlay ===== */
@@ -389,6 +397,32 @@
     100% { transform: rotate(360deg); }
 }
 
+/* ===== ระบบส่งออก PDF ===== */
+body.exporting-pdf .sidebar,
+body.exporting-pdf .admin-dropdown,
+body.exporting-pdf .main-header,
+body.exporting-pdf .report-params,
+body.exporting-pdf button {
+    display: none !important;
+}
+
+body.exporting-pdf .main-content {
+    margin: 0 !important;
+    padding: 10px !important;
+}
+
+body.exporting-pdf .report-container {
+    width: 100% !important;
+    max-width: 210mm !important;
+    margin: 0 auto !important;
+}
+
+body.exporting-pdf .report-content {
+    box-shadow: none !important;
+    border: none !important;
+    font-family: 'TH Sarabun', sans-serif !important;
+}
+
 /* ===== Responsive ===== */
 @media (max-width: 768px) {
     .signature-section {
@@ -408,72 +442,5 @@
     .card-footer button {
         margin-bottom: 10px;
         width: 100%;
-    }
-}
-
-/**
- * print_activity.css - สไตล์สำหรับหน้าพิมพ์รายงานผลกิจกรรมเข้าแถว
- * 
- * ส่วนหนึ่งของระบบน้องชูใจ - ดูแลผู้เรียน
- * วิทยาลัยการอาชีพปราสาท
- */
-
-/* ... รักษาส่วนอื่นๆ ตามเดิม ... */
-
-/* ลบคอลัมน์หมายเหตุออกไป */
-.attendance-table .remark-col {
-    display: none;
-}
-
-/* ปรับความกว้างของคอลัมน์ให้สมดุลมากขึ้น */
-.attendance-table .no-col {
-    width: 7%; /* ปรับความกว้างให้พอดี */
-}
-
-.attendance-table .code-col {
-    width: 15%; /* ปรับความกว้างให้พอดี */
-}
-
-.attendance-table .name-col {
-    width: 30%; /* ปรับความกว้างให้พอดี */
-    text-align: left;
-}
-
-.attendance-table .day-col {
-    width: 8%; /* ปรับความกว้างให้พอดี */
-}
-
-.attendance-table .total-col {
-    width: 8%; /* ปรับความกว้างให้พอดี */
-}
-
-/* ปรับความสมดุลในโหมดพิมพ์ */
-@media print {
-    .attendance-table {
-        width: 100%;
-        table-layout: fixed; /* ช่วยให้ความกว้างคอลัมน์คงที่ */
-    }
-    
-    .attendance-table .day-col {
-        font-size: 16pt; /* ขนาดตัวอักษรเล็กลงเล็กน้อยเพื่อให้พอดี */
-    }
-    
-    /* ... รักษาส่วนอื่นๆ ตามเดิม ... */
-}
-
-/* ปรับแต่งสำหรับจอขนาดเล็ก */
-@media (max-width: 768px) {
-    .attendance-table {
-        font-size: 14pt; /* ลดขนาดตัวอักษรลงเล็กน้อย */
-    }
-    
-    .signature-section {
-        flex-direction: column;
-        align-items: center;
-    }
-    
-    .signature-box {
-        width: 100%;
-        margin-bottom: 20px;
     }
 }
