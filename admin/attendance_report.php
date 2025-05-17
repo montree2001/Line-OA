@@ -422,7 +422,11 @@ function generatePDF($reportData) {
     include 'templates/attendance_report_pdf.php';
     
     $html = ob_get_clean();
-    
+    // เพิ่มโค้ดนี้ที่ด้านบนของไฟล์ attendance_report.php ก่อนการใช้งาน MPDF
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+// เพิ่มโค้ดนี้ด้านบนไฟล์
+ini_set('memory_limit', '512M');
     // สร้าง MPDF
     require_once '../vendor/autoload.php';
     
