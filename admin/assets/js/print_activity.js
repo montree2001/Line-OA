@@ -1,7 +1,7 @@
 /**
- * print_activity.js - จัดการหน้าพิมพ์รายงานผลกิจกรรมเข้าแถว (ปรับปรุง)
+ * print_activity.js - จัดการหน้าพิมพ์รายงานผลกิจกรรมเข้าแถว
  * 
- * ส่วนหนึ่งของระบบน้องชูใจ - ดูแลผู้เรียน
+ * ระบบน้องชูใจ - ดูแลผู้เรียน
  * วิทยาลัยการอาชีพปราสาท
  */
 
@@ -18,7 +18,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const reportContent = document.getElementById('report-content');
     const chartsContainer = document.getElementById('charts-container');
     const reportPlaceholder = document.getElementById('report-placeholder');
-    const reportTemplate = document.getElementById('report-template');
     const loadingOverlay = document.getElementById('loading-overlay');
     
     // รายชื่อวันในสัปดาห์ภาษาไทย
@@ -75,7 +74,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     classSelect.disabled = false;
                     
                     // ถ้ามีการกำหนด exportClassId (สำหรับการส่งออกอัตโนมัติ)
-                    if (typeof autoExportToExcel === 'function') {
+                    if (typeof autoExportToExcel === 'function' && exportClassId) {
                         // ค้นหาและเลือกชั้นเรียนสำหรับการส่งออก
                         for (let i = 0; i < classSelect.options.length; i++) {
                             if (classSelect.options[i].value === exportClassId) {
@@ -103,8 +102,6 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // จำลองข้อมูลชั้นเรียนสำหรับการทดสอบ
     function simulateClassData(departmentId) {
-        hideLoading();
-        
         // รีเซ็ตตัวเลือกชั้นเรียน
         classSelect.innerHTML = '<option value="">-- เลือกชั้นเรียน --</option>';
         
@@ -128,19 +125,6 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // เปิดใช้งานตัวเลือกชั้นเรียน
         classSelect.disabled = false;
-        
-        // ถ้ามีการกำหนด exportClassId (สำหรับการส่งออกอัตโนมัติ)
-        if (typeof autoExportToExcel === 'function') {
-            // ค้นหาและเลือกชั้นเรียนสำหรับการส่งออก
-            for (let i = 0; i < classSelect.options.length; i++) {
-                if (classSelect.options[i].value === exportClassId) {
-                    classSelect.selectedIndex = i;
-                    updateGenerateButtonState();
-                    setTimeout(autoExportToExcel, 500);
-                    break;
-                }
-            }
-        }
     }
     
     // อัปเดตสถานะปุ่ม "แสดงรายงาน"
@@ -220,6 +204,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 exportExcelBtn.disabled = false;
             } else {
                 alert('ไม่สามารถดึงข้อมูลรายงานได้: ' + (result.message || 'เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ'));
+                // จำลองข้อมูลสำหรับทดสอบ
+                simulateReportData(classLevel, groupNumber, departmentName, weekNumber, startDate, endDate);
             }
         } catch (error) {
             console.error('Error fetching report data:', error);
@@ -236,8 +222,6 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // จำลองข้อมูลรายงานสำหรับการทดสอบ
     function simulateReportData(classLevel, groupNumber, departmentName, weekNumber, startDate, endDate) {
-        hideLoading();
-        
         // สร้างข้อมูลนักเรียนจำลอง
         const students = [];
         const studentCount = 15 + Math.floor(Math.random() * 10); // 15-24 คน
@@ -327,11 +311,19 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // สร้างเนื้อหารายงาน
     function createReportContent(reportData, classLevel, groupNumber, departmentName, weekNumber, startDate, endDate) {
-        // ดึงข้อมูลเทมเพลตรายงาน
-        const template = reportTemplate.innerHTML;
+        // สร้าง DOM สำหรับรายงาน
+        const reportDOM = document.createElement('div');
+        reportDOM.className = 'print-wrapper';
         
         // ดึงข้อมูลวันในสัปดาห์
         const weekDays = reportData.week_days || getWeekDays(startDate, endDate);
+        
+        // เลือกเฉพาะวันจันทร์-ศุกร์
+        const workDays = weekDays.filter(day => {
+            const date = new Date(day);
+            const dayOfWeek = date.getDay();
+            return dayOfWeek >= 1 && dayOfWeek <= 5; // จันทร์-ศุกร์
+        });
         
         // ข้อมูลเดือนและปีสำหรับหัวรายงาน
         const reportDate = new Date(startDate);
@@ -339,45 +331,44 @@ document.addEventListener('DOMContentLoaded', function() {
         const year = reportDate.getFullYear();
         const thaiYear = year + 543;
         
-        // แทนที่ค่าในเทมเพลต
-        let report = template
-            .replace('{semester}', academicYear.semester)
-            .replace('{year}', academicYear.year + 543)
-            .replace('{week}', weekNumber)
-            .replace('{month}', month)
-            .replace('{thai_year}', thaiYear)
-            .replace('{class_level}', classLevel)
-            .replace('{group_number}', groupNumber)
-            .replace('{department_name}', departmentName)
-            .replace('{advisor_name}', reportData.advisors?.[0]?.first_name + ' ' + reportData.advisors?.[0]?.last_name || 'มนตรี ศรีสุข')
-            .replace('{activity_head_name}', reportSettings.activity_head_name || 'มนตรี ศรีสุข')
-            .replace('{director_deputy_name}', reportSettings.director_deputy_name || 'พงษ์ศักดิ์ สนโศรก');
-        
-        // สร้าง DOM จากรายงาน
-        const reportDOM = document.createElement('div');
-        reportDOM.innerHTML = report;
-        
-        // หาตารางและหัวข้อวัน
-        const table = reportDOM.querySelector('.attendance-table');
-        const dayHeaderRow = reportDOM.querySelector('.day-header');
-        const weekHeaderCell = reportDOM.querySelector('.week-header');
-        
-        // ล้างข้อมูลวันเดิม
-        while (dayHeaderRow.children.length > 0) {
-            dayHeaderRow.removeChild(dayHeaderRow.lastChild);
-        }
-        
-        // เพิ่มเฉพาะวันจันทร์-ศุกร์ (วันที่ 1-5 ของสัปดาห์)
-        const workDays = weekDays.filter(day => {
-            const date = new Date(day);
-            const dayOfWeek = date.getDay();
-            return dayOfWeek >= 1 && dayOfWeek <= 5; // จันทร์-ศุกร์
-        });
-        
-        // อัปเดต colspan ของหัวตาราง
-        weekHeaderCell.setAttribute('colspan', workDays.length + 1); // +1 สำหรับคอลัมน์รวม
+        // สร้างส่วนหัวรายงาน
+        reportDOM.innerHTML = `
+            <div class="report-header">
+                <div class="report-logo">
+                    <img src="${reportSettings.logo_path || 'assets/images/school_logo.png'}" alt="โลโก้วิทยาลัย">
+                </div>
+                <div class="report-title">
+                    <h1>งานกิจกรรมนักเรียน นักศึกษา ฝ่ายพัฒนากิจการนักเรียน นักศึกษา วิทยาลัยการอาชีพปราสาท</h1>
+                    <h2>แบบรายงานเช็คชื่อนักเรียน นักศึกษา ทำกิจกรรมหน้าเสาธง</h2>
+                    <h3>ภาคเรียนที่ ${academicYear.semester} ปีการศึกษา ${academicYear.year + 543} สัปดาห์ที่ ${weekNumber} เดือน ${month} พ.ศ. ${thaiYear}</h3>
+                    <h3>ระหว่างวันที่ ${formatThaiDate(startDate)} ถึง วันที่ ${formatThaiDate(endDate)}</h3>
+                    <h3>ระดับชั้น ${classLevel} กลุ่ม ${groupNumber} แผนกวิชา${departmentName}</h3>
+                </div>
+            </div>
+            
+            <div class="attendance-table-container">
+                <table class="attendance-table">
+                    <thead>
+                        <tr>
+                            <th rowspan="2" class="no-col">ลำดับที่</th>
+                            <th rowspan="2" class="code-col">รหัสนักศึกษา</th>
+                            <th rowspan="2" class="name-col">ชื่อ-สกุล</th>
+                            <th colspan="${workDays.length}" class="week-header">สัปดาห์ที่ ${weekNumber}</th>
+                            <th rowspan="2" class="total-col">รวม</th>
+                            <th rowspan="2" class="remark-col">หมายเหตุ</th>
+                        </tr>
+                        <tr class="day-header">
+                        </tr>
+                    </thead>
+                    <tbody>
+                    </tbody>
+                </table>
+            </div>
+        `;
         
         // เพิ่มหัวข้อวันในตาราง
+        const dayHeaderRow = reportDOM.querySelector('.day-header');
+        
         workDays.forEach((day, index) => {
             const dayDate = new Date(day);
             const dayOfWeek = dayDate.getDay();
@@ -387,15 +378,8 @@ document.addEventListener('DOMContentLoaded', function() {
             dayHeaderRow.appendChild(dayCell);
         });
         
-        // เพิ่มคอลัมน์รวม
-        const totalHeaderCell = document.createElement('th');
-        totalHeaderCell.className = 'total-col';
-        totalHeaderCell.textContent = 'รวม';
-        dayHeaderRow.appendChild(totalHeaderCell);
-        
-        // สร้างแถวข้อมูลนักเรียน
+        // เพิ่มข้อมูลนักเรียนลงในตาราง
         const tableBody = reportDOM.querySelector('tbody');
-        tableBody.innerHTML = '';
         
         // ตัวแปรสำหรับสรุปข้อมูล
         let totalPresent = 0;
@@ -403,7 +387,6 @@ document.addEventListener('DOMContentLoaded', function() {
         let totalLate = 0;
         let totalLeave = 0;
         
-        // เพิ่มข้อมูลนักเรียนลงในตาราง
         reportData.students.forEach((student, index) => {
             const row = document.createElement('tr');
             
@@ -468,7 +451,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // เพิ่มเซลล์รวมและหมายเหตุ
             const totalCell = document.createElement('td');
             totalCell.className = 'total-col';
-            totalCell.textContent = studentPresent; // จำนวนวันที่มา (รวมสาย)
+            totalCell.textContent = studentPresent;
             row.appendChild(totalCell);
             
             const remarkCell = document.createElement('td');
@@ -480,24 +463,53 @@ document.addEventListener('DOMContentLoaded', function() {
             if (studentLate > 0) remarks.push(`สาย ${studentLate} วัน`);
             if (studentLeave > 0) remarks.push(`ลา ${studentLeave} วัน`);
             
-            remarkCell.textContent = remarks.join(', ') || (student.remarks || '');
+            remarkCell.textContent = remarks.join(', ');
             row.appendChild(remarkCell);
             
             // เพิ่มแถวลงในตาราง
             tableBody.appendChild(row);
         });
         
-        // อัปเดตข้อมูลสรุป
+        // คำนวณอัตราการเข้าแถว
         const totalStudents = reportData.students.length;
         const totalAttendanceDays = workDays.length * totalStudents;
         const attendanceRate = totalAttendanceDays > 0 ? 
-            ((totalPresent) / (totalAttendanceDays - (totalLeave)) * 100).toFixed(2) : '0.00';
+            ((totalPresent) / (totalAttendanceDays - totalLeave) * 100).toFixed(2) : '0.00';
         
-        const summaryText = reportDOM.querySelector('.report-summary p:nth-child(2)');
-        summaryText.textContent = `จำนวนคน ${totalStudents} มา ${totalPresent} ขาด ${totalAbsent} สาย ${totalLate} ลา ${totalLeave}`;
+        // เพิ่มส่วนสรุปและลายเซ็น
+        const summarySection = document.createElement('div');
+        summarySection.innerHTML = `
+            <div class="report-summary">
+                <p>สรุป จำนวนคน ${totalStudents} มา ${totalPresent} ขาด ${totalAbsent} สาย ${totalLate} ลา ${totalLeave}</p>
+                <p>สรุปจำนวนนักเรียนเข้าแถวร้อยละ ${attendanceRate}</p>
+            </div>
+            
+            <div class="report-footer">
+                <div class="signature-section">
+                    <div class="signature-box">
+                        <div class="signature-line">ลงชื่อ........................................</div>
+                        <div class="signature-name">(${reportData.advisors?.[0]?.title || ''} ${reportData.advisors?.[0]?.first_name || 'มนตรี'} ${reportData.advisors?.[0]?.last_name || 'ศรีสุข'})</div>
+                        <div class="signature-title">ครูที่ปรึกษา</div>
+                    </div>
+                    
+                    <div class="signature-box">
+                        <div class="signature-line">ลงชื่อ........................................</div>
+                        <div class="signature-name">(${reportSettings.activity_head_name || 'นายมนตรี ศรีสุข'})</div>
+                        <div class="signature-title">${reportSettings.activity_head_title || 'หัวหน้างานกิจกรรมนักเรียน นักศึกษา'}</div>
+                    </div>
+                    
+                    <div class="signature-box">
+                        <div class="signature-line">ลงชื่อ........................................</div>
+                        <div class="signature-name">(${reportSettings.director_deputy_name || 'นายพงษ์ศักดิ์ สนโศรก'})</div>
+                        <div class="signature-title">รองผู้อำนวยการ</div>
+                        <div class="signature-subtitle">ฝ่ายพัฒนากิจการนักเรียนนักศึกษา</div>
+                    </div>
+                </div>
+            </div>
+        `;
         
-        const rateText = reportDOM.querySelector('.report-summary p:nth-child(3)');
-        rateText.textContent = `สรุปจำนวนนักเรียนเข้าแถวร้อยละ ${attendanceRate}`;
+        // เพิ่มส่วนสรุปลงในรายงาน
+        reportDOM.appendChild(summarySection);
         
         // แสดงรายงาน
         reportContent.innerHTML = '';
@@ -513,7 +525,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // สร้างกราฟแสดงอัตราการเข้าแถว
     function createAttendanceChart(days, students) {
         const canvas = document.getElementById('attendance-chart');
-        if (!canvas) return;
+        if (!canvas || !Chart) return;
         
         // คำนวณอัตราการเข้าแถวในแต่ละวัน
         const dailyRates = [];
@@ -556,7 +568,7 @@ document.addEventListener('DOMContentLoaded', function() {
             window.attendanceChart.destroy();
         }
         
-        // สร้างกราฟโดยใช้ Chart.js
+        // สร้างกราฟใหม่
         window.attendanceChart = new Chart(canvas, {
             type: 'line',
             data: {
@@ -634,6 +646,17 @@ document.addEventListener('DOMContentLoaded', function() {
         
         return days;
     }
+    
+    // แปลงวันที่เป็นรูปแบบไทย (วันที่ เดือน พ.ศ.)
+    function formatThaiDate(dateStr) {
+        const date = new Date(dateStr);
+        const day = date.getDate();
+        const month = thaiMonths[date.getMonth()];
+        const thaiYear = date.getFullYear() + 543;
+        
+        return `${day} ${month} ${thaiYear}`;
+    }
+    
     // พิมพ์รายงาน
     function printReport() {
         // ซ่อนปุ่มและส่วนควบคุมก่อนพิมพ์
@@ -669,40 +692,6 @@ document.addEventListener('DOMContentLoaded', function() {
         setTimeout(() => {
             hideLoading();
         }, 1000);
-        
-        /* วิธีที่ 2: ใช้ client-side PDF generation (html2pdf)
-        // เตรียม DOM สำหรับส่งออก
-        const reportElement = document.getElementById('report-content');
-        document.body.classList.add('exporting-pdf');
-        
-        // ตั้งค่าสำหรับ html2pdf
-        const opt = {
-            margin: [10, 10, 10, 10],
-            filename: `รายงานเช็คชื่อเข้าแถว_${lastReportData.class_level}${lastReportData.group_number}_สัปดาห์${lastReportData.week_number}.pdf`,
-            image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { 
-                scale: 2,
-                letterRendering: true,
-                useCORS: true
-            },
-            jsPDF: { 
-                unit: 'mm', 
-                format: 'a4', 
-                orientation: 'portrait' 
-            },
-            pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
-        };
-        
-        // ใช้ html2pdf.js
-        html2pdf()
-            .from(reportElement)
-            .set(opt)
-            .save()
-            .then(() => {
-                document.body.classList.remove('exporting-pdf');
-                hideLoading();
-            });
-        */
     }
     
     // ส่งออกเป็น Excel
@@ -728,14 +717,11 @@ document.addEventListener('DOMContentLoaded', function() {
             // เพิ่มวันในสัปดาห์
             const dayHeaders = headerRow.querySelectorAll('th');
             dayHeaders.forEach(th => {
-                if (th.classList.contains('day-col')) {
-                    headers.push(th.innerText.replace(/\n/g, ' '));
-                } else if (th.classList.contains('total-col')) {
-                    headers.push('รวม');
-                } else if (th.classList.contains('remark-col')) {
-                    headers.push('หมายเหตุ');
-                }
+                headers.push(th.innerText.replace(/\n/g, ' '));
             });
+            
+            // เพิ่มคอลัมน์รวมและหมายเหตุ
+            headers.push('รวม', 'หมายเหตุ');
             
             // สร้างข้อมูลสำหรับ Excel
             const data = [];
@@ -751,38 +737,56 @@ document.addEventListener('DOMContentLoaded', function() {
             });
             
             // เพิ่มข้อมูลสรุป
-            const summaryText = document.querySelector('.report-summary p:nth-child(2)').textContent;
-            const rateText = document.querySelector('.report-summary p:nth-child(3)').textContent;
+            const summaryText = document.querySelector('.report-summary p:nth-child(1)').textContent;
+            const rateText = document.querySelector('.report-summary p:nth-child(2)').textContent;
             
-            data.push(['']);
-            data.push(['สรุป']);
+            data.push([]);
             data.push([summaryText]);
             data.push([rateText]);
             
             // เพิ่มข้อมูลลายเซ็น
-            data.push(['']);
-            data.push(['']);
-            data.push(['ลงชื่อ.........................................', '', '', '', '', 'ลงชื่อ.........................................', '', '', '', '', 'ลงชื่อ........................................']);
-            data.push(['(', document.querySelector('.signature-name').textContent.replace(/[()]/g, ''), ')', '', '', '(', document.querySelectorAll('.signature-name')[1].textContent.replace(/[()]/g, ''), ')', '', '', '(', document.querySelectorAll('.signature-name')[2].textContent.replace(/[()]/g, ''), ')']);
-            data.push([document.querySelector('.signature-title').textContent, '', '', '', '', document.querySelectorAll('.signature-title')[1].textContent, '', '', '', '', document.querySelectorAll('.signature-title')[2].textContent]);
+            data.push([]);
+            data.push([]);
+            data.push(['ลงชื่อ.........................................', '', '', '', 'ลงชื่อ.........................................', '', '', '', 'ลงชื่อ........................................']);
+            
+            const signatures = document.querySelectorAll('.signature-name');
+            data.push([
+                '(' + signatures[0].textContent.replace(/[()]/g, '') + ')',
+                '', '', '',
+                '(' + signatures[1].textContent.replace(/[()]/g, '') + ')',
+                '', '', '',
+                '(' + signatures[2].textContent.replace(/[()]/g, '') + ')'
+            ]);
+            
+            const titles = document.querySelectorAll('.signature-title');
+            data.push([
+                titles[0].textContent,
+                '', '', '',
+                titles[1].textContent,
+                '', '', '',
+                titles[2].textContent
+            ]);
             
             // สร้าง workbook
             const wb = XLSX.utils.book_new();
             const ws = XLSX.utils.aoa_to_sheet(data);
             
             // ตั้งค่าความกว้างของคอลัมน์
-            ws['!cols'] = [
-                { width: 10 }, // ลำดับที่
-                { width: 15 }, // รหัสนักศึกษา
-                { width: 30 }, // ชื่อ-สกุล
-                { width: 10 }, // วันที่ 1
-                { width: 10 }, // วันที่ 2
-                { width: 10 }, // วันที่ 3
-                { width: 10 }, // วันที่ 4
-                { width: 10 }, // วันที่ 5
-                { width: 10 }, // รวม
-                { width: 20 }  // หมายเหตุ
+            const colWidths = [
+                { wch: 10 }, // ลำดับที่
+                { wch: 15 }, // รหัสนักศึกษา
+                { wch: 30 }  // ชื่อ-สกุล
             ];
+            
+            // เพิ่มความกว้างสำหรับวันในสัปดาห์
+            for (let i = 0; i < dayHeaders.length; i++) {
+                colWidths.push({ wch: 10 });
+            }
+            
+            // เพิ่มความกว้างสำหรับคอลัมน์รวมและหมายเหตุ
+            colWidths.push({ wch: 10 }, { wch: 20 });
+            
+            ws['!cols'] = colWidths;
             
             // เพิ่ม worksheet ลงใน workbook
             XLSX.utils.book_append_sheet(wb, ws, 'รายงานเช็คชื่อเข้าแถว');
@@ -802,22 +806,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // ฟังก์ชันสำหรับส่งออกกราฟเป็นภาพ PNG
-    function exportChartAsPNG() {
-        const canvas = document.getElementById('attendance-chart');
-        if (!canvas) return null;
-        
-        return new Promise((resolve, reject) => {
-            try {
-                const dataUrl = canvas.toDataURL('image/png');
-                resolve(dataUrl);
-            } catch (error) {
-                console.error('Error exporting chart:', error);
-                reject(error);
-            }
-        });
-    }
-    
     // สร้างรายงานเฉพาะกราฟ
     function printChartOnly() {
         if (!lastReportData) {
@@ -830,12 +818,6 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // ดึงข้อมูลจากรายงานล่าสุด
         const { class_level, group_number, department_name, week_number } = lastReportData;
-        
-        // ข้อมูลเดือนและปี
-        const reportDate = new Date();
-        const month = thaiMonths[reportDate.getMonth()];
-        const year = reportDate.getFullYear();
-        const thaiYear = year + 543;
         
         // สร้าง HTML สำหรับหน้าพิมพ์กราฟ
         printWin.document.write(`
@@ -885,26 +867,24 @@ document.addEventListener('DOMContentLoaded', function() {
             </html>
         `);
         
+        // ดึงภาพกราฟ
+        const canvas = document.getElementById('attendance-chart');
+        const dataUrl = canvas.toDataURL('image/png');
+        
         // นำภาพกราฟไปใส่ในหน้าพิมพ์
-        exportChartAsPNG().then(dataUrl => {
-            const img = printWin.document.getElementById('chart-image');
-            img.src = dataUrl;
-            
-            // พิมพ์เมื่อภาพโหลดเสร็จ
-            img.onload = function() {
+        const img = printWin.document.getElementById('chart-image');
+        img.src = dataUrl;
+        
+        // พิมพ์เมื่อภาพโหลดเสร็จ
+        img.onload = function() {
+            setTimeout(() => {
+                printWin.print();
+                // ปิดหน้าต่างหลังจากพิมพ์
                 setTimeout(() => {
-                    printWin.print();
-                    // ปิดหน้าต่างหลังจากพิมพ์
-                    setTimeout(() => {
-                        printWin.close();
-                    }, 500);
+                    printWin.close();
                 }, 500);
-            };
-        }).catch(error => {
-            console.error('Error preparing chart for print:', error);
-            printWin.close();
-            alert('เกิดข้อผิดพลาดในการเตรียมกราฟสำหรับการพิมพ์');
-        });
+            }, 500);
+        };
     }
     
     // แสดง loading

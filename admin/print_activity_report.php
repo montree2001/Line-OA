@@ -114,7 +114,8 @@ function getAllWeeks($academic_year) {
     $end_date = new DateTime($academic_year['end_date']);
     
     // ตรวจสอบว่าเป็นระดับ ปวช. หรือ ปวส.
-    $is_high_level = strpos($academic_year['description'] ?? '', 'ปวส.') !== false;
+    $level_info = isset($academic_year['description']) ? $academic_year['description'] : '';
+    $is_high_level = strpos($level_info, 'ปวส.') !== false;
     $max_weeks = $is_high_level ? 15 : 18; // ปวส. 15 สัปดาห์, ปวช. 18 สัปดาห์
     
     $interval = $start_date->diff($end_date);
@@ -323,8 +324,27 @@ function generatePDF($class_id, $week_number, $start_date, $end_date, $academic_
 }
 
 // สร้าง HTML สำหรับรายงาน
-function createReportHTML($class_info, $advisors, $students, $weekDays, $week_number, $academic_year, $holidays, $report_settings) {
-    // HTML ของรายงาน (จะใช้เทมเพลตที่เหมือนกับที่ใช้ในหน้าเว็บ)
+// สร้าง HTML สำหรับรายงาน
+function createReportHTML($class_info, $advisors, $students, $days, $week_number, $academic_year, $holidays, $report_settings) {
+    // ช่วยเหลือการเลือกวันทำงาน (จันทร์-ศุกร์)
+    $work_days = array_filter($days, function($day) {
+        $dayOfWeek = date('w', strtotime($day));
+        return $dayOfWeek >= 1 && $dayOfWeek <= 5; // จันทร์-ศุกร์
+    });
+    
+    // การแปลงเดือนเป็นภาษาไทย
+    $thai_months = [
+        1 => 'มกราคม', 2 => 'กุมภาพันธ์', 3 => 'มีนาคม', 4 => 'เมษายน',
+        5 => 'พฤษภาคม', 6 => 'มิถุนายน', 7 => 'กรกฎาคม', 8 => 'สิงหาคม',
+        9 => 'กันยายน', 10 => 'ตุลาคม', 11 => 'พฤศจิกายน', 12 => 'ธันวาคม'
+    ];
+    
+    // ข้อมูลเดือนและปีในรายงาน
+    $reportDate = new DateTime(reset($work_days));
+    $month = $thai_months[$reportDate->format('n')];
+    $thai_year = $reportDate->format('Y') + 543;
+    
+    // เริ่มสร้าง HTML
     $html = '
     <!DOCTYPE html>
     <html lang="th">
@@ -341,6 +361,8 @@ function createReportHTML($class_info, $advisors, $students, $weekDays, $week_nu
             .report-header {
                 text-align: center;
                 margin-bottom: 20px;
+                page-break-before: always;
+                page-break-after: avoid;
             }
             .report-logo {
                 margin-bottom: 10px;
@@ -366,6 +388,10 @@ function createReportHTML($class_info, $advisors, $students, $weekDays, $week_nu
                 width: 100%;
                 border-collapse: collapse;
                 margin-bottom: 20px;
+                page-break-inside: auto;
+            }
+            .attendance-table thead {
+                display: table-header-group;
             }
             .attendance-table th,
             .attendance-table td {
@@ -376,6 +402,9 @@ function createReportHTML($class_info, $advisors, $students, $weekDays, $week_nu
             .attendance-table th {
                 background-color: #f0f0f0;
                 font-weight: bold;
+            }
+            .attendance-table tr {
+                page-break-inside: avoid;
             }
             .attendance-table .name-col {
                 text-align: left;
@@ -396,8 +425,13 @@ function createReportHTML($class_info, $advisors, $students, $weekDays, $week_nu
                 color: blue;
                 font-weight: bold;
             }
+            .attendance-table td.holiday {
+                background-color: #f0f0f0;
+                font-style: italic;
+            }
             .report-summary {
                 margin-bottom: 20px;
+                page-break-inside: avoid;
             }
             .report-summary p {
                 margin-bottom: 5px;
@@ -406,6 +440,7 @@ function createReportHTML($class_info, $advisors, $students, $weekDays, $week_nu
                 display: table;
                 width: 100%;
                 margin-top: 40px;
+                page-break-inside: avoid;
             }
             .signature-box {
                 display: table-cell;
@@ -421,9 +456,16 @@ function createReportHTML($class_info, $advisors, $students, $weekDays, $week_nu
             .signature-subtitle {
                 margin-bottom: 5px;
             }
+            @page {
+                size: A4 portrait;
+                margin: 1cm;
+            }
         </style>
     </head>
-    <body>
+    <body>';
+    
+    // เพิ่มส่วนหัวรายงาน
+    $html .= '
         <div class="report-header">
             <div class="report-logo">
                 <img src="' . $report_settings['logo_path'] . '" alt="โลโก้วิทยาลัย">
@@ -431,35 +473,31 @@ function createReportHTML($class_info, $advisors, $students, $weekDays, $week_nu
             <div class="report-title">
                 <h1>งานกิจกรรมนักเรียน นักศึกษา ฝ่ายพัฒนากิจการนักเรียน นักศึกษา วิทยาลัยการอาชีพปราสาท</h1>
                 <h2>แบบรายงานเช็คชื่อนักเรียน นักศึกษา ทำกิจกรรมหน้าเสาธง</h2>
-                <h3>ภาคเรียนที่ ' . $academic_year['semester'] . ' ปีการศึกษา ' . ($academic_year['year'] + 543) . ' สัปดาห์ที่ ' . $week_number . '</h3>
+                <h3>ภาคเรียนที่ ' . $academic_year['semester'] . ' ปีการศึกษา ' . ($academic_year['year'] + 543) . ' สัปดาห์ที่ ' . $week_number . ' เดือน ' . $month . ' พ.ศ. ' . $thai_year . '</h3>
                 <h3>ระดับชั้น ' . $class_info['level'] . ' กลุ่ม ' . $class_info['group_number'] . ' แผนกวิชา' . $class_info['department_name'] . '</h3>
             </div>
-        </div>
+        </div>';
         
+    // สร้างตาราง
+    $html .= '
         <table class="attendance-table">
             <thead>
                 <tr>
                     <th rowspan="2" class="no-col">ลำดับที่</th>
                     <th rowspan="2" class="code-col">รหัสนักศึกษา</th>
                     <th rowspan="2" class="name-col">ชื่อ-สกุล</th>
-                    <th colspan="' . count($weekDays) . '" class="week-header">สัปดาห์ที่ ' . $week_number . '</th>
+                    <th colspan="' . count($work_days) . '" class="week-header">สัปดาห์ที่ ' . $week_number . '</th>
                     <th rowspan="2" class="total-col">รวม</th>
                     <th rowspan="2" class="remark-col">หมายเหตุ</th>
                 </tr>
                 <tr class="day-header">';
     
-    // วันในสัปดาห์ (จันทร์-ศุกร์)
+    // วันที่ในสัปดาห์ (เฉพาะจันทร์-ศุกร์)
     $thaiDaysShort = ['อา.', 'จ.', 'อ.', 'พ.', 'พฤ.', 'ศ.', 'ส.'];
-    $workDays = array_filter($weekDays, function($day) {
-        $dayOfWeek = date('w', strtotime($day));
-        return $dayOfWeek >= 1 && $dayOfWeek <= 5; // จันทร์-ศุกร์
-    });
-    
-    // หัวข้อวันในตาราง
-    foreach ($workDays as $index => $day) {
+    foreach (array_values($work_days) as $index => $day) {
         $dayDate = date('d', strtotime($day));
         $dayOfWeek = date('w', strtotime($day));
-        $html .= '<th class="day-col">' . ($index + 1) . '<br>' . $thaiDaysShort[$dayOfWeek] . '</th>';
+        $html .= '<th class="day-col">' . ($index + 1) . '<br>' . $thaiDaysShort[$dayOfWeek] . '<br>' . $dayDate . '</th>';
     }
     
     $html .= '</tr>
@@ -486,12 +524,12 @@ function createReportHTML($class_info, $advisors, $students, $weekDays, $week_nu
         $studentLeave = 0;
         
         // วนลูปผ่านวันในสัปดาห์ (จันทร์-ศุกร์)
-        foreach ($workDays as $day) {
+        foreach ($work_days as $day) {
             $html .= '<td class="day-col">';
             
             // ตรวจสอบวันหยุด
             if (isset($holidays[$day])) {
-                $html .= '<span title="' . $holidays[$day] . '">หยุด</span>';
+                $html .= '<span class="holiday" title="' . $holidays[$day] . '">หยุด</span>';
             } else {
                 // ดึงข้อมูลการเข้าแถวสำหรับวันนี้
                 if (isset($student['attendances'][$day])) {
@@ -550,15 +588,16 @@ function createReportHTML($class_info, $advisors, $students, $weekDays, $week_nu
     $html .= '</tbody>
             <tfoot>
                 <tr>
-                    <td colspan="' . (count($workDays) + 5) . '">
+                    <td colspan="' . (count($work_days) + 5) . '">
                         <div class="report-summary">
                             <p>สรุป</p>
                             <p>จำนวนคน ' . count($students) . ' มา ' . $totalPresent . ' ขาด ' . $totalAbsent . ' สาย ' . $totalLate . ' ลา ' . $totalLeave . '</p>';
     
     // คำนวณอัตราการเข้าแถว
-    $totalAttendanceDays = count($workDays) * count($students);
-    $attendanceRate = $totalAttendanceDays > 0 ? 
-        (($totalPresent) / ($totalAttendanceDays - $totalLeave) * 100) : 0;
+    $totalAttendanceDays = count($work_days) * count($students);
+    $effectiveAttendanceDays = $totalAttendanceDays - $totalLeave; // หักวันลาออก
+    $attendanceRate = $effectiveAttendanceDays > 0 ? 
+        (($totalPresent) / $effectiveAttendanceDays * 100) : 0;
     
     $html .= '<p>สรุปจำนวนนักเรียนเข้าแถวร้อยละ ' . number_format($attendanceRate, 2) . '</p>
                         </div>

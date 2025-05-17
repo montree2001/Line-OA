@@ -44,10 +44,7 @@ $current_thai_year = $current_year + 543;
                 <div class="form-group">
                     <label for="academic-year">ภาคเรียน</label>
                     <div class="input-readonly">
-                        <?php 
-                            $thai_year = $academic_year['year'] + 543;
-                            echo "ภาคเรียนที่ {$academic_year['semester']}/{$thai_year}"; 
-                        ?>
+                        <?php echo "ภาคเรียนที่ {$academic_year['semester']}/{$thai_year}"; ?>
                     </div>
                 </div>
             </div>
@@ -191,7 +188,7 @@ $current_thai_year = $current_year + 543;
                                         <div class="signature-line">ลงชื่อ........................................</div>
                                         <div class="signature-name">({director_deputy_name})</div>
                                         <div class="signature-title">รองผู้อำนวยการ</div>
-                                        <div class="signature-subtitle">ฝ่ายพัฒนากิจการนักเรียนนักศึกษา</div>
+                                        <div class="signature-subtitle">ฝ่ายพัฒนากิจการนักเรียน นักศึกษา</div>
                                     </div>
                                 </div>
                             </div>
@@ -222,16 +219,7 @@ const holidays = <?php echo json_encode($holidays); ?>;
 // ข้อมูลการตั้งค่ารายงาน
 const reportSettings = <?php echo json_encode($report_settings); ?>;
 
-// ตรวจสอบว่าต้องการส่งออกเป็น Excel หรือไม่
-<?php if (isset($_GET['export']) && $_GET['export'] === 'excel'): ?>
-const autoExportExcel = true;
-const exportClassId = '<?php echo $_GET['class_id'] ?? ''; ?>';
-const exportWeek = '<?php echo $_GET['week'] ?? ''; ?>';
-<?php else: ?>
-const autoExportExcel = false;
-const exportClassId = '';
-const exportWeek = '';
-<?php endif; ?>
+
 
 // นำเข้าฟังก์ชันการสร้างรายงานจากไฟล์ print_activity.js
 document.addEventListener('DOMContentLoaded', function() {

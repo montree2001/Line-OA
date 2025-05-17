@@ -23,6 +23,7 @@
         </div>
         <div class="settings-section">
             <h3>ข้อมูลโรงเรียน</h3>
+            
             <div class="row">
                 <div class="col-6">
                     <div class="form-group">
