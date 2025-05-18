@@ -6,6 +6,12 @@
  * วิทยาลัยการอาชีพปราสาท
  */
 
+// ตั้งค่า error reporting และ memory limit
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+ini_set('memory_limit', '512M');
+ini_set('max_execution_time', 300);
+
 // เริ่ม session
 session_start();
 
@@ -226,20 +232,37 @@ function getAttendanceData($studentIds, $startDate, $endDate, $academicYearId) {
 // ดึงข้อมูลวันหยุด
 function getHolidays() {
     $conn = getDB();
-    $query = "SELECT holiday_date, holiday_name FROM holidays ORDER BY holiday_date";
-    $stmt = $conn->query($query);
-    
-    $holidays = [];
-    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-        $holidays[$row['holiday_date']] = $row['holiday_name'];
+    try {
+        $query = "SELECT holiday_date, holiday_name FROM holidays ORDER BY holiday_date";
+        $stmt = $conn->query($query);
+        
+        $holidays = [];
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $holidays[$row['holiday_date']] = $row['holiday_name'];
+        }
+        
+        return $holidays;
+    } catch (PDOException $e) {
+        error_log("Error fetching holidays: " . $e->getMessage());
+        return []; // ส่งคืนอาร์เรย์ว่างหากมีข้อผิดพลาด
     }
-    
-    return $holidays;
 }
 
 // ฟังก์ชันเตรียมข้อมูลสำหรับพิมพ์รายงาน
 function prepareReportData($departmentId, $level, $groupNumber, $weekNumber, $academicYearId) {
     $academicYear = getActiveAcademicYear();
+    if ($academicYearId) {
+        // ถ้ามีการระบุ academic_year_id ให้ดึงข้อมูลปีการศึกษานั้นแทน
+        $conn = getDB();
+        $query = "SELECT * FROM academic_years WHERE academic_year_id = ?";
+        $stmt = $conn->prepare($query);
+        $stmt->execute([$academicYearId]);
+        $specificYear = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($specificYear) {
+            $academicYear = $specificYear;
+        }
+    }
+    
     $allWeeks = calculateWeeks($academicYear);
     
     // ตรวจสอบว่ามีสัปดาห์ที่เลือกหรือไม่
@@ -254,7 +277,7 @@ function prepareReportData($departmentId, $level, $groupNumber, $weekNumber, $ac
     $endDate = $selectedWeek['end_date']->format('Y-m-d');
     
     // ดึงข้อมูลชั้นเรียน
-    $class = getClass($departmentId, $level, $groupNumber, $academicYearId);
+    $class = getClass($departmentId, $level, $groupNumber, $academicYear['academic_year_id']);
     if (!$class) {
         // ถ้าไม่พบข้อมูลชั้นเรียน ให้สร้างข้อมูลชั้นเรียนขึ้นมาเพื่อการแสดงผล
         $class = [
@@ -262,7 +285,7 @@ function prepareReportData($departmentId, $level, $groupNumber, $weekNumber, $ac
             'level' => $level,
             'group_number' => $groupNumber,
             'department_id' => $departmentId,
-            'academic_year_id' => $academicYearId
+            'academic_year_id' => $academicYear['academic_year_id']
         ];
         error_log("Class not found, created dummy class data: " . json_encode($class));
     }
@@ -304,7 +327,7 @@ function prepareReportData($departmentId, $level, $groupNumber, $weekNumber, $ac
     
     // ดึงข้อมูลการเข้าแถว
     $studentIds = array_column($students, 'student_id');
-    $attendanceData = getAttendanceData($studentIds, $startDate, $endDate, $academicYearId);
+    $attendanceData = getAttendanceData($studentIds, $startDate, $endDate, $academicYear['academic_year_id']);
     
     // ถ้าไม่พบข้อมูลการเข้าแถว ให้สร้างข้อมูลตัวอย่าง
     if (empty($attendanceData) && !empty($studentIds)) {
@@ -422,50 +445,96 @@ function generatePDF($reportData) {
     include 'templates/attendance_report_pdf.php';
     
     $html = ob_get_clean();
-    // เพิ่มโค้ดนี้ที่ด้านบนของไฟล์ attendance_report.php ก่อนการใช้งาน MPDF
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
-// เพิ่มโค้ดนี้ด้านบนไฟล์
-ini_set('memory_limit', '512M');
+    
     // สร้าง MPDF
     require_once '../vendor/autoload.php';
     
-    $defaultConfig = (new Mpdf\Config\ConfigVariables())->getDefaults();
-    $fontDirs = $defaultConfig['fontDir'];
-    
-    $defaultFontConfig = (new Mpdf\Config\FontVariables())->getDefaults();
-    $fontData = $defaultFontConfig['fontdata'];
-    
-    $mpdf = new \Mpdf\Mpdf([
-        'mode' => 'utf-8',
-        'format' => 'A4',
-        'orientation' => 'P',
-        'margin_left' => 10,
-        'margin_right' => 10,
-        'margin_top' => 10,
-        'margin_bottom' => 10,
-        'fontDir' => array_merge($fontDirs, [
-            __DIR__ . '/../fonts',
-        ]),
-        'fontdata' => $fontData + [
-            'thsarabun' => [
-                'R' => 'THSarabunNew.ttf',
-                'B' => 'THSarabunNew Bold.ttf',
-                'I' => 'THSarabunNew Italic.ttf',
-                'BI' => 'THSarabunNew BoldItalic.ttf'
-            ]
-        ],
-        'default_font' => 'thsarabun'
-    ]);
-    
-    $mpdf->SetTitle('รายงานการเข้าแถว - ' . $class['level'] . ' กลุ่ม ' . $class['group_number']);
-    $mpdf->WriteHTML($html);
-    
-    $filename = 'รายงานการเข้าแถว_' . $class['level'] . '_กลุ่ม_' . $class['group_number'] . '_สัปดาห์ที่_' . $week_number . '.pdf';
-    
-    // ส่งไฟล์ให้ download
-    $mpdf->Output($filename, 'I');
-    exit;
+    try {
+        // สร้างไดเรกทอรี tmp หากยังไม่มี
+        $tmpDir = __DIR__ . '/../tmp';
+        if (!is_dir($tmpDir)) {
+            mkdir($tmpDir, 0755, true);
+        }
+        
+        // กำหนดค่าฟอนต์
+        $defaultConfig = (new Mpdf\Config\ConfigVariables())->getDefaults();
+        $fontDirs = $defaultConfig['fontDir'];
+        
+        $defaultFontConfig = (new Mpdf\Config\FontVariables())->getDefaults();
+        $fontData = $defaultFontConfig['fontdata'];
+        
+        // สร้าง MPDF
+        $mpdf = new \Mpdf\Mpdf([
+            'mode' => 'utf-8',
+            'format' => 'A4',
+            'orientation' => 'P',
+            'margin_left' => 10,
+            'margin_right' => 10,
+            'margin_top' => 10,
+            'margin_bottom' => 10,
+            'fontDir' => array_merge($fontDirs, [
+                __DIR__ . '/../fonts',
+                __DIR__ . '/../fonts/thsarabunnew',
+            ]),
+            'fontdata' => $fontData + [
+                'thsarabun' => [
+                    'R' => 'THSarabunNew.ttf',
+                    'B' => 'THSarabunNew-Bold.ttf',
+                    'I' => 'THSarabunNew-Italic.ttf',
+                    'BI' => 'THSarabunNew-BoldItalic.ttf'
+                ]
+            ],
+            'default_font' => 'thsarabun',
+            'tempDir' => $tmpDir
+        ]);
+        
+        $mpdf->SetTitle('รายงานการเข้าแถว - ' . $class['level'] . ' กลุ่ม ' . $class['group_number']);
+        $mpdf->WriteHTML($html);
+        
+        $filename = 'รายงานการเข้าแถว_' . $class['level'] . '_กลุ่ม_' . $class['group_number'] . '_สัปดาห์ที่_' . $week_number . '.pdf';
+        
+        // ส่งไฟล์ให้ download
+        $mpdf->Output($filename, 'I');
+        exit;
+    } catch (Exception $e) {
+        // แสดงข้อผิดพลาดและรายละเอียด
+        echo "<div style='font-family: sans-serif; padding: 20px; background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; border-radius: 5px; margin: 20px;'>";
+        echo "<h3>เกิดข้อผิดพลาดในการสร้างไฟล์ PDF:</h3>";
+        echo "<p>{$e->getMessage()}</p>";
+        echo "<p><strong>ไฟล์:</strong> {$e->getFile()} <strong>บรรทัด:</strong> {$e->getLine()}</p>";
+        
+        // ตรวจสอบไฟล์ฟอนต์
+        echo "<h3>ตรวจสอบไฟล์ฟอนต์:</h3>";
+        $fontPath = __DIR__ . '/../fonts/thsarabunnew/THSarabunNew.ttf';
+        if (file_exists($fontPath)) {
+            echo "<p style='color: green;'>พบไฟล์ฟอนต์ THSarabunNew.ttf ที่: {$fontPath}</p>";
+        } else {
+            echo "<p style='color: red;'>ไม่พบไฟล์ฟอนต์ THSarabunNew.ttf ที่: {$fontPath}</p>";
+            echo "<p>กรุณาทำตามขั้นตอนต่อไปนี้:</p>";
+            echo "<ol>";
+            echo "<li>ดาวน์โหลดฟอนต์ THSarabunNew จากอินเทอร์เน็ต</li>";
+            echo "<li>สร้างโฟลเดอร์ fonts/thsarabunnew ในโฟลเดอร์หลักของโปรเจค</li>";
+            echo "<li>วางไฟล์ฟอนต์ในโฟลเดอร์ที่สร้างขึ้น โดยไฟล์ต้องมีชื่อ THSarabunNew.ttf, THSarabunNew-Bold.ttf, THSarabunNew-Italic.ttf, THSarabunNew-BoldItalic.ttf</li>";
+            echo "<li>สร้างโฟลเดอร์ tmp ในโฟลเดอร์หลักของโปรเจคสำหรับไฟล์ชั่วคราว</li>";
+            echo "</ol>";
+        }
+        
+        // ตรวจสอบไดเรกทอรี tmp
+        $tmpDir = __DIR__ . '/../tmp';
+        if (is_dir($tmpDir)) {
+            echo "<p style='color: green;'>พบไดเรกทอรี tmp ที่: {$tmpDir}</p>";
+            if (is_writable($tmpDir)) {
+                echo "<p style='color: green;'>ไดเรกทอรี tmp สามารถเขียนได้</p>";
+            } else {
+                echo "<p style='color: red;'>ไดเรกทอรี tmp ไม่สามารถเขียนได้ กรุณาตั้งค่าสิทธิ์การเขียนให้กับไดเรกทอรีนี้</p>";
+            }
+        } else {
+            echo "<p style='color: red;'>ไม่พบไดเรกทอรี tmp ที่: {$tmpDir}</p>";
+        }
+        
+        echo "<p><a href='javascript:history.back()' style='display: inline-block; padding: 10px 20px; background-color: #4CAF50; color: white; text-decoration: none; border-radius: 5px;'>กลับไปหน้าก่อนหน้า</a></p>";
+        echo "</div>";
+    }
 }
 
 // ฟังก์ชันสร้างไฟล์ Excel
@@ -478,155 +547,175 @@ function generateExcel($reportData) {
     // กำหนดค่าตัวแปรข้อมูลรายงาน
     extract($reportData);
     
-    require_once '../vendor/autoload.php';
-    
-    // สร้าง spreadsheet
-    $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
-    $sheet = $spreadsheet->getActiveSheet();
-    
-    // ตั้งค่า font
-    $spreadsheet->getDefaultStyle()->getFont()->setName('TH SarabunPSK');
-    $spreadsheet->getDefaultStyle()->getFont()->setSize(16);
-    
-    // หัวข้อรายงาน
-    $sheet->setCellValue('A1', 'งานกิจกรรมนักเรียน นักศึกษา ฝ่ายพัฒนากิจการนักเรียน นักศึกษา วิทยาลัยการอาชีพปราสาท');
-    $sheet->setCellValue('A2', 'แบบรายงานเช็คชื่อนักเรียน นักศึกษา ทำกิจกรรมหน้าเสาธง');
-    $sheet->setCellValue('A3', "ภาคเรียนที่ {$academic_year['semester']} ปีการศึกษา {$academic_year['year']} สัปดาห์ที่ {$week_number}");
-    $sheet->setCellValue('A4', "ระดับชั้น {$class['level']} กลุ่ม {$class['group_number']} แผนกวิชา{$department['department_name']}");
-    
-    // รวมเซลล์ส่วนหัว
-    $sheet->mergeCells('A1:H1');
-    $sheet->mergeCells('A2:H2');
-    $sheet->mergeCells('A3:H3');
-    $sheet->mergeCells('A4:H4');
-    
-    // จัดกึ่งกลางส่วนหัว
-    $sheet->getStyle('A1:H4')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
-    
-    // หัวตาราง
-    $sheet->setCellValue('A6', 'ลำดับที่');
-    $sheet->setCellValue('B6', 'รหัสนักศึกษา');
-    $sheet->setCellValue('C6', 'ชื่อ-สกุล');
-    
-    // หัวตารางวันที่
-    $col = 'D';
-    foreach ($week_days as $day) {
-        $sheet->setCellValue($col . '6', $day['day_num']);
-        $sheet->setCellValue($col . '7', $day['day_name']);
-        $col++;
-    }
-    $sheet->setCellValue($col . '6', 'รวม');
-    $sheet->getStyle('A6:' . $col . '7')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
-    
-    // ข้อมูลนักเรียน
-    $row = 8;
-    $no = 1;
-    foreach ($students as $student) {
-        $sheet->setCellValue('A' . $row, $no);
-        $sheet->setCellValue('B' . $row, $student['student_code']);
-        $sheet->setCellValue('C' . $row, $student['title'] . $student['first_name'] . ' ' . $student['last_name']);
+    try {
+        require_once '../vendor/autoload.php';
         
-        // ข้อมูลการเข้าแถว
+        // สร้าง spreadsheet
+        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        
+        // ตั้งค่า font
+        $spreadsheet->getDefaultStyle()->getFont()->setName('TH SarabunPSK');
+        $spreadsheet->getDefaultStyle()->getFont()->setSize(16);
+        
+        // หัวข้อรายงาน
+        $sheet->setCellValue('A1', 'งานกิจกรรมนักเรียน นักศึกษา ฝ่ายพัฒนากิจการนักเรียน นักศึกษา วิทยาลัยการอาชีพปราสาท');
+        $sheet->setCellValue('A2', 'แบบรายงานเช็คชื่อนักเรียน นักศึกษา ทำกิจกรรมหน้าเสาธง');
+        $sheet->setCellValue('A3', "ภาคเรียนที่ {$academic_year['semester']} ปีการศึกษา {$academic_year['year']} สัปดาห์ที่ {$week_number}");
+        $sheet->setCellValue('A4', "ระดับชั้น {$class['level']} กลุ่ม {$class['group_number']} แผนกวิชา{$department['department_name']}");
+        
+        // รวมเซลล์ส่วนหัว
+        $sheet->mergeCells('A1:H1');
+        $sheet->mergeCells('A2:H2');
+        $sheet->mergeCells('A3:H3');
+        $sheet->mergeCells('A4:H4');
+        
+        // จัดกึ่งกลางส่วนหัว
+        $sheet->getStyle('A1:H4')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+        
+        // หัวตาราง
+        $sheet->setCellValue('A6', 'ลำดับที่');
+        $sheet->setCellValue('B6', 'รหัสนักศึกษา');
+        $sheet->setCellValue('C6', 'ชื่อ-สกุล');
+        
+        // หัวตารางวันที่
         $col = 'D';
-        $totalPresent = 0;
-        
         foreach ($week_days as $day) {
-            $status = '';
-            if (isset($attendance_data[$student['student_id']][$day['date']])) {
-                $attendanceStatus = $attendance_data[$student['student_id']][$day['date']];
-                
-                if ($attendanceStatus == 'present') {
-                    $status = '✓';
-                    $totalPresent++;
-                } elseif ($attendanceStatus == 'absent') {
-                    $status = 'ขาด';
-                } elseif ($attendanceStatus == 'late') {
-                    $status = 'สาย';
-                    $totalPresent++; // นับสายเป็นมาเรียน
-                } elseif ($attendanceStatus == 'leave') {
-                    $status = 'ลา';
-                }
-            } elseif ($day['is_holiday']) {
-                $status = 'หยุด';
-            }
-            
-            $sheet->setCellValue($col . $row, $status);
+            $sheet->setCellValue($col . '6', $day['day_num']);
+            $sheet->setCellValue($col . '7', $day['day_name']);
             $col++;
         }
+        $sheet->setCellValue($col . '6', 'รวม');
+        $sheet->getStyle('A6:' . $col . '7')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
         
-        // รวมวันที่มาเรียน
-        $sheet->setCellValue($col . $row, $totalPresent);
-        
-        $row++;
-        $no++;
-    }
-    
-    // สรุปข้อมูล
-    $row = $row + 2;
-    $sheet->setCellValue('A' . $row, "สรุป จำนวนคน {$total_count} ชาย {$male_count} หญิง {$female_count}");
-    
-    // คำนวณอัตราการเข้าแถว
-    $totalAttendanceRate = 0;
-    if ($total_count > 0) {
-        $totalAttendanceData = 0;
-        $totalPossibleAttendance = $total_count * count($week_days);
-        
+        // ข้อมูลนักเรียน
+        $row = 8;
+        $no = 1;
         foreach ($students as $student) {
+            $sheet->setCellValue('A' . $row, $no);
+            $sheet->setCellValue('B' . $row, $student['student_code']);
+            $sheet->setCellValue('C' . $row, $student['title'] . $student['first_name'] . ' ' . $student['last_name']);
+            
+            // ข้อมูลการเข้าแถว
+            $col = 'D';
+            $totalPresent = 0;
+            
             foreach ($week_days as $day) {
+                $status = '';
                 if (isset($attendance_data[$student['student_id']][$day['date']])) {
-                    $status = $attendance_data[$student['student_id']][$day['date']];
-                    if ($status == 'present' || $status == 'late') {
-                        $totalAttendanceData++;
+                    $attendanceStatus = $attendance_data[$student['student_id']][$day['date']];
+                    
+                    if ($attendanceStatus == 'present') {
+                        $status = '✓';
+                        $totalPresent++;
+                    } elseif ($attendanceStatus == 'absent') {
+                        $status = 'ขาด';
+                    } elseif ($attendanceStatus == 'late') {
+                        $status = 'สาย';
+                        $totalPresent++; // นับสายเป็นมาเรียน
+                    } elseif ($attendanceStatus == 'leave') {
+                        $status = 'ลา';
+                    }
+                } elseif ($day['is_holiday']) {
+                    $status = 'หยุด';
+                }
+                
+                $sheet->setCellValue($col . $row, $status);
+                $col++;
+            }
+            
+            // รวมวันที่มาเรียน
+            $sheet->setCellValue($col . $row, $totalPresent);
+            
+            $row++;
+            $no++;
+        }
+        
+        // สรุปข้อมูล
+        $row = $row + 2;
+        $sheet->setCellValue('A' . $row, "สรุป จำนวนคน {$total_count} ชาย {$male_count} หญิง {$female_count}");
+        
+        // คำนวณอัตราการเข้าแถว
+        $totalAttendanceRate = 0;
+        if ($total_count > 0) {
+            $totalAttendanceData = 0;
+            $totalPossibleAttendance = $total_count * count($week_days);
+            
+            foreach ($students as $student) {
+                foreach ($week_days as $day) {
+                    if (isset($attendance_data[$student['student_id']][$day['date']])) {
+                        $status = $attendance_data[$student['student_id']][$day['date']];
+                        if ($status == 'present' || $status == 'late') {
+                            $totalAttendanceData++;
+                        }
                     }
                 }
             }
+            
+            if ($totalPossibleAttendance > 0) {
+                $totalAttendanceRate = ($totalAttendanceData / $totalPossibleAttendance) * 100;
+            }
         }
         
-        if ($totalPossibleAttendance > 0) {
-            $totalAttendanceRate = ($totalAttendanceData / $totalPossibleAttendance) * 100;
+        $row++;
+        $sheet->setCellValue('A' . $row, "สรุปจำนวนนักเรียนเข้าแถวร้อยละ " . number_format($totalAttendanceRate, 2));
+        
+        // ช่องลงชื่อ
+        $row = $row + 3;
+        $sheet->setCellValue('B' . $row, "ลงชื่อ............................................");
+        $sheet->setCellValue('F' . $row, "ลงชื่อ............................................");
+        
+        $row++;
+        $advisorName = "";
+        if ($primary_advisor) {
+            $advisorName = "({$primary_advisor['title']}{$primary_advisor['first_name']} {$primary_advisor['last_name']})";
         }
+        $sheet->setCellValue('B' . $row, $advisorName);
+        $sheet->setCellValue('F' . $row, "(นายนนทศรี ศรีสุข)");
+        
+        $row++;
+        $sheet->setCellValue('B' . $row, "ครูที่ปรึกษา");
+        $sheet->setCellValue('F' . $row, "หัวหน้างานกิจกรรมนักเรียน นักศึกษา");
+        
+        // จัดความกว้างคอลัมน์
+        $sheet->getColumnDimension('A')->setWidth(10);
+        $sheet->getColumnDimension('B')->setWidth(15);
+        $sheet->getColumnDimension('C')->setWidth(30);
+        $sheet->getColumnDimension('D')->setWidth(10);
+        $sheet->getColumnDimension('E')->setWidth(10);
+        $sheet->getColumnDimension('F')->setWidth(10);
+        $sheet->getColumnDimension('G')->setWidth(10);
+        $sheet->getColumnDimension('H')->setWidth(10);
+        
+        // กำหนดเส้นขอบตาราง
+        $styleArray = [
+            'borders' => [
+                'allBorders' => [
+                    'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
+                    'color' => ['argb' => 'FF000000'],
+                ],
+            ],
+        ];
+        $sheet->getStyle('A6:' . $col . ($row - 7))->applyFromArray($styleArray);
+        
+        // สร้างไฟล์ Excel
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+        $filename = 'รายงานการเข้าแถว_' . $class['level'] . '_กลุ่ม_' . $class['group_number'] . '_สัปดาห์ที่_' . $week_number . '.xlsx';
+        
+        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        header('Content-Disposition: attachment;filename="' . $filename . '"');
+        header('Cache-Control: max-age=0');
+        
+        $writer->save('php://output');
+        exit;
+    } catch (Exception $e) {
+        // แสดงข้อผิดพลาด
+        echo "<div style='font-family: sans-serif; padding: 20px; background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; border-radius: 5px; margin: 20px;'>";
+        echo "<h3>เกิดข้อผิดพลาดในการสร้างไฟล์ Excel:</h3>";
+        echo "<p>{$e->getMessage()}</p>";
+        echo "<p><a href='javascript:history.back()' style='display: inline-block; padding: 10px 20px; background-color: #4CAF50; color: white; text-decoration: none; border-radius: 5px;'>กลับไปหน้าก่อนหน้า</a></p>";
+        echo "</div>";
     }
-    
-    $row++;
-    $sheet->setCellValue('A' . $row, "สรุปจำนวนนักเรียนเข้าแถวร้อยละ " . number_format($totalAttendanceRate, 2));
-    
-    // ช่องลงชื่อ
-    $row = $row + 3;
-    $sheet->setCellValue('B' . $row, "ลงชื่อ............................................");
-    $sheet->setCellValue('F' . $row, "ลงชื่อ............................................");
-    
-    $row++;
-    $advisorName = "";
-    if ($primary_advisor) {
-        $advisorName = "({$primary_advisor['title']}{$primary_advisor['first_name']} {$primary_advisor['last_name']})";
-    }
-    $sheet->setCellValue('B' . $row, $advisorName);
-    $sheet->setCellValue('F' . $row, "(นายนนทศรี ศรีสุข)");
-    
-    $row++;
-    $sheet->setCellValue('B' . $row, "ครูที่ปรึกษา");
-    $sheet->setCellValue('F' . $row, "หัวหน้างานกิจกรรมนักเรียน นักศึกษา");
-    
-    // จัดความกว้างคอลัมน์
-    $sheet->getColumnDimension('A')->setWidth(10);
-    $sheet->getColumnDimension('B')->setWidth(15);
-    $sheet->getColumnDimension('C')->setWidth(30);
-    $sheet->getColumnDimension('D')->setWidth(10);
-    $sheet->getColumnDimension('E')->setWidth(10);
-    $sheet->getColumnDimension('F')->setWidth(10);
-    $sheet->getColumnDimension('G')->setWidth(10);
-    $sheet->getColumnDimension('H')->setWidth(10);
-    
-    // สร้างไฟล์ Excel
-    $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
-    $filename = 'รายงานการเข้าแถว_' . $class['level'] . '_กลุ่ม_' . $class['group_number'] . '_สัปดาห์ที่_' . $week_number . '.xlsx';
-    
-    header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    header('Content-Disposition: attachment;filename="' . $filename . '"');
-    header('Cache-Control: max-age=0');
-    
-    $writer->save('php://output');
-    exit;
 }
 
 // ฟังก์ชันสร้างกราฟ
@@ -647,45 +736,62 @@ function generateAttendanceChart($reportData) {
     
     $html = ob_get_clean();
     
-    // สร้าง MPDF
-    require_once '../vendor/autoload.php';
-    
-    $defaultConfig = (new Mpdf\Config\ConfigVariables())->getDefaults();
-    $fontDirs = $defaultConfig['fontDir'];
-    
-    $defaultFontConfig = (new Mpdf\Config\FontVariables())->getDefaults();
-    $fontData = $defaultFontConfig['fontdata'];
-    
-    $mpdf = new \Mpdf\Mpdf([
-        'mode' => 'utf-8',
-        'format' => 'A4',
-        'orientation' => 'L',
-        'margin_left' => 10,
-        'margin_right' => 10,
-        'margin_top' => 10,
-        'margin_bottom' => 10,
-        'fontDir' => array_merge($fontDirs, [
-            __DIR__ . '/../fonts',
-        ]),
-        'fontdata' => $fontData + [
-            'thsarabun' => [
-                'R' => 'THSarabunNew.ttf',
-                'B' => 'THSarabunNew Bold.ttf',
-                'I' => 'THSarabunNew Italic.ttf',
-                'BI' => 'THSarabunNew BoldItalic.ttf'
-            ]
-        ],
-        'default_font' => 'thsarabun'
-    ]);
-    
-    $mpdf->SetTitle('กราฟการเข้าแถว - ' . $class['level'] . ' กลุ่ม ' . $class['group_number']);
-    $mpdf->WriteHTML($html);
-    
-    $filename = 'กราฟการเข้าแถว_' . $class['level'] . '_กลุ่ม_' . $class['group_number'] . '_สัปดาห์ที่_' . $week_number . '.pdf';
-    
-    // ส่งไฟล์ให้ download
-    $mpdf->Output($filename, 'I');
-    exit;
+    try {
+        // สร้างไดเรกทอรี tmp หากยังไม่มี
+        $tmpDir = __DIR__ . '/../tmp';
+        if (!is_dir($tmpDir)) {
+            mkdir($tmpDir, 0755, true);
+        }
+        
+        // สร้าง MPDF
+        require_once '../vendor/autoload.php';
+        
+        $defaultConfig = (new Mpdf\Config\ConfigVariables())->getDefaults();
+        $fontDirs = $defaultConfig['fontDir'];
+        
+        $defaultFontConfig = (new Mpdf\Config\FontVariables())->getDefaults();
+        $fontData = $defaultFontConfig['fontdata'];
+        
+        $mpdf = new \Mpdf\Mpdf([
+            'mode' => 'utf-8',
+            'format' => 'A4',
+            'orientation' => 'L',
+            'margin_left' => 10,
+            'margin_right' => 10,
+            'margin_top' => 10,
+            'margin_bottom' => 10,
+            'fontDir' => array_merge($fontDirs, [
+                __DIR__ . '/../fonts',
+                __DIR__ . '/../fonts/thsarabunnew',
+            ]),
+            'fontdata' => $fontData + [
+                'thsarabun' => [
+                    'R' => 'THSarabunNew.ttf',
+                    'B' => 'THSarabunNew-Bold.ttf',
+                    'I' => 'THSarabunNew-Italic.ttf',
+                    'BI' => 'THSarabunNew-BoldItalic.ttf'
+                ]
+            ],
+            'default_font' => 'thsarabun',
+            'tempDir' => $tmpDir
+        ]);
+        
+        $mpdf->SetTitle('กราฟการเข้าแถว - ' . $class['level'] . ' กลุ่ม ' . $class['group_number']);
+        $mpdf->WriteHTML($html);
+        
+        $filename = 'กราฟการเข้าแถว_' . $class['level'] . '_กลุ่ม_' . $class['group_number'] . '_สัปดาห์ที่_' . $week_number . '.pdf';
+        
+        // ส่งไฟล์ให้ download
+        $mpdf->Output($filename, 'I');
+        exit;
+    } catch (Exception $e) {
+        // แสดงข้อผิดพลาด
+        echo "<div style='font-family: sans-serif; padding: 20px; background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; border-radius: 5px; margin: 20px;'>";
+        echo "<h3>เกิดข้อผิดพลาดในการสร้างกราฟการเข้าแถว:</h3>";
+        echo "<p>{$e->getMessage()}</p>";
+        echo "<p><a href='javascript:history.back()' style='display: inline-block; padding: 10px 20px; background-color: #4CAF50; color: white; text-decoration: none; border-radius: 5px;'>กลับไปหน้าก่อนหน้า</a></p>";
+        echo "</div>";
+    }
 }
 
 // ตรวจสอบการทำงาน
