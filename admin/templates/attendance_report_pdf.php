@@ -3,9 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <title>รายงานการเข้าแถว</title>
-    <!-- icon ติกถูก -->
-  
-
     <style>
         body {
             font-family: 'thsarabun';
@@ -75,13 +72,29 @@
 <body>
     <div class="header">
         <div class="school-logo">
-            <img src="../uploads/logos/school_logo_1747545769.png" alt="Logo" style="width: 100%; height: auto;">
+            <?php if (file_exists('../uploads/logos/school_logo.png')): ?>
+                <img src="../uploads/logos/school_logo.png" alt="Logo" style="width: 100%; height: auto;">
+            <?php else: ?>
+                โลโก้<br>วิทยาลัย
+            <?php endif; ?>
         </div>
         <p>
             <strong>งานกิจกรรมนักเรียน นักศึกษา ฝ่ายพัฒนากิจการนักเรียน นักศึกษา วิทยาลัยการอาชีพปราสาท</strong><br>
             <strong>แบบรายงานเช็คชื่อนักเรียน นักศึกษา ทำกิจกรรมหน้าเสาธง</strong><br>
-            ภาคเรียนที่ <?php echo $academic_year['semester']; ?> ปีการศึกษา <?php echo $academic_year['year']; ?> สัปดาห์ที่ <?php echo $week_number; ?> เดือน <?php echo date('F', strtotime($week_days[0]['date'])); ?> พ.ศ. <?php echo date('Y', strtotime($week_days[0]['date'])) + 543; ?><br>
-            ระหว่างวันที่ <?php echo date('j', strtotime($start_date)); ?> เดือน <?php echo date('F', strtotime($start_date)); ?> พ.ศ. <?php echo date('Y', strtotime($start_date)) + 543; ?> ถึง วันที่ <?php echo date('j', strtotime($end_date)); ?> เดือน <?php echo date('F', strtotime($end_date)); ?> พ.ศ. <?php echo date('Y', strtotime($end_date)) + 543; ?><br>
+            ภาคเรียนที่ <?php echo $academic_year['semester']; ?> ปีการศึกษา <?php echo $academic_year['year']; ?> สัปดาห์ที่ <?php echo $week_number; ?><br>
+            <?php 
+            // แสดงชื่อเดือนภาษาไทย
+            $start_month_name = $week_days[0]['month'];
+            $end_month_name = $week_days[count($week_days)-1]['month'];
+            $same_month = ($start_month_name == $end_month_name);
+            ?>
+            ระหว่างวันที่ <?php echo (int)date('j', strtotime($start_date)); ?> 
+            <?php if ($same_month): ?>
+                - <?php echo (int)date('j', strtotime($end_date)); ?> เดือน<?php echo $start_month_name; ?> 
+            <?php else: ?>
+                เดือน<?php echo $start_month_name; ?> - วันที่ <?php echo (int)date('j', strtotime($end_date)); ?> เดือน<?php echo $end_month_name; ?> 
+            <?php endif; ?>
+            พ.ศ. <?php echo date('Y', strtotime($start_date)) + 543; ?><br>
             ระดับชั้น <?php echo $class['level']; ?> กลุ่ม <?php echo $class['group_number']; ?> แผนกวิชา<?php echo $department['department_name']; ?>
         </p>
     </div>
@@ -108,19 +121,22 @@
         </thead>
         <tbody>
             <?php 
-            $no = 1;
-            foreach ($students as $student): 
+            // กำหนดนักเรียนที่จะแสดงในหน้านี้
+            $displayStudents = isset($pageStudents) ? $pageStudents : $students;
+            $startNo = isset($startIndex) ? $startIndex + 1 : 1;
+            
+            foreach ($displayStudents as $index => $student): 
                 // คำนวณจำนวนวันที่มาเรียน
                 $totalPresent = 0;
+                $no = $startNo + $index;
             ?>
             <tr>
                 <td><?php echo $no; ?></td>
                 <td><?php echo $student['student_code']; ?></td>
-                <td class="name-column"><?php echo $student['title'] . $student['first_name'] . ' ' . $student['last_name']; ?></td>
+                <td class="name-column"><?php echo $student['display_title'] . $student['first_name'] . ' ' . $student['last_name']; ?></td>
                 <?php foreach ($week_days as $day): ?>
                     <td>
                         <?php 
-                        $status = '';
                         if ($day['is_holiday']) {
                             echo 'หยุด';
                         } elseif (isset($attendance_data[$student['student_id']][$day['date']])) {
@@ -145,14 +161,14 @@
                 <?php endforeach; ?>
                 <td><?php echo $totalPresent; ?></td>
             </tr>
-            <?php 
-            $no++;
-            endforeach; 
+            <?php endforeach; ?>
             
-            // เพิ่มแถวว่างถ้ามีนักเรียนน้อย
-            if (count($students) < 5) {
-                $emptyRows = 5 - count($students);
+            <?php 
+            // เพิ่มแถวว่างถ้ามีนักเรียนน้อยกว่า 5 คน
+            if (count($displayStudents) < 5) {
+                $emptyRows = 5 - count($displayStudents);
                 for ($i = 0; $i < $emptyRows; $i++) {
+                    $no = $startNo + count($displayStudents) + $i;
                     echo '<tr>';
                     echo '<td>' . $no . '</td>';
                     echo '<td></td>';
@@ -164,15 +180,16 @@
                     
                     echo '<td></td>';
                     echo '</tr>';
-                    $no++;
                 }
             }
             ?>
         </tbody>
     </table>
     
+    <?php if (!isset($pageStudents) || (isset($currentPage) && $currentPage == $totalPages)): ?>
+    <!-- แสดงสรุปเฉพาะในหน้าสุดท้ายของแต่ละสัปดาห์ -->
     <div>
-        สรุป จำนวนคน........... <?php echo $total_count; ?> ...........ชาย............. <?php echo $male_count; ?> .............หญิง............. <?php echo $female_count; ?> ..............
+        <strong>สรุป</strong> จำนวนคน........... <?php echo $total_count; ?> ...........ชาย............. <?php echo $male_count; ?> .............หญิง............. <?php echo $female_count; ?> ..............
     </div>
     
     <?php
@@ -197,18 +214,19 @@
         }
         
         if ($totalPossibleAttendance > 0) {
-            $totalAttendanceRate = ($totalAttendanceData / $totalPossibleAttendance) * 100;
+            $totalAttendanceRate = ($totalAttendanceData / ($totalPossibleAttendance * $total_count)) * 100;
         }
     }
     ?>
     
     <div>
-        สรุปจำนวนนักเรียนเข้าแถวร้อยละ........... <?php echo number_format($totalAttendanceRate, 2); ?> ...........
+        <strong>สรุปจำนวนนักเรียนเข้าแถวร้อยละ</strong>........... <?php echo number_format($totalAttendanceRate, 2); ?> ...........
     </div>
+    <?php endif; ?>
     
     <div class="signature-section">
         <div class="signature-box">
-            
+            <div class="signature-line"></div>
             <div>ลงชื่อ...........................................</div>
             <?php if ($primary_advisor): ?>
             <div>(<?php echo $primary_advisor['title'] . $primary_advisor['first_name'] . ' ' . $primary_advisor['last_name']; ?>)</div>
@@ -219,25 +237,40 @@
         </div>
         
         <div class="signature-box">
-            
+            <div class="signature-line"></div>
             <div>ลงชื่อ...........................................</div>
+            <?php if (isset($signers[0])): ?>
+            <div>(<?php echo $signers[0]['title'] . $signers[0]['first_name'] . ' ' . $signers[0]['last_name']; ?>)</div>
+            <div><?php echo $signers[0]['position']; ?></div>
+            <?php else: ?>
             <div>(นายมนตรี ศรีสุข)</div>
             <div>หัวหน้างานกิจกรรมนักเรียน นักศึกษา</div>
+            <?php endif; ?>
         </div>
         
         <div class="signature-box">
-           
+            <div class="signature-line"></div>
             <div>ลงชื่อ...........................................</div>
+            <?php if (isset($signers[1])): ?>
+            <div>(<?php echo $signers[1]['title'] . $signers[1]['first_name'] . ' ' . $signers[1]['last_name']; ?>)</div>
+            <div><?php echo $signers[1]['position']; ?></div>
+            <?php else: ?>
             <div>(นายพงษ์ศักดิ์ สนโศรก)</div>
             <div>รองผู้อำนวยการ</div>
             <div>ฝ่ายพัฒนากิจการนักเรียนนักศึกษา</div>
+            <?php endif; ?>
         </div>
     </div>
     
     <div class="clear"></div>
     
     <div class="page-footer">
-        <div class="left">หน้าที่ 1</div>
+        <div class="left">
+            หน้าที่ <?php echo isset($currentPage) ? $currentPage : 1; ?>
+            <?php if (isset($totalPages) && $totalPages > 1): ?>
+            /<?php echo $totalPages; ?>
+            <?php endif; ?>
+        </div>
         <div class="right">พิมพ์เมื่อวันที่ <?php echo date('j/n/Y'); ?></div>
         <div class="clear"></div>
     </div>

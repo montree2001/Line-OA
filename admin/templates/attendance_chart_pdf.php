@@ -125,12 +125,30 @@
 </head>
 <body>
     <div class="header">
-        <div class="school-logo">โลโก้<br>วิทยาลัย</div>
+        <div class="school-logo">
+            <?php if (file_exists('../uploads/logos/school_logo.png')): ?>
+                <img src="../uploads/logos/school_logo.png" alt="Logo" style="width: 100%; height: auto; border-radius: 50%;">
+            <?php else: ?>
+                โลโก้<br>วิทยาลัย
+            <?php endif; ?>
+        </div>
         <p>
             <strong>งานกิจกรรมนักเรียน นักศึกษา ฝ่ายพัฒนากิจการนักเรียน นักศึกษา วิทยาลัยการอาชีพปราสาท</strong><br>
             <strong>กราฟแสดงอัตราการเข้าแถวรายวัน</strong><br>
-            ภาคเรียนที่ <?php echo $academic_year['semester']; ?> ปีการศึกษา <?php echo $academic_year['year']; ?> สัปดาห์ที่ <?php echo $week_number; ?> เดือน <?php echo date('F', strtotime($week_days[0]['date'])); ?> พ.ศ. <?php echo date('Y', strtotime($week_days[0]['date'])) + 543; ?><br>
-            ระหว่างวันที่ <?php echo date('j', strtotime($start_date)); ?> เดือน <?php echo date('F', strtotime($start_date)); ?> พ.ศ. <?php echo date('Y', strtotime($start_date)) + 543; ?> ถึง วันที่ <?php echo date('j', strtotime($end_date)); ?> เดือน <?php echo date('F', strtotime($end_date)); ?> พ.ศ. <?php echo date('Y', strtotime($end_date)) + 543; ?><br>
+            ภาคเรียนที่ <?php echo $academic_year['semester']; ?> ปีการศึกษา <?php echo $academic_year['year']; ?> สัปดาห์ที่ <?php echo $week_number; ?><br>
+            <?php 
+            // แสดงชื่อเดือนภาษาไทย
+            $start_month_name = $week_days[0]['month'];
+            $end_month_name = $week_days[count($week_days)-1]['month'];
+            $same_month = ($start_month_name == $end_month_name);
+            ?>
+            ระหว่างวันที่ <?php echo (int)date('j', strtotime($start_date)); ?> 
+            <?php if ($same_month): ?>
+                - <?php echo (int)date('j', strtotime($end_date)); ?> เดือน<?php echo $start_month_name; ?> 
+            <?php else: ?>
+                เดือน<?php echo $start_month_name; ?> - วันที่ <?php echo (int)date('j', strtotime($end_date)); ?> เดือน<?php echo $end_month_name; ?> 
+            <?php endif; ?>
+            พ.ศ. <?php echo date('Y', strtotime($start_date)) + 543; ?><br>
             ระดับชั้น <?php echo $class['level']; ?> กลุ่ม <?php echo $class['group_number']; ?> แผนกวิชา<?php echo $department['department_name']; ?>
         </p>
     </div>
@@ -284,13 +302,18 @@
     <div class="summary-section">
         <h3>สัดส่วนสถานะการเข้าแถว</h3>
         <div>
-            <span class="colored-box good"></span> มาปกติ: <?php echo number_format(($totalPresent / ($totalPresent + $totalAbsent + $totalLate + $totalLeave)) * 100, 1); ?>%
+            <?php
+            $totalAttendanceCount = $totalPresent + $totalAbsent + $totalLate + $totalLeave;
+            if ($totalAttendanceCount > 0):
+            ?>
+            <span class="colored-box good"></span> มาปกติ: <?php echo number_format(($totalPresent / $totalAttendanceCount) * 100, 1); ?>%
             &nbsp;&nbsp;
-            <span class="colored-box danger"></span> ขาด: <?php echo number_format(($totalAbsent / ($totalPresent + $totalAbsent + $totalLate + $totalLeave)) * 100, 1); ?>%
+            <span class="colored-box danger"></span> ขาด: <?php echo number_format(($totalAbsent / $totalAttendanceCount) * 100, 1); ?>%
             &nbsp;&nbsp;
-            <span class="colored-box warning"></span> มาสาย: <?php echo number_format(($totalLate / ($totalPresent + $totalAbsent + $totalLate + $totalLeave)) * 100, 1); ?>%
+            <span class="colored-box warning"></span> มาสาย: <?php echo number_format(($totalLate / $totalAttendanceCount) * 100, 1); ?>%
             &nbsp;&nbsp;
-            <span class="colored-box info"></span> ลา: <?php echo number_format(($totalLeave / ($totalPresent + $totalAbsent + $totalLate + $totalLeave)) * 100, 1); ?>%
+            <span class="colored-box info"></span> ลา: <?php echo number_format(($totalLeave / $totalAttendanceCount) * 100, 1); ?>%
+            <?php endif; ?>
         </div>
     </div>
     
@@ -309,16 +332,26 @@
         <div class="signature-box">
             <div class="signature-line"></div>
             <div>ลงชื่อ...........................................</div>
-            <div>(นายนนทศรี ศรีสุข)</div>
+            <?php if (isset($signers[0])): ?>
+            <div>(<?php echo $signers[0]['title'] . $signers[0]['first_name'] . ' ' . $signers[0]['last_name']; ?>)</div>
+            <div><?php echo $signers[0]['position']; ?></div>
+            <?php else: ?>
+            <div>(นายมนตรี ศรีสุข)</div>
             <div>หัวหน้างานกิจกรรมนักเรียน นักศึกษา</div>
+            <?php endif; ?>
         </div>
         
         <div class="signature-box">
             <div class="signature-line"></div>
             <div>ลงชื่อ...........................................</div>
-            <div>(นายพงษ์ศักดิ์ สมใจรัก)</div>
+            <?php if (isset($signers[1])): ?>
+            <div>(<?php echo $signers[1]['title'] . $signers[1]['first_name'] . ' ' . $signers[1]['last_name']; ?>)</div>
+            <div><?php echo $signers[1]['position']; ?></div>
+            <?php else: ?>
+            <div>(นายพงษ์ศักดิ์ สนโศรก)</div>
             <div>รองผู้อำนวยการ</div>
             <div>ฝ่ายพัฒนากิจการนักเรียนนักศึกษา</div>
+            <?php endif; ?>
         </div>
     </div>
     

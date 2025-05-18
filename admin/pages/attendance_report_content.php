@@ -1,439 +1,450 @@
-<div class="report-control-panel">
-    <form action="" method="get" id="report-form">
-        <div class="row">
-            <?php if ($_SESSION['user_role'] == 'admin'): ?>
-            <div class="col-md-4 col-lg-3 mb-3">
-                <label for="department_id" class="form-label">แผนกวิชา</label>
-                <select name="department_id" id="department_id" class="form-select select2">
-                    <option value="">-- เลือกแผนกวิชา --</option>
-                    <?php foreach ($departments as $dept): ?>
-                    <option value="<?php echo $dept['department_id']; ?>" <?php echo ($department_id == $dept['department_id']) ? 'selected' : ''; ?>>
-                        <?php echo $dept['department_name']; ?>
-                    </option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-            <?php endif; ?>
-            
-            <div class="col-md-4 col-lg-3 mb-3">
-                <label for="class_id" class="form-label">ห้องเรียน</label>
-                <select name="class_id" id="class_id" class="form-select select2" required>
-                    <option value="">-- เลือกห้องเรียน --</option>
-                    <?php foreach ($classes as $class): ?>
-                    <option value="<?php echo $class['class_id']; ?>" <?php echo ($class_id == $class['class_id']) ? 'selected' : ''; ?>>
-                        <?php echo $class['class_name']; ?>
-                    </option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-            
-            <div class="col-md-4 col-lg-3 mb-3">
-                <label for="start_week" class="form-label">เริ่มต้นสัปดาห์ที่</label>
-                <select name="start_week" id="start_week" class="form-select select2" required>
-                    <?php foreach ($week_options as $week): ?>
-                    <option value="<?php echo $week['number']; ?>" <?php echo ($start_week == $week['number']) ? 'selected' : ''; ?>>
-                        <?php echo $week['text']; ?>
-                    </option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-            
-            <div class="col-md-4 col-lg-3 mb-3">
-                <label for="end_week" class="form-label">สิ้นสุดสัปดาห์ที่</label>
-                <select name="end_week" id="end_week" class="form-select select2" required>
-                    <?php foreach ($week_options as $week): ?>
-                    <option value="<?php echo $week['number']; ?>" <?php echo ($end_week == $week['number']) ? 'selected' : ''; ?>>
-                        <?php echo $week['text']; ?>
-                    </option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-            
-            <div class="col-md-8 col-lg-9 mb-3">
-                <label for="search" class="form-label">ค้นหานักเรียน</label>
-                <div class="input-group">
-                    <input type="text" class="form-control" id="search" name="search" placeholder="ค้นหาตามรหัสนักศึกษา ชื่อ หรือนามสกุล" value="<?php echo htmlspecialchars($search_term); ?>">
-                    <button type="submit" class="btn btn-primary">
-                        <span class="material-icons">search</span> ค้นหา
-                    </button>
+<?php
+/**
+ * attendance_report_content.php - เนื้อหาหน้ารายงานการเข้าแถว
+ * 
+ * ส่วนหนึ่งของระบบน้องชูใจ AI - ดูแลผู้เรียน
+ * วิทยาลัยการอาชีพปราสาท
+ */
+?>
+
+<div class="report-container">
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="card-title mb-0">
+                <i class="material-icons align-middle me-2">print</i>พิมพ์รายงานการเข้าแถว
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="alert alert-info">
+                <div class="d-flex">
+                    <div class="flex-shrink-0">
+                        <i class="material-icons fs-3">info</i>
+                    </div>
+                    <div class="flex-grow-1 ms-3">
+                        <h5 class="alert-heading">ข้อมูลรายงาน</h5>
+                        <p>รายงานนี้แสดงข้อมูลการเข้าแถวของนักเรียนตามช่วงเวลาที่เลือก โดยแยกตามสัปดาห์ (1 สัปดาห์ต่อ 1 หน้า A4)</p>
+                        <p>ภาคเรียนที่ <?php echo $academic_year['semester']; ?> ปีการศึกษา <?php echo $academic_year['year']; ?> มีทั้งหมด <?php echo $total_weeks; ?> สัปดาห์</p>
+                        <p class="mb-0">เริ่มตั้งแต่วันที่ <?php echo date('d/m/Y', strtotime($academic_year['start_date'])); ?> ถึงวันที่ <?php echo date('d/m/Y', strtotime($academic_year['end_date'])); ?></p>
+                    </div>
                 </div>
             </div>
-            
-            <div class="col-md-4 col-lg-3 mb-3 d-flex align-items-end">
-                <button type="submit" class="btn btn-primary w-100">
-                    <span class="material-icons">filter_alt</span> แสดงรายงาน
-                </button>
-            </div>
-        </div>
-    </form>
-</div>
 
-<?php if (!empty($report_data)): ?>
-<div class="report-preview">
-    <div class="report-header">
-        <h4 class="text-center">รายงานการเข้าแถวของนักเรียน</h4>
-        <p class="text-center">
-            ภาคเรียนที่ <?php echo $academic_year['semester']; ?> ปีการศึกษา <?php echo $academic_year['year']; ?> 
-            สัปดาห์ที่ <?php echo $report_data['week_number']; ?><br>
-            ระหว่างวันที่ <?php echo date('j/n/Y', strtotime($report_data['start_date'])); ?> ถึง 
-            วันที่ <?php echo date('j/n/Y', strtotime($report_data['end_date'])); ?><br>
-            ระดับชั้น <?php echo $selected_class['level']; ?> กลุ่ม <?php echo $selected_class['group_number']; ?> 
-            แผนกวิชา<?php echo $selected_class['department_name']; ?>
-        </p>
+            <form id="reportForm" method="post" action="print_attendance_report.php" target="_blank">
+                <input type="hidden" id="semester_start_date" value="<?php echo $academic_year['start_date']; ?>">
+
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <label for="department_id" class="form-label fw-bold">แผนกวิชา</label>
+                        <select id="department_id" name="department_id" class="form-select selectpicker" data-live-search="true" required>
+                            <option value="">เลือกแผนกวิชา</option>
+                            <?php foreach ($departments as $dept): ?>
+                            <option value="<?php echo $dept['department_id']; ?>"><?php echo $dept['department_name']; ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="class_id" class="form-label fw-bold">ห้องเรียน</label>
+                        <select id="class_id" name="class_id" class="form-select selectpicker" data-live-search="true" required disabled>
+                            <option value="">กรุณาเลือกแผนกวิชาก่อน</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <label for="week_number" class="form-label fw-bold">สัปดาห์ที่</label>
+                        <select id="week_number" name="week_number" class="form-select" required>
+                            <?php for ($i = 1; $i <= $total_weeks; $i++): ?>
+                            <option value="<?php echo $i; ?>" <?php echo ($i == $current_week) ? 'selected' : ''; ?>>สัปดาห์ที่ <?php echo $i; ?></option>
+                            <?php endfor; ?>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="date_range" class="form-label fw-bold">ช่วงวันที่</label>
+                        <div class="input-group">
+                            <input type="text" id="date_range" name="date_range" class="form-control" readonly>
+                            <input type="hidden" id="start_date" name="start_date">
+                            <input type="hidden" id="end_date" name="end_date">
+                            <span class="input-group-text">
+                                <i class="material-icons">date_range</i>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <label class="form-label fw-bold d-block mb-3">ประเภทรายงาน</label>
+                        <div class="report-type-cards">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <input type="radio" class="btn-check" name="report_type" id="attendance_report" value="attendance" checked>
+                                    <label class="btn btn-outline-primary w-100 h-100 py-4 report-type-card" for="attendance_report">
+                                        <div class="d-flex flex-column align-items-center">
+                                            <i class="material-icons mb-3" style="font-size: 48px;">fact_check</i>
+                                            <h5 class="mb-2">รายงานการเช็คชื่อ</h5>
+                                            <p class="text-muted small mb-0">แสดงตารางข้อมูลการเข้าแถวรายวัน</p>
+                                        </div>
+                                    </label>
+                                </div>
+                                <div class="col-md-6">
+                                    <input type="radio" class="btn-check" name="report_type" id="chart_report" value="chart">
+                                    <label class="btn btn-outline-primary w-100 h-100 py-4 report-type-card" for="chart_report">
+                                        <div class="d-flex flex-column align-items-center">
+                                            <i class="material-icons mb-3" style="font-size: 48px;">bar_chart</i>
+                                            <h5 class="mb-2">กราฟสถิติการเข้าแถว</h5>
+                                            <p class="text-muted small mb-0">แสดงกราฟและสถิติการเข้าแถว</p>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-end gap-2">
+                    <button type="button" id="btnPdfReport" class="btn btn-primary btn-lg">
+                        <i class="material-icons align-middle me-1">picture_as_pdf</i> พิมพ์รายงาน PDF
+                    </button>
+                    <button type="button" id="btnExcelReport" class="btn btn-success btn-lg">
+                        <i class="material-icons align-middle me-1">table_view</i> ส่งออก Excel
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
-    
-    <div class="table-responsive mt-3">
-        <table class="table table-bordered table-striped attendance-table" id="attendance-table">
-            <thead>
-                <tr>
-                    <th rowspan="2" class="align-middle">ลำดับที่</th>
-                    <th rowspan="2" class="align-middle">รหัสนักศึกษา</th>
-                    <th rowspan="2" class="align-middle">ชื่อ-สกุล</th>
-                    <th colspan="<?php echo count($report_data['week_days']); ?>" class="text-center">สัปดาห์ที่ <?php echo $report_data['week_number']; ?></th>
-                    <th rowspan="2" class="align-middle">รวม</th>
-                </tr>
-                <tr>
-                    <?php foreach ($report_data['week_days'] as $day): ?>
-                    <th class="text-center">
-                        <?php echo $day['day_num']; ?><br>
-                        <?php echo $day['day_name']; ?>
-                        <?php if ($day['is_holiday']): ?>
-                            <br><small class="text-danger">(หยุด)</small>
-                        <?php endif; ?>
-                    </th>
-                    <?php endforeach; ?>
-                </tr>
-            </thead>
-            <tbody>
-                <?php 
-                $no = 1;
-                foreach ($report_data['students'] as $student): 
-                    // คำนวณจำนวนวันที่มาเรียน
-                    $totalPresent = 0;
-                ?>
-                <tr>
-                    <td><?php echo $no; ?></td>
-                    <td><?php echo $student['student_code']; ?></td>
-                    <td><?php echo $student['display_title'] . $student['first_name'] . ' ' . $student['last_name']; ?></td>
-                    <?php foreach ($report_data['week_days'] as $day): ?>
-                        <td class="text-center">
-                            <?php 
-                            if ($day['is_holiday']) {
-                                echo '<span class="text-danger">หยุด</span>';
-                            } elseif (isset($report_data['attendance_data'][$student['student_id']][$day['date']])) {
-                                $attendanceStatus = $report_data['attendance_data'][$student['student_id']][$day['date']];
-                                
-                                if ($attendanceStatus == 'present') {
-                                    echo '<span class="text-success attendance-icon">&#10004;</span>';
-                                    $totalPresent++;
-                                } elseif ($attendanceStatus == 'absent') {
-                                    echo '<span class="text-danger attendance-icon">&#10008;</span>';
-                                } elseif ($attendanceStatus == 'late') {
-                                    echo '<span class="text-warning attendance-icon">&#8987;</span>';
-                                    $totalPresent++; // นับสายเป็นมาเรียน
-                                } elseif ($attendanceStatus == 'leave') {
-                                    echo '<span class="text-primary attendance-icon">&#9993;</span>';
-                                }
-                            } else {
-                                echo '<span class="text-secondary">-</span>';
-                            }
+
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="card-title mb-0">
+                <i class="material-icons align-middle me-2">settings</i>ตั้งค่าการพิมพ์รายงาน
+            </h5>
+        </div>
+        <div class="card-body">
+            <form id="reportSettingsForm" method="post" action="save_report_settings.php" enctype="multipart/form-data">
+                <div class="row mb-4">
+                    <div class="col-lg-6">
+                        <h5 class="border-bottom pb-2 mb-3">ข้อมูลสถานศึกษา</h5>
+                        <div class="mb-3">
+                            <label for="school_logo" class="form-label fw-bold">โลโก้สถานศึกษา</label>
+                            <div class="input-group">
+                                <input type="file" class="form-control" id="school_logo" name="school_logo" accept="image/*">
+                                <button class="btn btn-outline-secondary" type="button" id="preview_logo">แสดงตัวอย่าง</button>
+                            </div>
+                            <div class="form-text">ขนาดแนะนำ 200x200 พิกเซล รูปแบบไฟล์ JPG, PNG</div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="school_name" class="form-label fw-bold">ชื่อสถานศึกษา</label>
+                            <input type="text" class="form-control" id="school_name" name="school_name" value="วิทยาลัยการอาชีพปราสาท">
+                        </div>
+                    </div>
+
+                    <div class="col-lg-6">
+                        <h5 class="border-bottom pb-2 mb-3">ข้อมูลผู้ลงนาม</h5>
+                        <?php
+                        // ดึงข้อมูลผู้ลงนามจากฐานข้อมูล
+                        $query = "SELECT * FROM report_signers WHERE is_active = 1 ORDER BY signer_id LIMIT 3";
+                        $stmt = $conn->query($query);
+                        $signers = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                        
+                        // กำหนดค่าเริ่มต้นสำหรับผู้ลงนาม
+                        $defaultSigners = [
+                            ['position' => 'หัวหน้างานกิจกรรมนักเรียน นักศึกษา', 'title' => 'นาย', 'first_name' => 'มนตรี', 'last_name' => 'ศรีสุข'],
+                            ['position' => 'รองผู้อำนวยการฝ่ายพัฒนากิจการนักเรียนนักศึกษา', 'title' => 'นาย', 'first_name' => 'พงษ์ศักดิ์', 'last_name' => 'สนโศรก'],
+                            ['position' => 'ผู้อำนวยการวิทยาลัยการอาชีพปราสาท', 'title' => 'นาย', 'first_name' => 'ชูศักดิ์', 'last_name' => 'ขุ่ยล่ะ']
+                        ];
+                        ?>
+
+                        <?php for ($i = 0; $i < 3; $i++): ?>
+                            <?php
+                            $position = isset($signers[$i]) ? $signers[$i]['position'] : $defaultSigners[$i]['position'];
+                            $title = isset($signers[$i]) ? $signers[$i]['title'] : $defaultSigners[$i]['title'];
+                            $firstName = isset($signers[$i]) ? $signers[$i]['first_name'] : $defaultSigners[$i]['first_name'];
+                            $lastName = isset($signers[$i]) ? $signers[$i]['last_name'] : $defaultSigners[$i]['last_name'];
                             ?>
-                        </td>
-                    <?php endforeach; ?>
-                    <td class="text-center"><?php echo $totalPresent; ?></td>
-                </tr>
-                <?php 
-                $no++;
-                endforeach; 
-                ?>
-            </tbody>
-        </table>
-    </div>
-    
-    <div class="report-footer mt-4">
-        <div class="row">
-            <div class="col-md-4">
-                <p>
-                    <strong>สรุป</strong> จำนวนคน <?php echo $report_data['total_count']; ?> คน 
-                    ชาย <?php echo $report_data['male_count']; ?> คน 
-                    หญิง <?php echo $report_data['female_count']; ?> คน
-                </p>
-            </div>
-            <div class="col-md-8">
-                <?php
-                // คำนวณอัตราการเข้าแถว
-                $totalAttendanceRate = 0;
-                if ($report_data['total_count'] > 0) {
-                    $totalAttendanceData = 0;
-                    $totalPossibleAttendance = 0;
-                    
-                    foreach ($report_data['students'] as $student) {
-                        foreach ($report_data['week_days'] as $day) {
-                            if (!$day['is_holiday']) {
-                                $totalPossibleAttendance++;
-                                if (isset($report_data['attendance_data'][$student['student_id']][$day['date']])) {
-                                    $status = $report_data['attendance_data'][$student['student_id']][$day['date']];
-                                    if ($status == 'present' || $status == 'late') {
-                                        $totalAttendanceData++;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    
-                    if ($totalPossibleAttendance > 0) {
-                        $totalAttendanceRate = ($totalAttendanceData / $totalPossibleAttendance) * 100;
-                    }
-                }
-                ?>
-                <p>
-                    <strong>สรุปอัตราการเข้าแถว</strong>: <?php echo number_format($totalAttendanceRate, 2); ?>%
-                </p>
-            </div>
-        </div>
-        
-        <!-- กราฟแสดงอัตราการเข้าแถวรายวัน -->
-        <div class="attendance-chart-container mt-4">
-            <h5 class="text-center">กราฟแสดงอัตราการเข้าแถวรายวัน</h5>
-            <canvas id="attendanceChart" style="width: 100%; height: 300px;"></canvas>
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">ผู้ลงนามที่ <?php echo $i + 1; ?></label>
+                                <div class="row g-2">
+                                    <div class="col-md-5">
+                                        <input type="text" class="form-control" name="signer_position[]" placeholder="ตำแหน่ง" value="<?php echo $position; ?>">
+                                    </div>
+                                    <div class="col-md-2">
+                                        <select class="form-select" name="signer_title[]">
+                                            <option value="นาย" <?php echo ($title == 'นาย') ? 'selected' : ''; ?>>นาย</option>
+                                            <option value="นาง" <?php echo ($title == 'นาง') ? 'selected' : ''; ?>>นาง</option>
+                                            <option value="นางสาว" <?php echo ($title == 'นางสาว') ? 'selected' : ''; ?>>นางสาว</option>
+                                            <option value="ดร." <?php echo ($title == 'ดร.') ? 'selected' : ''; ?>>ดร.</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <input type="text" class="form-control" name="signer_first_name[]" placeholder="ชื่อ" value="<?php echo $firstName; ?>">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <input type="text" class="form-control" name="signer_last_name[]" placeholder="นามสกุล" value="<?php echo $lastName; ?>">
+                                    </div>
+                                </div>
+                            </div>
+                        <?php endfor; ?>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-end">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="material-icons align-middle me-1">save</i> บันทึกการตั้งค่า
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
 
-<!-- ฟอร์มสำหรับส่งข้อมูลไปยังหน้าพิมพ์ -->
-<form id="print-form" action="print_attendance_report.php" method="post" target="_blank" style="display: none;">
-    <input type="hidden" name="class_id" value="<?php echo $class_id; ?>">
-    <input type="hidden" name="start_date" value="<?php echo $report_data['start_date']; ?>">
-    <input type="hidden" name="end_date" value="<?php echo $report_data['end_date']; ?>">
-    <input type="hidden" name="week_number" value="<?php echo str_replace(['(', ')'], '', $report_data['week_number']); ?>">
-    <input type="hidden" name="report_type" value="attendance">
-</form>
+<!-- Modal แสดงตัวอย่าง Logo -->
+<div class="modal fade" id="logoPreviewModal" tabindex="-1" aria-labelledby="logoPreviewModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="logoPreviewModalLabel">ตัวอย่างโลโก้สถานศึกษา</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center">
+                <img id="logoPreviewImage" src="../uploads/logos/school_logo_default.png" alt="Logo Preview" class="img-fluid" style="max-height: 200px;">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ปิด</button>
+            </div>
+        </div>
+    </div>
+</div>
 
-<form id="chart-form" action="print_attendance_chart.php" method="post" target="_blank" style="display: none;">
-    <input type="hidden" name="class_id" value="<?php echo $class_id; ?>">
-    <input type="hidden" name="start_date" value="<?php echo $report_data['start_date']; ?>">
-    <input type="hidden" name="end_date" value="<?php echo $report_data['end_date']; ?>">
-    <input type="hidden" name="week_number" value="<?php echo str_replace(['(', ')'], '', $report_data['week_number']); ?>">
-    <input type="hidden" name="report_type" value="chart">
-</form>
-
-<form id="excel-form" action="export_attendance.php" method="post" style="display: none;">
-    <input type="hidden" name="class_id" value="<?php echo $class_id; ?>">
-    <input type="hidden" name="start_date" value="<?php echo $report_data['start_date']; ?>">
-    <input type="hidden" name="end_date" value="<?php echo $report_data['end_date']; ?>">
-    <input type="hidden" name="week_number" value="<?php echo str_replace(['(', ')'], '', $report_data['week_number']); ?>">
-    <input type="hidden" name="export_type" value="excel">
-</form>
+<!-- Overlay การโหลด -->
+<div class="loading-overlay" id="loadingOverlay" style="display: none;">
+    <div class="spinner-container">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">กำลังโหลด...</span>
+        </div>
+        <div class="mt-2">กำลังสร้างรายงาน...</div>
+    </div>
+</div>
 
 <script>
-    // ข้อมูลสำหรับกราฟ
-    var chartData = {
-        labels: [
-            <?php 
-            $labels = [];
-            foreach ($report_data['week_days'] as $day) {
-                if (!$day['is_holiday']) {
-                    $labels[] = "'" . $day['day_name'] . " " . $day['day_num'] . "'";
-                }
-            }
-            echo implode(', ', $labels);
-            ?>
-        ],
-        datasets: [{
-            label: 'อัตราการเข้าแถว (%)',
-            backgroundColor: 'rgba(75, 192, 192, 0.2)',
-            borderColor: 'rgba(75, 192, 192, 1)',
-            borderWidth: 1,
-            data: [
-                <?php 
-                $data = [];
-                foreach ($report_data['week_days'] as $day) {
-                    if (!$day['is_holiday']) {
-                        $presentCount = 0;
-                        $totalStudents = count($report_data['students']);
-                        
-                        foreach ($report_data['students'] as $student) {
-                            if (isset($report_data['attendance_data'][$student['student_id']][$day['date']])) {
-                                $status = $report_data['attendance_data'][$student['student_id']][$day['date']];
-                                if ($status == 'present' || $status == 'late') {
-                                    $presentCount++;
-                                }
-                            }
-                        }
-                        
-                        $rate = ($totalStudents > 0) ? ($presentCount / $totalStudents) * 100 : 0;
-                        $data[] = number_format($rate, 1);
-                    }
-                }
-                echo implode(', ', $data);
-                ?>
-            ]
-        }]
-    };
-
-    // ฟังก์ชันสำหรับแสดงกราฟเมื่อโหลดเสร็จ
     document.addEventListener('DOMContentLoaded', function() {
-        var ctx = document.getElementById('attendanceChart').getContext('2d');
-        var myChart = new Chart(ctx, {
-            type: 'line',
-            data: chartData,
-            options: {
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        max: 100,
-                        title: {
-                            display: true,
-                            text: 'เปอร์เซ็นต์การเข้าแถว (%)'
-                        }
-                    },
-                    x: {
-                        title: {
-                            display: true,
-                            text: 'วันที่'
-                        }
-                    }
-                },
-                plugins: {
-                    legend: {
-                        display: true,
-                        position: 'top'
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                return context.dataset.label + ': ' + context.raw + '%';
-                            }
-                        }
-                    }
-                },
-                responsive: true,
-                maintainAspectRatio: false
+        // ตั้งค่า DateRangePicker
+        $('#date_range').daterangepicker({
+            opens: 'left',
+            locale: {
+                format: 'YYYY-MM-DD',
+                separator: ' - ',
+                applyLabel: 'ตกลง',
+                cancelLabel: 'ยกเลิก',
+                fromLabel: 'จาก',
+                toLabel: 'ถึง',
+                customRangeLabel: 'กำหนดเอง',
+                weekLabel: 'W',
+                daysOfWeek: ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'],
+                monthNames: [
+                    'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
+                    'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'
+                ],
+                firstDay: 1
             }
         });
-    });
-</script>
-
-<?php else: ?>
-<div class="alert alert-info">
-    <p>กรุณาเลือกห้องเรียนและช่วงสัปดาห์เพื่อแสดงรายงานการเข้าแถว</p>
-</div>
-<?php endif; ?>
-
-<style>
-    .report-preview {
-        background-color: #fff;
-        padding: 20px;
-        border-radius: 5px;
-        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-    }
-    
-    .attendance-table th, .attendance-table td {
-        text-align: center;
-        vertical-align: middle;
-    }
-    
-    .attendance-icon {
-        font-size: 18px;
-        font-weight: bold;
-    }
-    
-    /* ไอคอนตัวทดแทน */
-    .attendance-success:before {
-        content: "\2714"; /* ✔ */
-        color: #4caf50;
-    }
-    
-    .attendance-danger:before {
-        content: "\2718"; /* ✘ */
-        color: #f44336;
-    }
-    
-    .attendance-warning:before {
-        content: "\231B"; /* ⌛ */
-        color: #ff9800;
-    }
-    
-    .attendance-primary:before {
-        content: "\2709"; /* ✉ */
-        color: #2196f3;
-    }
-    
-    .select2-container {
-        width: 100% !important;
-    }
-</style>
-
-<script>
-    function printAttendanceReport() {
-        document.getElementById('print-form').submit();
-    }
-    
-    function printAttendanceChart() {
-        document.getElementById('chart-form').submit();
-    }
-    
-    function downloadExcel() {
-        document.getElementById('excel-form').submit();
-    }
-    
-    // ทำให้ select2 ทำงาน
-    $(document).ready(function() {
-        $('.select2').select2({
-            theme: 'bootstrap-5'
-        });
         
-        // เมื่อเลือกแผนกวิชา ให้โหลดข้อมูลห้องเรียนใหม่
-        $('#department_id').change(function() {
+        // คำนวณวันที่เริ่มต้นและสิ้นสุดตามสัปดาห์ที่เลือก
+        calculateWeekDates();
+        
+        // อัพเดทวันที่เมื่อเปลี่ยนสัปดาห์
+        $('#week_number').on('change', calculateWeekDates);
+        
+        // เมื่อเลือกแผนกวิชา
+        $('#department_id').on('change', function() {
             const departmentId = $(this).val();
             if (departmentId) {
-                // โหลดข้อมูลห้องเรียนตามแผนกวิชา
-                $.ajax({
-                    url: 'ajax/get_classes_by_department.php',
-                    type: 'GET',
-                    data: {
-                        department_id: departmentId
-                    },
-                    dataType: 'json',
-                    success: function(data) {
-                        let options = '<option value="">-- เลือกห้องเรียน --</option>';
-                        data.forEach(function(cls) {
-                            options += `<option value="${cls.class_id}">${cls.class_name}</option>`;
-                        });
-                        $('#class_id').html(options).trigger('change');
-                    }
-                });
+                loadClassesByDepartment(departmentId);
+            } else {
+                $('#class_id').html('<option value="">กรุณาเลือกแผนกวิชาก่อน</option>').prop('disabled', true).selectpicker('refresh');
             }
         });
         
-        // DataTable สำหรับตารางการเข้าแถว
-        $('#attendance-table').DataTable({
-            responsive: true,
-            "language": {
-                "lengthMenu": "แสดง _MENU_ รายการต่อหน้า",
-                "zeroRecords": "ไม่พบข้อมูล",
-                "info": "แสดงหน้า _PAGE_ จาก _PAGES_",
-                "infoEmpty": "ไม่มีข้อมูล",
-                "infoFiltered": "(กรองจาก _MAX_ รายการทั้งหมด)",
-                "search": "ค้นหา:",
-                "paginate": {
-                    "first": "หน้าแรก",
-                    "last": "หน้าสุดท้าย",
-                    "next": "ถัดไป",
-                    "previous": "ก่อนหน้า"
-                }
-            },
-            "pageLength": 25
+        // Preview Logo
+        $('#preview_logo').on('click', function() {
+            const fileInput = document.getElementById('school_logo');
+            if (fileInput.files && fileInput.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    $('#logoPreviewImage').attr('src', e.target.result);
+                };
+                reader.readAsDataURL(fileInput.files[0]);
+                $('#logoPreviewModal').modal('show');
+            } else {
+                $('#logoPreviewImage').attr('src', '../uploads/logos/school_logo_default.png');
+                $('#logoPreviewModal').modal('show');
+            }
         });
         
-        // เลือกสัปดาห์สิ้นสุดให้ไม่น้อยกว่าสัปดาห์เริ่มต้น
-        $('#start_week').change(function() {
-            const startWeek = parseInt($(this).val());
-            const endWeek = parseInt($('#end_week').val());
-            
-            if (endWeek < startWeek) {
-                $('#end_week').val(startWeek).trigger('change');
+        // เมื่อกดปุ่มพิมพ์รายงาน PDF
+        $('#btnPdfReport').on('click', function() {
+            if (validateReportForm()) {
+                showLoadingOverlay();
+                
+                const reportType = $('input[name="report_type"]:checked').val();
+                const formData = new FormData($('#reportForm')[0]);
+                
+                let url = reportType === 'attendance' ? 'print_attendance_report.php' : 'print_attendance_chart.php';
+                
+                // สร้างฟอร์มและส่งข้อมูล
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = url;
+                form.target = '_blank';
+                
+                // แปลง FormData เป็น hidden inputs
+                for (const [key, value] of formData.entries()) {
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = key;
+                    input.value = value;
+                    form.appendChild(input);
+                }
+                
+                document.body.appendChild(form);
+                form.submit();
+                document.body.removeChild(form);
+                
+                // ซ่อน Loading หลังจากพิมพ์ 2 วินาที
+                setTimeout(hideLoadingOverlay, 2000);
+            }
+        });
+        
+        // เมื่อกดปุ่มส่งออก Excel
+        $('#btnExcelReport').on('click', function() {
+            if (validateReportForm()) {
+                showLoadingOverlay();
+                
+                const formData = new FormData($('#reportForm')[0]);
+                
+                // สร้างฟอร์มและส่งข้อมูล
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = 'export_attendance_excel.php';
+                form.target = '_blank';
+                
+                // แปลง FormData เป็น hidden inputs
+                for (const [key, value] of formData.entries()) {
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = key;
+                    input.value = value;
+                    form.appendChild(input);
+                }
+                
+                document.body.appendChild(form);
+                form.submit();
+                document.body.removeChild(form);
+                
+                // ซ่อน Loading หลังจากส่งออก 2 วินาที
+                setTimeout(hideLoadingOverlay, 2000);
             }
         });
     });
+    
+    // คำนวณวันที่เริ่มต้นและสิ้นสุดของสัปดาห์ที่เลือก
+    function calculateWeekDates() {
+        const weekNumber = parseInt($('#week_number').val());
+        const semesterStartDate = new Date($('#semester_start_date').val());
+        
+        // คำนวณวันแรกของสัปดาห์ที่เลือก (เพิ่ม (weekNumber - 1) * 7 วันจากวันเริ่มต้นภาคเรียน)
+        const startDate = new Date(semesterStartDate);
+        startDate.setDate(startDate.getDate() + (weekNumber - 1) * 7);
+        
+        // ปรับให้เป็นวันจันทร์
+        const dayOfWeek = startDate.getDay(); // 0 = อาทิตย์, 1 = จันทร์, ...
+        if (dayOfWeek === 0) { // ถ้าเป็นวันอาทิตย์ ให้เลื่อนไป 1 วัน (เป็นวันจันทร์)
+            startDate.setDate(startDate.getDate() + 1);
+        } else if (dayOfWeek > 1) { // ถ้าไม่ใช่วันจันทร์ ให้ถอยกลับไปเป็นวันจันทร์ล่าสุด
+            startDate.setDate(startDate.getDate() - (dayOfWeek - 1));
+        }
+        
+        // คำนวณวันสุดท้ายของสัปดาห์ (วันศุกร์)
+        const endDate = new Date(startDate);
+        endDate.setDate(endDate.getDate() + 4); // เพิ่มอีก 4 วัน (จันทร์ + 4 = ศุกร์)
+        
+        // ฟอร์แมตวันที่
+        const startDateStr = formatDate(startDate);
+        const endDateStr = formatDate(endDate);
+        
+        // กำหนดค่าให้กับฟิลด์
+        $('#start_date').val(startDateStr);
+        $('#end_date').val(endDateStr);
+        $('#date_range').val(startDateStr + ' - ' + endDateStr);
+    }
+    
+    // ฟอร์แมตวันที่เป็น YYYY-MM-DD
+    function formatDate(date) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }
+    
+    // โหลดข้อมูลห้องเรียนตามแผนกวิชา
+    function loadClassesByDepartment(departmentId) {
+        $.ajax({
+            url: 'ajax/get_classes_by_department.php',
+            method: 'GET',
+            data: {department_id: departmentId},
+            dataType: 'json',
+            beforeSend: function() {
+                $('#class_id').html('<option value="">กำลังโหลดข้อมูล...</option>').prop('disabled', true).selectpicker('refresh');
+            },
+            success: function(response) {
+                if (response.status === 'success') {
+                    let options = '<option value="">เลือกห้องเรียน</option>';
+                    
+                    response.classes.forEach(function(classItem) {
+                        const classLabel = `${classItem.level}/${classItem.group_number} ${classItem.department_name}`;
+                        options += `<option value="${classItem.class_id}">${classLabel}</option>`;
+                    });
+                    
+                    $('#class_id').html(options).prop('disabled', false).selectpicker('refresh');
+                } else {
+                    alert('เกิดข้อผิดพลาด: ' + response.error);
+                    $('#class_id').html('<option value="">กรุณาเลือกแผนกวิชาก่อน</option>').prop('disabled', true).selectpicker('refresh');
+                }
+            },
+            error: function() {
+                alert('เกิดข้อผิดพลาดในการเชื่อมต่อกับเซิร์ฟเวอร์');
+                $('#class_id').html('<option value="">กรุณาเลือกแผนกวิชาก่อน</option>').prop('disabled', true).selectpicker('refresh');
+            }
+        });
+    }
+    
+    // ตรวจสอบความถูกต้องของฟอร์ม
+    function validateReportForm() {
+        const departmentId = $('#department_id').val();
+        const classId = $('#class_id').val();
+        
+        if (!departmentId) {
+            alert('กรุณาเลือกแผนกวิชา');
+            $('#department_id').focus();
+            return false;
+        }
+        
+        if (!classId) {
+            alert('กรุณาเลือกห้องเรียน');
+            $('#class_id').focus();
+            return false;
+        }
+        
+        return true;
+    }
+    
+    // แสดง overlay การโหลด
+    function showLoadingOverlay() {
+        $('#loadingOverlay').fadeIn(200);
+    }
+    
+    // ซ่อน overlay การโหลด
+    function hideLoadingOverlay() {
+        $('#loadingOverlay').fadeOut(200);
+    }
 </script>

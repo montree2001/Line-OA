@@ -1,14 +1,13 @@
 <?php
 /**
- * แก้ไขไฟล์ print_attendance_report.php เพื่อแก้ปัญหาฟอนต์ thsarabun
+ * print_attendance_report.php - สร้างไฟล์ PDF รายงานการเข้าแถวรายสัปดาห์
+ * 
+ * ส่วนหนึ่งของระบบน้องชูใจ AI - ดูแลผู้เรียน
+ * วิทยาลัยการอาชีพปราสาท
  */
 
 // เริ่ม session
 session_start();
-/* แสดงผล Error */
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
-
 
 // ตรวจสอบการล็อกอิน
 if (!isset($_SESSION['user_id']) || !isset($_SESSION['user_role']) || ($_SESSION['user_role'] != 'admin' && $_SESSION['user_role'] != 'teacher')) {
@@ -29,7 +28,7 @@ require_once '../db_connect.php';
 $class_id = $_POST['class_id'];
 $start_date = $_POST['start_date'];
 $end_date = $_POST['end_date'];
-$week_number = $_POST['week_number'] ?? '1';
+$week_number = $_POST['week_number'] ?? 1;
 $report_type = $_POST['report_type'] ?? 'attendance';
 
 // เชื่อมต่อฐานข้อมูล
@@ -65,46 +64,98 @@ $query = "SELECT s.student_id, s.student_code, s.title, u.first_name, u.last_nam
 $stmt = $conn->prepare($query);
 $stmt->execute([$class_id]);
 $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-// สร้างข้อมูลวันที่สำหรับรายงาน (เฉพาะวันจันทร์-ศุกร์)
-$current_date = new DateTime($start_date);
-$end_report_date = new DateTime($end_date);
+$total_count = count($students);
 
 // ดึงข้อมูลวันหยุด
+$query = "SELECT holiday_date, holiday_name FROM holidays";
+$stmt = $conn->query($query);
+$holidays = [];
+while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+    $holidays[$row['holiday_date']] = $row['holiday_name'];
+}
+
+// ดึงข้อมูลวันยกเว้นเพิ่มเติม
 $query = "SELECT setting_value FROM system_settings WHERE setting_key = 'exemption_dates'";
 $stmt = $conn->query($query);
 $exemption_dates_str = $stmt->fetchColumn() ?: '';
 $exemption_dates = explode(',', $exemption_dates_str);
 $exemption_dates = array_map('trim', $exemption_dates);
 
-// สร้างอาเรย์วันที่
-$week_days = [];
+// สร้างอาเรย์วันที่โดยจัดกลุ่มตามสัปดาห์
 $thaiDays = ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์'];
 $thaiDayAbbrs = ['อา.', 'จ.', 'อ.', 'พ.', 'พฤ.', 'ศ.', 'ส.'];
+$thaiMonths = [
+    '01' => 'มกราคม', '02' => 'กุมภาพันธ์', '03' => 'มีนาคม', '04' => 'เมษายน',
+    '05' => 'พฤษภาคม', '06' => 'มิถุนายน', '07' => 'กรกฎาคม', '08' => 'สิงหาคม',
+    '09' => 'กันยายน', '10' => 'ตุลาคม', '11' => 'พฤศจิกายน', '12' => 'ธันวาคม'
+];
 
-while ($current_date <= $end_report_date) {
-    $day_of_week = (int)$current_date->format('w'); // 0 = อาทิตย์, 6 = เสาร์
+// คำนวณช่วงวันที่เริ่มต้นของภาคเรียน
+$semesterStart = new DateTime($academic_year['start_date']);
+$reportStart = new DateTime($start_date);
+$reportEnd = new DateTime($end_date);
+
+// คำนวณสัปดาห์ที่จากวันเริ่มต้นภาคเรียน
+$weekDiff = floor($reportStart->diff($semesterStart)->days / 7) + 1;
+$selectedWeek = $weekDiff;
+
+// จัดกลุ่มวันที่ตามสัปดาห์
+$weeks = [];
+$currentDate = clone $reportStart;
+
+// ปรับให้วันเริ่มต้นเป็นวันจันทร์
+if ($currentDate->format('N') != 1) {
+    // ถ้าไม่ใช่วันจันทร์ ให้ถอยกลับไปเป็นวันจันทร์ของสัปดาห์
+    $daysToMonday = $currentDate->format('N') - 1;
+    $currentDate->modify("-$daysToMonday days");
+}
+
+while ($currentDate <= $reportEnd) {
+    $weekStart = clone $currentDate;
+    $weekEnd = clone $currentDate;
+    $weekEnd->modify('+4 days'); // วันศุกร์ของสัปดาห์
     
-    // เฉพาะวันจันทร์ถึงศุกร์
-    if ($day_of_week >= 1 && $day_of_week <= 5) {
-        $date_str = $current_date->format('Y-m-d');
-        $is_holiday = in_array($date_str, $exemption_dates);
+    $week = [
+        'week_number' => $selectedWeek,
+        'start_date' => $weekStart->format('Y-m-d'),
+        'end_date' => $weekEnd->format('Y-m-d'),
+        'days' => []
+    ];
+    
+    $dayOfWeek = clone $weekStart;
+    
+    // เพิ่มเฉพาะวันจันทร์ถึงศุกร์
+    for ($i = 0; $i < 5; $i++) {
+        $dateStr = $dayOfWeek->format('Y-m-d');
+        $dayNum = (int)$dayOfWeek->format('w'); // 0 = อาทิตย์, 6 = เสาร์
         
-        $week_days[] = [
-            'date' => $date_str,
-            'day_name' => $thaiDayAbbrs[$day_of_week],
-            'day_full' => $thaiDays[$day_of_week],
-            'day_num' => $current_date->format('j'),
-            'is_holiday' => $is_holiday,
-            'holiday_name' => $is_holiday ? 'วันหยุด' : null
+        // ตรวจสอบว่าเป็นวันหยุดหรือไม่
+        $isHoliday = in_array($dateStr, $exemption_dates) || isset($holidays[$dateStr]);
+        $holidayName = isset($holidays[$dateStr]) ? $holidays[$dateStr] : ($isHoliday ? 'วันหยุด' : null);
+        
+        $week['days'][] = [
+            'date' => $dateStr,
+            'day_name' => $thaiDayAbbrs[$dayNum],
+            'day_full' => $thaiDays[$dayNum],
+            'day_num' => $dayOfWeek->format('j'),
+            'month' => $thaiMonths[$dayOfWeek->format('m')],
+            'year' => (int)$dayOfWeek->format('Y') + 543, // พ.ศ.
+            'is_holiday' => $isHoliday,
+            'holiday_name' => $holidayName
         ];
+        
+        $dayOfWeek->modify('+1 day');
     }
     
-    $current_date->modify('+1 day');
+    $weeks[] = $week;
+    $currentDate->modify('+7 days');
+    $selectedWeek++;
 }
 
 // ดึงข้อมูลการเข้าแถวสำหรับทุกนักเรียนในช่วงวันที่
 $student_ids = array_column($students, 'student_id');
+$attendance_data = [];
+
 if (!empty($student_ids)) {
     $placeholders = str_repeat('?,', count($student_ids) - 1) . '?';
     
@@ -113,23 +164,20 @@ if (!empty($student_ids)) {
               AND academic_year_id = ? 
               AND date BETWEEN ? AND ?";
     
-    $query_params = array_merge($student_ids, [$academic_year['academic_year_id'], $start_date, $end_date]);
+    $query_params = array_merge($student_ids, [$academic_year['academic_year_id'], $reportStart->format('Y-m-d'), $reportEnd->format('Y-m-d')]);
     
     $stmt = $conn->prepare($query);
     $stmt->execute($query_params);
     $attendance_results = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     // จัดรูปแบบข้อมูลเป็น [student_id][date] => status
-    $attendance_data = [];
     foreach ($attendance_results as $result) {
         $attendance_data[$result['student_id']][$result['date']] = $result['attendance_status'];
     }
-} else {
-    $attendance_data = [];
 }
 
 // ดึงข้อมูลครูที่ปรึกษา
-$query = "SELECT t.teacher_id, t.title, t.first_name, t.last_name 
+$query = "SELECT t.teacher_id, t.title, t.first_name, t.last_name, t.phone 
           FROM teachers t 
           JOIN class_advisors ca ON t.teacher_id = ca.teacher_id 
           WHERE ca.class_id = ? AND ca.is_primary = 1
@@ -137,6 +185,11 @@ $query = "SELECT t.teacher_id, t.title, t.first_name, t.last_name
 $stmt = $conn->prepare($query);
 $stmt->execute([$class_id]);
 $primary_advisor = $stmt->fetch(PDO::FETCH_ASSOC);
+
+// ดึงข้อมูลผู้ลงนามในรายงาน
+$query = "SELECT * FROM report_signers WHERE is_active = 1 ORDER BY signer_id LIMIT 3";
+$stmt = $conn->query($query);
+$signers = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // นับจำนวนนักเรียนชาย/หญิง
 $male_count = 0;
@@ -148,23 +201,6 @@ foreach ($students as $student) {
         $female_count++;
     }
 }
-
-// ดึงข้อมูลลายเซ็นจากการตั้งค่า
-$query = "SELECT 
-            (SELECT setting_value FROM system_settings WHERE setting_key = 'report_signature_2_name') AS signature_2_name,
-            (SELECT setting_value FROM system_settings WHERE setting_key = 'report_signature_2_position') AS signature_2_position,
-            (SELECT setting_value FROM system_settings WHERE setting_key = 'report_signature_3_name') AS signature_3_name,
-            (SELECT setting_value FROM system_settings WHERE setting_key = 'report_signature_3_position') AS signature_3_position";
-$stmt = $conn->query($query);
-$signatures = $stmt->fetch(PDO::FETCH_ASSOC);
-
-// ดึงข้อมูลโลโก้วิทยาลัย
-$query = "SELECT setting_value FROM system_settings WHERE setting_key = 'school_logo'";
-$stmt = $conn->query($query);
-$logo_file = $stmt->fetchColumn();
-
-// กำหนดเส้นทางไปยังฟอนต์
-$fontDir = dirname(__DIR__) . '/vendor/mpdf/mpdf/ttfonts/';
 
 // กำหนดค่า config สำหรับ mPDF
 $mpdf_config = [
@@ -179,66 +215,83 @@ $mpdf_config = [
     'margin_bottom' => 15,
     'margin_header' => 10,
     'margin_footer' => 10,
-    // ปรับเปลี่ยนไดเรกทอรีชั่วคราว ให้เป็นโฟลเดอร์ที่มีสิทธิ์เขียนได้แน่นอน
     'tempDir' => __DIR__ . '/../tmp'
 ];
 
 // สร้าง mPDF
 $mpdf = new \Mpdf\Mpdf($mpdf_config);
 
-// ตรวจสอบว่ามีไฟล์ฟอนต์ thsarabun หรือไม่
-$fontPath = $fontDir . 'THSarabunNew.ttf';
-$fontPathBold = $fontDir . 'THSarabunNew-Bold.ttf';
+// ตรวจสอบและกำหนดฟอนต์
+$fontDir = dirname(__DIR__) . '/fonts/';
+$fontFileRegular = $fontDir . 'thsarabunnew/THSarabunNew.ttf';
+$fontFileBold = $fontDir . 'thsarabunnew/THSarabunNew-Bold.ttf';
 
-if (!file_exists($fontPath)) {
-    // ถ้าไม่มีไฟล์ฟอนต์ thsarabun ให้ใช้ฟอนต์อื่นแทน
-    $mpdf->SetFont('freeserif');
-} else {
-    // กำหนดฟอนต์ thsarabun
-    $mpdf->fontdata["thsarabun"] = [
-        'R' => "THSarabun.ttf",
-        'B' => "THSarabun-Bold.ttf",
-        'I' => "THSarabun-Italic.ttf",
-        'BI' => "THSarabun-BoldItalic.ttf"
-    ];
-    
-    $mpdf->SetFont('thsarabun', '', 16);
-}
+// กำหนดฟอนต์ไทย
+$mpdf->fontdata['thsarabun'] = [
+    'R' => 'THSarabunNew.ttf',
+    'B' => 'THSarabunNew-Bold.ttf',
+    'I' => 'THSarabunNew-Italic.ttf',
+    'BI' => 'THSarabunNew-BoldItalic.ttf'
+];
 
+$mpdf->SetFont('thsarabun');
 $mpdf->useAdobeCJK = true;
 $mpdf->autoScriptToLang = true;
 $mpdf->autoLangToFont = true;
-$mpdf->SetTitle("รายงานการเข้าแถว_{$class['level']}_{$class['group_number']}_{$department['department_name']}_สัปดาห์ที่{$week_number}");
+$mpdf->SetTitle("รายงานการเข้าแถว_{$class['level']}_{$class['group_number']}_{$department['department_name']}");
 
-// สร้างเนื้อหา PDF ตามแบบฟอร์ม
-ob_start();
-include 'templates/attendance_report_pdf.php';
-$content = ob_get_clean();
-
-// เพิ่มเนื้อหาลงใน mPDF
-$mpdf->WriteHTML($content);
-
-// ตรวจสอบว่าต้องพิมพ์เพิ่มเติมหรือไม่ (ในกรณีที่นักเรียนมีจำนวนมาก)
+// กำหนดตัวแปรสำหรับหน้า
 $studentsPerPage = 25; // จำนวนนักเรียนต่อหน้า
-$totalStudents = count($students);
-$totalPages = ceil($totalStudents / $studentsPerPage);
 
-if ($totalPages > 1) {
-    for ($page = 2; $page <= $totalPages; $page++) {
-        $startIndex = ($page - 1) * $studentsPerPage;
-        $endIndex = min($startIndex + $studentsPerPage - 1, $totalStudents - 1);
-        
-        // สร้างนักเรียนเฉพาะหน้านี้
-        $pageStudents = array_slice($students, $startIndex, $studentsPerPage);
-        
-        // สร้างเนื้อหา PDF สำหรับหน้าถัดไป
-        ob_start();
-        include 'templates/attendance_report_pdf.php';
-        $content = ob_get_clean();
-        
-        // เพิ่มหน้าและเนื้อหาลงใน mPDF
+// สร้าง PDF สำหรับแต่ละสัปดาห์
+foreach ($weeks as $weekIndex => $week) {
+    // สำหรับแต่ละสัปดาห์จะสร้างหน้า PDF ใหม่
+    if ($weekIndex > 0) {
         $mpdf->AddPage();
-        $mpdf->WriteHTML($content);
+    }
+    
+    // กำหนดตัวแปรที่จะส่งไปยังเทมเพลต
+    $week_number = $week['week_number'];
+    $start_date = $week['start_date'];
+    $end_date = $week['end_date'];
+    $week_days = $week['days'];
+    
+    // คำนวณจำนวนหน้าทั้งหมดสำหรับสัปดาห์นี้
+    $totalPages = ceil(count($students) / $studentsPerPage);
+    
+    // สร้างหน้าแรกของสัปดาห์
+    $firstPageStudents = array_slice($students, 0, $studentsPerPage);
+    $currentPage = 1;
+    
+    // สร้างเนื้อหา PDF ตามแบบฟอร์ม
+    ob_start();
+    include 'templates/attendance_report_pdf.php';
+    $content = ob_get_clean();
+    
+    // เพิ่มเนื้อหาลงใน mPDF
+    $mpdf->WriteHTML($content);
+    
+    // ถ้ามีนักเรียนมากกว่า 25 คน ให้สร้างหน้าเพิ่ม
+    if ($totalPages > 1) {
+        for ($page = 2; $page <= $totalPages; $page++) {
+            $startIndex = ($page - 1) * $studentsPerPage;
+            $endIndex = min($startIndex + $studentsPerPage - 1, count($students) - 1);
+            
+            // สร้างนักเรียนเฉพาะหน้านี้
+            $pageStudents = array_slice($students, $startIndex, $studentsPerPage);
+            $currentPage = $page;
+            
+            // สร้างหน้าใหม่
+            $mpdf->AddPage();
+            
+            // สร้างเนื้อหา PDF สำหรับหน้าถัดไป
+            ob_start();
+            include 'templates/attendance_report_pdf.php';
+            $content = ob_get_clean();
+            
+            // เพิ่มเนื้อหาลงใน mPDF
+            $mpdf->WriteHTML($content);
+        }
     }
 }
 

@@ -222,7 +222,7 @@ if (isset($_POST['search_student'])) {
                 }
             } else {
                 // ไม่พบข้อมูลนักศึกษา
-                $error_message = "ไม่พบข้อมูลนักศึกษารหัส: " . $student_code . " ในระบบ";
+                $error_message = "ไม่พบข้อมูลนักศึกษารหัส: " . $student_code . "ในระบบ <br> กรณีไม่มีชื่อจากงานทะเบียนให้ใช้เลขบัตร 11 หลัก แทนรหัสนักศึกษาชั่วคราว";
 
 
                 $stmt = $conn->prepare("SELECT * FROM students WHERE student_code = ?");

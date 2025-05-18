@@ -43,15 +43,23 @@ try {
         throw new Exception('ไม่สามารถเชื่อมต่อกับฐานข้อมูลได้');
     }
     
+    // ดึงข้อมูลแผนกวิชาทั้งหมดเพื่อใช้ในฟอร์ม
+    $stmt = $conn->prepare("SELECT department_id, department_name FROM departments ORDER BY department_name");
+    $stmt->execute();
+    $departments = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
     // ตรวจสอบหากมีการส่งข้อมูลการแก้ไข
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // รับข้อมูลจากฟอร์ม
         $title = $_POST['title'] ?? '';
         $first_name = $_POST['first_name'] ?? '';
         $last_name = $_POST['last_name'] ?? '';
+        $student_code = $_POST['student_code'] ?? '';
+        $level = $_POST['level'] ?? '';
+        $department_id = $_POST['department_id'] ?? '';
+        $group_number = $_POST['group_number'] ?? '';
         $phone = $_POST['phone'] ?? '';
         $email = $_POST['email'] ?? '';
-     
         
         // ตรวจสอบความถูกต้องของข้อมูล
         $errors = [];
@@ -68,6 +76,24 @@ try {
             $errors[] = 'กรุณากรอกนามสกุล';
         }
         
+        if (empty($student_code)) {
+            $errors[] = 'กรุณากรอกรหัสนักศึกษา';
+        } elseif (!preg_match('/^\d{11}$/', $student_code)) {
+            $errors[] = 'รหัสนักศึกษาต้องเป็นตัวเลข 11 หลักเท่านั้น';
+        }
+        
+        if (empty($level)) {
+            $errors[] = 'กรุณาเลือกระดับชั้น';
+        }
+        
+        if (empty($department_id)) {
+            $errors[] = 'กรุณาเลือกแผนกวิชา';
+        }
+        
+        if (empty($group_number)) {
+            $errors[] = 'กรุณาเลือกกลุ่มเรียน';
+        }
+        
         if (empty($phone)) {
             $errors[] = 'เบอร์โทรศัพท์ไม่ควรเป็นค่าว่าง';
         } elseif (!preg_match('/^[0-9\-]{9,15}$/', $phone)) {
@@ -76,6 +102,16 @@ try {
         
         if (!empty($email) && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
             $errors[] = 'รูปแบบอีเมลไม่ถูกต้อง';
+        }
+        
+        // ตรวจสอบว่ารหัสนักศึกษาซ้ำหรือไม่ (ยกเว้นรหัสของตัวเอง)
+        $stmt = $conn->prepare("
+            SELECT student_id FROM students 
+            WHERE student_code = ? AND user_id != ?
+        ");
+        $stmt->execute([$student_code, $user_id]);
+        if ($stmt->rowCount() > 0) {
+            $errors[] = 'รหัสนักศึกษานี้มีอยู่ในระบบแล้ว กรุณาตรวจสอบอีกครั้ง';
         }
         
         // ถ้าไม่มีข้อผิดพลาด ทำการอัปเดตข้อมูล
@@ -92,15 +128,33 @@ try {
                 ");
                 $stmt->execute([$title, $first_name, $last_name, $phone, $email, $user_id]);
                 
-                // อัปเดตคำนำหน้าในตาราง students
+                // ตรวจสอบว่าชั้นเรียนมีอยู่หรือไม่ ถ้าไม่มีให้สร้างใหม่
+                $stmt = $conn->prepare("
+                    SELECT class_id FROM classes 
+                    WHERE level = ? AND department_id = ? AND group_number = ?
+                ");
+                $stmt->execute([$level, $department_id, $group_number]);
+                $class_data = $stmt->fetch(PDO::FETCH_ASSOC);
+                
+                if ($class_data) {
+                    $class_id = $class_data['class_id'];
+                } else {
+                    // สร้างชั้นเรียนใหม่
+                    $stmt = $conn->prepare("
+                        INSERT INTO classes (level, department_id, group_number, created_at)
+                        VALUES (?, ?, ?, NOW())
+                    ");
+                    $stmt->execute([$level, $department_id, $group_number]);
+                    $class_id = $conn->lastInsertId();
+                }
+                
+                // อัปเดตข้อมูลในตาราง students
                 $stmt = $conn->prepare("
                     UPDATE students
-                    SET title = ?, updated_at = NOW()
+                    SET title = ?, student_code = ?, current_class_id = ?, updated_at = NOW()
                     WHERE user_id = ?
                 ");
-                $stmt->execute([$title, $user_id]);
-                
-           
+                $stmt->execute([$title, $student_code, $class_id, $user_id]);
                 
                 // ยืนยัน transaction
                 $conn->commit();
@@ -124,7 +178,7 @@ try {
     $stmt = $conn->prepare("
         SELECT s.student_id, s.student_code, s.title as student_title, s.current_class_id,
                u.title as user_title, u.first_name, u.last_name, u.profile_picture, u.phone_number, u.email, 
-               c.level, c.group_number, d.department_name
+               c.level, c.group_number, c.department_id, d.department_name
         FROM students s
         JOIN users u ON s.user_id = u.user_id
         LEFT JOIN classes c ON s.current_class_id = c.class_id
@@ -133,8 +187,6 @@ try {
     ");
     $stmt->execute([$user_id]);
     $student_data = $stmt->fetch(PDO::FETCH_ASSOC);
-    
-
     
     if (!$student_data) {
         // ไม่พบข้อมูลนักเรียน - อาจยังไม่ได้ลงทะเบียน
@@ -159,6 +211,9 @@ try {
         'full_name' => $title . $student_data['first_name'] . ' ' . $student_data['last_name'],
         'class' => $class_info,
         'department' => $student_data['department_name'],
+        'department_id' => $student_data['department_id'],
+        'level' => $student_data['level'],
+        'group_number' => $student_data['group_number'],
         'phone' => $student_data['phone_number'],
         'email' => $student_data['email'],
         'avatar' => $first_char,
@@ -187,70 +242,6 @@ try {
     
     // ส่งไปยังหน้า error หรือกำหนดข้อความข้อผิดพลาด
     $error_message = 'เกิดข้อผิดพลาดในการเชื่อมต่อกับฐานข้อมูล';
-    
-    // ตรวจสอบว่ามีไฟล์ error.php หรือไม่
-    if (file_exists('error.php')) {
-        header('Location: error.php?msg=' . urlencode($error_message));
-        exit;
-    } else {
-        // แสดงข้อความข้อผิดพลาดอย่างง่าย
-        echo '<!DOCTYPE html>
-              <html>
-              <head>
-                <meta charset="UTF-8">
-                <title>ข้อผิดพลาด</title>
-                <style>
-                    body {
-                        font-family: Arial, sans-serif;
-                        margin: 0;
-                        padding: 20px;
-                        background-color: #f5f5f5;
-                    }
-                    .error-container {
-                        max-width: 500px;
-                        margin: 100px auto;
-                        background: white;
-                        padding: 20px;
-                        border-radius: 5px;
-                        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-                        text-align: center;
-                    }
-                    .error-icon {
-                        font-size: 48px;
-                        color: #f44336;
-                        margin-bottom: 20px;
-                    }
-                    .error-message {
-                        margin-bottom: 20px;
-                    }
-                    .back-button {
-                        background-color: #4CAF50;
-                        color: white;
-                        padding: 10px 15px;
-                        border: none;
-                        border-radius: 4px;
-                        cursor: pointer;
-                        text-decoration: none;
-                        display: inline-block;
-                    }
-                </style>
-              </head>
-              <body>
-                <div class="error-container">
-                    <div class="error-icon">⚠️</div>
-                    <div class="error-message">' . $error_message . '</div>
-                    <a href="student_profile.php" class="back-button">กลับไปยังหน้าโปรไฟล์</a>
-                </div>
-              </body>
-              </html>';
-        exit;
-    }
-} catch (Exception $e) {
-    // จัดการกับข้อผิดพลาดทั่วไป
-    error_log("General error in edit_profile.php: " . $e->getMessage());
-    
-    // ส่งไปยังหน้า error หรือกำหนดข้อความข้อผิดพลาด
-    $error_message = $e->getMessage();
     
     // ตรวจสอบว่ามีไฟล์ error.php หรือไม่
     if (file_exists('error.php')) {

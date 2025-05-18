@@ -81,6 +81,46 @@
             </div>
             
             <div class="form-group">
+                <label for="student_code">รหัสนักศึกษา <span class="required">*</span></label>
+                <input type="text" id="student_code" name="student_code" class="form-control" value="<?php echo $student_info['student_code']; ?>" required maxlength="11" pattern="\d{11}" title="รหัสนักศึกษาต้องเป็นตัวเลข 11 หลักเท่านั้น">
+                <div class="form-helper">รหัสประจำตัวนักศึกษาของคุณ (ตัวเลข 11 หลักเท่านั้น)</div>
+            </div>
+
+            <!-- ส่วนแก้ไขข้อมูลชั้นเรียน -->
+            <div class="form-group">
+                <label for="level">ระดับชั้น <span class="required">*</span></label>
+                <select id="level" name="level" class="form-control" required>
+                    <option value="ปวช.1" <?php echo ($student_info['level'] == 'ปวช.1') ? 'selected' : ''; ?>>ปวช.1</option>
+                    <option value="ปวช.2" <?php echo ($student_info['level'] == 'ปวช.2') ? 'selected' : ''; ?>>ปวช.2</option>
+                    <option value="ปวช.3" <?php echo ($student_info['level'] == 'ปวช.3') ? 'selected' : ''; ?>>ปวช.3</option>
+                    <option value="ปวส.1" <?php echo ($student_info['level'] == 'ปวส.1') ? 'selected' : ''; ?>>ปวส.1</option>
+                    <option value="ปวส.2" <?php echo ($student_info['level'] == 'ปวส.2') ? 'selected' : ''; ?>>ปวส.2</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="department_id">แผนกวิชา <span class="required">*</span></label>
+                <select id="department_id" name="department_id" class="form-control" required>
+                    <?php foreach ($departments as $dept): ?>
+                    <option value="<?php echo $dept['department_id']; ?>" <?php echo ($dept['department_id'] == $student_info['department_id']) ? 'selected' : ''; ?>>
+                        <?php echo $dept['department_name']; ?>
+                    </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="group_number">กลุ่มเรียน <span class="required">*</span></label>
+                <select id="group_number" name="group_number" class="form-control" required>
+                    <?php for ($i = 1; $i <= 10; $i++): ?>
+                    <option value="<?php echo $i; ?>" <?php echo ($student_info['group_number'] == $i) ? 'selected' : ''; ?>>
+                        กลุ่ม <?php echo $i; ?>
+                    </option>
+                    <?php endfor; ?>
+                </select>
+            </div>
+            
+            <div class="form-group">
                 <label for="phone">เบอร์โทรศัพท์ <span class="required">*</span></label>
                 <input type="tel" id="phone" name="phone" class="form-control" value="<?php echo $student_info['phone']; ?>" required>
                 <div class="form-helper">เบอร์โทรศัพท์ที่สามารถติดต่อได้</div>
@@ -92,7 +132,13 @@
                 <div class="form-helper">อีเมลสำหรับรับข้อมูลข่าวสาร</div>
             </div>
             
-       
+            <div class="info-note" style="margin: 15px 0 20px 0;">
+                <div class="note-icon"><span class="material-icons">info</span></div>
+                <div class="note-content">
+                    <p>การแก้ไขข้อมูลชั้นเรียนและแผนกวิชาควรตรงกับความเป็นจริง</p>
+                    <p>หากมีข้อสงสัย โปรดติดต่อครูที่ปรึกษาเพื่อตรวจสอบข้อมูล</p>
+                </div>
+            </div>
             
             <div class="form-group form-actions">
                 <button type="button" class="btn-cancel" onclick="window.location.href='student_profile.php'">
@@ -103,14 +149,6 @@
                 </button>
             </div>
         </form>
-    </div>
-
-    <div class="info-note">
-        <div class="note-icon"><span class="material-icons">info</span></div>
-        <div class="note-content">
-            <p>ข้อมูลชั้นเรียนและรหัสนักเรียนไม่สามารถแก้ไขได้ด้วยตนเอง</p>
-            <p>หากต้องการแก้ไขข้อมูลดังกล่าว โปรดติดต่อครูที่ปรึกษาหรือเจ้าหน้าที่ทะเบียน</p>
-        </div>
     </div>
 </div>
 
@@ -181,6 +219,7 @@ document.addEventListener('DOMContentLoaded', function() {
         form.addEventListener('submit', function(e) {
             const firstNameInput = document.getElementById('first_name');
             const lastNameInput = document.getElementById('last_name');
+            const studentCodeInput = document.getElementById('student_code');
             const phoneInput = document.getElementById('phone');
             const emailInput = document.getElementById('email');
             
@@ -200,6 +239,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 showInputError(lastNameInput, 'กรุณากรอกนามสกุล');
             } else {
                 hideInputError(lastNameInput);
+            }
+            
+            // ตรวจสอบรหัสนักเรียน
+            if (!studentCodeInput.value.trim()) {
+                isValid = false;
+                showInputError(studentCodeInput, 'กรุณากรอกรหัสนักศึกษา');
+            } else if (!/^\d{11}$/.test(studentCodeInput.value.trim())) {
+                isValid = false;
+                showInputError(studentCodeInput, 'รหัสนักศึกษาต้องเป็นตัวเลข 11 หลักเท่านั้น');
+            } else {
+                hideInputError(studentCodeInput);
             }
             
             // ตรวจสอบเบอร์โทรศัพท์
