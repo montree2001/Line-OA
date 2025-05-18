@@ -179,15 +179,16 @@ $mpdf_config = [
     'margin_bottom' => 15,
     'margin_header' => 10,
     'margin_footer' => 10,
-    'tempDir' => sys_get_temp_dir()
+    // ปรับเปลี่ยนไดเรกทอรีชั่วคราว ให้เป็นโฟลเดอร์ที่มีสิทธิ์เขียนได้แน่นอน
+    'tempDir' => __DIR__ . '/../tmp'
 ];
 
 // สร้าง mPDF
 $mpdf = new \Mpdf\Mpdf($mpdf_config);
 
 // ตรวจสอบว่ามีไฟล์ฟอนต์ thsarabun หรือไม่
-$fontPath = $fontDir . 'THSarabun.ttf';
-$fontPathBold = $fontDir . 'THSarabun Bold.ttf';
+$fontPath = $fontDir . 'THSarabunNew.ttf';
+$fontPathBold = $fontDir . 'THSarabunNew-Bold.ttf';
 
 if (!file_exists($fontPath)) {
     // ถ้าไม่มีไฟล์ฟอนต์ thsarabun ให้ใช้ฟอนต์อื่นแทน
@@ -196,9 +197,9 @@ if (!file_exists($fontPath)) {
     // กำหนดฟอนต์ thsarabun
     $mpdf->fontdata["thsarabun"] = [
         'R' => "THSarabun.ttf",
-        'B' => "THSarabun Bold.ttf",
-        'I' => "THSarabun Italic.ttf",
-        'BI' => "THSarabun BoldItalic.ttf"
+        'B' => "THSarabun-Bold.ttf",
+        'I' => "THSarabun-Italic.ttf",
+        'BI' => "THSarabun-BoldItalic.ttf"
     ];
     
     $mpdf->SetFont('thsarabun', '', 16);
