@@ -1,0 +1,463 @@
+/**
+ * reports.css - สไตล์ชีทสำหรับหน้ารายงาน
+ * 
+ * ส่วนหนึ่งของระบบน้องชูใจ AI - ดูแลผู้เรียน
+ * วิทยาลัยการอาชีพปราสาท
+ */
+
+/* สไตล์ทั่วไปสำหรับหน้ารายงาน */
+.report-control-panel {
+    background-color: #f8f9fa;
+    border-radius: 5px;
+    padding: 15px;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.report-preview {
+    background-color: #ffffff;
+    border-radius: 5px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.report-header {
+    text-align: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #e3e3e3;
+}
+
+.report-footer {
+    margin-top: 20px;
+    padding-top: 15px;
+    border-top: 1px solid #e3e3e3;
+}
+
+/* สไตล์สำหรับตารางการเข้าแถว */
+.attendance-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.attendance-table th {
+    background-color: #f2f2f2;
+    font-weight: bold;
+    text-align: center;
+    vertical-align: middle;
+    padding: 8px;
+    border: 1px solid #ddd;
+}
+
+.attendance-table td {
+    padding: 8px;
+    border: 1px solid #ddd;
+    vertical-align: middle;
+}
+
+.attendance-table .align-middle {
+    vertical-align: middle !important;
+}
+
+.attendance-icon {
+    font-size: 18px;
+    font-weight: bold;
+}
+
+/* สถานะการเข้าแถว */
+.status-present {
+    color: #4caf50; /* เขียว - มาเรียน */
+}
+
+.status-absent {
+    color: #f44336; /* แดง - ขาด */
+}
+
+.status-late {
+    color: #ff9800; /* ส้ม - สาย */
+}
+
+.status-leave {
+    color: #2196f3; /* น้ำเงิน - ลา */
+}
+
+/* กราฟแสดงอัตราการเข้าแถว */
+.attendance-chart-container {
+    width: 100%;
+    height: 350px;
+    margin: 20px 0;
+}
+
+/* สไตล์สำหรับการ์ด */
+.overview-card {
+    border-radius: 5px;
+    padding: 20px;
+    margin-bottom: 20px;
+    color: #fff;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    position: relative;
+    overflow: hidden;
+}
+
+.overview-card .card-icon {
+    position: absolute;
+    right: 15px;
+    bottom: 15px;
+    font-size: 60px;
+    opacity: 0.2;
+}
+
+.overview-card.primary {
+    background-color: #1976d2;
+    background-image: linear-gradient(135deg, #1976d2, #2196f3);
+}
+
+.overview-card.success {
+    background-color: #43a047;
+    background-image: linear-gradient(135deg, #43a047, #66bb6a);
+}
+
+.overview-card.warning {
+    background-color: #f57c00;
+    background-image: linear-gradient(135deg, #f57c00, #ffa726);
+}
+
+.overview-card.danger {
+    background-color: #d32f2f;
+    background-image: linear-gradient(135deg, #d32f2f, #ef5350);
+}
+
+.overview-card .card-value {
+    font-size: 2rem;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.overview-card .card-label {
+    font-size: 1rem;
+    opacity: 0.8;
+}
+
+.overview-card .card-change {
+    font-size: 0.875rem;
+    margin-top: 10px;
+}
+
+.overview-card .card-change.positive {
+    color: #a5d6a7;
+}
+
+.overview-card .card-change.negative {
+    color: #ef9a9a;
+}
+
+/* สไตล์สำหรับตารางจัดอันดับ */
+.ranking-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.ranking-table th {
+    background-color: #f2f2f2;
+    font-weight: bold;
+    text-align: center;
+    padding: 10px;
+    border: 1px solid #ddd;
+}
+
+.ranking-table td {
+    padding: 8px 10px;
+    border: 1px solid #ddd;
+}
+
+.ranking-table .progress {
+    height: 10px;
+    margin-bottom: 0;
+    border-radius: 3px;
+}
+
+.ranking-table .middle {
+    background-color: #5c6bc0; /* สีสำหรับ ปวช. */
+}
+
+.ranking-table .high {
+    background-color: #26a69a; /* สีสำหรับ ปวส. */
+}
+
+.ranking-table .good {
+    color: #43a047;
+}
+
+.ranking-table .warning {
+    color: #f57c00;
+}
+
+.ranking-table .danger {
+    color: #d32f2f;
+}
+
+.ranking-bar.green {
+    background-color: #43a047;
+}
+
+.ranking-bar.yellow {
+    background-color: #f57c00;
+}
+
+.ranking-bar.red {
+    background-color: #d32f2f;
+}
+
+/* สไตล์สำหรับรายชื่อนักเรียนเสี่ยง */
+.risk-student-list {
+    margin-bottom: 20px;
+}
+
+.risk-student-item {
+    display: flex;
+    align-items: center;
+    padding: 10px;
+    border-bottom: 1px solid #e3e3e3;
+}
+
+.risk-student-item:last-child {
+    border-bottom: none;
+}
+
+.student-initial {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: #5c6bc0;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    margin-right: 10px;
+    font-size: 1.25rem;
+}
+
+.student-info {
+    flex: 1;
+}
+
+.student-name {
+    font-weight: bold;
+    margin-bottom: 2px;
+}
+
+.student-class {
+    font-size: 0.875rem;
+    color: #757575;
+}
+
+.student-advisor {
+    font-size: 0.875rem;
+    color: #757575;
+}
+
+.student-rate {
+    width: 80px;
+    text-align: right;
+    font-weight: bold;
+}
+
+.status-badge {
+    padding: 4px 8px;
+    border-radius: 3px;
+    font-size: 0.75rem;
+    font-weight: bold;
+    color: #fff;
+    margin-left: 10px;
+}
+
+.status-badge.warning {
+    background-color: #f57c00;
+}
+
+.status-badge.danger {
+    background-color: #d32f2f;
+}
+
+/* สไตล์สำหรับสถิติแผนก */
+.dept-stats-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.dept-stats-table th {
+    background-color: #f2f2f2;
+    font-weight: bold;
+    text-align: center;
+    padding: 10px;
+    border: 1px solid #ddd;
+}
+
+.dept-stats-table td {
+    padding: 8px 10px;
+    border: 1px solid #ddd;
+}
+
+.dept-stats-table .dept-name {
+    font-weight: bold;
+}
+
+/* สไตล์สำหรับแนวโน้มรายสัปดาห์ */
+.weekly-trends-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.trend-item {
+    display: flex;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid #e3e3e3;
+}
+
+.trend-item:last-child {
+    border-bottom: none;
+}
+
+.trend-date {
+    width: 80px;
+    font-weight: bold;
+}
+
+.trend-date.weekend {
+    color: #d32f2f;
+}
+
+.trend-progress {
+    flex: 1;
+    height: 10px;
+    background-color: #e0e0e0;
+    border-radius: 3px;
+    margin: 0 15px;
+    overflow: hidden;
+}
+
+.trend-progress-bar {
+    height: 100%;
+    background-color: #43a047;
+}
+
+.trend-value {
+    width: 60px;
+    text-align: right;
+    font-weight: bold;
+}
+
+/* สไตล์สำหรับตั้งค่ารายงาน */
+.report-settings-container {
+    margin-bottom: 30px;
+}
+
+.holiday-item {
+    margin-bottom: 8px;
+}
+
+.current-logo {
+    max-width: 200px;
+    margin-bottom: 15px;
+    text-align: center;
+}
+
+.current-logo img {
+    max-width: 100%;
+    height: auto;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    padding: 5px;
+    background-color: #fff;
+}
+
+/* สไตล์สำหรับ Select2 */
+.select2-container--bootstrap-5 .select2-selection {
+    height: calc(1.5em + 0.75rem + 2px);
+    padding: 0.375rem 0.75rem;
+    font-size: 1rem;
+    font-weight: 400;
+    line-height: 1.5;
+    color: #212529;
+    background-color: #fff;
+    background-clip: padding-box;
+    border: 1px solid #ced4da;
+    border-radius: 0.25rem;
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+.select2-container--bootstrap-5 .select2-selection--single .select2-selection__rendered {
+    color: #212529;
+    line-height: 1.5;
+}
+
+.select2-container--bootstrap-5 .select2-selection--single .select2-selection__arrow {
+    height: calc(1.5em + 0.75rem);
+    position: absolute;
+    top: 0;
+    right: 0.5rem;
+    width: 1.5rem;
+}
+
+.select2-container--bootstrap-5 .select2-selection--single .select2-selection__arrow b {
+    border-color: #6c757d transparent transparent transparent;
+    border-style: solid;
+    border-width: 0.3em 0.3em 0 0.3em;
+    height: 0;
+    left: 50%;
+    margin-left: -0.15em;
+    margin-top: -0.15em;
+    position: absolute;
+    top: 50%;
+    width: 0;
+}
+
+/* แทนที่ไอคอนการเข้าแถวเพื่อความเข้ากันได้กับ MPDF */
+.attendance-check:before {
+    content: '\2714'; /* ✔ */
+    color: #4caf50;
+}
+
+.attendance-cross:before {
+    content: '\2718'; /* ✘ */
+    color: #f44336;
+}
+
+.attendance-late:before {
+    content: '\23F1'; /* ⏱ */
+    color: #ff9800;
+}
+
+.attendance-leave:before {
+    content: '\2709'; /* ✉ */
+    color: #2196f3;
+}
+
+/* สไตล์สำหรับ Responsive */
+@media (max-width: 768px) {
+    .overview-card .card-value {
+        font-size: 1.5rem;
+    }
+    
+    .overview-card .card-label {
+        font-size: 0.875rem;
+    }
+    
+    .overview-card .card-icon {
+        font-size: 40px;
+    }
+    
+    .attendance-chart-container {
+        height: 250px;
+    }
+    
+    .student-initial {
+        width: 30px;
+        height: 30px;
+        font-size: 1rem;
+    }
+}
