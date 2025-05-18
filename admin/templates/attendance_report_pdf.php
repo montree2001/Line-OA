@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <title>รายงานการเข้าแถว</title>
+    <!-- icon ติกถูก -->
+  
+
     <style>
         body {
             font-family: 'thsarabun';
@@ -17,8 +20,6 @@
             float: left;
             width: 80px;
             height: 80px;
-            border: 1px solid #000;
-            border-radius: 50%;
             text-align: center;
             margin-right: 20px;
             padding-top: 20px;
@@ -73,7 +74,9 @@
 </head>
 <body>
     <div class="header">
-        <div class="school-logo">โลโก้<br>วิทยาลัย</div>
+        <div class="school-logo">
+            <img src="../uploads/logos/school_logo_1747545769.png" alt="Logo" style="width: 100%; height: auto;">
+        </div>
         <p>
             <strong>งานกิจกรรมนักเรียน นักศึกษา ฝ่ายพัฒนากิจการนักเรียน นักศึกษา วิทยาลัยการอาชีพปราสาท</strong><br>
             <strong>แบบรายงานเช็คชื่อนักเรียน นักศึกษา ทำกิจกรรมหน้าเสาธง</strong><br>
@@ -124,7 +127,7 @@
                             $attendanceStatus = $attendance_data[$student['student_id']][$day['date']];
                             
                             if ($attendanceStatus == 'present') {
-                                echo '✓';
+                                echo 'มา';
                                 $totalPresent++;
                             } elseif ($attendanceStatus == 'absent') {
                                 echo 'ขาด';
@@ -205,7 +208,7 @@
     
     <div class="signature-section">
         <div class="signature-box">
-            <div class="signature-line"></div>
+            
             <div>ลงชื่อ...........................................</div>
             <?php if ($primary_advisor): ?>
             <div>(<?php echo $primary_advisor['title'] . $primary_advisor['first_name'] . ' ' . $primary_advisor['last_name']; ?>)</div>
@@ -216,16 +219,16 @@
         </div>
         
         <div class="signature-box">
-            <div class="signature-line"></div>
+            
             <div>ลงชื่อ...........................................</div>
-            <div>(นายนนทศรี ศรีสุข)</div>
+            <div>(นายมนตรี ศรีสุข)</div>
             <div>หัวหน้างานกิจกรรมนักเรียน นักศึกษา</div>
         </div>
         
         <div class="signature-box">
-            <div class="signature-line"></div>
+           
             <div>ลงชื่อ...........................................</div>
-            <div>(นายพงษ์ศักดิ์ สมใจรัก)</div>
+            <div>(นายพงษ์ศักดิ์ สนโศรก)</div>
             <div>รองผู้อำนวยการ</div>
             <div>ฝ่ายพัฒนากิจการนักเรียนนักศึกษา</div>
         </div>
