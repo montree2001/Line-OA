@@ -615,170 +615,192 @@ document.addEventListener('DOMContentLoaded', function() {
         $('#logoModal').modal('show');
     });
     
-    // ฟังก์ชันโหลดข้อมูลการเข้าแถว
-    function loadAttendancePreview(classId, startDate, endDate, startWeek, endWeek, searchTerm) {
-        // แสดง loading และซ่อนข้อความแจ้งเตือน
-        $('#preview_loading').show();
-        $('#preview_content').empty();
-        $('#report_container').show();
-        $('.info-panel').hide();
-        
-        // โหลดข้อมูลการเข้าแถวจาก AJAX
-        $.ajax({
-            url: 'ajax/get_attendance_preview.php',
-            type: 'GET',
-            data: {
-                class_id: classId,
-                start_date: startDate,
-                end_date: endDate,
-                search: searchTerm
-            },
-            dataType: 'json',
-            success: function(response) {
-                // ซ่อน loading
-                $('#preview_loading').hide();
+// แก้ไขฟังก์ชัน loadAttendancePreview ในไฟล์ attendance_report.php
+function loadAttendancePreview(classId, startDate, endDate, startWeek, endWeek, searchTerm) {
+    // แสดง loading และ report container ก่อนทำการโหลดข้อมูล
+    $('#preview_loading').show();
+    $('#preview_content').hide();
+    $('#report_container').show();
+    
+    // ซ่อนข้อความแจ้งเตือน
+    $('.info-panel').hide();
+    
+    // เพิ่ม console.log เพื่อตรวจสอบค่าต่างๆ
+    console.log('Loading attendance preview:', {
+        classId: classId,
+        startDate: startDate,
+        endDate: endDate,
+        startWeek: startWeek,
+        endWeek: endWeek,
+        searchTerm: searchTerm
+    });
+    
+    // โหลดข้อมูลการเข้าแถวจาก AJAX
+    $.ajax({
+        url: 'ajax/get_attendance_preview.php',
+        type: 'GET',
+        data: {
+            class_id: classId,
+            start_date: startDate,
+            end_date: endDate,
+            search: searchTerm
+        },
+        dataType: 'json',
+        success: function(response) {
+            // ซ่อน loading
+            $('#preview_loading').hide();
+            
+            // แสดง console.log เพื่อดูข้อมูลที่ได้รับกลับมา
+            console.log('AJAX response:', response);
+            
+            if (response.status === 'success') {
+                // แสดงข้อมูลรายงาน
+                const selectedClass = $('#class option:selected').text();
                 
-                if (response.status === 'success') {
-                    // แสดงข้อมูลรายงาน
-                    const selectedClass = $('#class option:selected').text();
+                $('#report_info').html(`
+                    <p><strong>ห้องเรียน:</strong> ${selectedClass}</p>
+                    <p><strong>ช่วงวันที่:</strong> ${formatThaiDate(startDate)} ถึง ${formatThaiDate(endDate)}</p>
+                    <p><strong>สัปดาห์ที่:</strong> ${startWeek} - ${endWeek}</p>
+                `);
+                
+                // สร้างตารางแสดงข้อมูล
+                let weekTable = '';
+                
+                // สร้างตารางสำหรับแต่ละสัปดาห์
+                for (let week = parseInt(startWeek); week <= parseInt(endWeek); week++) {
+                    // คำนวณวันที่เริ่มต้นและสิ้นสุดของสัปดาห์
+                    const weekStartDate = new Date(academicYear.start_date);
+                    weekStartDate.setDate(weekStartDate.getDate() + (week - 1) * 7);
                     
-                    // อัปเดตข้อมูลสรุป
-                    $('#summary_class').text(selectedClass);
-                    $('#summary_date').text(formatThaiDate(startDate) + ' ถึง ' + formatThaiDate(endDate));
-                    $('#summary_week').text(`${startWeek} - ${endWeek}`);
+                    const weekEndDate = new Date(weekStartDate);
+                    weekEndDate.setDate(weekEndDate.getDate() + 6);
                     
-                    // สร้างตารางแสดงข้อมูล
-                    let weekTables = '';
+                    // กรองวันที่เฉพาะของสัปดาห์นี้ (เฉพาะวันจันทร์-ศุกร์)
+                    const weekDays = response.week_days.filter(day => {
+                        const dayDate = new Date(day.date);
+                        return dayDate >= weekStartDate && dayDate <= weekEndDate && 
+                               dayDate.getDay() >= 1 && dayDate.getDay() <= 5; // 1=จันทร์, 5=ศุกร์
+                    });
                     
-                    // สร้างตารางสำหรับแต่ละสัปดาห์
-                    for (let week = parseInt(startWeek); week <= parseInt(endWeek); week++) {
-                        // คำนวณวันที่เริ่มต้นและสิ้นสุดของสัปดาห์
-                        const weekStartDate = new Date(academicStartDate);
-                        weekStartDate.setDate(weekStartDate.getDate() + (week - 1) * 7);
+                    if (weekDays.length === 0) continue;
+                    
+                    weekTable += `
+                        <div class="week-table mb-4">
+                            <h5>สัปดาห์ที่ ${week} (${formatThaiDate(weekStartDate.toISOString().split('T')[0])} - ${formatThaiDate(weekEndDate.toISOString().split('T')[0])})</h5>
+                            <div class="table-responsive">
+                                <table class="table table-bordered">
+                                    <thead>
+                                        <tr>
+                                            <th rowspan="2" style="vertical-align: middle;">ลำดับที่</th>
+                                            <th rowspan="2" style="vertical-align: middle;">รหัสนักศึกษา</th>
+                                            <th rowspan="2" style="vertical-align: middle;">ชื่อ-สกุล</th>
+                                            <th colspan="${weekDays.length}" class="text-center">วันที่</th>
+                                            <th rowspan="2" style="vertical-align: middle;">รวม</th>
+                                        </tr>
+                                        <tr>
+                    `;
+                    
+                    // สร้างหัวตารางสำหรับวันที่
+                    weekDays.forEach(day => {
+                        weekTable += `
+                            <th class="text-center">
+                                ${day.day_num}<br>
+                                ${day.day_name}
+                            </th>
+                        `;
+                    });
+                    
+                    weekTable += `
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                    `;
+                    
+                    // สร้างแถวสำหรับนักเรียนแต่ละคน
+                    let rowNum = 1;
+                    response.students.forEach(student => {
+                        // คำนวณจำนวนวันที่มาเรียน
+                        let totalPresent = 0;
                         
-                        const weekEndDate = new Date(weekStartDate);
-                        weekEndDate.setDate(weekEndDate.getDate() + 6);
-                        
-                        // กรองวันที่เฉพาะของสัปดาห์นี้
-                        const weekDays = response.week_days.filter(day => {
-                            const dayDate = new Date(day.date);
-                            return dayDate >= weekStartDate && dayDate <= weekEndDate && 
-                                  dayDate.getDay() >= 1 && dayDate.getDay() <= 5; // จันทร์-ศุกร์ เท่านั้น
-                        });
-                        
-                        if (weekDays.length === 0) continue;
-                        
-                        weekTables += `
-                            <div class="week-table mb-4">
-                                <div class="week-header">
-                                    <h5 class="mb-0">สัปดาห์ที่ ${week} (${formatThaiDate(weekStartDate.toISOString().split('T')[0])} - ${formatThaiDate(weekEndDate.toISOString().split('T')[0])})</h5>
-                                </div>
-                                <div class="table-responsive">
-                                    <table class="table table-bordered table-hover">
-                                        <thead class="table-light">
-                                            <tr>
-                                                <th rowspan="2" class="align-middle text-center" style="width: 60px;">ลำดับ</th>
-                                                <th rowspan="2" class="align-middle text-center" style="width: 120px;">รหัสนักศึกษา</th>
-                                                <th rowspan="2" class="align-middle" style="min-width: 200px;">ชื่อ-สกุล</th>
-                                                <th colspan="${weekDays.length}" class="text-center">วันที่</th>
-                                                <th rowspan="2" class="align-middle text-center" style="width: 80px;">รวม</th>
-                                            </tr>
-                                            <tr>
+                        weekTable += `
+                            <tr>
+                                <td class="text-center">${rowNum}</td>
+                                <td class="text-center">${student.student_code}</td>
+                                <td>${student.title}${student.first_name} ${student.last_name}</td>
                         `;
                         
-                        // สร้างหัวตารางสำหรับวันที่
+                        // สร้างเซลล์สำหรับแต่ละวัน
                         weekDays.forEach(day => {
-                            weekTables += `
-                                <th class="text-center" style="width: 60px;">
-                                    ${day.day_name}<br>
-                                    ${day.day_num}
-                                </th>
-                            `;
-                        });
-                        
-                        weekTables += `
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                        `;
-                        
-                        // สร้างแถวสำหรับนักเรียนแต่ละคน
-                        response.students.forEach((student, index) => {
-                            // คำนวณจำนวนวันที่มาเรียน
-                            let totalPresent = 0;
-                            
-                            weekTables += `
-                                <tr>
-                                    <td class="text-center">${index + 1}</td>
-                                    <td class="text-center">${student.student_code}</td>
-                                    <td>${student.title}${student.first_name} ${student.last_name}</td>
-                            `;
-                            
-                            // สร้างเซลล์สำหรับแต่ละวัน
-                            weekDays.forEach(day => {
-                                if (day.is_holiday) {
-                                    weekTables += `<td class="text-center status-holiday">หยุด</td>`;
-                                } else if (response.attendance_data[student.student_id] && response.attendance_data[student.student_id][day.date]) {
-                                    const status = response.attendance_data[student.student_id][day.date];
-                                    let statusText = '';
-                                    let statusClass = '';
-                                    
-                                    if (status === 'present') {
-                                        statusText = 'มา';
-                                        statusClass = 'status-present';
-                                        totalPresent++;
-                                    } else if (status === 'absent') {
-                                        statusText = 'ขาด';
-                                        statusClass = 'status-absent';
-                                    } else if (status === 'late') {
-                                        statusText = 'สาย';
-                                        statusClass = 'status-late';
-                                        totalPresent++; // นับสายเป็นมาเรียน
-                                    } else if (status === 'leave') {
-                                        statusText = 'ลา';
-                                        statusClass = 'status-leave';
-                                    }
-                                    
-                                    weekTables += `<td class="text-center ${statusClass}">${statusText}</td>`;
-                                } else {
-                                    weekTables += `<td class="text-center">-</td>`;
+                            if (day.is_holiday) {
+                                weekTable += `<td class="text-center bg-light">หยุด</td>`;
+                            } else if (response.attendance_data[student.student_id] && response.attendance_data[student.student_id][day.date]) {
+                                const status = response.attendance_data[student.student_id][day.date];
+                                let statusText = '';
+                                let statusClass = '';
+                                
+                                if (status === 'present') {
+                                    statusText = 'มา';
+                                    statusClass = 'bg-success text-white';
+                                    totalPresent++;
+                                } else if (status === 'absent') {
+                                    statusText = 'ขาด';
+                                    statusClass = 'bg-danger text-white';
+                                } else if (status === 'late') {
+                                    statusText = 'สาย';
+                                    statusClass = 'bg-warning';
+                                    totalPresent++; // นับสายเป็นมาเรียน
+                                } else if (status === 'leave') {
+                                    statusText = 'ลา';
+                                    statusClass = 'bg-info text-white';
                                 }
-                            });
-                            
-                            // เพิ่มคอลัมน์รวม
-                            weekTables += `
-                                    <td class="text-center fw-bold">${totalPresent}</td>
-                                </tr>
-                            `;
+                                
+                                weekTable += `<td class="text-center ${statusClass}">${statusText}</td>`;
+                            } else {
+                                weekTable += `<td class="text-center">-</td>`;
+                            }
                         });
                         
-                        weekTables += `
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
+                        // เพิ่มคอลัมน์รวม
+                        weekTable += `
+                                <td class="text-center">${totalPresent}</td>
+                            </tr>
                         `;
-                    }
+                        
+                        rowNum++;
+                    });
                     
-                    // แสดงตาราง
-                    $('#preview_content').html(weekTables);
-                    
-                    // แสดงปุ่มสำหรับพิมพ์รายงาน
-                    $('.action-buttons').show();
-                } else {
-                    alert('ไม่สามารถโหลดข้อมูลการเข้าแถวได้: ' + (response.error || 'เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ'));
-                    $('#report_container').hide();
-                    $('.info-panel').show();
+                    weekTable += `
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    `;
                 }
-            },
-            error: function() {
-                $('#preview_loading').hide();
-                alert('เกิดข้อผิดพลาดในการเชื่อมต่อกับเซิร์ฟเวอร์');
+                
+                // ตรวจสอบว่ามีข้อมูลหรือไม่
+                if (weekTable === '') {
+                    $('#preview_content').html('<div class="alert alert-warning">ไม่พบข้อมูลการเข้าแถวในช่วงเวลาที่เลือก</div>').show();
+                } else {
+                    $('#preview_content').html(weekTable).show();
+                }
+                
+                // แสดงปุ่มสำหรับพิมพ์รายงาน
+                $('.action-buttons').show();
+            } else {
+                alert('ไม่สามารถโหลดข้อมูลการเข้าแถวได้: ' + (response.error || 'เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ'));
                 $('#report_container').hide();
                 $('.info-panel').show();
             }
-        });
-    }
+        },
+        error: function(xhr, status, error) {
+            $('#preview_loading').hide();
+            console.error('AJAX error:', { xhr, status, error });
+            alert('เกิดข้อผิดพลาดในการเชื่อมต่อกับเซิร์ฟเวอร์');
+            $('#report_container').hide();
+            $('.info-panel').show();
+        }
+    });
+}
     
     // ฟังก์ชันจัดรูปแบบวันที่เป็น yyyy-mm-dd
     function formatDate(date) {
