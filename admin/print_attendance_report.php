@@ -5,6 +5,10 @@
 
 // เริ่ม session
 session_start();
+/* แสดงผล Error */
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
 
 // ตรวจสอบการล็อกอิน
 if (!isset($_SESSION['user_id']) || !isset($_SESSION['user_role']) || ($_SESSION['user_role'] != 'admin' && $_SESSION['user_role'] != 'teacher')) {
