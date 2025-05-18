@@ -34,7 +34,15 @@
             <span class="menu-text">จัดการผู้ใช้งาน</span>
         </a>
 
-
+        <div class="menu-category">พิมพ์ผลรายงาน</div>
+        <a href="attendance_report.php" class="menu-item <?php echo ($current_page == 'attendance_report') ? 'active' : ''; ?>">
+            <span class="material-icons">print</span>
+            <span class="menu-text">พิมพ์ผลกิจกรรม</span>
+        </a>
+        <a href="report_settings.php" class="menu-item <?php echo ($current_page == 'report_settings') ? 'active' : ''; ?>">
+            <span class="material-icons">settings</span>
+            <span class="menu-text">ตั้งค่าการพิมพ์</span>
+        </a>
         <div class="menu-category">จัดการกิจกรรม</div>
         <a href="activities.php" class="menu-item <?php echo ($current_page == 'activities') ? 'active' : ''; ?>">
             <span class="material-icons">event</span>
@@ -44,10 +52,7 @@
             <span class="material-icons">category</span>
             <span class="menu-text">บันทึกเข้าร่วมกิจกรรม</span>
         </a>
-        <a href="print_activity_report.php" class="menu-item <?php echo ($current_page == 'print_activity_report') ? 'active' : ''; ?>">
-            <span class="material-icons">print</span>
-            <span class="menu-text">พิมพ์ผลกิจกรรม</span>
-        </a>
+
 
 
 
