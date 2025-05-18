@@ -1,139 +1,204 @@
 /**
- * attendance_report.js - สคริปต์สำหรับหน้ารายงานการเข้าแถว
- * 
- * ส่วนหนึ่งของระบบน้องชูใจ AI - ดูแลผู้เรียน
- * วิทยาลัยการอาชีพปราสาท
+ * แก้ไขส่วนของ JavaScript เพื่อแก้ปัญหาการแสดงผลซ้ำของห้องเรียน
  */
 
 document.addEventListener('DOMContentLoaded', function() {
-    // ตั้งค่า Select2 สำหรับตัวเลือกทั้งหมด
-    if (typeof $.fn.select2 !== 'undefined') {
-        $('.select2').select2({
-            theme: 'bootstrap-5'
-        });
-    }
-    
-    // กำหนด DataTable สำหรับตารางการเข้าแถว
-    if (typeof $.fn.DataTable !== 'undefined' && $('#attendance-table').length > 0) {
-        $('#attendance-table').DataTable({
-            responsive: true,
-            "language": {
-                "lengthMenu": "แสดง _MENU_ รายการต่อหน้า",
-                "zeroRecords": "ไม่พบข้อมูล",
-                "info": "แสดงหน้า _PAGE_ จาก _PAGES_",
-                "infoEmpty": "ไม่มีข้อมูล",
-                "infoFiltered": "(กรองจาก _MAX_ รายการทั้งหมด)",
-                "search": "ค้นหา:",
-                "paginate": {
-                    "first": "หน้าแรก",
-                    "last": "หน้าสุดท้าย",
-                    "next": "ถัดไป",
-                    "previous": "ก่อนหน้า"
-                }
+    // เริ่มต้น Select2 สำหรับการค้นหา
+    $('#department').select2({
+        placeholder: "เลือกหรือพิมพ์ค้นหาแผนกวิชา",
+        allowClear: true,
+        width: '100%',
+        language: {
+            noResults: function() {
+                return "ไม่พบผลลัพธ์";
             },
-            "pageLength": 25,
-            "dom": "<'row'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
-                   "<'row'<'col-sm-12'tr>>" +
-                   "<'row'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
-        });
-    }
-    
-    // ตรวจสอบค่าสัปดาห์เริ่มต้นและสิ้นสุด
-    $('#start_week').on('change', function() {
-        var startWeek = parseInt($(this).val());
-        var endWeek = parseInt($('#end_week').val());
-        
-        if (endWeek < startWeek) {
-            $('#end_week').val(startWeek).trigger('change');
+            searching: function() {
+                return "กำลังค้นหา...";
+            }
         }
     });
     
-    // เมื่อเลือกแผนกวิชา ให้โหลดข้อมูลห้องเรียนใหม่
-    $('#department_id').on('change', function() {
-        var departmentId = $(this).val();
+    $('#start_week, #end_week').select2({
+        placeholder: "เลือกหรือพิมพ์ค้นหาสัปดาห์",
+        allowClear: true,
+        width: '100%',
+        language: {
+            noResults: function() {
+                return "ไม่พบผลลัพธ์";
+            }
+        }
+    });
+    
+    // เมื่อเลือกแผนกวิชา
+    $('#department').on('change', function() {
+        const departmentId = $(this).val();
+        const classSelect = $('#class');
+        
+        // ล้างและปิดใช้งาน dropdown ห้องเรียน
+        classSelect.empty().append('<option value="">-- เลือกห้องเรียน --</option>').prop('disabled', true);
+        
+        // ปิดการใช้งาน Select2 ถ้ามีการใช้งานอยู่
+        if (classSelect.hasClass("select2-hidden-accessible")) {
+            classSelect.select2('destroy');
+        }
+        
         if (departmentId) {
-            // แสดง loading
-            $('#class_id').html('<option value="">กำลังโหลดข้อมูล...</option>');
+            // เปิดใช้งาน dropdown ห้องเรียน
+            classSelect.prop('disabled', false);
             
-            // โหลดข้อมูลห้องเรียนตามแผนกวิชา
+            // แสดง loading
+            $('#class-loading').show();
+            
+            // โหลดข้อมูลห้องเรียนจาก AJAX
             $.ajax({
                 url: 'ajax/get_classes_by_department.php',
                 type: 'GET',
-                data: {
-                    department_id: departmentId
-                },
+                data: { department_id: departmentId },
                 dataType: 'json',
-                success: function(data) {
-                    var options = '<option value="">-- เลือกห้องเรียน --</option>';
-                    data.forEach(function(cls) {
-                        options += '<option value="' + cls.class_id + '">' + cls.class_name + '</option>';
-                    });
-                    $('#class_id').html(options).trigger('change');
+                success: function(response) {
+                    $('#class-loading').hide();
+                    
+                    if (response.status === 'success' && response.classes) {
+                        // ล้างข้อมูลเดิมทั้งหมด
+                        classSelect.empty().append('<option value="">-- เลือกห้องเรียน --</option>');
+                        
+                        // สร้างตัวแปรเพื่อตรวจสอบข้อมูลซ้ำ
+                        const addedClasses = new Set();
+                        
+                        // เพิ่มตัวเลือกห้องเรียน
+                        response.classes.forEach(function(classItem) {
+                            const classKey = `${classItem.level}/${classItem.group_number} ${classItem.department_name}`;
+                            
+                            // ตรวจสอบว่าเคยเพิ่มแล้วหรือไม่
+                            if (!addedClasses.has(classKey)) {
+                                classSelect.append(
+                                    `<option value="${classItem.class_id}">${classItem.level}/${classItem.group_number} ${classItem.department_name}</option>`
+                                );
+                                addedClasses.add(classKey);
+                            }
+                        });
+                        
+                        // เริ่มต้น Select2 สำหรับห้องเรียน
+                        classSelect.select2({
+                            placeholder: "เลือกหรือพิมพ์ค้นหาห้องเรียน",
+                            allowClear: true,
+                            width: '100%',
+                            language: {
+                                noResults: function() {
+                                    return "ไม่พบผลลัพธ์";
+                                }
+                            }
+                        });
+                    } else {
+                        alert('ไม่สามารถโหลดข้อมูลห้องเรียนได้: ' + (response.error || 'เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ'));
+                    }
                 },
                 error: function() {
-                    $('#class_id').html('<option value="">-- เกิดข้อผิดพลาด --</option>');
+                    $('#class-loading').hide();
+                    alert('เกิดข้อผิดพลาดในการเชื่อมต่อกับเซิร์ฟเวอร์');
                 }
             });
-        } else {
-            // ถ้าไม่ได้เลือกแผนกวิชา ให้แสดงห้องเรียนทั้งหมด
-            location.reload();
         }
     });
     
-    // สร้างกราฟในกรณีที่มีข้อมูล
-    if (typeof Chart !== 'undefined' && $('#attendanceChart').length > 0 && typeof chartData !== 'undefined') {
-        var ctx = document.getElementById('attendanceChart').getContext('2d');
-        var myChart = new Chart(ctx, {
-            type: 'line',
-            data: chartData,
-            options: {
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        max: 100,
-                        title: {
-                            display: true,
-                            text: 'เปอร์เซ็นต์การเข้าแถว (%)'
-                        }
-                    },
-                    x: {
-                        title: {
-                            display: true,
-                            text: 'วันที่'
-                        }
-                    }
-                },
-                plugins: {
-                    legend: {
-                        display: true,
-                        position: 'top'
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                return context.dataset.label + ': ' + context.raw + '%';
-                            }
-                        }
-                    }
-                },
-                responsive: true,
-                maintainAspectRatio: false
+    // เมื่อเลือกสัปดาห์เริ่มต้น
+    $('#start_week').on('change', function() {
+        const startWeek = parseInt($(this).val());
+        const endWeekSelect = $('#end_week');
+        
+        // ล้างและตั้งค่าตัวเลือกสัปดาห์สิ้นสุด
+        endWeekSelect.empty().append('<option value="">-- เลือกสัปดาห์ --</option>');
+        
+        // ปิดการใช้งาน Select2 ถ้ามีการใช้งานอยู่
+        if (endWeekSelect.hasClass("select2-hidden-accessible")) {
+            endWeekSelect.select2('destroy');
+        }
+        
+        if (startWeek) {
+            // เพิ่มตัวเลือกสัปดาห์สิ้นสุด (จากสัปดาห์เริ่มต้นถึง 18)
+            for (let i = startWeek; i <= 18; i++) {
+                endWeekSelect.append(`<option value="${i}" ${i === startWeek ? 'selected' : ''}>สัปดาห์ที่ ${i}</option>`);
             }
-        });
-    }
+            
+            // เริ่มต้น Select2 อีกครั้ง
+            endWeekSelect.select2({
+                placeholder: "เลือกหรือพิมพ์ค้นหาสัปดาห์",
+                allowClear: true,
+                width: '100%',
+                language: {
+                    noResults: function() {
+                        return "ไม่พบผลลัพธ์";
+                    }
+                }
+            });
+        } else {
+            // เริ่มต้น Select2 อีกครั้งกรณีไม่มีการเลือกสัปดาห์เริ่มต้น
+            endWeekSelect.select2({
+                placeholder: "เลือกหรือพิมพ์ค้นหาสัปดาห์",
+                allowClear: true,
+                width: '100%',
+                language: {
+                    noResults: function() {
+                        return "ไม่พบผลลัพธ์";
+                    }
+                }
+            });
+        }
+    });
     
-    // ฟังก์ชันสำหรับการพิมพ์รายงาน
-    window.printAttendanceReport = function() {
-        document.getElementById('print-form').submit();
-    };
+    // เมื่อคลิกปุ่มค้นหา
+    $('#search_btn').on('click', function() {
+        const departmentId = $('#department').val();
+        const classId = $('#class').val();
+        const startWeek = $('#start_week').val();
+        const endWeek = $('#end_week').val();
+        const searchTerm = $('#search_student').val();
+        
+        // ตรวจสอบว่าเลือกครบถ้วนหรือไม่
+        if (!departmentId || !classId || !startWeek || !endWeek) {
+            alert('กรุณาเลือกข้อมูลให้ครบถ้วน');
+            return;
+        }
+        
+        // คำนวณวันที่เริ่มต้นและสิ้นสุดจากสัปดาห์
+        const academicStartDate = new Date(academicYear.start_date); // วันเริ่มต้นภาคเรียน
+        
+        // วันเริ่มต้นของสัปดาห์ที่เลือก
+        const startDate = new Date(academicStartDate);
+        startDate.setDate(startDate.getDate() + (parseInt(startWeek) - 1) * 7);
+        
+        // วันสิ้นสุดของสัปดาห์ที่เลือก
+        const endDate = new Date(academicStartDate);
+        endDate.setDate(endDate.getDate() + (parseInt(endWeek) * 7) - 1);
+        
+        // จัดรูปแบบวันที่เป็น yyyy-mm-dd
+        const formattedStartDate = startDate.toISOString().split('T')[0];
+        const formattedEndDate = endDate.toISOString().split('T')[0];
+        
+        // กำหนดค่าให้กับฟอร์มพิมพ์
+        $('#form_class_id, #chart_class_id, #excel_class_id').val(classId);
+        $('#form_start_date, #chart_start_date, #excel_start_date').val(formattedStartDate);
+        $('#form_end_date, #chart_end_date, #excel_end_date').val(formattedEndDate);
+        $('#form_week_number, #chart_week_number, #excel_week_number').val(startWeek);
+        $('#form_end_week').val(endWeek);
+        $('#form_search, #excel_search').val(searchTerm);
+        
+        // โหลดข้อมูลการเข้าแถว
+        loadAttendancePreview(classId, formattedStartDate, formattedEndDate, startWeek, endWeek, searchTerm);
+    });
     
-    // ฟังก์ชันสำหรับการพิมพ์กราฟ
-    window.printAttendanceChart = function() {
-        document.getElementById('chart-form').submit();
-    };
+    // เมื่อคลิกปุ่มพิมพ์รายงาน PDF
+    $('#print_pdf_btn').on('click', function() {
+        $('#print_form').submit();
+    });
     
-    // ฟังก์ชันสำหรับการดาวน์โหลด Excel
-    window.downloadExcel = function() {
-        document.getElementById('excel-form').submit();
-    };
+    // เมื่อคลิกปุ่มพิมพ์กราฟสรุป PDF
+    $('#print_chart_btn').on('click', function() {
+        $('#chart_form').submit();
+    });
+    
+    // เมื่อคลิกปุ่มส่งออก Excel
+    $('#export_excel_btn').on('click', function() {
+        $('#excel_form').submit();
+    });
 });
