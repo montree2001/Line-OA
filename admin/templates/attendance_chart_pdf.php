@@ -17,12 +17,13 @@
             float: left;
             width: 80px;
             height: 80px;
-            border: 1px solid #000;
-            border-radius: 50%;
-            text-align: center;
             margin-right: 20px;
-            padding-top: 20px;
-            font-size: 14pt;
+            text-align: center;
+        }
+        .school-logo img {
+            width: 100%;
+            height: auto;
+            border-radius: 10px;
         }
         .clear {
             clear: both;
@@ -33,11 +34,12 @@
             border: 1px solid #ddd;
             margin: 20px 0;
             padding: 10px;
+            background-color: #f9f9f9;
+            border-radius: 5px;
         }
         .chart-placeholder {
             width: 100%;
             height: 100%;
-            background-color: #f8f9fa;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -121,15 +123,69 @@
         .info {
             background-color: #2196f3;
         }
+        
+        /* สร้างกราฟแท่ง */
+        .bar-chart {
+            width: 100%;
+            height: 300px;
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-around;
+            margin-top: 20px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #ccc;
+        }
+        .bar-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: <?php echo 100 / count($dailyStats); ?>%;
+            max-width: 80px;
+        }
+        .bar {
+            width: 40px;
+            background-color: #4caf50;
+            margin-bottom: 10px;
+            border-radius: 5px 5px 0 0;
+        }
+        .bar-label {
+            text-align: center;
+            font-size: 12pt;
+        }
+        .bar-value {
+            text-align: center;
+            font-weight: bold;
+            font-size: 12pt;
+        }
+        
+        /* สร้างแผนภูมิวงกลม */
+        .pie-container {
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            margin-top: 30px;
+        }
+        .pie-legend {
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 20px;
+        }
+        .legend-item {
+            margin: 0 15px;
+            display: flex;
+            align-items: center;
+        }
     </style>
 </head>
 <body>
     <div class="header">
         <div class="school-logo">
             <?php if (file_exists('../uploads/logos/school_logo.png')): ?>
-                <img src="../uploads/logos/school_logo.png" alt="Logo" style="width: 100%; height: auto; border-radius: 50%;">
+                <img src="../uploads/logos/school_logo.png" alt="Logo">
             <?php else: ?>
-                โลโก้<br>วิทยาลัย
+                <div style="width: 100%; height: 100%; border: 1px solid #ccc; display: flex; align-items: center; justify-content: center;">โลโก้</div>
             <?php endif; ?>
         </div>
         <p>
@@ -138,93 +194,29 @@
             ภาคเรียนที่ <?php echo $academic_year['semester']; ?> ปีการศึกษา <?php echo $academic_year['year']; ?> สัปดาห์ที่ <?php echo $week_number; ?><br>
             <?php 
             // แสดงชื่อเดือนภาษาไทย
-            $start_month_name = $week_days[0]['month'];
-            $end_month_name = $week_days[count($week_days)-1]['month'];
+            $first_day = $week_days[0];
+            $last_day = $week_days[count($week_days)-1];
+            
+            $start_month_name = $first_day['month'];
+            $end_month_name = $last_day['month'];
             $same_month = ($start_month_name == $end_month_name);
+            
+            echo "ระหว่างวันที่ ".$first_day['day_num']." ";
+            if ($same_month) {
+                echo "- ".$last_day['day_num']." เดือน".$start_month_name." ";
+            } else {
+                echo "เดือน".$start_month_name." - วันที่ ".$last_day['day_num']." เดือน".$end_month_name." ";
+            }
+            echo "พ.ศ. ".(date('Y', strtotime($start_date)) + 543);
             ?>
-            ระหว่างวันที่ <?php echo (int)date('j', strtotime($start_date)); ?> 
-            <?php if ($same_month): ?>
-                - <?php echo (int)date('j', strtotime($end_date)); ?> เดือน<?php echo $start_month_name; ?> 
-            <?php else: ?>
-                เดือน<?php echo $start_month_name; ?> - วันที่ <?php echo (int)date('j', strtotime($end_date)); ?> เดือน<?php echo $end_month_name; ?> 
-            <?php endif; ?>
-            พ.ศ. <?php echo date('Y', strtotime($start_date)) + 543; ?><br>
+            <br>
             ระดับชั้น <?php echo $class['level']; ?> กลุ่ม <?php echo $class['group_number']; ?> แผนกวิชา<?php echo $department['department_name']; ?>
         </p>
     </div>
     
     <div class="clear"></div>
     
-    <?php
-    // คำนวณสถิติการเข้าแถวรายวัน
-    $dailyStats = [];
-    $totalPresent = 0;
-    $totalAbsent = 0;
-    $totalLate = 0;
-    $totalLeave = 0;
-    
-    foreach ($week_days as $day) {
-        $dayStats = [
-            'date' => $day['date'],
-            'day_name' => $day['day_name'],
-            'is_holiday' => $day['is_holiday'],
-            'present' => 0,
-            'absent' => 0,
-            'late' => 0,
-            'leave' => 0,
-            'attendance_rate' => 0
-        ];
-        
-        if (!$day['is_holiday']) {
-            $totalStudentsForDay = count($students);
-            $presentCount = 0;
-            
-            foreach ($students as $student) {
-                if (isset($attendance_data[$student['student_id']][$day['date']])) {
-                    $status = $attendance_data[$student['student_id']][$day['date']];
-                    if ($status == 'present') {
-                        $dayStats['present']++;
-                        $totalPresent++;
-                        $presentCount++;
-                    } elseif ($status == 'absent') {
-                        $dayStats['absent']++;
-                        $totalAbsent++;
-                    } elseif ($status == 'late') {
-                        $dayStats['late']++;
-                        $totalLate++;
-                        $presentCount++; // นับสายเป็นมาเรียน
-                    } elseif ($status == 'leave') {
-                        $dayStats['leave']++;
-                        $totalLeave++;
-                    }
-                } else {
-                    $dayStats['absent']++;
-                    $totalAbsent++;
-                }
-            }
-            
-            // คำนวณอัตราการเข้าแถว
-            if ($totalStudentsForDay > 0) {
-                $dayStats['attendance_rate'] = ($presentCount / $totalStudentsForDay) * 100;
-            }
-        }
-        
-        $dailyStats[] = $dayStats;
-    }
-    
-    // คำนวณอัตราการเข้าแถวรวม
-    $totalAttendanceRate = 0;
-    $totalDays = count(array_filter($week_days, function($day) {
-        return !$day['is_holiday'];
-    }));
-    
-    if ($totalDays > 0 && $total_count > 0) {
-        $totalPossibleAttendance = $totalDays * $total_count;
-        $totalAttendances = $totalPresent + $totalLate;
-        $totalAttendanceRate = ($totalAttendances / $totalPossibleAttendance) * 100;
-    }
-    ?>
-    
+    <!-- สถิติการเข้าแถว -->
     <div class="status-container">
         <div class="status-box">
             <div class="status-value"><?php echo $total_count; ?></div>
@@ -246,10 +238,40 @@
     
     <!-- กราฟแสดงอัตราการเข้าแถวรายวัน -->
     <div class="chart-container">
-        <!-- ในไฟล์จริงจะแสดงกราฟ แต่ใน MPDF จะแสดงเป็นตาราง -->
-        <div class="chart-placeholder">
-            [กราฟแสดงอัตราการเข้าแถวรายวัน]<br>
-            <small>* ในไฟล์ PDF จะแสดงเป็นตารางข้อมูลแทนกราฟ</small>
+        <h3 style="text-align: center; margin-top: 0;">กราฟแสดงอัตราการเข้าแถวรายวัน</h3>
+        <div class="bar-chart">
+            <?php foreach ($dailyStats as $dayStat): ?>
+                <?php if (!$dayStat['is_holiday']): ?>
+                    <?php
+                    $height = isset($dayStat['attendance_rate']) ? round($dayStat['attendance_rate']) : 0;
+                    $barHeight = ($height / 100) * 250; // Scale to max height of 250px
+                    
+                    // Set color based on attendance rate
+                    if ($height >= 90) {
+                        $color = '#4caf50'; // Green
+                    } elseif ($height >= 80) {
+                        $color = '#ff9800'; // Orange
+                    } else {
+                        $color = '#f44336'; // Red
+                    }
+                    ?>
+                    <div class="bar-container">
+                        <div class="bar-value"><?php echo number_format($dayStat['attendance_rate'], 1); ?>%</div>
+                        <div class="bar" style="height: <?php echo $barHeight; ?>px; background-color: <?php echo $color; ?>;"></div>
+                        <div class="bar-label">
+                            <?php echo $dayStat['day_name']; ?> <?php echo $dayStat['day_num']; ?>
+                        </div>
+                    </div>
+                <?php else: ?>
+                    <div class="bar-container">
+                        <div class="bar-value">หยุด</div>
+                        <div class="bar" style="height: 0; background-color: #ccc;"></div>
+                        <div class="bar-label">
+                            <?php echo $dayStat['day_name']; ?> <?php echo $dayStat['day_num']; ?>
+                        </div>
+                    </div>
+                <?php endif; ?>
+            <?php endforeach; ?>
         </div>
     </div>
     
@@ -301,19 +323,42 @@
     <!-- แผนภูมิแสดงสัดส่วนสถานะการเข้าแถว -->
     <div class="summary-section">
         <h3>สัดส่วนสถานะการเข้าแถว</h3>
-        <div>
+        
+        <div class="pie-legend">
             <?php
             $totalAttendanceCount = $totalPresent + $totalAbsent + $totalLate + $totalLeave;
             if ($totalAttendanceCount > 0):
+                $presentPercent = ($totalPresent / $totalAttendanceCount) * 100;
+                $absentPercent = ($totalAbsent / $totalAttendanceCount) * 100;
+                $latePercent = ($totalLate / $totalAttendanceCount) * 100;
+                $leavePercent = ($totalLeave / $totalAttendanceCount) * 100;
             ?>
-            <span class="colored-box good"></span> มาปกติ: <?php echo number_format(($totalPresent / $totalAttendanceCount) * 100, 1); ?>%
-            &nbsp;&nbsp;
-            <span class="colored-box danger"></span> ขาด: <?php echo number_format(($totalAbsent / $totalAttendanceCount) * 100, 1); ?>%
-            &nbsp;&nbsp;
-            <span class="colored-box warning"></span> มาสาย: <?php echo number_format(($totalLate / $totalAttendanceCount) * 100, 1); ?>%
-            &nbsp;&nbsp;
-            <span class="colored-box info"></span> ลา: <?php echo number_format(($totalLeave / $totalAttendanceCount) * 100, 1); ?>%
+            <div class="legend-item">
+                <span class="colored-box good"></span> มาปกติ: <?php echo number_format($presentPercent, 1); ?>%
+            </div>
+            <div class="legend-item">
+                <span class="colored-box danger"></span> ขาด: <?php echo number_format($absentPercent, 1); ?>%
+            </div>
+            <div class="legend-item">
+                <span class="colored-box warning"></span> มาสาย: <?php echo number_format($latePercent, 1); ?>%
+            </div>
+            <div class="legend-item">
+                <span class="colored-box info"></span> ลา: <?php echo number_format($leavePercent, 1); ?>%
+            </div>
             <?php endif; ?>
+        </div>
+        
+        <!-- แสดงแผนภาพวงกลมแบบ ASCII art -->
+        <div class="pie-container">
+            <div style="text-align: center; width: 60%; margin: 20px auto; padding: 20px; border: 1px solid #ccc; border-radius: 10px; background-color: #f9f9f9;">
+                <div style="font-weight: bold; margin-bottom: 10px;">การแสดงข้อมูลสัดส่วนการเข้าแถว</div>
+                <div style="display: flex; justify-content: space-around; margin-top: 10px;">
+                    <div style="background-color: #4caf50; height: 20px; width: <?php echo $presentPercent; ?>%; min-width: 10px;"></div>
+                    <div style="background-color: #f44336; height: 20px; width: <?php echo $absentPercent; ?>%; min-width: 10px;"></div>
+                    <div style="background-color: #ff9800; height: 20px; width: <?php echo $latePercent; ?>%; min-width: 10px;"></div>
+                    <div style="background-color: #2196f3; height: 20px; width: <?php echo $leavePercent; ?>%; min-width: 10px;"></div>
+                </div>
+            </div>
         </div>
     </div>
     
