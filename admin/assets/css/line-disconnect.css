@@ -1,0 +1,210 @@
+.me-2 {
+    margin-right: 0.5rem;
+}
+
+/* ปรับแต่งช่องค้นหา */
+.form-control::placeholder {
+    color: #aaa;
+    font-style: italic;
+    font-size: 0.9em;
+}
+
+/* ปรับแต่งปุ่มล้างค้นหา */
+#clearFilterBtn {
+    height: 38px;
+    display: flex;
+    align-items: center;
+    background-color: #f1f3f4;
+    color: #444;
+}
+
+#clearFilterBtn:hover {
+    background-color: #e8e9ea;
+}
+
+#searchStudentsBtn {
+    height: 38px;
+}/* เพิ่มเติมสไตล์สำหรับหน้ายกเลิกการเชื่อมต่อ LINE */
+.filter-section {
+    background-color: #f9f9fa;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+.preview-section {
+    background-color: #fff;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+.confirmation-section {
+    background-color: #fff8f8;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 20px;
+    border-left: 4px solid #dc3545;
+}
+
+.warning-text {
+    color: #dc3545;
+    font-weight: 600;
+}
+
+.count-badge {
+    background-color: #4285f4;
+    color: white;
+    border-radius: 20px;
+    padding: 3px 10px;
+    font-size: 14px;
+    font-weight: 600;
+    margin-left: 10px;
+}
+
+.profile-image {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.student-info {
+    display: flex;
+    align-items: center;
+}
+
+.student-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: #e8f0fe;
+    color: #4285f4;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    font-weight: 600;
+    margin-right: 10px;
+    overflow: hidden;
+}
+
+.disconnect-btn {
+    min-width: 200px;
+}
+
+#loadingOverlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+}
+
+.loading-spinner {
+    width: 50px;
+    height: 50px;
+    border: 5px solid #f3f3f3;
+    border-top: 5px solid #3498db;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.section-title {
+    color: #333;
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+}
+
+.section-title .material-icons {
+    margin-right: 10px;
+    color: #4285f4;
+}
+
+.filter-label {
+    font-weight: 500;
+    margin-bottom: 5px;
+    display: block;
+}
+
+.result-info {
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 20px;
+}
+
+.result-info ul {
+    padding-left: 20px;
+    margin-top: 10px;
+}
+
+.failed-list {
+    background-color: #fff8f8;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 20px;
+    border-left: 3px solid #dc3545;
+}
+
+.failed-list h4 {
+    color: #dc3545;
+    font-size: 16px;
+    margin-bottom: 10px;
+}
+
+.failed-list ul {
+    padding-left: 20px;
+}
+
+@media (max-width: 768px) {
+    .row {
+        flex-direction: column;
+    }
+    .col-md-3, .col-md-4 {
+        width: 100%;
+        margin-bottom: 10px;
+    }
+    .disconnect-btn {
+        width: 100%;
+    }
+}
+
+/* สไตล์สำหรับ checkbox */
+.data-table input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    border-radius: 3px;
+    border: 1px solid #ddd;
+    cursor: pointer;
+}
+
+#selectAllStudents {
+    margin: 0 auto;
+    display: block;
+}
+
+/* ปรับแต่ง modal สำหรับแสดงผลการยกเลิกการเชื่อมต่อ */
+#resultModal .modal-content {
+    max-width: 600px;
+}
+
+#resultContent {
+    max-height: 400px;
+    overflow-y: auto;
+}

@@ -7,14 +7,13 @@
     <style>
         body {
             font-family: 'thsarabunnew', sans-serif;
-            /* ชื่อต้องตรงกับที่กำหนดในตอนสร้าง mPDF */
             font-size: 16pt;
             line-height: 1.3;
         }
 
         .header {
             text-align: center;
-            margin-bottom: 20px;
+            margin-bottom: 5px;
         }
 
         .school-logo {
@@ -38,11 +37,10 @@
         table {
             width: 100%;
             border-collapse: collapse;
-            margin: 20px 0;
+            margin: 5px 0;
         }
 
-        th,
-        td {
+        th, td {
             border: 1px solid #000;
             padding: 5px;
             text-align: center;
@@ -179,11 +177,7 @@
         <tbody>
             <?php
             // กำหนดนักเรียนที่จะแสดงในหน้านี้
-            $displayStudents = isset($pageStudents) ? $pageStudents : $students;
-
-            // จำกัดจำนวนนักเรียนที่แสดงไม่เกิน 25 คน
-            $displayStudents = array_slice($displayStudents, 0, 25);
-
+            $displayStudents = isset($studentsOnCurrentPage) ? $studentsOnCurrentPage : $students;
             $startNo = isset($startIndex) ? $startIndex + 1 : 1;
 
             foreach ($displayStudents as $index => $student):
@@ -228,17 +222,14 @@
                     <td class="bold"><?php echo $totalPresent; ?></td>
                 </tr>
             <?php endforeach; ?>
-
-            <?php
-            // ลบส่วนการเพิ่มแถวว่าง - ไม่จำเป็นต้องมีแล้ว
-            // เนื่องจากเราต้องการแสดงเฉพาะจำนวนข้อมูลที่มีจริงเท่านั้น
-            ?>
         </tbody>
-
     </table>
 
-    <?php if (!isset($pageStudents) || (isset($currentPage) && $currentPage == $totalPages)): ?>
-        <!-- แสดงสรุปเฉพาะในหน้าสุดท้ายของแต่ละสัปดาห์ -->
+    <?php
+    // แสดงส่วนสรุปและส่วนเซ็นชื่อเฉพาะในหน้าสุดท้ายของสัปดาห์
+    if (isset($currentPage) && isset($totalPages) && $currentPage == $totalPages): 
+    ?>
+        <!-- แสดงส่วนสรุปเฉพาะในหน้าสุดท้ายของสัปดาห์ -->
         <div>
             <strong>สรุป</strong> จำนวนคน <u>&nbsp;&nbsp;<?php echo $total_count; ?>&nbsp;&nbsp;</u> คน
             ชาย <u>&nbsp;&nbsp;<?php echo $male_count; ?>&nbsp;&nbsp;</u> คน
@@ -275,46 +266,47 @@
         <div style="margin-top: 10px;">
             <strong>สรุปจำนวนนักเรียนเข้าแถวร้อยละ</strong> <u>&nbsp;&nbsp;<?php echo number_format($totalAttendanceRate, 2); ?>&nbsp;&nbsp;</u>
         </div>
-    <?php endif; ?>
 
-    <div class="signature-section">
-        <div class="signature-box">
-
-            <div>ลงชื่อ...........................................</div>
-            <?php if ($primary_advisor): ?>
+        <!-- ส่วนเซ็นชื่อแสดงเฉพาะในหน้าสุดท้ายของสัปดาห์ -->
+        <div class="signature-section">
+            <div class="signature-box">
+             
+                <div>ลงชื่อ...........................................</div>
+                <?php if ($primary_advisor): ?>
                 <div>(<?php echo $primary_advisor['title'] . $primary_advisor['first_name'] . ' ' . $primary_advisor['last_name']; ?>)</div>
-            <?php else: ?>
+                <?php else: ?>
                 <div>(.......................................)</div>
-            <?php endif; ?>
-            <div>ครูที่ปรึกษา</div>
-        </div>
+                <?php endif; ?>
+                <div>ครูที่ปรึกษา</div>
+            </div>
 
-        <div class="signature-box">
-
-            <div>ลงชื่อ...........................................</div>
-            <?php if (isset($signers[0])): ?>
+            <div class="signature-box">
+               
+                <div>ลงชื่อ...........................................</div>
+                <?php if (isset($signers[0])): ?>
                 <div>(<?php echo $signers[0]['title'] . $signers[0]['first_name'] . ' ' . $signers[0]['last_name']; ?>)</div>
                 <div><?php echo $signers[0]['position']; ?></div>
-            <?php else: ?>
+                <?php else: ?>
                 <div>(นายมนตรี ศรีสุข)</div>
                 <div>หัวหน้างานกิจกรรมนักเรียน นักศึกษา</div>
-            <?php endif; ?>
-        </div>
+                <?php endif; ?>
+            </div>
 
-        <div class="signature-box">
-
-            <div>ลงชื่อ...........................................</div>
-            <?php if (isset($signers[1])): ?>
+            <div class="signature-box">
+               
+                <div>ลงชื่อ...........................................</div>
+                <?php if (isset($signers[1])): ?>
                 <div>(<?php echo $signers[1]['title'] . $signers[1]['first_name'] . ' ' . $signers[1]['last_name']; ?>)</div>
                 <div>รองผู้อำนวยการ</div>
                 <div>ฝ่ายพัฒนากิจการนักเรียนนักศึกษา</div>
-            <?php else: ?>
+                <?php else: ?>
                 <div>(นายพงษ์ศักดิ์ สนโศรก)</div>
                 <div>รองผู้อำนวยการ</div>
                 <div>ฝ่ายพัฒนากิจการนักเรียนนักศึกษา</div>
-            <?php endif; ?>
+                <?php endif; ?>
+            </div>
         </div>
-    </div>
+    <?php endif; ?>
 
     <div class="clear"></div>
 
@@ -323,11 +315,9 @@
             หน้าที่ <?php echo isset($currentPage) ? $currentPage : 1; ?>
             <?php if (isset($totalPages) && $totalPages > 1): ?>
                 /<?php echo $totalPages; ?>
-            <?php endif; ?>
+            <?php endif; ?> พิมพ์เมื่อวันที่ <?php echo date('j/n/Y'); ?>
         </div>
-        <div class="right">พิมพ์เมื่อวันที่ <?php echo date('j/n/Y'); ?></div>
         <div class="clear"></div>
     </div>
 </body>
-
 </html>

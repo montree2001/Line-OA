@@ -230,7 +230,10 @@ $query = "SELECT * FROM report_signers WHERE is_active = 1 ORDER BY signer_id LI
 $stmt = $conn->query($query);
 $signers = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// ส่วนการตั้งค่า mPDF และฟอนต์ - ปรับแก้ไขตรงนี้
+
+// กำหนดความเหมาะสมของจำนวนนักเรียนต่อหน้า (สามารถปรับได้ตามความเหมาะสม)
+$studentsPerPage = 25; // ประมาณ 25 คนต่อหน้า A4 ขึ้นอยู่กับขนาดฟอนต์และรูปแบบรายงาน
+
 // ค้นหาตำแหน่งที่ตั้งของฟอนต์ mPDF
 $defaultConfig = (new \Mpdf\Config\ConfigVariables())->getDefaults();
 $fontDirs = $defaultConfig['fontDir'];
@@ -245,7 +248,7 @@ $mpdf_config = [
     'format' => 'A4',
     'orientation' => 'P',
     'default_font_size' => 16,
-    'default_font' => 'thsarabunnew', // ชื่อฟอนต์
+    'default_font' => 'thsarabunnew',
     'margin_left' => 15,
     'margin_right' => 15,
     'margin_top' => 15,
@@ -255,7 +258,7 @@ $mpdf_config = [
     'tempDir' => __DIR__ . '/../tmp',
     // เพิ่มตำแหน่งที่ตั้งของฟอนต์
     'fontDir' => array_merge($fontDirs, [
-        __DIR__ . '/../ttfonts', // แก้ไขเป็นโฟลเดอร์ ttfonts ที่คุณสร้างไว้
+        __DIR__ . '/../ttfonts',
     ]),
     // กำหนดข้อมูลฟอนต์
     'fontdata' => array_merge($fontData, [
@@ -271,20 +274,13 @@ $mpdf_config = [
 // สร้าง mPDF
 $mpdf = new \Mpdf\Mpdf($mpdf_config);
 
-// ลบบรรทัดนี้ออก เนื่องจากได้กำหนด fontdata ในตอนสร้าง mPDF แล้ว
-// $mpdf->fontdata = array_merge($mpdf->fontdata, $fontData);
-
-// ตั้งค่าฟอนต์เริ่มต้น
-
 // ยกเลิกการใช้ฟอนต์ autoLangToFont
-$mpdf->autoLangToFont = false;  // เปลี่ยนเป็น false
-$mpdf->autoScriptToLang = false; // เปลี่ยนเป็น false
-$mpdf->useAdobeCJK = false;     // เปลี่ยนเป็น false
+$mpdf->autoLangToFont = false;
+$mpdf->autoScriptToLang = false;
+$mpdf->useAdobeCJK = false;
 $mpdf->SetFont('thsarabunnew');
 $mpdf->SetDefaultBodyCSS('font-family', "thsarabunnew");
 $mpdf->SetTitle("รายงานการเข้าแถว_{$class['level']}_{$class['group_number']}_{$department['department_name']}");
-// กำหนดตัวแปรสำหรับหน้า
-$studentsPerPage = 25; // จำนวนนักเรียนต่อหน้า
 
 // สร้าง PDF สำหรับแต่ละสัปดาห์
 foreach ($weeks as $weekIndex => $week) {
@@ -302,48 +298,30 @@ foreach ($weeks as $weekIndex => $week) {
     // คำนวณจำนวนหน้าทั้งหมดสำหรับสัปดาห์นี้
     $totalPages = ceil(count($students) / $studentsPerPage);
 
-    // สร้างหน้าแรกของสัปดาห์
-    // ส่วนของการสร้างหน้าแรกของสัปดาห์
-    $firstPageStudents = array_slice($students, 0, $studentsPerPage);
-    $currentPage = 1;
-    $studentsOnCurrentPage = $firstPageStudents; // กำหนดตัวแปรใหม่เพื่อเก็บนักเรียนในหน้านี้
-
-
-    // สร้างเนื้อหา PDF ตามแบบฟอร์ม
-    ob_start();
-    include 'templates/attendance_report_pdf.php';
-    $content = ob_get_clean();
-
-    // เพิ่มเนื้อหาลงใน mPDF
-    $mpdf->WriteHTML($content);
-
-    // ถ้ามีนักเรียนมากกว่า 25 คน ให้สร้างหน้าเพิ่ม
-    if ($totalPages > 1) {
-        for ($page = 2; $page <= $totalPages; $page++) {
-            $startIndex = ($page - 1) * $studentsPerPage;
-            $endIndex = min($startIndex + $studentsPerPage - 1, count($students) - 1);
-
-            // ส่วนของการสร้างหน้าถัดไป
-            $pageStudents = array_slice($students, $startIndex, $studentsPerPage);
-            $currentPage = $page;
-            $studentsOnCurrentPage = $pageStudents; // กำหนดตัวแปรใหม่เพื่อเก็บนักเรียนในหน้านี้
-
-            // สร้างหน้าใหม่
+    // วนลูปสร้างหน้าสำหรับสัปดาห์นี้
+    for ($page = 1; $page <= $totalPages; $page++) {
+        // สร้างหน้าใหม่ถ้าไม่ใช่หน้าแรกของสัปดาห์
+        if ($page > 1) {
             $mpdf->AddPage();
-
-            // สร้างเนื้อหา PDF สำหรับหน้าถัดไป
-            ob_start();
-            include 'templates/attendance_report_pdf.php';
-            $content = ob_get_clean();
-
-            // เพิ่มเนื้อหาลงใน mPDF
-            $mpdf->WriteHTML($content);
         }
+
+        // คำนวณนักเรียนสำหรับหน้านี้
+        $startIndex = ($page - 1) * $studentsPerPage;
+        $studentsOnCurrentPage = array_slice($students, $startIndex, $studentsPerPage);
+        
+        // กำหนดตัวแปรสำหรับหน้าปัจจุบัน
+        $currentPage = $page;
+
+        // สร้างเนื้อหา PDF ตามแบบฟอร์ม
+        ob_start();
+        include 'templates/attendance_report_pdf.php';
+        $content = ob_get_clean();
+
+        // เพิ่มเนื้อหาลงใน mPDF
+        $mpdf->WriteHTML($content);
     }
 }
 
-// กำหนดชื่อไฟล์
-$filename = "รายงานการเข้าแถว_{$class['level']}_{$class['group_number']}_{$department['department_name']}_สัปดาห์ที่{$week_number}-{$endWeek}.pdf";
-
 // Output PDF
+$filename = "รายงานการเข้าแถว_{$class['level']}_{$class['group_number']}_{$department['department_name']}_สัปดาห์ที่{$week_number}-{$endWeek}.pdf";
 $mpdf->Output($filename, 'I');
