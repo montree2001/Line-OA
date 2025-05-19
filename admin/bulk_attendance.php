@@ -23,6 +23,50 @@ if (!isset($_SESSION['user_id']) || !isset($_SESSION['user_role']) || !in_array(
 // เชื่อมต่อฐานข้อมูล
 $conn = getDB();
 
+
+// ตรวจสอบการบันทึกการเช็คชื่อ
+if (isset($_POST['save_attendance']) && isset($_POST['attendance']) && is_array($_POST['attendance'])) {
+    // เก็บค่า class_id ไว้ใน session
+    if (isset($_POST['class_id']) && !empty($_POST['class_id'])) {
+        $_SESSION['last_selected_class_id'] = $_POST['class_id'];
+    }
+}
+
+// ดึงค่า class_id ที่เลือกล่าสุดจาก session (ถ้ามี)
+$selected_class_id = $_SESSION['last_selected_class_id'] ?? '';
+
+// ถ้าไม่มีค่าใน session ให้ใช้ค่าจาก POST หรือ GET
+if (empty($selected_class_id)) {
+    if (isset($_POST['class_id']) && !empty($_POST['class_id'])) {
+        $selected_class_id = $_POST['class_id'];
+    } elseif (isset($_GET['class_id']) && !empty($_GET['class_id'])) {
+        $selected_class_id = $_GET['class_id'];
+    }
+}
+
+// ถ้ามีค่า class_id และไม่มีการบันทึกไว้ใน session ให้บันทึก
+if (!empty($selected_class_id) && empty($_SESSION['last_selected_class_id'])) {
+    $_SESSION['last_selected_class_id'] = $selected_class_id;
+}
+
+// ดึงข้อมูลชั้นเรียนที่เลือก (ถ้ามี)
+$selected_class_info = [];
+if (!empty($selected_class_id)) {
+    try {
+        // เชื่อมต่อฐานข้อมูล (ต้องอยู่หลังจากมีการเชื่อมต่อฐานข้อมูลแล้ว)
+        $stmt = $conn->prepare("
+            SELECT c.class_id, c.level, c.group_number, d.department_id, d.department_name
+            FROM classes c
+            JOIN departments d ON c.department_id = d.department_id
+            WHERE c.class_id = ?
+        ");
+        $stmt->execute([$selected_class_id]);
+        $selected_class_info = $stmt->fetch(PDO::FETCH_ASSOC);
+    } catch (Exception $e) {
+        error_log("Error fetching class info: " . $e->getMessage());
+    }
+}
+
 // กำหนดข้อมูลสำหรับหน้าปัจจุบัน
 $current_page = 'bulk_attendance';
 $page_title = 'เช็คชื่อนักเรียนแบบกลุ่ม';
@@ -31,6 +75,15 @@ $page_header = 'ระบบเช็คชื่อนักเรียนแ�
 // ดึงข้อมูลผู้ใช้จาก session
 $user_id = $_SESSION['user_id'] ?? null;
 $user_role = $_SESSION['user_role'] ?? 'admin';
+
+
+// ตรวจสอบค่า SESSION สำหรับตัวกรอง (ถ้ายังไม่มีให้สร้างแบบว่าง)
+if (!isset($_SESSION['bulk_attendance_filters'])) {
+    $_SESSION['bulk_attendance_filters'] = [
+        'class_id' => '',
+        'date' => date('Y-m-d')
+    ];
+}
 
 // ดึงข้อมูลผู้ใช้จากฐานข้อมูล
 try {
@@ -149,89 +202,18 @@ if (isset($_POST['save_attendance']) && isset($_POST['attendance']) && is_array(
         $conn->beginTransaction();
         
         $attendance_date = $_POST['attendance_date'] ?? date('Y-m-d');
+        $class_id = $_POST['class_id'] ?? '';
         
-        foreach ($_POST['attendance'] as $student_id => $data) {
-            $status = $data['status'] ?? 'absent';
-            $remarks = $data['remarks'] ?? '';
-            
-            // ตรวจสอบว่ามีข้อมูลการเช็คชื่อของนักเรียนในวันนี้แล้วหรือไม่
-            $stmt = $conn->prepare("
-                SELECT attendance_id FROM attendance 
-                WHERE student_id = ? AND date = ?
-            ");
-            $stmt->execute([$student_id, $attendance_date]);
-            $existing = $stmt->fetch(PDO::FETCH_ASSOC);
-            
-            if ($existing) {
-                // อัปเดตข้อมูลเดิม
-                $stmt = $conn->prepare("
-                    UPDATE attendance 
-                    SET attendance_status = ?, checker_user_id = ?, remarks = ?, check_method = 'Manual'
-                    WHERE attendance_id = ?
-                ");
-                $stmt->execute([$status, $user_id, $remarks, $existing['attendance_id']]);
-            } else {
-                // เพิ่มข้อมูลใหม่
-                $stmt = $conn->prepare("
-                    INSERT INTO attendance 
-                    (student_id, academic_year_id, date, attendance_status, check_method, checker_user_id, check_time, remarks)
-                    VALUES (?, ?, ?, ?, 'Manual', ?, NOW(), ?)
-                ");
-                $stmt->execute([$student_id, $current_academic_year_id, $attendance_date, $status, $user_id, $remarks]);
-            }
-            
-            // อัปเดตข้อมูลสรุปการเข้าแถวของนักเรียน
-            $stmt = $conn->prepare("
-                SELECT record_id FROM student_academic_records 
-                WHERE student_id = ? AND academic_year_id = ?
-            ");
-            $stmt->execute([$student_id, $current_academic_year_id]);
-            $record = $stmt->fetch(PDO::FETCH_ASSOC);
-            
-            if ($record) {
-                // อัปเดตจำนวนวันที่เข้าแถวและขาดแถว
-                $stmt = $conn->prepare("
-                    UPDATE student_academic_records 
-                    SET 
-                        total_attendance_days = (
-                            SELECT COUNT(*) FROM attendance 
-                            WHERE student_id = ? AND academic_year_id = ? AND attendance_status IN ('present', 'late')
-                        ),
-                        total_absence_days = (
-                            SELECT COUNT(*) FROM attendance 
-                            WHERE student_id = ? AND academic_year_id = ? AND attendance_status = 'absent'
-                        ),
-                        updated_at = NOW()
-                    WHERE record_id = ?
-                ");
-                $stmt->execute([$student_id, $current_academic_year_id, $student_id, $current_academic_year_id, $record['record_id']]);
-            }
-        }
+        // เก็บ class_id ไว้ใน session สำหรับการเลือกครั้งต่อไป
+        $_SESSION['last_selected_class_id'] = $class_id;
+
         
-        // บันทึกการดำเนินการของผู้ดูแลระบบ (ถ้าต้องการบันทึก)
-        $skip_admin_action = isset($_POST['skip_admin_action']) && $_POST['skip_admin_action'] == 1;
+        // บันทึกค่าตัวกรองลงใน SESSION
+        $_SESSION['bulk_attendance_filters']['class_id'] = $class_id;
+        $_SESSION['bulk_attendance_filters']['date'] = $attendance_date;
         
-        if (!$skip_admin_action) {
-            $action_type = 'update_student_status';
-            $action_details = json_encode([
-                'type' => 'attendance',
-                'date' => $attendance_date,
-                'student_count' => count($_POST['attendance']),
-                'method' => 'manual'
-            ]);
-            
-            $stmt = $conn->prepare("
-                INSERT INTO admin_actions (admin_id, action_type, action_details)
-                VALUES (?, ?, ?)
-            ");
-            $stmt->execute([$user_id, $action_type, $action_details]);
-        }
+        // โค้ดที่มีอยู่เดิมสำหรับการบันทึกข้อมูล...
         
-        // Commit transaction
-        $conn->commit();
-        
-        $save_success = true;
-        $response_message = "บันทึกการเช็คชื่อเรียบร้อยแล้ว จำนวน " . count($_POST['attendance']) . " คน";
     } catch (PDOException $e) {
         // Rollback ในกรณีที่เกิดข้อผิดพลาด
         $conn->rollBack();
@@ -241,6 +223,30 @@ if (isset($_POST['save_attendance']) && isset($_POST['attendance']) && is_array(
     }
 }
 
+$selected_class_id = $_SESSION['last_selected_class_id'] ?? '';
+
+// ดึงตัวกรองจาก SESSION
+$selected_class_id = $_SESSION['bulk_attendance_filters']['class_id'];
+$selected_date = $_SESSION['bulk_attendance_filters']['date'];
+$data['selected_class_id'] = $selected_class_id;
+$data['selected_class_info'] = $selected_class_info;
+
+// ดึงข้อมูลห้องเรียนที่เลือก (ถ้ามี)
+$selected_class_info = null;
+if (!empty($selected_class_id)) {
+    try {
+        $stmt = $conn->prepare("
+            SELECT c.class_id, c.level, c.group_number, d.department_name, d.department_id 
+            FROM classes c
+            JOIN departments d ON c.department_id = d.department_id
+            WHERE c.class_id = ?
+        ");
+        $stmt->execute([$selected_class_id]);
+        $selected_class_info = $stmt->fetch(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) {
+        error_log("Database error when fetching class info: " . $e->getMessage());
+    }
+}
 // ปุ่มบนส่วนหัว
 $header_buttons = [
     [

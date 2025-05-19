@@ -29,9 +29,14 @@
                 <span class="badge"><?php echo $at_risk_count; ?></span>
             <?php endif; ?>
         </a>
+        <div class="menu-category">บัญชีผู้ใช้งาน</div>
         <a href="users.php" class="menu-item <?php echo ($current_page == 'users') ? 'active' : ''; ?>">
             <span class="material-icons">people</span>
             <span class="menu-text">จัดการผู้ใช้งาน</span>
+        </a>
+        <a href="line-disconnect.php" class="menu-item <?php echo ($current_page == 'line-disconnect') ? 'active' : ''; ?>">
+            <span class="material-icons">cancel</span>
+            <span class="menu-text">ยกเลิกการเชื่อมต่อ</span>
         </a>
 
         <div class="menu-category">พิมพ์ผลรายงาน</div>

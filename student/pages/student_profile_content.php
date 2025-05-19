@@ -18,13 +18,13 @@
         <div class="profile-header">
             <div class="profile-image-container">
                 <?php if (!empty($student_info['profile_image'])): ?>
-                <div class="profile-image">
-                    <img src="<?php echo $student_info['profile_image']; ?>" alt="<?php echo $student_info['full_name']; ?>" id="profile-img">
-                </div>
+                    <div class="profile-image">
+                        <img src="<?php echo $student_info['profile_image']; ?>" alt="<?php echo $student_info['full_name']; ?>" id="profile-img">
+                    </div>
                 <?php else: ?>
-                <div class="profile-image">
-                    <?php echo $student_info['avatar']; ?>
-                </div>
+                    <div class="profile-image">
+                        <?php echo $student_info['avatar']; ?>
+                    </div>
                 <?php endif; ?>
                 <label for="upload-photo" class="change-photo">
                     <span class="material-icons">photo_camera</span>
@@ -118,31 +118,31 @@
         <div class="advisor-content">
             <div class="advisor-photo">
                 <?php if (!empty($advisor_info['profile_image'])): ?>
-                <img src="<?php echo $advisor_info['profile_image']; ?>" alt="<?php echo $advisor_info['full_name']; ?>">
+                    <img src="<?php echo $advisor_info['profile_image']; ?>" alt="<?php echo $advisor_info['full_name']; ?>">
                 <?php else: ?>
-                <div class="advisor-initial"><?php echo $advisor_info['avatar']; ?></div>
+                    <div class="advisor-initial"><?php echo $advisor_info['avatar']; ?></div>
                 <?php endif; ?>
             </div>
             <div class="advisor-info">
                 <div class="advisor-name"><?php echo $advisor_info['full_name']; ?></div>
                 <div class="advisor-details"><?php echo $advisor_info['department']; ?></div>
                 <?php if (!empty($advisor_info['phone'])): ?>
-                <div class="advisor-contact">
-                    <span class="material-icons">phone</span>
-                    <?php echo $advisor_info['phone']; ?>
-                </div>
+                    <div class="advisor-contact">
+                        <span class="material-icons">phone</span>
+                        <?php echo $advisor_info['phone']; ?>
+                    </div>
                 <?php endif; ?>
                 <?php if (!empty($advisor_info['email'])): ?>
-                <div class="advisor-contact">
-                    <span class="material-icons">email</span>
-                    <?php echo $advisor_info['email']; ?>
-                </div>
+                    <div class="advisor-contact">
+                        <span class="material-icons">email</span>
+                        <?php echo $advisor_info['email']; ?>
+                    </div>
                 <?php endif; ?>
                 <?php if (!empty($advisor_info['line_id'])): ?>
-                <div class="advisor-contact">
-                    <span class="material-icons">chat</span>
-                    #
-                </div>
+                    <div class="advisor-contact">
+                        <span class="material-icons">chat</span>
+                        #
+                    </div>
                 <?php endif; ?>
             </div>
         </div>
@@ -157,48 +157,111 @@
         <div class="parent-content">
             <div class="parent-photo">
                 <?php if (!empty($parent_info['profile_image'])): ?>
-                <img src="<?php echo $parent_info['profile_image']; ?>" alt="<?php echo $parent_info['full_name']; ?>">
+                    <img src="<?php echo $parent_info['profile_image']; ?>" alt="<?php echo $parent_info['full_name']; ?>">
                 <?php else: ?>
-                <div class="parent-initial"><?php echo $parent_info['avatar']; ?></div>
+                    <div class="parent-initial"><?php echo $parent_info['avatar']; ?></div>
                 <?php endif; ?>
             </div>
             <div class="parent-info">
                 <div class="parent-name"><?php echo $parent_info['full_name']; ?></div>
                 <div class="parent-relationship">ความสัมพันธ์: <?php echo $parent_info['relationship']; ?></div>
                 <?php if (!empty($parent_info['phone'])): ?>
-                <div class="parent-contact">
-                    <span class="material-icons">phone</span>
-                    <?php echo $parent_info['phone']; ?>
-                </div>
+                    <div class="parent-contact">
+                        <span class="material-icons">phone</span>
+                        <?php echo $parent_info['phone']; ?>
+                    </div>
                 <?php endif; ?>
                 <?php if (!empty($parent_info['email'])): ?>
-                <div class="parent-contact">
-                    <span class="material-icons">email</span>
-                    <?php echo $parent_info['email']; ?>
-                </div>
+                    <div class="parent-contact">
+                        <span class="material-icons">email</span>
+                        <?php echo $parent_info['email']; ?>
+                    </div>
                 <?php endif; ?>
                 <?php if (!empty($parent_info['line_id'])): ?>
-                <div class="parent-contact">
-                    <span class="material-icons">chat</span>
-                   #
-                </div>
+                    <div class="parent-contact">
+                        <span class="material-icons">chat</span>
+                        #
+                    </div>
                 <?php endif; ?>
                 <?php if (!empty($parent_info['address'])): ?>
-                <div class="parent-address">
-                    <span class="material-icons">home</span>
-                    <?php echo $parent_info['address']; ?>
-                </div>
+                    <div class="parent-address">
+                        <span class="material-icons">home</span>
+                        <?php echo $parent_info['address']; ?>
+                    </div>
                 <?php endif; ?>
             </div>
         </div>
     </div>
 
-    <!-- ข้อมูลเวอร์ชัน -->
+
+    <!-- ปุ่มยกเลิกการเชื่อมต่อ LINE - เพิ่มก่อนปิด div ของ "container" -->
+    <?php if (!empty($student_info['line_id']) && strpos($student_info['line_id'], 'TEMP_') === false): ?>
+        <div class="line-disconnect-section">
+            <button id="disconnectLineBtn" type="button" class="line-disconnect-button">
+                <span class="material-icons">link_off</span>
+                ยกเลิกการเชื่อมต่อ LINE
+            </button>
+            <p class="line-info">
+                <span class="material-icons">info</span>
+                การยกเลิกการเชื่อมต่อ LINE จะทำให้คุณไม่สามารถใช้บัญชี LINE ล็อกอินเข้าสู่ระบบได้อีกต่อไป แต่คุณยังสามารถเชื่อมต่อใหม่ได้ภายหลัง
+            </p>
+        </div>
+    <?php endif; ?>
+
+    <!-- Modal ยืนยันการยกเลิกการเชื่อมต่อ LINE -->
+    <div id="disconnect-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>ยืนยันการยกเลิกการเชื่อมต่อ LINE</h2>
+                <span class="close-modal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="warning-icon">
+                    <span class="material-icons">warning</span>
+                </div>
+                <h3>คุณแน่ใจหรือไม่?</h3>
+                <p>การยกเลิกการเชื่อมต่อ LINE จะทำให้:</p>
+                <ul>
+                    <li>ไม่สามารถใช้บัญชี LINE เข้าสู่ระบบได้อีก</li>
+                    <li>รูปโปรไฟล์จะถูกรีเซ็ตเป็นค่าเริ่มต้น</li>
+                    <li>การแจ้งเตือนจะไม่ถูกส่งไปยังบัญชี LINE ของคุณอีก</li>
+                </ul>
+                <p>คุณสามารถเชื่อมต่อบัญชี LINE ใหม่ได้ภายหลัง</p>
+            </div>
+            <div class="modal-footer">
+                <button id="cancel-disconnect" class="btn-cancel">ยกเลิก</button>
+                <button id="confirm-disconnect" class="btn-danger">ยืนยันการยกเลิกการเชื่อมต่อ</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal แสดงผลลัพธ์ -->
+    <div id="result-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>ผลการดำเนินการ</h2>
+                <span class="close-modal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div id="result-icon">
+                    <span class="material-icons">check_circle</span>
+                </div>
+                <h3 id="result-title">ดำเนินการเรียบร้อย</h3>
+                <p id="result-message">ยกเลิกการเชื่อมต่อ LINE สำเร็จแล้ว กรุณาออกจากระบบและเข้าสู่ระบบใหม่</p>
+            </div>
+            <div class="modal-footer">
+                <button id="ok-result" class="btn-confirm">ตกลง</button>
+            </div>
+        </div>
+    </div>
+
     <div class="version-info">
         <p>STD-Prasat v1.0.0</p>
         <p>© 2025 วิทยาลัยการอาชีพปราสาท</p>
     </div>
 </div>
+
+
 
 <!-- Modal สำหรับแสดงผลการอัพโหลดรูปภาพ -->
 <div id="upload-modal" class="modal">

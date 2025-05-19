@@ -235,7 +235,8 @@ try {
         'assets/css/student-profile.css'
     ];
     $extra_js = [
-        'assets/js/profile-image-upload.js'
+        'assets/js/profile-image-upload.js',
+        'assets/js/line-disconnect-student.js' // เพิ่ม JavaScript สำหรับยกเลิกการเชื่อมต่อ LINE
     ];
     
     // เส้นทางเนื้อหา
@@ -302,7 +303,8 @@ try {
         'assets/css/student-profile.css'
     ];
     $extra_js = [
-        'assets/js/profile-image-upload.js'
+        'assets/js/profile-image-upload.js',
+        'assets/js/line-disconnect-student.js' // เพิ่ม JavaScript สำหรับยกเลิกการเชื่อมต่อ LINE
     ];
     
     // เส้นทางเนื้อหา

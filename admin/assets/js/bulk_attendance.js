@@ -65,8 +65,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
 /**
  * อัปเดตรายการห้องเรียนตามแผนกและระดับชั้นที่เลือก
+ * @param {Function} callback - ฟังก์ชันที่จะเรียกใช้หลังจากอัปเดตตัวเลือกห้องเรียนเสร็จ
  */
-function updateClasses() {
+function updateClasses(callback) {
     const departmentId = document.getElementById('filterDepartment').value;
     const level = document.getElementById('filterLevel').value;
     const classSelect = document.getElementById('filterClass');
@@ -77,7 +78,12 @@ function updateClasses() {
     }
     
     // ถ้าไม่ได้เลือกแผนกหรือระดับชั้น ไม่ต้องดึงข้อมูลเพิ่ม
-    if (!departmentId && !level) return;
+    if (!departmentId && !level) {
+        if (typeof callback === 'function') {
+            callback();
+        }
+        return;
+    }
     
     // แสดง loading
     classSelect.disabled = true;
@@ -106,6 +112,11 @@ function updateClasses() {
         })
         .finally(() => {
             classSelect.disabled = false;
+            
+            // เรียกใช้ callback หลังจากอัปเดตตัวเลือกห้องเรียนเสร็จสิ้น
+            if (typeof callback === 'function') {
+                callback();
+            }
         });
 }
 

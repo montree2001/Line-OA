@@ -183,7 +183,7 @@ function disconnectLineAccounts() {
         $adminPassword = $_POST['admin_password'] ?? '';
         $userId = $_SESSION['user_id'];
         
-        $query = "SELECT password FROM admin_users WHERE admin_id = (SELECT admin_id FROM users WHERE user_id = ?)";
+        $query = "SELECT password FROM admin_users WHERE admin_id = ?";
         $stmt = $conn->prepare($query);
         $stmt->execute([$userId]);
         $adminData = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -267,8 +267,7 @@ function disconnectLineAccounts() {
                 $stmt = $conn->prepare($query);
                 $stmt->execute([$tempLineId, $userId]);
                 
-                // บันทึกประวัติการยกเลิกการเชื่อมต่อ (ถ้ามีตาราง)
-                
+             
                 $actionDetails = json_encode([
                     'student_id' => $studentId,
                     'student_code' => $studentData['student_code'],
@@ -276,7 +275,9 @@ function disconnectLineAccounts() {
                     'original_line_id' => $studentData['line_id'],
                     'temp_line_id' => $tempLineId
                 ]);
-
+                
+    
+                
                 $successCount++;
                 
             } catch (Exception $e) {

@@ -12,6 +12,26 @@
         
         <form id="disconnectFilterForm" method="post">
             <div class="row">
+                <div class="col-md-4">
+                    <div class="filter-group">
+                        <div class="filter-label">ค้นหาด้วยรหัสนักศึกษา</div>
+                        <input type="text" class="form-control" id="studentCodeFilter" name="student_code" placeholder="รหัสนักศึกษา...">
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="filter-group">
+                        <div class="filter-label">ค้นหาด้วยชื่อนักเรียน</div>
+                        <input type="text" class="form-control" id="studentNameFilter" name="student_name" placeholder="ชื่อ หรือ นามสกุล...">
+                    </div>
+                </div>
+                <div class="col-md-4 d-flex align-items-end">
+                    <button type="button" id="clearFilterBtn" class="btn btn-secondary me-2">
+                        <span class="material-icons">clear</span>
+                        ล้างการค้นหา
+                    </button>
+                </div>
+            </div>
+            <div class="row mt-3">
                 <div class="col-md-3">
                     <div class="filter-group">
                         <div class="filter-label">ระดับชั้น</div>
@@ -162,7 +182,7 @@
 </div>
 
 <!-- Loading Overlay -->
-<div id="loadingOverlay">
+<div id="loadingOverlay" class="loading-overlay">
     <div class="loading-spinner"></div>
 </div>
 
