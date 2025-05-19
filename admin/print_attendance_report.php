@@ -232,7 +232,12 @@ $signers = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 
 // กำหนดความเหมาะสมของจำนวนนักเรียนต่อหน้า (สามารถปรับได้ตามความเหมาะสม)
-$studentsPerPage = 25; // ประมาณ 25 คนต่อหน้า A4 ขึ้นอยู่กับขนาดฟอนต์และรูปแบบรายงาน
+$studentsPerPage = 20; // ประมาณ 25 คนต่อหน้า A4 ขึ้นอยู่กับขนาดฟอนต์และรูปแบบรายงาน
+
+if ($total_count >=16 AND $total_count <= 19) {
+    $studentsPerPage = 15; // 20 คนต่อหน้า
+}
+
 
 // ค้นหาตำแหน่งที่ตั้งของฟอนต์ mPDF
 $defaultConfig = (new \Mpdf\Config\ConfigVariables())->getDefaults();

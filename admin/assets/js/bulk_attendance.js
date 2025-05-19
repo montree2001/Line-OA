@@ -520,3 +520,152 @@ function resetForm() {
     // อัปเดตสรุปการเช็คชื่อ
     updateAttendanceSummary();
 }
+
+
+/**
+ * Function to update missing attendance records
+ * This will mark students without attendance records as "absent" for days where other students have records
+ */
+function updateMissingAttendance() {
+    // Get selected date range
+    const startDate = document.getElementById('filterStartDate').value;
+    const endDate = document.getElementById('filterEndDate').value;
+    
+    // Get selected class (if any)
+    const classId = document.getElementById('filterClass').value;
+    
+    // Validate inputs
+    if (!startDate || !endDate) {
+        alert('กรุณาเลือกช่วงวันที่ที่ต้องการปรับปรุง');
+        return;
+    }
+    
+    // Confirm before proceeding
+    if (!confirm('ระบบจะค้นหานักเรียนที่ไม่มีข้อมูลการเช็คชื่อในวันที่มีการเช็คชื่อ และบันทึกเป็น "ขาดเรียน" ให้โดยอัตโนมัติ\n\nคุณแน่ใจหรือไม่ที่จะดำเนินการต่อ?')) {
+        return;
+    }
+    
+    // Show loading indicator
+    document.getElementById('loadingIndicator').style.display = 'block';
+    
+    // Prepare form data
+    const formData = new FormData();
+    formData.append('start_date', startDate);
+    formData.append('end_date', endDate);
+    
+    // Add class_id only if it's selected
+    if (classId) {
+        formData.append('class_id', classId);
+    } else {
+        formData.append('all_classes', '1');
+    }
+    
+    // Make AJAX request
+    fetch('ajax/update_missing_attendance.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        // Hide loading indicator
+        document.getElementById('loadingIndicator').style.display = 'none';
+        
+        if (data.success) {
+            // Create detailed summary message
+            let summaryMessage = data.message + "\n\n";
+            
+            // Add summary details if available
+            if (data.date_summaries && data.date_summaries.length > 0) {
+                summaryMessage += "สรุปรายละเอียด:\n";
+                data.date_summaries.forEach(summary => {
+                    if (summary.updated_count > 0) {
+                        summaryMessage += `- วันที่ ${summary.format_date}: ปรับปรุง ${summary.updated_count} รายการ\n`;
+                    }
+                });
+            }
+            
+            // Show immediate alert with summary
+            alert(summaryMessage);
+            
+            // Also create visible alert on page
+            let alertHtml = `
+                <div class="alert alert-success" id="update-success-alert">
+                    <span class="material-icons">check_circle</span>
+                    <div class="alert-message">
+                        <strong>${data.message}</strong>
+                        <div id="update-summary-details" class="mt-2">
+                            <strong>สรุปรายละเอียด:</strong>
+                            <ul>
+            `;
+            
+            // Add each date's summary
+            if (data.date_summaries && data.date_summaries.length > 0) {
+                data.date_summaries.forEach(summary => {
+                    if (summary.updated_count > 0) {
+                        alertHtml += `<li>วันที่ ${summary.format_date}: ปรับปรุง ${summary.updated_count} รายการ</li>`;
+                    }
+                });
+            }
+            
+            alertHtml += `
+                            </ul>
+                        </div>
+                    </div>
+                    <button class="alert-close" onclick="this.parentElement.style.display='none'">
+                        <span class="material-icons">close</span>
+                    </button>
+                </div>
+            `;
+            
+            // Check if we already have an alert
+            const existingAlert = document.getElementById('update-success-alert');
+            if (existingAlert) {
+                existingAlert.remove();
+            }
+            
+            // Find the update card using standard DOM traversal
+            let updateCard = null;
+            const cardTitles = document.querySelectorAll('.card-title');
+            for (let i = 0; i < cardTitles.length; i++) {
+                const title = cardTitles[i];
+                const icons = title.querySelectorAll('.material-icons');
+                for (let j = 0; j < icons.length; j++) {
+                    if (icons[j].textContent.trim() === 'update') {
+                        updateCard = title.closest('.card');
+                        break;
+                    }
+                }
+                if (updateCard) break;
+            }
+            
+            // Insert the alert after the update card or fallback to first card
+            if (updateCard) {
+                updateCard.insertAdjacentHTML('afterend', alertHtml);
+            } else {
+                // Fallback - insert after first card
+                const firstCard = document.querySelector('.card');
+                if (firstCard) {
+                    firstCard.insertAdjacentHTML('afterend', alertHtml);
+                } else {
+                    // Last resort - prepend to body
+                    document.body.insertAdjacentHTML('afterbegin', alertHtml);
+                }
+            }
+            
+            // Reload student data if we're viewing a class
+            if (classId) {
+                searchStudents();
+            }
+        } else {
+            // Show error message
+            alert(`เกิดข้อผิดพลาด: ${data.error}`);
+        }
+    })
+    .catch(error => {
+        // Hide loading indicator
+        document.getElementById('loadingIndicator').style.display = 'none';
+        
+        // Show error message
+        alert(`เกิดข้อผิดพลาดในการเชื่อมต่อ: ${error.message}`);
+    });
+}

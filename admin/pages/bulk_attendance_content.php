@@ -25,6 +25,9 @@ $alert_error = $save_error ?? false;
     </div>
 <?php endif; ?>
 
+
+
+
 <!-- คำอธิบายหน้าเว็บ -->
 <div class="card">
     <div class="card-title">
@@ -34,6 +37,41 @@ $alert_error = $save_error ?? false;
     <div class="card-body">
         <p>หน้านี้ใช้สำหรับเช็คชื่อนักเรียนแบบกลุ่ม โดยสามารถเลือกวันที่ย้อนหลังได้</p>
         <p>ครูที่ปรึกษาสามารถเช็คชื่อได้เฉพาะห้องที่ตัวเองเป็นที่ปรึกษา ส่วนผู้ดูแลระบบสามารถเช็คชื่อได้ทุกห้อง</p>
+    </div>
+</div>
+<div class="card">
+    <div class="card-title">
+        <span class="material-icons">update</span>
+        ปรับปรุงข้อมูลการขาดเรียน
+    </div>
+    <div class="card-body">
+        <p>คุณสามารถใช้เครื่องมือนี้เพื่อปรับปรุงข้อมูลการขาดเรียนสำหรับนักเรียนที่ไม่มีการบันทึกการเช็คชื่อในวันที่มีการเช็คชื่อคนอื่น</p>
+        <div class="row">
+            <div class="col-md-4">
+                <div class="form-group">
+                    <label for="filterStartDate" class="form-label">วันที่เริ่มต้น</label>
+                    <input type="date" id="filterStartDate" class="form-control" value="<?php echo date('Y-m-d', strtotime('-30 days')); ?>">
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="form-group">
+                    <label for="filterEndDate" class="form-label">วันที่สิ้นสุด</label>
+                    <input type="date" id="filterEndDate" class="form-control" value="<?php echo date('Y-m-d'); ?>">
+                </div>
+            </div>
+            <div class="col-md-4">
+                <button type="button" class="filter-button" onclick="updateMissingAttendance()">
+                    <span class="material-icons">update</span>
+                    ปรับปรุงข้อมูลการขาดเรียน
+                </button>
+            </div>
+        </div>
+        <div class="alert alert-info mt-3">
+            <span class="material-icons">info</span>
+            <div class="alert-message">
+                <strong>คำแนะนำ:</strong> ฟังก์ชันนี้จะค้นหาวันที่ที่มีการเช็คชื่อนักเรียน จากนั้นจะเพิ่มข้อมูล "ขาดเรียน" ให้กับนักเรียนที่ไม่มีข้อมูลการเช็คชื่อในวันนั้นๆ โดยอัตโนมัติ
+            </div>
+        </div>
     </div>
 </div>
 

@@ -206,13 +206,70 @@ if (isset($_POST['save_attendance']) && isset($_POST['attendance']) && is_array(
         
         // เก็บ class_id ไว้ใน session สำหรับการเลือกครั้งต่อไป
         $_SESSION['last_selected_class_id'] = $class_id;
-
         
         // บันทึกค่าตัวกรองลงใน SESSION
         $_SESSION['bulk_attendance_filters']['class_id'] = $class_id;
         $_SESSION['bulk_attendance_filters']['date'] = $attendance_date;
         
-        // โค้ดที่มีอยู่เดิมสำหรับการบันทึกข้อมูล...
+        // ดึงข้อมูลปีการศึกษาปัจจุบัน
+        $stmt = $conn->prepare("SELECT academic_year_id FROM academic_years WHERE is_active = 1 LIMIT 1");
+        $stmt->execute();
+        $current_academic_year = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$current_academic_year) {
+            throw new Exception("ไม่พบข้อมูลปีการศึกษาปัจจุบัน");
+        }
+        
+        $academic_year_id = $current_academic_year['academic_year_id'];
+        $processed_count = 0;
+        
+        // ประมวลผลข้อมูลการเช็คชื่อ
+        foreach ($_POST['attendance'] as $student_id => $attendance_data) {
+            // ตรวจสอบว่ามีการเช็คชื่อหรือไม่
+            if (isset($attendance_data['check']) && $attendance_data['check'] == '1') {
+                $status = $attendance_data['status'] ?? 'absent';
+                $remarks = $attendance_data['remarks'] ?? '';
+                
+                // ตรวจสอบว่ามีการเช็คชื่อแล้วหรือไม่
+                $stmt = $conn->prepare("
+                    SELECT attendance_id FROM attendance 
+                    WHERE student_id = ? AND date = ?
+                ");
+                $stmt->execute([$student_id, $attendance_date]);
+                $existing = $stmt->fetch(PDO::FETCH_ASSOC);
+                
+                if ($existing) {
+                    // อัปเดตข้อมูลเดิม
+                    $stmt = $conn->prepare("
+                        UPDATE attendance 
+                        SET attendance_status = ?, checker_user_id = ?, remarks = ?, check_method = 'Manual'
+                        WHERE attendance_id = ?
+                    ");
+                    $stmt->execute([$status, $user_id, $remarks, $existing['attendance_id']]);
+                } else {
+                    // เพิ่มข้อมูลใหม่
+                    $stmt = $conn->prepare("
+                        INSERT INTO attendance 
+                        (student_id, academic_year_id, date, attendance_status, check_method, checker_user_id, check_time, remarks)
+                        VALUES (?, ?, ?, ?, 'Manual', ?, NOW(), ?)
+                    ");
+                    $stmt->execute([$student_id, $academic_year_id, $attendance_date, $status, $user_id, $remarks]);
+                }
+                
+                // อัปเดตข้อมูลสรุปการเข้าแถวของนักเรียน
+                updateStudentAttendanceSummary($conn, $student_id, $academic_year_id);
+                
+                $processed_count++;
+            }
+        }
+
+        
+        // บันทึกการเปลี่ยนแปลง
+        $conn->commit();
+        
+        // กำหนดข้อความแจ้งความสำเร็จ
+        $save_success = true;
+        $response_message = "บันทึกการเช็คชื่อนักเรียนจำนวน " . $processed_count . " คนเรียบร้อย";
         
     } catch (PDOException $e) {
         // Rollback ในกรณีที่เกิดข้อผิดพลาด
@@ -220,8 +277,174 @@ if (isset($_POST['save_attendance']) && isset($_POST['attendance']) && is_array(
         error_log("Database error: " . $e->getMessage());
         $save_error = true;
         $error_message = $e->getMessage();
+    } catch (Exception $e) {
+        // Rollback ในกรณีที่เกิดข้อผิดพลาดทั่วไป
+        if ($conn->inTransaction()) {
+            $conn->rollBack();
+        }
+        error_log("Error: " . $e->getMessage());
+        $save_error = true;
+        $error_message = $e->getMessage();
     }
 }
+
+// ฟังก์ชันอัปเดตข้อมูลสรุปการเข้าแถวของนักเรียน
+function updateStudentAttendanceSummary($conn, $student_id, $academic_year_id) {
+    // ตรวจสอบว่ามีข้อมูลบันทึกหรือยัง
+    $stmt = $conn->prepare("
+        SELECT record_id FROM student_academic_records 
+        WHERE student_id = ? AND academic_year_id = ?
+    ");
+    $stmt->execute([$student_id, $academic_year_id]);
+    $record = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    if ($record) {
+        // อัปเดตจำนวนวันที่เข้าแถวและขาดแถว
+        $stmt = $conn->prepare("
+            UPDATE student_academic_records 
+            SET 
+                total_attendance_days = (
+                    SELECT COUNT(*) FROM attendance 
+                    WHERE student_id = ? AND academic_year_id = ? AND attendance_status IN ('present', 'late')
+                ),
+                total_absence_days = (
+                    SELECT COUNT(*) FROM attendance 
+                    WHERE student_id = ? AND academic_year_id = ? AND attendance_status = 'absent'
+                ),
+                updated_at = NOW()
+            WHERE record_id = ?
+        ");
+        $stmt->execute([$student_id, $academic_year_id, $student_id, $academic_year_id, $record['record_id']]);
+    } else {
+        // สร้างข้อมูลสรุปใหม่
+        // หาชั้นเรียนปัจจุบันของนักเรียน
+        $stmt = $conn->prepare("SELECT current_class_id FROM students WHERE student_id = ?");
+        $stmt->execute([$student_id]);
+        $student = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if ($student && $student['current_class_id']) {
+            $class_id = $student['current_class_id'];
+            
+            // นับจำนวนวันที่เข้าแถวและขาดแถว
+            $stmt = $conn->prepare("
+                SELECT 
+                    COUNT(CASE WHEN attendance_status IN ('present', 'late') THEN 1 END) AS attendance_days,
+                    COUNT(CASE WHEN attendance_status = 'absent' THEN 1 END) AS absence_days
+                FROM attendance 
+                WHERE student_id = ? AND academic_year_id = ?
+            ");
+            $stmt->execute([$student_id, $academic_year_id]);
+            $counts = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            $attendance_days = $counts['attendance_days'] ?? 0;
+            $absence_days = $counts['absence_days'] ?? 0;
+            
+            // เพิ่มข้อมูลสรุป
+            $stmt = $conn->prepare("
+                INSERT INTO student_academic_records 
+                (student_id, academic_year_id, class_id, total_attendance_days, total_absence_days, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, NOW(), NOW())
+            ");
+            $stmt->execute([$student_id, $academic_year_id, $class_id, $attendance_days, $absence_days]);
+        }
+    }
+    
+    // ตรวจสอบความเสี่ยงตกกิจกรรม
+    checkRiskStatus($conn, $student_id, $academic_year_id);
+}
+
+// ฟังก์ชันตรวจสอบความเสี่ยงตกกิจกรรม
+function checkRiskStatus($conn, $student_id, $academic_year_id) {
+    // ดึงจำนวนวันที่เข้าแถวและขาดแถว
+    $stmt = $conn->prepare("
+        SELECT total_attendance_days, total_absence_days
+        FROM student_academic_records 
+        WHERE student_id = ? AND academic_year_id = ?
+    ");
+    $stmt->execute([$student_id, $academic_year_id]);
+    $record = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    if (!$record) return;
+    
+    $attendance_days = $record['total_attendance_days'] ?? 0;
+    $absence_days = $record['total_absence_days'] ?? 0;
+    
+    // ดึงเกณฑ์ความเสี่ยง
+    $stmt = $conn->prepare("
+        SELECT 
+            (SELECT setting_value FROM system_settings WHERE setting_key = 'risk_threshold_low') AS low,
+            (SELECT setting_value FROM system_settings WHERE setting_key = 'risk_threshold_medium') AS medium,
+            (SELECT setting_value FROM system_settings WHERE setting_key = 'risk_threshold_high') AS high,
+            (SELECT setting_value FROM system_settings WHERE setting_key = 'risk_threshold_critical') AS critical,
+            (SELECT setting_value FROM system_settings WHERE setting_key = 'required_attendance_days') AS required_days
+        FROM dual
+    ");
+    $stmt->execute();
+    $thresholds = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    $required_days = (int)($thresholds['required_days'] ?? 90);
+    $low_threshold = (int)($thresholds['low'] ?? 80);
+    $medium_threshold = (int)($thresholds['medium'] ?? 70);
+    $high_threshold = (int)($thresholds['high'] ?? 60);
+    $critical_threshold = (int)($thresholds['critical'] ?? 50);
+    
+    // คำนวณเปอร์เซ็นต์การเข้าแถว
+    $attendance_percent = 0;
+    if ($required_days > 0) {
+        $attendance_percent = ($attendance_days / $required_days) * 100;
+    }
+    
+    // กำหนดระดับความเสี่ยง
+    $risk_level = 'low';
+    if ($attendance_percent <= $critical_threshold) {
+        $risk_level = 'critical';
+    } else if ($attendance_percent <= $high_threshold) {
+        $risk_level = 'high';
+    } else if ($attendance_percent <= $medium_threshold) {
+        $risk_level = 'medium';
+    }
+    
+    // ตรวจสอบว่ามีข้อมูลความเสี่ยงหรือยัง
+    $stmt = $conn->prepare("
+        SELECT risk_id, risk_level, notification_sent
+        FROM risk_students 
+        WHERE student_id = ? AND academic_year_id = ?
+    ");
+    $stmt->execute([$student_id, $academic_year_id]);
+    $risk = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    if ($risk) {
+        // อัปเดตข้อมูลความเสี่ยง
+        $stmt = $conn->prepare("
+            UPDATE risk_students 
+            SET risk_level = ?, absence_count = ?, updated_at = NOW()
+            WHERE risk_id = ?
+        ");
+        $stmt->execute([$risk_level, $absence_days, $risk['risk_id']]);
+        
+        // ตรวจสอบการแจ้งเตือน
+        if ($risk_level == 'high' || $risk_level == 'critical') {
+            if (!$risk['notification_sent']) {
+                // ส่งการแจ้งเตือน (ให้ระบบอื่นดำเนินการต่อ)
+                $stmt = $conn->prepare("
+                    UPDATE risk_students 
+                    SET notification_sent = 1, notification_date = NOW()
+                    WHERE risk_id = ?
+                ");
+                $stmt->execute([$risk['risk_id']]);
+            }
+        }
+    } else {
+        // เพิ่มข้อมูลความเสี่ยงใหม่
+        $stmt = $conn->prepare("
+            INSERT INTO risk_students 
+            (student_id, academic_year_id, absence_count, risk_level, notification_sent, created_at, updated_at)
+            VALUES (?, ?, ?, ?, 0, NOW(), NOW())
+        ");
+        $stmt->execute([$student_id, $academic_year_id, $absence_days, $risk_level]);
+    }
+}
+
 
 $selected_class_id = $_SESSION['last_selected_class_id'] ?? '';
 
