@@ -1,6 +1,6 @@
 <?php
 /**
- * attendance_report.php - หน้าค้นหาและพิมพ์รายงานการเข้าแถว
+ * attendance_report.php - หน้าค้นหาและพิมพ์รายงานการเข้าแถว (ปรับปรุงใหม่)
  * 
  * ส่วนหนึ่งของระบบน้องชูใจ AI - ดูแลผู้เรียน
  * วิทยาลัยการอาชีพปราสาท
@@ -39,6 +39,12 @@ $query = "SELECT academic_year_id, year, semester, start_date, end_date FROM aca
 $stmt = $conn->query($query);
 $academic_year = $stmt->fetch(PDO::FETCH_ASSOC);
 
+// คำนวณจำนวนสัปดาห์ทั้งหมด
+$start_date = new DateTime($academic_year['start_date']);
+$end_date = new DateTime($academic_year['end_date']);
+$total_days = $start_date->diff($end_date)->days;
+$total_weeks = ceil($total_days / 7);
+
 // แผนกวิชา
 $query = "SELECT department_id, department_name FROM departments WHERE is_active = 1 ORDER BY department_name";
 $stmt = $conn->query($query);
@@ -49,18 +55,16 @@ $extra_css = [
     'assets/css/attendance_report.css',
     'https://cdn.datatables.net/1.11.5/css/jquery.dataTables.min.css',
     'https://cdn.datatables.net/responsive/2.2.9/css/responsive.dataTables.min.css',
-    'https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css'
+    'https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css'
 ];
 
+// ใช้ไฟล์ JavaScript ที่ปรับปรุงแล้วเท่านั้น
 $extra_js = [
     'https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js',
     'https://cdn.datatables.net/responsive/2.2.9/js/dataTables.responsive.min.js',
-    'https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js',
-    'assets/js/attendance_report.js'
+    'https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js'
+    // ลบ 'assets/js/attendance_report.js' ออกเพื่อป้องกันการโหลดซ้ำ
 ];
-
-// กำหนดตัวแปรสำหรับค้นหาเพื่อป้องกัน undefined variable
-$search_term = isset($_GET['search']) ? $_GET['search'] : '';
 
 // โหลดเทมเพลต
 require_once 'templates/header.php';
@@ -72,31 +76,29 @@ require_once 'templates/sidebar.php';
     <div class="header">
         <h1 class="page-title"><?php echo $page_header; ?></h1>
         <div class="header-actions">
-            <?php if(!isset($hide_search) || !$hide_search): ?>
-            <div class="search-bar">
-                <input type="text" class="search-input" placeholder="ค้นหา...">
-                <button class="search-button">
-                    <span class="material-icons">search</span>
-                </button>
-            </div>
-            <?php endif; ?>
+            <button type="button" class="btn btn-info" data-bs-toggle="modal" data-bs-target="#helpModal">
+                <i class="material-icons">help</i> คำแนะนำ
+            </button>
         </div>
     </div>
 
     <?php 
     if (isset($_SESSION['success_message'])) {
-        echo '<div class="alert alert-success">' . $_SESSION['success_message'] . '</div>';
+        echo '<div class="alert alert-success alert-dismissible fade show">' . $_SESSION['success_message'] . 
+             '<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>';
         unset($_SESSION['success_message']);
     }
 
     if (isset($_SESSION['error_message'])) {
-        echo '<div class="alert alert-danger">' . $_SESSION['error_message'] . '</div>';
+        echo '<div class="alert alert-danger alert-dismissible fade show">' . $_SESSION['error_message'] . 
+             '<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>';
         unset($_SESSION['error_message']);
     }
     ?>
 
     <!-- เนื้อหาเฉพาะหน้า -->
     <div class="content">
+        <!-- ฟอร์มค้นหา -->
         <div class="card mb-4">
             <div class="card-header bg-primary text-white">
                 <h5 class="card-title mb-0">
@@ -104,11 +106,27 @@ require_once 'templates/sidebar.php';
                 </h5>
             </div>
             <div class="card-body">
-                <div class="search-panel">
-                    <div class="row">
+                <form id="searchForm">
+                    <div class="row mb-3">
                         <div class="col-md-6">
-                            <div class="form-group mb-3">
-                                <label for="department" class="form-label">แผนกวิชา</label>
+                            <label for="search_type" class="form-label fw-bold">ประเภทการค้นหา</label>
+                            <select id="search_type" class="form-select form-select-lg">
+                                <option value="class">ค้นหาตามห้องเรียน</option>
+                                <option value="student">ค้นหาตามนักเรียน</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="search_input" class="form-label fw-bold">ค้นหา</label>
+                            <input type="text" id="search_input" class="form-control form-control-lg" 
+                                   placeholder="ชื่อ, นามสกุล หรือรหัสนักเรียน" style="display: none;">
+                        </div>
+                    </div>
+
+                    <!-- ส่วนค้นหาตามห้องเรียน -->
+                    <div id="class_search_section">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="department" class="form-label fw-bold">แผนกวิชา</label>
                                 <select id="department" class="form-select form-select-lg select2">
                                     <option value="">-- เลือกแผนกวิชา --</option>
                                     <?php foreach ($departments as $dept): ?>
@@ -116,10 +134,8 @@ require_once 'templates/sidebar.php';
                                     <?php endforeach; ?>
                                 </select>
                             </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="form-group mb-3">
-                                <label for="class" class="form-label">ห้องเรียน</label>
+                            <div class="col-md-6">
+                                <label for="class" class="form-label fw-bold">ห้องเรียน</label>
                                 <div class="select-container">
                                     <select id="class" class="form-select form-select-lg select2" disabled>
                                         <option value="">-- เลือกห้องเรียน --</option>
@@ -134,56 +150,47 @@ require_once 'templates/sidebar.php';
                         </div>
                     </div>
                     
-                    <div class="row mt-2">
+                    <div class="row mb-3">
                         <div class="col-md-6">
-                            <div class="form-group mb-3">
-                                <label for="start_week" class="form-label">เริ่มต้นสัปดาห์ที่</label>
-                                <select id="start_week" class="form-select form-select-lg select2">
-                                    <option value="">-- เลือกสัปดาห์ --</option>
-                                    <?php for ($i = 1; $i <= 18; $i++): ?>
-                                    <option value="<?php echo $i; ?>">สัปดาห์ที่ <?php echo $i; ?></option>
-                                    <?php endfor; ?>
-                                </select>
-                            </div>
+                            <label for="start_week" class="form-label fw-bold">เริ่มต้นสัปดาห์ที่</label>
+                            <select id="start_week" class="form-select form-select-lg select2">
+                                <option value="">-- เลือกสัปดาห์ --</option>
+                                <?php for ($i = 1; $i <= $total_weeks; $i++): ?>
+                                <option value="<?php echo $i; ?>">สัปดาห์ที่ <?php echo $i; ?></option>
+                                <?php endfor; ?>
+                            </select>
                         </div>
                         <div class="col-md-6">
-                            <div class="form-group mb-3">
-                                <label for="end_week" class="form-label">สิ้นสุดสัปดาห์ที่</label>
-                                <select id="end_week" class="form-select form-select-lg select2">
-                                    <option value="">-- เลือกสัปดาห์ --</option>
-                                    <?php for ($i = 1; $i <= 18; $i++): ?>
-                                    <option value="<?php echo $i; ?>">สัปดาห์ที่ <?php echo $i; ?></option>
-                                    <?php endfor; ?>
-                                </select>
-                            </div>
+                            <label for="end_week" class="form-label fw-bold">สิ้นสุดสัปดาห์ที่</label>
+                            <select id="end_week" class="form-select form-select-lg select2">
+                                <option value="">-- เลือกสัปดาห์ --</option>
+                                <?php for ($i = 1; $i <= $total_weeks; $i++): ?>
+                                <option value="<?php echo $i; ?>">สัปดาห์ที่ <?php echo $i; ?></option>
+                                <?php endfor; ?>
+                            </select>
                         </div>
                     </div>
                     
-                    <div class="row mt-2">
-                        <div class="col-md-6">
-                            <div class="form-group mb-3">
-                                <label for="search_student" class="form-label">ค้นหานักเรียน (เฉพาะเจาะจง)</label>
-                                <input type="text" id="search_student" class="form-control form-control-lg" placeholder="รหัสนักเรียน, ชื่อ หรือนามสกุล">
-                            </div>
-                        </div>
-                        <div class="col-md-6 d-flex align-items-end">
-                            <button id="search_btn" class="btn btn-primary btn-lg w-100">
+                    <div class="row mb-3">
+                        <div class="col-md-12 d-flex align-items-end">
+                            <button id="search_btn" type="button" class="btn btn-primary btn-lg w-100">
                                 <span class="material-icons">search</span> ค้นหา
                             </button>
                         </div>
                     </div>
-                </div>
+                </form>
 
-                <!-- ข้อความแนะนำสำหรับการค้นหา -->
-                <div class="info-panel mt-4">
+                <!-- ข้อความแนะนำ -->
+                <div class="info-panel mt-4" id="info_panel">
                     <div class="alert alert-info">
                         <div class="d-flex align-items-center">
                             <i class="material-icons fs-2 me-2">info</i>
                             <div>
-                                <strong>วิธีใช้งาน:</strong> กรุณาเลือกห้องเรียนและช่วงสัปดาห์เพื่อแสดงรายงานการเข้าแถว
-                                <button type="button" class="btn btn-sm btn-outline-info ms-2" data-bs-toggle="modal" data-bs-target="#helpModal">
-                                    คำแนะนำเพิ่มเติม
-                                </button>
+                                <strong>วิธีใช้งาน:</strong> เลือกประเภทการค้นหา จากนั้นเลือกข้อมูลที่ต้องการและกดค้นหา
+                                <ul class="mb-0 mt-2">
+                                    <li>ค้นหาตามห้องเรียน: เลือกแผนกและห้องเรียน</li>
+                                    <li>ค้นหาตามนักเรียน: พิมพ์ชื่อ นามสกุล หรือรหัสนักเรียน</li>
+                                </ul>
                             </div>
                         </div>
                     </div>
@@ -191,7 +198,7 @@ require_once 'templates/sidebar.php';
             </div>
         </div>
 
-        <!-- ส่วนแสดงผลรายงาน - ปรับปรุงใหม่ -->
+        <!-- ส่วนแสดงผลรายงาน -->
         <div id="report_container" class="card mb-4" style="display: none;">
             <div class="card-header bg-success text-white">
                 <h5 class="card-title mb-0">
@@ -200,27 +207,8 @@ require_once 'templates/sidebar.php';
             </div>
             <div class="card-body">
                 <!-- ข้อมูลสรุป -->
-                <div class="report-summary bg-light p-3 rounded mb-4">
-                    <div class="row">
-                        <div class="col-md-4">
-                            <div class="info-item">
-                                <strong><i class="material-icons align-middle me-1">school</i> ห้องเรียน:</strong>
-                                <span id="summary_class">-</span>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="info-item">
-                                <strong><i class="material-icons align-middle me-1">date_range</i> ช่วงวันที่:</strong>
-                                <span id="summary_date">-</span>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="info-item">
-                                <strong><i class="material-icons align-middle me-1">event_note</i> สัปดาห์ที่:</strong>
-                                <span id="summary_week">-</span>
-                            </div>
-                        </div>
-                    </div>
+                <div class="report-summary bg-light p-3 rounded mb-4" id="report_summary">
+                    <!-- ข้อมูลสรุปจะถูกเพิ่มด้วย JavaScript -->
                 </div>
                 
                 <!-- แสดงการโหลด -->
@@ -237,7 +225,7 @@ require_once 'templates/sidebar.php';
                 </div>
                 
                 <!-- ปุ่มดำเนินการ -->
-                <div class="action-buttons mt-4 d-flex flex-wrap gap-2 justify-content-end">
+                <div class="action-buttons mt-4 d-flex flex-wrap gap-2 justify-content-end" style="display: none!important;" id="action_buttons">
                     <button id="print_pdf_btn" class="btn btn-danger btn-lg">
                         <span class="material-icons">picture_as_pdf</span> พิมพ์รายงาน PDF
                     </button>
@@ -250,8 +238,6 @@ require_once 'templates/sidebar.php';
                 </div>
             </div>
         </div>
-        
-
     </div>
 </div>
 
@@ -264,6 +250,7 @@ require_once 'templates/sidebar.php';
     <input type="hidden" name="end_week" id="form_end_week">
     <input type="hidden" name="report_type" id="form_report_type" value="attendance">
     <input type="hidden" name="search" id="form_search">
+    <input type="hidden" name="search_type" id="form_search_type">
 </form>
 
 <!-- ฟอร์มซ่อนสำหรับการส่งข้อมูลไปหน้าพิมพ์กราฟ -->
@@ -272,7 +259,10 @@ require_once 'templates/sidebar.php';
     <input type="hidden" name="start_date" id="chart_start_date">
     <input type="hidden" name="end_date" id="chart_end_date">
     <input type="hidden" name="week_number" id="chart_week_number">
+    <input type="hidden" name="end_week" id="chart_end_week">
     <input type="hidden" name="report_type" id="chart_report_type" value="chart">
+    <input type="hidden" name="search" id="chart_search">
+    <input type="hidden" name="search_type" id="chart_search_type">
 </form>
 
 <!-- ฟอร์มซ่อนสำหรับการส่งออก Excel -->
@@ -281,29 +271,49 @@ require_once 'templates/sidebar.php';
     <input type="hidden" name="start_date" id="excel_start_date">
     <input type="hidden" name="end_date" id="excel_end_date">
     <input type="hidden" name="week_number" id="excel_week_number">
+    <input type="hidden" name="end_week" id="excel_end_week">
     <input type="hidden" name="search" id="excel_search">
+    <input type="hidden" name="search_type" id="excel_search_type">
 </form>
 
-<!-- Modal แสดงเมื่อต้องการค้นหาข้อมูล -->
+<!-- Modal คำแนะนำ -->
 <div class="modal fade" id="helpModal" tabindex="-1" aria-labelledby="helpModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="helpModalLabel">วิธีใช้งานรายงานการเข้าแถว</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <p>คำแนะนำในการใช้งาน:</p>
-                <ol>
-                    <li>เลือกแผนกวิชาและห้องเรียนที่ต้องการดูรายงาน</li>
-                    <li>เลือกสัปดาห์เริ่มต้นและสัปดาห์สิ้นสุดสำหรับการออกรายงาน</li>
-                    <li>กดปุ่มค้นหาเพื่อแสดงตัวอย่างรายงาน</li>
-                    <li>เลือกประเภทรายงานที่ต้องการพิมพ์ (PDF หรือส่งออก Excel)</li>
-                </ol>
-                <p class="text-info">
-                    <i class="material-icons align-middle me-1">info</i>
-                    รายงานจะแสดงข้อมูลการเข้าแถวแยกตามสัปดาห์ โดยแต่ละสัปดาห์จะแสดงเฉพาะวันจันทร์ถึงวันศุกร์เท่านั้น
-                </p>
+                <h6>คำแนะนำในการใช้งาน:</h6>
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6 class="text-primary">ค้นหาตามห้องเรียน:</h6>
+                        <ol>
+                            <li>เลือกแผนกวิชาและห้องเรียนที่ต้องการดูรายงาน</li>
+                            <li>เลือกสัปดาห์เริ่มต้นและสัปดาห์สิ้นสุด</li>
+                            <li>กดปุ่มค้นหา</li>
+                        </ol>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="text-success">ค้นหาตามนักเรียน:</h6>
+                        <ol>
+                            <li>เลือกประเภทการค้นหาเป็น "ค้นหาตามนักเรียน"</li>
+                            <li>พิมพ์ชื่อ นามสกุล หรือรหัสนักเรียน</li>
+                            <li>เลือกช่วงสัปดาห์ที่ต้องการ</li>
+                            <li>กดปุ่มค้นหา</li>
+                        </ol>
+                    </div>
+                </div>
+                <div class="alert alert-info mt-3">
+                    <p class="mb-2"><strong>หมายเหตุ:</strong></p>
+                    <ul class="mb-0">
+                        <li>รายงานจะแสดงข้อมูลการเข้าแถวเฉพาะวันจันทร์ถึงวันศุกร์</li>
+                        <li>แต่ละสัปดาห์ในรายงาน PDF จะแสดงในหน้าแยกกัน</li>
+                        <li>วันหยุดราชการจะแสดงเป็นช่องสีเทา</li>
+                        <li>สามารถพิมพ์รายงานเป็น PDF และส่งออกเป็น Excel ได้</li>
+                    </ul>
+                </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ปิด</button>
@@ -312,142 +322,11 @@ require_once 'templates/sidebar.php';
     </div>
 </div>
 
-<!-- CSS เพิ่มเติมเฉพาะหน้านี้ -->
-<style>
-    /* ปรับแต่งการแสดงผลเพิ่มเติม */
-    .card {
-        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
-        border: none;
-        border-radius: 0.5rem;
-        overflow: hidden;
-    }
-    
-    .card-header {
-        font-weight: 600;
-        border-bottom: none;
-    }
-    
-    .form-label {
-        font-weight: 500;
-    }
-    
-    .preview-content {
-        max-height: 600px;
-        overflow-y: auto;
-        padding-right: 10px;
-    }
-    
-    /* ปรับแต่ง scrollbar ให้สวยงาม */
-    .preview-content::-webkit-scrollbar {
-        width: 8px;
-    }
-    
-    .preview-content::-webkit-scrollbar-track {
-        background: #f1f1f1;
-        border-radius: 10px;
-    }
-    
-    .preview-content::-webkit-scrollbar-thumb {
-        background: #888;
-        border-radius: 10px;
-    }
-    
-    .preview-content::-webkit-scrollbar-thumb:hover {
-        background: #555;
-    }
-    
-    /* สไตล์สำหรับตาราง */
-    .week-table {
-        margin-bottom: 2rem;
-        border: 1px solid #dee2e6;
-        border-radius: 0.5rem;
-        overflow: hidden;
-    }
-    
-    .week-table .week-header {
-        padding: 0.75rem 1rem;
-        background-color: #f8f9fa;
-        border-bottom: 1px solid #dee2e6;
-    }
-    
-    .week-table .table {
-        margin-bottom: 0;
-    }
-    
-    .info-item {
-        display: flex;
-        flex-direction: column;
-        margin-bottom: 0.5rem;
-    }
-    
-    .info-item strong {
-        margin-bottom: 0.25rem;
-    }
-    
-    @media (min-width: 768px) {
-        .info-item {
-            flex-direction: row;
-            align-items: center;
-        }
-        
-        .info-item strong {
-            margin-bottom: 0;
-            margin-right: 0.5rem;
-            min-width: 120px;
-        }
-    }
-    
-    /* สีสถานะการเข้าแถว */
-    .status-present {
-        background-color: #d1e7dd !important;
-        color: #0f5132 !important;
-    }
-    
-    .status-absent {
-        background-color: #f8d7da !important;
-        color: #842029 !important;
-    }
-    
-    .status-late {
-        background-color: #fff3cd !important;
-        color: #664d03 !important;
-    }
-    
-    .status-leave {
-        background-color: #cff4fc !important;
-        color: #055160 !important;
-    }
-    
-    .status-holiday {
-        background-color: #e2e3e5 !important;
-        color: #41464b !important;
-    }
-    
-    /* แต่งปุ่ม */
-    .btn-lg {
-        padding: 0.6rem 1.2rem;
-        font-size: 1rem;
-        display: inline-flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-    
-    .report-summary {
-        border: 1px solid #dee2e6;
-    }
-    
-    .select2-container .select2-selection--single {
-        height: 38px !important;
-    }
-    
-    .select2-container--default .select2-selection--single .select2-selection__rendered {
-        line-height: 38px !important;
-    }
-    
-    .select2-container--default .select2-selection--single .select2-selection__arrow {
-        height: 36px !important;
-    }
-</style>
+<!-- ตัวแปร JavaScript สำหรับใช้งาน -->
+<script>
+const academicYear = <?php echo json_encode($academic_year); ?>;
+const totalWeeks = <?php echo $total_weeks; ?>;
+</script>
 
 <!-- JavaScript เพิ่มเติมเฉพาะหน้านี้ -->
 <script>
@@ -457,6 +336,19 @@ document.addEventListener('DOMContentLoaded', function() {
         width: '100%',
         placeholder: "เลือกหรือค้นหา...",
         allowClear: true
+    });
+    
+    // เมื่อเปลี่ยนประเภทการค้นหา
+    $('#search_type').on('change', function() {
+        const searchType = $(this).val();
+        
+        if (searchType === 'student') {
+            $('#class_search_section').hide();
+            $('#search_input').show().focus();
+        } else {
+            $('#class_search_section').show();
+            $('#search_input').hide();
+        }
     });
     
     // เมื่อเลือกแผนกวิชา
@@ -517,8 +409,8 @@ document.addEventListener('DOMContentLoaded', function() {
         endWeekSelect.empty().append('<option value="">-- เลือกสัปดาห์ --</option>');
         
         if (startWeek) {
-            // เพิ่มตัวเลือกสัปดาห์สิ้นสุด (จากสัปดาห์เริ่มต้นถึง 18)
-            for (let i = startWeek; i <= 18; i++) {
+            // เพิ่มตัวเลือกสัปดาห์สิ้นสุด (จากสัปดาห์เริ่มต้นถึง totalWeeks)
+            for (let i = startWeek; i <= totalWeeks; i++) {
                 endWeekSelect.append(`<option value="${i}" ${i === startWeek ? 'selected' : ''}>สัปดาห์ที่ ${i}</option>`);
             }
             
@@ -529,161 +421,357 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // เมื่อคลิกปุ่มค้นหา
     $('#search_btn').on('click', function() {
-        const departmentId = $('#department').val();
-        const classId = $('#class').val();
+        const searchType = $('#search_type').val();
         const startWeek = $('#start_week').val();
         const endWeek = $('#end_week').val();
-        const searchTerm = $('#search_student').val();
         
-        // ตรวจสอบว่าเลือกครบถ้วนหรือไม่
-        if (!departmentId || !classId || !startWeek || !endWeek) {
-            alert('กรุณาเลือกข้อมูลให้ครบถ้วน');
+        // ตรวจสอบสัปดาห์
+        if (!startWeek || !endWeek) {
+            alert('กรุณาเลือกช่วงสัปดาห์');
             return;
         }
         
+        let searchData = {
+            search_type: searchType,
+            start_week: startWeek,
+            end_week: endWeek
+        };
+        
+        if (searchType === 'class') {
+            const departmentId = $('#department').val();
+            const classId = $('#class').val();
+            
+            if (!departmentId || !classId) {
+                alert('กรุณาเลือกแผนกวิชาและห้องเรียน');
+                return;
+            }
+            
+            searchData.department_id = departmentId;
+            searchData.class_id = classId;
+        } else {
+            const searchInput = $('#search_input').val().trim();
+            
+            if (!searchInput) {
+                alert('กรุณาพิมพ์ข้อมูลที่ต้องการค้นหา');
+                return;
+            }
+            
+            searchData.search_input = searchInput;
+        }
+        
+        // เรียกฟังก์ชันค้นหา
+        performSearch(searchData);
+    });
+    
+    // ฟังก์ชันทำการค้นหา
+    function performSearch(searchData) {
         // คำนวณวันที่เริ่มต้นและสิ้นสุดจากสัปดาห์
-        const academicStartDate = new Date('<?php echo $academic_year['start_date']; ?>'); // วันเริ่มต้นภาคเรียน
+        const academicStartDate = new Date(academicYear.start_date);
         
         // วันเริ่มต้นของสัปดาห์ที่เลือก
         const startDate = new Date(academicStartDate);
-        startDate.setDate(startDate.getDate() + (parseInt(startWeek) - 1) * 7);
+        startDate.setDate(startDate.getDate() + (parseInt(searchData.start_week) - 1) * 7);
         
         // ปรับให้เป็นวันจันทร์
-        const dayOfWeek = startDate.getDay(); // 0 = อาทิตย์, 1 = จันทร์, ...
-        if (dayOfWeek === 0) { // ถ้าเป็นวันอาทิตย์ ให้เลื่อนไป 1 วัน (เป็นวันจันทร์)
+        const dayOfWeek = startDate.getDay();
+        if (dayOfWeek === 0) {
             startDate.setDate(startDate.getDate() + 1);
-        } else if (dayOfWeek > 1) { // ถ้าไม่ใช่วันจันทร์ ให้ถอยกลับไปเป็นวันจันทร์ล่าสุด
+        } else if (dayOfWeek > 1) {
             startDate.setDate(startDate.getDate() - (dayOfWeek - 1));
         }
         
-        // วันสิ้นสุดของสัปดาห์ที่เลือก (ศุกร์ของสัปดาห์สุดท้าย)
+        // วันสิ้นสุดของสัปดาห์ที่เลือก
         const endDate = new Date(academicStartDate);
-        endDate.setDate(endDate.getDate() + (parseInt(endWeek) - 1) * 7); // ไปถึงเริ่มต้นของสัปดาห์สุดท้าย
+        endDate.setDate(endDate.getDate() + (parseInt(searchData.end_week) - 1) * 7);
         
-        // ปรับให้เป็นวันจันทร์
         const endDayOfWeek = endDate.getDay();
-        if (endDayOfWeek === 0) { // ถ้าเป็นวันอาทิตย์
+        if (endDayOfWeek === 0) {
             endDate.setDate(endDate.getDate() + 1);
-        } else if (endDayOfWeek > 1) { // ถ้าไม่ใช่วันจันทร์
+        } else if (endDayOfWeek > 1) {
             endDate.setDate(endDate.getDate() - (endDayOfWeek - 1));
         }
         
-        // เพิ่มอีก 4 วันเพื่อไปถึงวันศุกร์
-        endDate.setDate(endDate.getDate() + 4);
+        endDate.setDate(endDate.getDate() + 4); // ไปถึงวันศุกร์
         
-        // จัดรูปแบบวันที่เป็น yyyy-mm-dd
+        // จัดรูปแบบวันที่
         const formattedStartDate = formatDate(startDate);
         const formattedEndDate = formatDate(endDate);
         
         // กำหนดค่าให้กับฟอร์มพิมพ์
-        $('#form_class_id, #chart_class_id, #excel_class_id').val(classId);
-        $('#form_start_date, #chart_start_date, #excel_start_date').val(formattedStartDate);
-        $('#form_end_date, #chart_end_date, #excel_end_date').val(formattedEndDate);
-        $('#form_week_number, #chart_week_number, #excel_week_number').val(startWeek);
-        $('#form_end_week').val(endWeek);
-        $('#form_search, #excel_search').val(searchTerm);
+        const forms = ['#print_form', '#chart_form', '#excel_form'];
+        forms.forEach(formId => {
+            if (searchData.search_type === 'class') {
+                $(formId + ' input[name="class_id"]').val(searchData.class_id);
+                $(formId + ' input[name="search"]').val('');
+            } else {
+                $(formId + ' input[name="class_id"]').val('');
+                $(formId + ' input[name="search"]').val(searchData.search_input);
+            }
+            
+            $(formId + ' input[name="start_date"]').val(formattedStartDate);
+            $(formId + ' input[name="end_date"]').val(formattedEndDate);
+            $(formId + ' input[name="week_number"]').val(searchData.start_week);
+            $(formId + ' input[name="end_week"]').val(searchData.end_week);
+            $(formId + ' input[name="search_type"]').val(searchData.search_type);
+        });
         
-        // โหลดข้อมูลการเข้าแถว
-        loadAttendancePreview(classId, formattedStartDate, formattedEndDate, startWeek, endWeek, searchTerm);
-    });
+        // โหลดตัวอย่างข้อมูล
+        loadAttendancePreview(searchData, formattedStartDate, formattedEndDate);
+    }
     
-    // เมื่อคลิกปุ่มพิมพ์รายงาน PDF
+    // ฟังก์ชันโหลดตัวอย่างข้อมูล
+    function loadAttendancePreview(searchData, startDate, endDate) {
+        // แสดง loading และ report container
+        $('#preview_loading').show();
+        $('#preview_content').hide();
+        $('#report_container').show();
+        $('#info_panel').hide();
+        
+        // สร้าง AJAX request
+        let ajaxData = {
+            search_type: searchData.search_type,
+            start_date: startDate,
+            end_date: endDate,
+            start_week: searchData.start_week,
+            end_week: searchData.end_week
+        };
+        
+        if (searchData.search_type === 'class') {
+            ajaxData.class_id = searchData.class_id;
+        } else {
+            ajaxData.search_input = searchData.search_input;
+        }
+        
+        $.ajax({
+            url: 'ajax/get_attendance_preview.php',
+            type: 'GET',
+            data: ajaxData,
+            dataType: 'json',
+            success: function(response) {
+                $('#preview_loading').hide();
+                
+                if (response.status === 'success') {
+                    displaySearchResults(response, searchData);
+                    $('#action_buttons').show();
+                } else {
+                    alert('ไม่สามารถโหลดข้อมูลได้: ' + (response.error || 'เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ'));
+                    $('#report_container').hide();
+                    $('#info_panel').show();
+                }
+            },
+            error: function(xhr, status, error) {
+                $('#preview_loading').hide();
+                console.error('AJAX error:', { xhr, status, error });
+                alert('เกิดข้อผิดพลาดในการเชื่อมต่อกับเซิร์ฟเวอร์');
+                $('#report_container').hide();
+                $('#info_panel').show();
+            }
+        });
+    }
+    
+    // ฟังก์ชันแสดงผลลัพธ์การค้นหา
+    function displaySearchResults(response, searchData) {
+        // แสดงข้อมูลสรุป
+        let summaryHtml = '<div class="row">';
+        
+        if (searchData.search_type === 'class') {
+            const selectedClass = $('#class option:selected').text();
+            summaryHtml += `
+                <div class="col-md-4">
+                    <div class="info-item">
+                        <strong><i class="material-icons align-middle me-1">school</i> ห้องเรียน:</strong>
+                        <span>${selectedClass}</span>
+                    </div>
+                </div>
+            `;
+        } else {
+            summaryHtml += `
+                <div class="col-md-4">
+                    <div class="info-item">
+                        <strong><i class="material-icons align-middle me-1">person</i> ค้นหา:</strong>
+                        <span>${searchData.search_input}</span>
+                    </div>
+                </div>
+            `;
+        }
+        
+        summaryHtml += `
+            <div class="col-md-4">
+                <div class="info-item">
+                    <strong><i class="material-icons align-middle me-1">date_range</i> ช่วงวันที่:</strong>
+                    <span>${formatThaiDate(response.start_date)} - ${formatThaiDate(response.end_date)}</span>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="info-item">
+                    <strong><i class="material-icons align-middle me-1">event_note</i> สัปดาห์ที่:</strong>
+                    <span>${searchData.start_week} - ${searchData.end_week}</span>
+                </div>
+            </div>
+        </div>`;
+        
+        $('#report_summary').html(summaryHtml);
+        
+        // สร้างตารางแสดงข้อมูล
+        let contentHtml = '';
+        
+        if (response.students && response.students.length > 0) {
+            contentHtml = createWeeklyTables(response, searchData);
+        } else {
+            contentHtml = '<div class="alert alert-warning">ไม่พบข้อมูลนักเรียนตามเงื่อนไขที่ระบุ</div>';
+        }
+        
+        $('#preview_content').html(contentHtml).show();
+    }
+    
+    // ฟังก์ชันสร้างตารางรายสัปดาห์
+    function createWeeklyTables(response, searchData) {
+        let tablesHtml = '';
+        
+        // สร้างตารางสำหรับแต่ละสัปดาห์
+        for (let week = parseInt(searchData.start_week); week <= parseInt(searchData.end_week); week++) {
+            // คำนวณวันที่ของสัปดาห์นี้
+            const weekStartDate = new Date(academicYear.start_date);
+            weekStartDate.setDate(weekStartDate.getDate() + (week - 1) * 7);
+            
+            // ปรับให้เป็นวันจันทร์
+            const dayOfWeek = weekStartDate.getDay();
+            if (dayOfWeek === 0) {
+                weekStartDate.setDate(weekStartDate.getDate() + 1);
+            } else if (dayOfWeek > 1) {
+                weekStartDate.setDate(weekStartDate.getDate() - (dayOfWeek - 1));
+            }
+            
+            // สร้างอาเรย์วันจันทร์-ศุกร์
+            const weekDays = [];
+            const currentDay = new Date(weekStartDate);
+            
+            for (let i = 0; i < 5; i++) {
+                const dateStr = formatDate(currentDay);
+                const dayName = ['จ.', 'อ.', 'พ.', 'พฤ.', 'ศ.'][i];
+                
+                weekDays.push({
+                    date: dateStr,
+                    day_name: dayName,
+                    day_num: currentDay.getDate(),
+                    is_holiday: response.holidays && response.holidays[dateStr]
+                });
+                
+                currentDay.setDate(currentDay.getDate() + 1);
+            }
+            
+            // สร้างตาราง
+            tablesHtml += `
+                <div class="week-table mb-4">
+                    <div class="week-header bg-primary text-white p-3">
+                        <h5 class="mb-0">สัปดาห์ที่ ${week}</h5>
+                        <small>${formatThaiDate(weekDays[0].date)} - ${formatThaiDate(weekDays[4].date)}</small>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-striped mb-0">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th style="width: 60px;" class="text-center">ลำดับ</th>
+                                    <th style="width: 120px;" class="text-center">รหัสนักศึกษา</th>
+                                    <th class="text-left">ชื่อ-สกุล</th>
+            `;
+            
+            // เพิ่มหัวตารางวันที่
+            weekDays.forEach(day => {
+                tablesHtml += `
+                    <th style="width: 80px;" class="text-center ${day.is_holiday ? 'table-secondary' : ''}">
+                        ${day.day_name}<br>${day.day_num}
+                        ${day.is_holiday ? '<br><small>หยุด</small>' : ''}
+                    </th>
+                `;
+            });
+            
+            tablesHtml += `
+                                    <th style="width: 80px;" class="text-center">รวม</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+            `;
+            
+            // เพิ่มแถวข้อมูลนักเรียน
+            response.students.forEach((student, index) => {
+                let totalPresent = 0;
+                
+                tablesHtml += `
+                    <tr>
+                        <td class="text-center">${index + 1}</td>
+                        <td class="text-center">${student.student_code}</td>
+                        <td>${student.title}${student.first_name} ${student.last_name}</td>
+                `;
+                
+                // เพิ่มเซลล์สำหรับแต่ละวัน
+                weekDays.forEach(day => {
+                    if (day.is_holiday) {
+                        tablesHtml += `<td class="text-center table-secondary">หยุด</td>`;
+                    } else if (response.attendance_data[student.student_id] && response.attendance_data[student.student_id][day.date]) {
+                        const status = response.attendance_data[student.student_id][day.date];
+                        let statusText = '', statusClass = '';
+                        
+                        switch (status) {
+                            case 'present':
+                                statusText = 'มา';
+                                statusClass = 'table-success';
+                                totalPresent++;
+                                break;
+                            case 'absent':
+                                statusText = 'ขาด';
+                                statusClass = 'table-danger';
+                                break;
+                            case 'late':
+                                statusText = 'สาย';
+                                statusClass = 'table-warning';
+                                totalPresent++;
+                                break;
+                            case 'leave':
+                                statusText = 'ลา';
+                                statusClass = 'table-info';
+                                break;
+                            default:
+                                statusText = '-';
+                        }
+                        
+                        tablesHtml += `<td class="text-center ${statusClass}">${statusText}</td>`;
+                    } else {
+                        tablesHtml += `<td class="text-center">-</td>`;
+                    }
+                });
+                
+                tablesHtml += `
+                        <td class="text-center fw-bold">${totalPresent}</td>
+                    </tr>
+                `;
+            });
+            
+            tablesHtml += `
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+        }
+        
+        return tablesHtml;
+    }
+    
+    // เมื่อคลิกปุ่มต่าง ๆ
     $('#print_pdf_btn').on('click', function() {
         $('#print_form').submit();
     });
     
-    // เมื่อคลิกปุ่มพิมพ์กราฟสรุป PDF
     $('#print_chart_btn').on('click', function() {
         $('#chart_form').submit();
     });
     
-    // เมื่อคลิกปุ่มส่งออก Excel
     $('#export_excel_btn').on('click', function() {
         $('#excel_form').submit();
     });
     
-    // เมื่อคลิกปุ่มดูตัวอย่างโลโก้
-    $('#preview_logo').on('click', function() {
-        const fileInput = document.getElementById('school_logo');
-        if (fileInput.files && fileInput.files[0]) {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                $('#logo_preview').attr('src', e.target.result);
-            };
-            reader.readAsDataURL(fileInput.files[0]);
-        }
-        $('#logoModal').modal('show');
-    });
-    
-// แก้ไขเฉพาะฟังก์ชัน loadAttendancePreview เพื่อให้แสดงผลถูกต้อง
-function loadAttendancePreview(classId, startDate, endDate, startWeek, endWeek, searchTerm) {
-    // แสดงส่วน report container ก่อน
-    $('#report_container').show();
-    
-    // แสดง loading และซ่อนเนื้อหา
-    $('#preview_loading').show();
-    $('#preview_content').hide();
-    
-    // ซ่อนข้อความแจ้งเตือน
-    $('.info-panel').hide();
-    
-    // โหลดข้อมูลการเข้าแถวจาก AJAX
-    $.ajax({
-        url: 'ajax/get_attendance_preview.php',
-        type: 'GET',
-        data: {
-            class_id: classId,
-            start_date: startDate,
-            end_date: endDate,
-            search: searchTerm
-        },
-        dataType: 'json',
-        success: function(response) {
-            // ซ่อน loading
-            $('#preview_loading').hide();
-            
-            if (response.status === 'success') {
-                // สร้างเนื้อหาตารางแสดงข้อมูล
-                let weekTable = '';
-                
-                // สร้างข้อมูลสำหรับแต่ละสัปดาห์
-                let currentWeek = parseInt(startWeek);
-                let weekStartDate = new Date(startDate);
-                
-                while (currentWeek <= parseInt(endWeek)) {
-                    // รหัสสร้างตารางข้อมูลเหมือนเดิม...
-                    // (โค้ดส่วนนี้ยังเป็นเหมือนเดิม)
-                    
-                    // เลื่อนไปสัปดาห์ถัดไป
-                    currentWeek++;
-                    weekStartDate.setDate(weekStartDate.getDate() + 7);
-                }
-                
-                // ตรวจสอบว่ามีข้อมูลหรือไม่
-                if (weekTable === '') {
-                    $('#preview_content').html('<div class="alert alert-warning">ไม่พบข้อมูลการเข้าแถวในช่วงเวลาที่เลือก</div>').show();
-                } else {
-                    // ใส่เนื้อหาและแสดงผล - สำคัญ: ต้องแสดงผลด้วย .show()
-                    $('#preview_content').html(weekTable).show();
-                }
-                
-            } else {
-                // แสดงข้อความข้อผิดพลาด
-                $('#preview_content').html(`<div class="alert alert-danger">${response.error || 'เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ'}</div>`).show();
-            }
-        },
-        error: function(xhr, status, error) {
-            // ซ่อน loading
-            $('#preview_loading').hide();
-            
-            // แสดงข้อความข้อผิดพลาด
-            $('#preview_content').html('<div class="alert alert-danger">เกิดข้อผิดพลาดในการเชื่อมต่อกับเซิร์ฟเวอร์</div>').show();
-            console.error('AJAX Error:', error);
-        }
-    });
-}
-    
-    // ฟังก์ชันจัดรูปแบบวันที่เป็น yyyy-mm-dd
+    // ฟังก์ชันช่วยเหลือ
     function formatDate(date) {
         const year = date.getFullYear();
         const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -691,7 +779,6 @@ function loadAttendancePreview(classId, startDate, endDate, startWeek, endWeek, 
         return `${year}-${month}-${day}`;
     }
     
-    // ฟังก์ชันจัดรูปแบบวันที่เป็น d/m/yyyy (ภาษาไทย)
     function formatThaiDate(dateStr) {
         const date = new Date(dateStr);
         return `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear() + 543}`;

@@ -9,7 +9,7 @@
 
 // เริ่ม session
 session_start();
-
+date_default_timezone_set('Asia/Bangkok');
 // ตรวจสอบการล็อกอิน
 if (!isset($_SESSION['user_id']) || !isset($_SESSION['user_role']) || ($_SESSION['user_role'] != 'admin' && $_SESSION['user_role'] != 'teacher')) {
     header('Location: ../login.php');
