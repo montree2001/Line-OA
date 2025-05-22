@@ -89,17 +89,17 @@
         }
 
         .holiday {
-            background-color: #f0f0f0;
+            background-color: yellow;
             color: #777;
         }
 
         .present {
-            background-color: #d4edda;
+            background-color: while;
             color: #155724;
         }
 
         .absent {
-            background-color: #f8d7da;
+            background-color: red;
             color: #721c24;
         }
 
