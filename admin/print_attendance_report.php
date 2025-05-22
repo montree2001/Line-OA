@@ -1,7 +1,7 @@
 <?php
 
 /**
- * print_attendance_report.php - สร้างไฟล์ PDF รายงานการเข้าแถวรายสัปดาห์
+ * print_attendance_report.php - สร้างไฟล์ PDF รายงานการเข้าแถวรายสัปดาห์ (แก้ไขแล้ว)
  * 
  * ส่วนหนึ่งของระบบน้องชูใจ AI - ดูแลผู้เรียน
  * วิทยาลัยการอาชีพปราสาท
@@ -10,6 +10,7 @@
 // เริ่ม session
 session_start();
 date_default_timezone_set('Asia/Bangkok');
+
 // ตรวจสอบการล็อกอิน
 if (!isset($_SESSION['user_id']) || !isset($_SESSION['user_role']) || ($_SESSION['user_role'] != 'admin' && $_SESSION['user_role'] != 'teacher')) {
     header('Location: ../login.php');
@@ -17,7 +18,7 @@ if (!isset($_SESSION['user_id']) || !isset($_SESSION['user_role']) || ($_SESSION
 }
 
 // ตรวจสอบว่ามีการส่งข้อมูลมาหรือไม่
-if ($_SERVER['REQUEST_METHOD'] != 'POST' || !isset($_POST['class_id']) || !isset($_POST['start_date']) || !isset($_POST['end_date'])) {
+if ($_SERVER['REQUEST_METHOD'] != 'POST') {
     die('กรุณาระบุข้อมูลให้ครบถ้วน');
 }
 
@@ -26,13 +27,14 @@ require_once '../vendor/autoload.php';
 require_once '../db_connect.php';
 
 // ดึงข้อมูลที่ส่งมา
-$class_id = $_POST['class_id'];
-$start_date = $_POST['start_date'];
-$end_date = $_POST['end_date'];
+$class_id = $_POST['class_id'] ?? '';
+$start_date = $_POST['start_date'] ?? '';
+$end_date = $_POST['end_date'] ?? '';
 $week_number = $_POST['week_number'] ?? 1;
 $end_week = $_POST['end_week'] ?? $week_number;
 $report_type = $_POST['report_type'] ?? 'attendance';
 $search = $_POST['search'] ?? '';
+$search_type = $_POST['search_type'] ?? 'class';
 
 // เชื่อมต่อฐานข้อมูล
 $conn = getDB();
@@ -42,40 +44,74 @@ $query = "SELECT academic_year_id, year, semester, start_date, end_date FROM aca
 $stmt = $conn->query($query);
 $academic_year = $stmt->fetch(PDO::FETCH_ASSOC);
 
-// ดึงข้อมูลห้องเรียน
-$query = "SELECT c.class_id, c.level, c.group_number, d.department_id, d.department_name 
-          FROM classes c 
-          JOIN departments d ON c.department_id = d.department_id 
-          WHERE c.class_id = ?";
-$stmt = $conn->prepare($query);
-$stmt->execute([$class_id]);
-$class = $stmt->fetch(PDO::FETCH_ASSOC);
-
-// ดึงข้อมูลแผนกวิชา
-$department = [
-    'department_id' => $class['department_id'],
-    'department_name' => $class['department_name']
-];
-
 // เตรียม query สำหรับดึงนักเรียน
-$query_students = "SELECT s.student_id, s.student_code, s.title, u.first_name, u.last_name,
-                   CASE WHEN u.title IS NULL THEN s.title ELSE u.title END as display_title  
-                   FROM students s 
-                   JOIN users u ON s.user_id = u.user_id 
-                   WHERE s.current_class_id = ? AND s.status = 'กำลังศึกษา'";
-
-// เพิ่มเงื่อนไขค้นหาถ้ามี
-if (!empty($search)) {
-    $query_students .= " AND (s.student_code LIKE ? OR u.first_name LIKE ? OR u.last_name LIKE ?)";
+if ($search_type === 'student' && !empty($search)) {
+    // ค้นหาตามชื่อนักเรียน
+    $query_students = "SELECT s.student_id, s.student_code, s.title, u.first_name, u.last_name,
+                      CASE WHEN u.title IS NULL THEN s.title ELSE u.title END as display_title,
+                      c.class_id, c.level, c.group_number, d.department_name
+                      FROM students s 
+                      JOIN users u ON s.user_id = u.user_id 
+                      LEFT JOIN classes c ON s.current_class_id = c.class_id
+                      LEFT JOIN departments d ON c.department_id = d.department_id
+                      WHERE s.status = 'กำลังศึกษา'
+                      AND (s.student_code LIKE ? OR u.first_name LIKE ? OR u.last_name LIKE ?)
+                      ORDER BY s.student_code";
+    
     $search_param = "%$search%";
     $stmt = $conn->prepare($query_students);
-    $stmt->execute([$class_id, $search_param, $search_param, $search_param]);
+    $stmt->execute([$search_param, $search_param, $search_param]);
+    $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    // ใช้ข้อมูลของนักเรียนคนแรกสำหรับข้อมูลห้องเรียน
+    if (!empty($students)) {
+        $first_student = $students[0];
+        $class_id = $first_student['class_id'];
+        $class = [
+            'class_id' => $first_student['class_id'],
+            'level' => $first_student['level'],
+            'group_number' => $first_student['group_number'],
+            'department_name' => $first_student['department_name']
+        ];
+        $department = [
+            'department_name' => $first_student['department_name']
+        ];
+    } else {
+        die('ไม่พบข้อมูลนักเรียนที่ค้นหา');
+    }
 } else {
+    // ค้นหาตามห้องเรียน
+    if (empty($class_id)) {
+        die('กรุณาระบุห้องเรียน');
+    }
+    
+    // ดึงข้อมูลห้องเรียน
+    $query = "SELECT c.class_id, c.level, c.group_number, d.department_id, d.department_name 
+              FROM classes c 
+              JOIN departments d ON c.department_id = d.department_id 
+              WHERE c.class_id = ?";
+    $stmt = $conn->prepare($query);
+    $stmt->execute([$class_id]);
+    $class = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    if (!$class) {
+        die('ไม่พบข้อมูลห้องเรียน');
+    }
+    
+    $department = ['department_name' => $class['department_name']];
+    
+    // ดึงข้อมูลนักเรียนในห้อง
+    $query_students = "SELECT s.student_id, s.student_code, s.title, u.first_name, u.last_name,
+                      CASE WHEN u.title IS NULL THEN s.title ELSE u.title END as display_title  
+                      FROM students s 
+                      JOIN users u ON s.user_id = u.user_id 
+                      WHERE s.current_class_id = ? AND s.status = 'กำลังศึกษา' 
+                      ORDER BY s.student_code";
     $stmt = $conn->prepare($query_students);
     $stmt->execute([$class_id]);
+    $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
-$students = $stmt->fetchAll(PDO::FETCH_ASSOC);
 $total_count = count($students);
 
 // นับจำนวนนักเรียนชาย/หญิง
@@ -96,13 +132,6 @@ $holidays = [];
 while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
     $holidays[$row['holiday_date']] = $row['holiday_name'];
 }
-
-// ดึงข้อมูลวันยกเว้นเพิ่มเติม
-$query = "SELECT setting_value FROM system_settings WHERE setting_key = 'exemption_dates'";
-$stmt = $conn->query($query);
-$exemption_dates_str = $stmt->fetchColumn() ?: '';
-$exemption_dates = explode(',', $exemption_dates_str);
-$exemption_dates = array_map('trim', $exemption_dates);
 
 // คำนวณสัปดาห์ที่กำลังดำเนินการ
 $currentWeek = $week_number;
@@ -128,34 +157,26 @@ for ($w = $currentWeek; $w <= $endWeek; $w++) {
     $weekEnd = clone $weekStart;
     $weekEnd->modify('+4 days');
 
-    // สร้างข้อมูลวันจันทร์ถึงศุกร์ของสัปดาห์นี้
+    // สร้างข้อมูลวันจันทร์ถึงศุกร์ของสัปดาห์นี้ (เฉพาะ 5 วัน)
     $days = [];
     $currentDay = clone $weekStart;
 
     $thaiDays = ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์'];
     $thaiDayAbbrs = ['อา.', 'จ.', 'อ.', 'พ.', 'พฤ.', 'ศ.', 'ส.'];
     $thaiMonths = [
-        '01' => 'มกราคม',
-        '02' => 'กุมภาพันธ์',
-        '03' => 'มีนาคม',
-        '04' => 'เมษายน',
-        '05' => 'พฤษภาคม',
-        '06' => 'มิถุนายน',
-        '07' => 'กรกฎาคม',
-        '08' => 'สิงหาคม',
-        '09' => 'กันยายน',
-        '10' => 'ตุลาคม',
-        '11' => 'พฤศจิกายน',
-        '12' => 'ธันวาคม'
+        '01' => 'มกราคม', '02' => 'กุมภาพันธ์', '03' => 'มีนาคม', '04' => 'เมษายน',
+        '05' => 'พฤษภาคม', '06' => 'มิถุนายน', '07' => 'กรกฎาคม', '08' => 'สิงหาคม',
+        '09' => 'กันยายน', '10' => 'ตุลาคม', '11' => 'พฤศจิกายน', '12' => 'ธันวาคม'
     ];
 
-    for ($i = 0; $i < 5; $i++) { // จันทร์ถึงศุกร์
+    // สร้างเฉพาะ 5 วัน (จันทร์ถึงศุกร์)
+    for ($i = 0; $i < 5; $i++) {
         $dateStr = $currentDay->format('Y-m-d');
         $dayNum = (int)$currentDay->format('N'); // 1 = จันทร์, 7 = อาทิตย์
 
         // ตรวจสอบว่าเป็นวันหยุดหรือไม่
-        $isHoliday = in_array($dateStr, $exemption_dates) || isset($holidays[$dateStr]);
-        $holidayName = isset($holidays[$dateStr]) ? $holidays[$dateStr] : ($isHoliday ? 'วันหยุด' : null);
+        $isHoliday = isset($holidays[$dateStr]);
+        $holidayName = $isHoliday ? $holidays[$dateStr] : null;
 
         $days[] = [
             'date' => $dateStr,
@@ -230,22 +251,11 @@ $query = "SELECT * FROM report_signers WHERE is_active = 1 ORDER BY signer_id LI
 $stmt = $conn->query($query);
 $signers = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-
-// กำหนดความเหมาะสมของจำนวนนักเรียนต่อหน้า (สามารถปรับได้ตามความเหมาะสม)
-$studentsPerPage = 20; // ประมาณ 25 คนต่อหน้า A4 ขึ้นอยู่กับขนาดฟอนต์และรูปแบบรายงาน
-
-if ($total_count >=16 AND $total_count <= 19) {
-    $studentsPerPage = 15; // 20 คนต่อหน้า
+// กำหนดจำนวนนักเรียนต่อหน้า
+$studentsPerPage = 20;
+if ($total_count >= 16 && $total_count <= 19) {
+    $studentsPerPage = 15;
 }
-
-
-// ค้นหาตำแหน่งที่ตั้งของฟอนต์ mPDF
-$defaultConfig = (new \Mpdf\Config\ConfigVariables())->getDefaults();
-$fontDirs = $defaultConfig['fontDir'];
-
-// ค้นหาข้อมูลฟอนต์ที่มีอยู่แล้ว
-$defaultFontConfig = (new \Mpdf\Config\FontVariables())->getDefaults();
-$fontData = $defaultFontConfig['fontdata'];
 
 // กำหนดค่า config สำหรับ mPDF
 $mpdf_config = [
@@ -261,33 +271,25 @@ $mpdf_config = [
     'margin_header' => 10,
     'margin_footer' => 10,
     'tempDir' => __DIR__ . '/../tmp',
-    // เพิ่มตำแหน่งที่ตั้งของฟอนต์
-    'fontDir' => array_merge($fontDirs, [
-        __DIR__ . '/../ttfonts',
-    ]),
-    // กำหนดข้อมูลฟอนต์
-    'fontdata' => array_merge($fontData, [
+    'fontDir' => [
+        __DIR__ . '/../fonts/',
+        __DIR__ . '/../fonts/thsarabunnew/'
+    ],
+    'fontdata' => [
         'thsarabunnew' => [
             'R' => 'THSarabunNew.ttf',
             'B' => 'THSarabunNew-Bold.ttf',
             'I' => 'THSarabunNew-Italic.ttf',
             'BI' => 'THSarabunNew-BoldItalic.ttf',
-        ],
-    ]),
+        ]
+    ]
 ];
 
 // สร้าง mPDF
 $mpdf = new \Mpdf\Mpdf($mpdf_config);
-
-// ยกเลิกการใช้ฟอนต์ autoLangToFont
-$mpdf->autoLangToFont = false;
-$mpdf->autoScriptToLang = false;
-$mpdf->useAdobeCJK = false;
 $mpdf->SetFont('thsarabunnew');
-$mpdf->SetDefaultBodyCSS('font-family', "thsarabunnew");
-$mpdf->SetTitle("รายงานการเข้าแถว_{$class['level']}_{$class['group_number']}_{$department['department_name']}");
 
-// สร้าง PDF สำหรับแต่ละสัปดาห์
+// สร้าง PDF สำหรับแต่ละสัปดาห์ (แต่ละสัปดาห์หน้าใหม่)
 foreach ($weeks as $weekIndex => $week) {
     // สำหรับแต่ละสัปดาห์จะสร้างหน้า PDF ใหม่
     if ($weekIndex > 0) {
@@ -328,5 +330,6 @@ foreach ($weeks as $weekIndex => $week) {
 }
 
 // Output PDF
-$filename = "รายงานการเข้าแถว_{$class['level']}_{$class['group_number']}_{$department['department_name']}_สัปดาห์ที่{$week_number}-{$endWeek}.pdf";
+$search_info = $search_type === 'student' && !empty($search) ? "_ค้นหา_{$search}" : "";
+$filename = "รายงานการเข้าแถว_{$class['level']}_{$class['group_number']}_{$department['department_name']}_สัปดาห์ที่{$week_number}-{$endWeek}{$search_info}.pdf";
 $mpdf->Output($filename, 'I');
