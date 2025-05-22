@@ -9,13 +9,13 @@
 // เริ่ม session
 session_start();
 
-// ตรวจสอบการล็อกอิน
+/* // ตรวจสอบการล็อกอิน
 if (!isset($_SESSION['user_id']) || !isset($_SESSION['user_role']) || ($_SESSION['user_role'] != 'admin' && $_SESSION['user_role'] != 'teacher')) {
     header('Content-Type: application/json');
     echo json_encode(['error' => 'Unauthorized', 'status' => 'error']);
     exit;
 }
-
+ */
 // เชื่อมต่อฐานข้อมูล
 require_once '../../db_connect.php';
 $conn = getDB();

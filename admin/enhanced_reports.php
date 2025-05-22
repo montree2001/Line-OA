@@ -638,15 +638,9 @@ $extra_js = [
     'assets/js/enhanced_reports.js'
 ];
 
-
-// ตรวจสอบว่าเป็นคำขอ AJAX หรือไม่
-if (isset($_GET['ajax']) && $_GET['ajax'] == 1) {
-    header('Content-Type: application/json');
-    echo json_encode($report_data);
-    exit;
-}
 // กำหนดเส้นทางไปยังไฟล์เนื้อหา
 $content_path = 'pages/enhanced_reports_content.php';
+
 // โหลดเทมเพลต
 require_once 'templates/header.php';
 require_once 'templates/sidebar.php';

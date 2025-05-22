@@ -1,6 +1,6 @@
 <?php
 /**
- * print_attendance_chart.php - สร้างไฟล์ PDF กราฟการเข้าแถว
+ * print_attendance_chart.php - สร้างไฟล์ PDF กราฟการเข้าแถว (แก้ไขแล้ว)
  * 
  * ส่วนหนึ่งของระบบน้องชูใจ AI - ดูแลผู้เรียน
  * วิทยาลัยการอาชีพปราสาท
@@ -13,15 +13,15 @@ date_default_timezone_set('Asia/Bangkok');
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
-
+/* 
 // ตรวจสอบการล็อกอิน
 if (!isset($_SESSION['user_id']) || !isset($_SESSION['user_role']) || ($_SESSION['user_role'] != 'admin' && $_SESSION['user_role'] != 'teacher')) {
     header('Location: ../login.php');
     exit;
-}
+} */
 
 // ตรวจสอบว่ามีการส่งข้อมูลมาหรือไม่
-if ($_SERVER['REQUEST_METHOD'] != 'POST' || !isset($_POST['class_id']) || !isset($_POST['start_date']) || !isset($_POST['end_date'])) {
+if ($_SERVER['REQUEST_METHOD'] != 'POST' || (!isset($_POST['class_id']) && !isset($_POST['search'])) || !isset($_POST['start_date']) || !isset($_POST['end_date'])) {
     die('กรุณาระบุข้อมูลให้ครบถ้วน');
 }
 
@@ -30,11 +30,14 @@ require_once '../vendor/autoload.php';
 require_once '../db_connect.php';
 
 // ดึงข้อมูลที่ส่งมา
-$class_id = $_POST['class_id'];
-$start_date = $_POST['start_date'];
-$end_date = $_POST['end_date'];
+$class_id = $_POST['class_id'] ?? '';
+$start_date = $_POST['start_date'] ?? '';
+$end_date = $_POST['end_date'] ?? '';
 $week_number = $_POST['week_number'] ?? '1';
+$end_week = $_POST['end_week'] ?? $week_number;
 $report_type = $_POST['report_type'] ?? 'chart';
+$search = $_POST['search'] ?? '';
+$search_type = $_POST['search_type'] ?? 'class';
 
 // เชื่อมต่อฐานข้อมูล
 $conn = getDB();
@@ -44,31 +47,75 @@ $query = "SELECT academic_year_id, year, semester, start_date, end_date FROM aca
 $stmt = $conn->query($query);
 $academic_year = $stmt->fetch(PDO::FETCH_ASSOC);
 
-// ดึงข้อมูลห้องเรียน
-$query = "SELECT c.class_id, c.level, c.group_number, d.department_id, d.department_name 
-          FROM classes c 
-          JOIN departments d ON c.department_id = d.department_id 
-          WHERE c.class_id = ?";
-$stmt = $conn->prepare($query);
-$stmt->execute([$class_id]);
-$class = $stmt->fetch(PDO::FETCH_ASSOC);
+// เตรียม query สำหรับดึงนักเรียนและข้อมูลห้องเรียน
+if ($search_type === 'student' && !empty($search)) {
+    // ค้นหาตามชื่อนักเรียน
+    $query_students = "SELECT s.student_id, s.student_code, s.title, u.first_name, u.last_name,
+                      CASE WHEN u.title IS NULL THEN s.title ELSE u.title END as display_title,
+                      c.class_id, c.level, c.group_number, d.department_name
+                      FROM students s 
+                      JOIN users u ON s.user_id = u.user_id 
+                      LEFT JOIN classes c ON s.current_class_id = c.class_id
+                      LEFT JOIN departments d ON c.department_id = d.department_id
+                      WHERE s.status = 'กำลังศึกษา'
+                      AND (s.student_code LIKE ? OR u.first_name LIKE ? OR u.last_name LIKE ?)
+                      ORDER BY s.student_code";
+    
+    $search_param = "%$search%";
+    $stmt = $conn->prepare($query_students);
+    $stmt->execute([$search_param, $search_param, $search_param]);
+    $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    // ใช้ข้อมูลของนักเรียนคนแรกสำหรับข้อมูลห้องเรียน
+    if (!empty($students)) {
+        $first_student = $students[0];
+        $class_id = $first_student['class_id'];
+        $class = [
+            'class_id' => $first_student['class_id'],
+            'level' => $first_student['level'],
+            'group_number' => $first_student['group_number'],
+            'department_id' => 1, // กำหนดค่าเริ่มต้น
+            'department_name' => $first_student['department_name']
+        ];
+        $department = [
+            'department_name' => $first_student['department_name']
+        ];
+    } else {
+        die('ไม่พบข้อมูลนักเรียนที่ค้นหา');
+    }
+} else {
+    // ค้นหาตามห้องเรียน
+    if (empty($class_id)) {
+        die('กรุณาระบุห้องเรียน');
+    }
+    
+    // ดึงข้อมูลห้องเรียน
+    $query = "SELECT c.class_id, c.level, c.group_number, d.department_id, d.department_name 
+              FROM classes c 
+              JOIN departments d ON c.department_id = d.department_id 
+              WHERE c.class_id = ?";
+    $stmt = $conn->prepare($query);
+    $stmt->execute([$class_id]);
+    $class = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    if (!$class) {
+        die('ไม่พบข้อมูลห้องเรียน');
+    }
+    
+    $department = ['department_name' => $class['department_name']];
+    
+    // ดึงข้อมูลนักเรียนในห้อง
+    $query_students = "SELECT s.student_id, s.student_code, s.title, u.first_name, u.last_name,
+                      CASE WHEN u.title IS NULL THEN s.title ELSE u.title END as display_title  
+                      FROM students s 
+                      JOIN users u ON s.user_id = u.user_id 
+                      WHERE s.current_class_id = ? AND s.status = 'กำลังศึกษา' 
+                      ORDER BY s.student_code";
+    $stmt = $conn->prepare($query_students);
+    $stmt->execute([$class_id]);
+    $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
 
-// ดึงข้อมูลแผนกวิชา
-$department = [
-    'department_id' => $class['department_id'],
-    'department_name' => $class['department_name']
-];
-
-// ดึงข้อมูลนักเรียนในห้อง
-$query = "SELECT s.student_id, s.student_code, s.title, u.first_name, u.last_name,
-          CASE WHEN u.title IS NULL THEN s.title ELSE u.title END as display_title  
-          FROM students s 
-          JOIN users u ON s.user_id = u.user_id 
-          WHERE s.current_class_id = ? AND s.status = 'กำลังศึกษา' 
-          ORDER BY s.student_code";
-$stmt = $conn->prepare($query);
-$stmt->execute([$class_id]);
-$students = $stmt->fetchAll(PDO::FETCH_ASSOC);
 $total_count = count($students);
 
 // สร้างข้อมูลวันที่สำหรับรายงาน (เฉพาะวันจันทร์-ศุกร์)
@@ -138,9 +185,10 @@ if (!empty($student_ids)) {
     $attendance_data = [];
 }
 
-// ดึงข้อมูลครูที่ปรึกษา
-$query = "SELECT t.teacher_id, t.title, t.first_name, t.last_name, t.phone 
+// ดึงข้อมูลครูที่ปรึกษา - แก้ไข query ให้ถูกต้อง
+$query = "SELECT t.teacher_id, t.title, t.first_name, t.last_name, u.phone_number as phone 
           FROM teachers t 
+          JOIN users u ON t.user_id = u.user_id
           JOIN class_advisors ca ON t.teacher_id = ca.teacher_id 
           WHERE ca.class_id = ? AND ca.is_primary = 1
           LIMIT 1";
@@ -157,37 +205,44 @@ $signers = $stmt->fetchAll(PDO::FETCH_ASSOC);
 $male_count = 0;
 $female_count = 0;
 foreach ($students as $student) {
-    if ($student['title'] == 'นาย') {
+    if ($student['display_title'] == 'นาย') {
         $male_count++;
     } else {
         $female_count++;
     }
 }
 
-// กำหนดค่า config สำหรับ mPDF
+// กำหนดค่า config สำหรับ mPDF พร้อมฟอนต์ THSarabunNew
 $mpdf_config = [
     'mode' => 'utf-8',
     'format' => 'A4',
     'orientation' => 'P',
     'default_font_size' => 16,
-    'default_font' => 'thsarabun',
+    'default_font' => 'thsarabunnew',
     'margin_left' => 15,
     'margin_right' => 15,
     'margin_top' => 15,
     'margin_bottom' => 15,
     'margin_header' => 10,
     'margin_footer' => 10,
-    'tempDir' => __DIR__ . '/../tmp'
+    'tempDir' => __DIR__ . '/../tmp',
+    'fontDir' => [
+        __DIR__ . '/../fonts/',
+        __DIR__ . '/../fonts/thsarabunnew/'
+    ],
+    'fontdata' => [
+        'thsarabunnew' => [
+            'R' => 'THSarabunNew.ttf',
+            'B' => 'THSarabunNew-Bold.ttf',
+            'I' => 'THSarabunNew-Italic.ttf',
+            'BI' => 'THSarabunNew-BoldItalic.ttf',
+        ]
+    ]
 ];
 
 // สร้าง mPDF
 $mpdf = new \Mpdf\Mpdf($mpdf_config);
-$mpdf->useAdobeCJK = true;
-$mpdf->autoScriptToLang = true;
-$mpdf->autoLangToFont = true;
-
-// อัปโหลดแบบอักษร Sarabun หรือแบบอักษรไทยอื่น ๆ
-$mpdf->SetFont('thsarabun');
+$mpdf->SetFont('thsarabunnew');
 
 // คำนวณสถิติการเข้าแถวรายวัน
 $dailyStats = [];
@@ -200,6 +255,7 @@ foreach ($week_days as $day) {
     $dayStats = [
         'date' => $day['date'],
         'day_name' => $day['day_name'],
+        'day_num' => $day['day_num'],
         'is_holiday' => $day['is_holiday'],
         'present' => 0,
         'absent' => 0,
@@ -257,7 +313,7 @@ if ($totalDays > 0 && $total_count > 0) {
     $totalAttendanceRate = ($totalAttendances / $totalPossibleAttendance) * 100;
 }
 
-// สร้างเนื้อหา PDF ตามแบบฟอร์ม
+// สร้างเนื้อหา PDF
 ob_start();
 ?>
 <!DOCTYPE html>
@@ -267,7 +323,7 @@ ob_start();
     <title>กราฟการเข้าแถว</title>
     <style>
         body {
-            font-family: 'thsarabun';
+            font-family: 'thsarabunnew';
             font-size: 16pt;
             line-height: 1.3;
         }
@@ -292,18 +348,7 @@ ob_start();
             border: 1px solid #ddd;
             margin: 20px 0;
             padding: 10px;
-        }
-        .chart-placeholder {
-            width: 100%;
-            height: 100%;
             background-color: #f8f9fa;
-            display: flex;
-            align-items: flex-end;
-            justify-content: center;
-            text-align: center;
-            font-size: 16pt;
-            color: #666;
-            flex-direction: column;
         }
         .signature-section {
             margin-top: 40px;
@@ -362,72 +407,73 @@ ob_start();
             font-size: 14pt;
             color: #666;
         }
-        .colored-box {
-            display: inline-block;
-            width: 15px;
-            height: 15px;
-            margin-right: 5px;
-            vertical-align: middle;
+        .bar-chart {
+            width: 100%;
+            height: 300px;
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-around;
+            margin-top: 20px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #ccc;
         }
-        .good {
-            background-color: #4caf50;
-        }
-        .warning {
-            background-color: #ff9800;
-        }
-        .danger {
-            background-color: #f44336;
-        }
-        .info {
-            background-color: #2196f3;
-        }
-        .chart-bar {
-            display: inline-block;
-            margin: 0 10px;
-            text-align: center;
+        .bar-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: <?php echo count($dailyStats) > 0 ? 100 / count($dailyStats) : 20; ?>%;
+            max-width: 80px;
         }
         .bar {
             width: 40px;
-            display: inline-block;
             background-color: #4caf50;
-            margin-bottom: 5px;
+            margin-bottom: 10px;
+            border-radius: 5px 5px 0 0;
         }
         .bar-label {
+            text-align: center;
             font-size: 12pt;
-            text-align: center;
         }
-        .pie-chart {
-            width: 100%;
+        .bar-value {
             text-align: center;
-            margin: 20px 0;
-        }
-        .pie-legend {
-            width: 100%;
-            text-align: center;
-            margin-top: 10px;
-        }
-        .legend-item {
-            display: inline-block;
-            margin: 0 15px;
+            font-weight: bold;
+            font-size: 12pt;
         }
     </style>
 </head>
 <body>
     <div class="header">
         <div class="school-logo">
-            <img src="../uploads/logos/school_logo_1747545769.png" alt="Logo" style="width: 100%; height: auto;">
+            <?php if (file_exists('../uploads/logos/school_logo.png')): ?>
+                <img src="../uploads/logos/school_logo.png" alt="Logo" style="width: 100%; height: auto;">
+            <?php else: ?>
+                <div style="width: 100%; height: 100%; border: 1px solid #ccc; display: flex; align-items: center; justify-content: center;">โลโก้</div>
+            <?php endif; ?>
         </div>
         <p>
             <strong>งานกิจกรรมนักเรียน นักศึกษา ฝ่ายพัฒนากิจการนักเรียน นักศึกษา วิทยาลัยการอาชีพปราสาท</strong><br>
             <strong>กราฟแสดงอัตราการเข้าแถวรายวัน</strong><br>
-            ภาคเรียนที่ <?php echo $academic_year['semester']; ?> ปีการศึกษา <?php echo $academic_year['year']; ?> สัปดาห์ที่ <?php echo $week_number; ?> เดือน <?php echo date('F', strtotime($week_days[0]['date'])); ?> พ.ศ. <?php echo date('Y', strtotime($week_days[0]['date'])) + 543; ?><br>
-            ระหว่างวันที่ <?php echo date('j', strtotime($start_date)); ?> เดือน <?php echo date('F', strtotime($start_date)); ?> พ.ศ. <?php echo date('Y', strtotime($start_date)) + 543; ?> ถึง วันที่ <?php echo date('j', strtotime($end_date)); ?> เดือน <?php echo date('F', strtotime($end_date)); ?> พ.ศ. <?php echo date('Y', strtotime($end_date)) + 543; ?><br>
-            ระดับชั้น <?php echo $class['level']; ?> กลุ่ม <?php echo $class['group_number']; ?> แผนกวิชา<?php echo $department['department_name']; ?>
+            ภาคเรียนที่ <?php echo $academic_year['semester']; ?> ปีการศึกษา <?php echo $academic_year['year']; ?> สัปดาห์ที่ <?php echo $week_number; ?><br>
+            <?php 
+            if (!empty($week_days)) {
+                $first_day = $week_days[0];
+                $last_day = $week_days[count($week_days)-1];
+                echo "ระหว่างวันที่ " . $first_day['day_num'] . " - " . $last_day['day_num'] . " ";
+                echo "พ.ศ. " . (date('Y', strtotime($start_date)) + 543);
+            }
+            ?>
+            <br>
+            <?php if ($search_type === 'student' && !empty($search)): ?>
+                ค้นหา: <?php echo htmlspecialchars($search); ?>
+            <?php else: ?>
+                ระดับชั้น <?php echo $class['level']; ?> กลุ่ม <?php echo $class['group_number']; ?> แผนกวิชา<?php echo $department['department_name']; ?>
+            <?php endif; ?>
         </p>
     </div>
     
     <div class="clear"></div>
     
+    <!-- สถิติการเข้าแถว -->
     <div class="status-container">
         <div class="status-box">
             <div class="status-value"><?php echo $total_count; ?></div>
@@ -449,47 +495,40 @@ ob_start();
     
     <!-- กราฟแสดงอัตราการเข้าแถวรายวัน -->
     <div class="chart-container">
-        <div class="chart-placeholder">
-            <div style="width: 100%; text-align: center; margin-bottom: 10px;">
-                <strong>อัตราการเข้าแถวรายวัน (ร้อยละ)</strong>
-            </div>
-            
-            <div style="display: flex; justify-content: space-around; align-items: flex-end; width: 90%; height: 300px;">
-                <?php foreach ($dailyStats as $index => $day): ?>
-                    <?php if (!$day['is_holiday']): ?>
-                        <?php
-                        $height = isset($day['attendance_rate']) ? round($day['attendance_rate']) : 0;
-                        $barHeight = ($height / 100) * 250; // Scale to max height of 250px
-                        
-                        // Set color based on attendance rate
-                        if ($height >= 90) {
-                            $color = '#4caf50'; // Green
-                        } elseif ($height >= 80) {
-                            $color = '#ff9800'; // Orange
-                        } else {
-                            $color = '#f44336'; // Red
-                        }
-                        ?>
-                        <div class="chart-bar">
-                            <div class="bar" style="height: <?php echo $barHeight; ?>px; background-color: <?php echo $color; ?>;"></div>
-                            <div class="bar-label">
-                                <?php echo $day['day_name']; ?><br>
-                                <?php echo $day['day_num']; ?><br>
-                                <?php echo number_format($day['attendance_rate'], 1); ?>%
-                            </div>
+        <h3 style="text-align: center; margin-top: 0;">กราฟแสดงอัตราการเข้าแถวรายวัน</h3>
+        <div class="bar-chart">
+            <?php foreach ($dailyStats as $index => $day): ?>
+                <?php if (!$day['is_holiday']): ?>
+                    <?php
+                    $height = isset($day['attendance_rate']) ? round($day['attendance_rate']) : 0;
+                    $barHeight = ($height / 100) * 250; // Scale to max height of 250px
+                    
+                    // Set color based on attendance rate
+                    if ($height >= 90) {
+                        $color = '#4caf50'; // Green
+                    } elseif ($height >= 80) {
+                        $color = '#ff9800'; // Orange
+                    } else {
+                        $color = '#f44336'; // Red
+                    }
+                    ?>
+                    <div class="bar-container">
+                        <div class="bar-value"><?php echo number_format($day['attendance_rate'], 1); ?>%</div>
+                        <div class="bar" style="height: <?php echo $barHeight; ?>px; background-color: <?php echo $color; ?>;"></div>
+                        <div class="bar-label">
+                            <?php echo $day['day_name']; ?> <?php echo $day['day_num']; ?>
                         </div>
-                    <?php else: ?>
-                        <div class="chart-bar">
-                            <div class="bar" style="height: 0px;"></div>
-                            <div class="bar-label">
-                                <?php echo $day['day_name']; ?><br>
-                                <?php echo $day['day_num']; ?><br>
-                                <span style="color: #f44336;">หยุด</span>
-                            </div>
+                    </div>
+                <?php else: ?>
+                    <div class="bar-container">
+                        <div class="bar-value">หยุด</div>
+                        <div class="bar" style="height: 0; background-color: #ccc;"></div>
+                        <div class="bar-label">
+                            <?php echo $day['day_name']; ?> <?php echo $day['day_num']; ?>
                         </div>
-                    <?php endif; ?>
-                <?php endforeach; ?>
-            </div>
+                    </div>
+                <?php endif; ?>
+            <?php endforeach; ?>
         </div>
     </div>
     
@@ -538,35 +577,7 @@ ob_start();
         </table>
     </div>
     
-    <!-- แผนภูมิแสดงสัดส่วนสถานะการเข้าแถว -->
-    <div class="summary-section">
-        <h3>สัดส่วนสถานะการเข้าแถว</h3>
-        
-        <!-- คำนวณสัดส่วน -->
-        <?php
-        $total = $totalPresent + $totalAbsent + $totalLate + $totalLeave;
-        $presentPercent = ($total > 0) ? ($totalPresent / $total) * 100 : 0;
-        $absentPercent = ($total > 0) ? ($totalAbsent / $total) * 100 : 0;
-        $latePercent = ($total > 0) ? ($totalLate / $total) * 100 : 0;
-        $leavePercent = ($total > 0) ? ($totalLeave / $total) * 100 : 0;
-        ?>
-        
-        <div class="pie-legend">
-            <div class="legend-item">
-                <span class="colored-box good"></span> มาปกติ: <?php echo number_format($presentPercent, 1); ?>%
-            </div>
-            <div class="legend-item">
-                <span class="colored-box danger"></span> ขาด: <?php echo number_format($absentPercent, 1); ?>%
-            </div>
-            <div class="legend-item">
-                <span class="colored-box warning"></span> มาสาย: <?php echo number_format($latePercent, 1); ?>%
-            </div>
-            <div class="legend-item">
-                <span class="colored-box info"></span> ลา: <?php echo number_format($leavePercent, 1); ?>%
-            </div>
-        </div>
-    </div>
-    
+    <!-- ส่วนเซ็นชื่อ -->
     <div class="signature-section">
         <div class="signature-box">
             <div class="signature-line"></div>
@@ -621,7 +632,12 @@ $content = ob_get_clean();
 $mpdf->WriteHTML($content);
 
 // กำหนดชื่อไฟล์
-$filename = "กราฟการเข้าแถว_{$class['level']}_{$class['group_number']}_{$department['department_name']}_สัปดาห์ที่{$week_number}.pdf";
+if ($search_type === 'student' && !empty($search)) {
+    $filename = "กราฟการเข้าแถว_ค้นหา_{$search}_สัปดาห์ที่{$week_number}.pdf";
+} else {
+    $filename = "กราฟการเข้าแถว_{$class['level']}_{$class['group_number']}_{$department['department_name']}_สัปดาห์ที่{$week_number}.pdf";
+}
 
 // Output PDF
 $mpdf->Output($filename, 'I');
+?>

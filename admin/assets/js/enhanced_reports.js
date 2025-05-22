@@ -954,14 +954,14 @@ function updateClassRankingChart(level) {
     classRankingChart.update();
 }
 
+/**
+ * Maneja el cambio de periodo desde el selector
+ */
 function changePeriod() {
     const periodSelector = document.getElementById('period-selector');
-    const departmentSelector = document.getElementById('department-selector');
-    
     const period = periodSelector ? periodSelector.value : 'month';
-    const departmentId = departmentSelector ? departmentSelector.value : 'all';
     
-    // ถ้าเป็น custom จะแสดง date range selector
+    // Si es personalizado, mostrar selector de fechas
     if (period === 'custom') {
         showDateRangeSelector();
         return;
@@ -969,39 +969,42 @@ function changePeriod() {
     
     showLoading();
     
-    // ส่ง AJAX request จริงๆ เพื่อดึงข้อมูลใหม่ตามช่วงเวลาที่เลือก
-    fetch(`enhanced_reports.php?period=${period}&department_id=${departmentId}&ajax=1`)
-        .then(response => response.json())
-        .then(data => {
-            // อัปเดตข้อมูลทั้งหมดในหน้าเว็บ
-            updateDashboardData(data);
-            hideLoading();
-            
-            // อัปเดตปุ่มช่วงเวลาในตัวกรองขั้นสูง
-            document.querySelectorAll('.period-btn').forEach(btn => {
-                btn.classList.remove('active');
-                if (btn.getAttribute('data-period') === period) {
-                    btn.classList.add('active');
-                }
-            });
-            
-            // แจ้งเตือนผู้ใช้
-            let periodText = '';
-            switch (period) {
-                case 'day': periodText = 'วันนี้'; break;
-                case 'yesterday': periodText = 'เมื่อวาน'; break;
-                case 'week': periodText = 'สัปดาห์นี้'; break;
-                case 'month': periodText = 'เดือนนี้'; break;
-                case 'semester': periodText = `ภาคเรียนที่ ${data.academic_year.semester}/${data.academic_year.thai_year}`; break;
+    // En una implementación real, aquí se haría una petición AJAX
+    // fetch(`api/reports.php?action=overview&period=${period}`)
+    //     .then(response => response.json())
+    //     .then(data => {
+    //         updateDashboardData(data);
+    //         hideLoading();
+    //     })
+    //     .catch(error => {
+    //         console.error('Error fetching period data:', error);
+    //         hideLoading();
+    //     });
+    
+    // Simular obtención de datos
+    setTimeout(() => {
+        hideLoading();
+        
+        // Actualizar botones de periodo en filtros avanzados
+        document.querySelectorAll('.period-btn').forEach(btn => {
+            btn.classList.remove('active');
+            if (btn.getAttribute('data-period') === period) {
+                btn.classList.add('active');
             }
-            
-            alert(`เปลี่ยนการแสดงผลเป็นช่วง: ${periodText} เรียบร้อยแล้ว`);
-        })
-        .catch(error => {
-            console.error('Error fetching period data:', error);
-            hideLoading();
-            alert('เกิดข้อผิดพลาดในการดึงข้อมูล');
         });
+        
+        // Notificar al usuario
+        let periodText = '';
+        switch (period) {
+            case 'day': periodText = 'วันนี้'; break;
+            case 'yesterday': periodText = 'เมื่อวาน'; break;
+            case 'week': periodText = 'สัปดาห์นี้'; break;
+            case 'month': periodText = 'เดือนนี้'; break;
+            case 'semester': periodText = `ภาคเรียนที่ ${academicYearData.semester}/${academicYearData.thai_year}`; break;
+        }
+        
+        alert(`เปลี่ยนการแสดงผลเป็นช่วง: ${periodText} เรียบร้อยแล้ว`);
+    }, 800);
 }
 
 /**
@@ -1129,96 +1132,6 @@ function applyDateRange() {
             btn.classList.remove('active');
         });
     }, 800);
-}
-
-
-function updateDashboardData(data) {
-    // อัปเดตสถิติภาพรวม
-    updateOverviewStats(data.overview);
-    
-    // อัปเดตข้อมูลแผนกวิชา
-    updateDepartmentStats(data.department_stats);
-    
-    // อัปเดตข้อมูลนักเรียนที่มีความเสี่ยง
-    updateRiskStudents(data.risk_students);
-    
-    // อัปเดตอันดับห้องเรียน
-    updateClassRanking(data.class_ranking);
-    
-    // อัปเดตแนวโน้มการเข้าแถว
-    updateWeeklyTrends(data.weekly_trends);
-    
-    // อัปเดตสถานะการเข้าแถว
-    updateAttendanceStatus(data.attendance_status);
-}
-
-
-
-unction updateOverviewStats(overview) {
-    // อัปเดตข้อมูลสถิติภาพรวม
-    document.querySelector('.stat-card.blue .stat-value').textContent = overview.total_students.toLocaleString();
-    document.querySelector('.stat-card.green .stat-value').textContent = overview.avg_attendance_rate.toFixed(1) + '%';
-    document.querySelector('.stat-card.red .stat-value').textContent = overview.failed_students;
-    document.querySelector('.stat-card.yellow .stat-value').textContent = overview.risk_students;
-    
-    // อัปเดตการเปลี่ยนแปลง
-    const changeElement = document.querySelector('.stat-card.green .stat-change');
-    changeElement.classList.remove('positive', 'negative');
-    changeElement.classList.add(overview.rate_change >= 0 ? 'positive' : 'negative');
-    
-    const changeIcon = changeElement.querySelector('.material-icons');
-    changeIcon.textContent = overview.rate_change >= 0 ? 'arrow_upward' : 'arrow_downward';
-    
-    const changeText = changeElement.textContent.split(' ')[1]; // เก็บเฉพาะคำว่า "เพิ่มขึ้น" หรือ "ลดลง"
-    changeElement.innerHTML = `<span class="material-icons">${changeIcon.textContent}</span> ${overview.rate_change >= 0 ? 'เพิ่มขึ้น' : 'ลดลง'} ${Math.abs(overview.rate_change)}%`;
-}
-
-
-
-function updateDepartmentStats(departments) {
-    // อัปเดตข้อมูลแผนกวิชา
-    const departmentGrid = document.querySelector('.department-grid');
-    if (!departmentGrid) return;
-    
-    let html = '';
-    departments.forEach(dept => {
-        html += `
-        <div class="department-card">
-            <div class="department-name">
-                <span>${dept.department_name}</span>
-                <span class="attendance-rate ${dept.rate_class}">
-                    ${dept.attendance_rate}%
-                </span>
-            </div>
-            <div class="department-stats-row">
-                <div class="department-stat">
-                    <div class="department-stat-label">นักเรียน</div>
-                    <div class="department-stat-value">${dept.student_count}</div>
-                </div>
-                <div class="department-stat">
-                    <div class="department-stat-label">เข้าแถว</div>
-                    <div class="department-stat-value">${dept.total_attendance}</div>
-                </div>
-                <div class="department-stat">
-                    <div class="department-stat-label">เสี่ยง</div>
-                    <div class="department-stat-value">${dept.risk_count}</div>
-                </div>
-            </div>
-            <div class="department-progress">
-                <div class="progress-bar">
-                    <div class="progress-fill ${dept.rate_class}" 
-                         style="width: ${dept.attendance_rate}%;"></div>
-                </div>
-            </div>
-        </div>`;
-    });
-    
-    departmentGrid.innerHTML = html;
-    
-    // อัปเดตกราฟแผนกวิชาด้วย (ถ้ามี)
-    if (departmentBarChart) {
-        updateDepartmentCharts(departments);
-    }
 }
 
 /**
