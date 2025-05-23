@@ -30,7 +30,8 @@ if (strpos($content_type, 'application/json') !== false) {
     $data = $_POST;
 }
 
-$student_id = $data['student_id'];
+// รับค่า student_id จาก request หรือจาก session
+$student_id = isset($data['student_id']) ? $data['student_id'] : $_SESSION['user_id'];
 
 // เชื่อมต่อฐานข้อมูล
 $conn = getDB();
@@ -68,13 +69,19 @@ try {
     
     if ($current_time < $start_time || $current_time > $end_time) {
         header('Content-Type: application/json');
-        echo json_encode(['success' => false, 'message' => 'ไม่อยู่ในช่วงเวลาเช็คชื่อ (' . $start_time . ' - ' . $end_time . ' น.)']);
+        echo json_encode([
+            'success' => false, 
+            'message' => 'ไม่อยู่ในช่วงเวลาเช็คชื่อ (' . $start_time . ' - ' . $end_time . ' น.)',
+            'current_time' => $current_time,
+            'start_time' => $start_time,
+            'end_time' => $end_time
+        ]);
         exit;
     }
 
     // ดึงข้อมูลนักเรียนเพื่อใช้ในการสร้าง QR Code
     $stmt = $conn->prepare("
-        SELECT s.student_code, s.title, u.first_name, u.last_name, 
+        SELECT s.student_id, s.student_code, s.title, u.first_name, u.last_name, 
                c.level, c.group_number, d.department_name
         FROM students s
         JOIN users u ON s.user_id = u.user_id
@@ -109,10 +116,10 @@ try {
     $qr_data = [
         'type' => 'student_attendance', // ใช้ type ที่ถูกต้อง
         'student_id' => (int)$student_id,
-        'student_code' => $active_qr['student_code'],
+        'student_code' => $student['student_code'], // แก้ไขจาก $active_qr['student_code'] เป็น $student['student_code']
         'token' => $token,
-        'generated_at' => $active_qr['created_at'],
-        'expires_at' => $active_qr['valid_until'],
+        'generated_at' => date('Y-m-d H:i:s'),
+        'expires_at' => $valid_until->format('Y-m-d H:i:s'),
         'for_date' => date('Y-m-d')
     ];
     
@@ -144,6 +151,12 @@ try {
 } catch (PDOException $e) {
     // กรณีเกิดข้อผิดพลาดในการดึงข้อมูล
     error_log("Database error in generate_qr.php: " . $e->getMessage());
+    header('Content-Type: application/json');
+    echo json_encode(['success' => false, 'message' => 'เกิดข้อผิดพลาดในระบบ: ' . $e->getMessage()]);
+    exit;
+} catch (Exception $e) {
+    // กรณีเกิดข้อผิดพลาดอื่น ๆ
+    error_log("General error in generate_qr.php: " . $e->getMessage());
     header('Content-Type: application/json');
     echo json_encode(['success' => false, 'message' => 'เกิดข้อผิดพลาดในระบบ: ' . $e->getMessage()]);
     exit;
