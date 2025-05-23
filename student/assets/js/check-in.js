@@ -3,14 +3,14 @@
  * รองรับการเช็คชื่อด้วย GPS, QR Code, PIN และการสแกน QR
  */
 
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     // Tab Navigation
     const tabItems = document.querySelectorAll('.tab-item');
     const tabPanes = document.querySelectorAll('.tab-pane');
 
     if (tabItems.length > 0) {
         tabItems.forEach(item => {
-            item.addEventListener('click', function() {
+            item.addEventListener('click', function () {
                 const tabId = this.getAttribute('data-tab');
 
                 // ยกเลิกการ active ของ tabs อื่นๆ
@@ -76,7 +76,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // ปุ่มเช็คชื่อด้วย GPS
     const checkInGpsBtn = document.getElementById('check-in-gps');
     if (checkInGpsBtn) {
-        checkInGpsBtn.addEventListener('click', function() {
+        checkInGpsBtn.addEventListener('click', function () {
             if (userLocation) {
                 checkInWithGPS(userLocation.lat, userLocation.lng);
             } else {
@@ -96,7 +96,7 @@ document.addEventListener('DOMContentLoaded', function() {
             locationStatus.className = 'status-text';
 
             navigator.geolocation.watchPosition(
-                function(position) {
+                function (position) {
                     userLocation = {
                         lat: position.coords.latitude,
                         lng: position.coords.longitude,
@@ -109,7 +109,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     updateUserMarker(userLocation);
                     checkLocationValidity(userLocation);
                 },
-                function(error) {
+                function (error) {
                     console.error('Error getting location:', error);
 
                     locationIcon.textContent = 'error';
@@ -119,10 +119,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
                     checkInGpsBtn.disabled = true;
                 }, {
-                    enableHighAccuracy: true,
-                    timeout: 10000,
-                    maximumAge: 0
-                }
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 0
+            }
             );
         } else {
             showStatusMessage('error', 'เบราว์เซอร์ของคุณไม่รองรับการใช้งาน GPS');
@@ -223,17 +223,17 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // ส่งข้อมูลไปยัง server
         fetch('api/check_in.php', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    student_id: studentId,
-                    method: 'GPS',
-                    lat: lat,
-                    lng: lng
-                })
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                student_id: studentId,
+                method: 'GPS',
+                lat: lat,
+                lng: lng
             })
+        })
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
@@ -270,7 +270,7 @@ document.addEventListener('DOMContentLoaded', function() {
         locationStatus.textContent = message;
         locationStatus.className = type === 'error' ? 'status-text error' :
             type === 'success' ? 'status-text success' :
-            'status-text';
+                'status-text';
     }
 
     // --------------------------
@@ -292,7 +292,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // ปุ่มสร้าง QR Code
     if (document.getElementById('generate-qr')) {
-        document.getElementById('generate-qr').addEventListener('click', function() {
+        document.getElementById('generate-qr').addEventListener('click', function () {
             this.disabled = true;
             this.innerHTML = '<span class="material-icons">hourglass_empty</span> กำลังสร้าง QR Code...';
 
@@ -305,7 +305,7 @@ document.addEventListener('DOMContentLoaded', function() {
             xhr.open('POST', 'api/generate_qr.php', true);
             xhr.setRequestHeader('Content-Type', 'application/json');
 
-            xhr.onload = function() {
+            xhr.onload = function () {
                 // ตรวจสอบว่าปุ่มยังมีอยู่หรือไม่
                 var button = document.getElementById('generate-qr');
                 if (!button) {
@@ -417,7 +417,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             };
 
-            xhr.onerror = function() {
+            xhr.onerror = function () {
                 console.error('Network Error');
                 alert('ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้');
                 var button = document.getElementById('generate-qr');
@@ -465,39 +465,67 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const studentId = document.getElementById('student-id').value;
 
-        fetch('api/check_qr_status.php', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                },
-                body: 'action=check_status&student_id=' + studentId
+        fetch('api/check_attendance_status.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                student_id: studentId
             })
+        })
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
                     if (data.is_checked_in) {
-                        // QR Code ถูกใช้เช็คชื่อแล้ว
-                        showResultModal('success', 'เช็คชื่อสำเร็จ', 'คุณได้เช็คชื่อเข้าแถวเรียบร้อยแล้ว', true);
+                        // เช็คชื่อแล้ว
+                        let methodText = '';
+                        switch (data.attendance.method) {
+                            case 'GPS': methodText = 'GPS'; break;
+                            case 'QR_Code': methodText = 'QR Code'; break;
+                            case 'PIN': methodText = 'รหัส PIN'; break;
+                            case 'Manual': methodText = 'ครูเช็คให้'; break;
+                            default: methodText = data.attendance.method;
+                        }
+
+                        showResultModal('success', 'เช็คชื่อสำเร็จแล้ว',
+                            `คุณได้เช็คชื่อเรียบร้อยแล้ว<br><br>` +
+                            `วิธีการ: ${methodText}<br>` +
+                            `เวลา: ${data.attendance.time} น.<br>` +
+                            `${data.attendance.checker ? 'ผู้เช็คชื่อ: ' + data.attendance.checker + '<br>' : ''}` +
+                            `${data.attendance.remarks ? 'หมายเหตุ: ' + data.attendance.remarks : ''}`,
+                            true);
+                    } else if (data.has_active_qr) {
+                        // มี QR Code ที่ยังใช้งานได้
+                        if (data.qr_info.is_expired) {
+                            showResultModal('warning', 'QR Code หมดอายุ',
+                                'QR Code ของคุณหมดอายุแล้ว กรุณาสร้างใหม่', false, true);
+                        } else {
+                            showResultModal('info', 'รอการเช็คชื่อ',
+                                `QR Code ของคุณยังใช้งานได้<br><br>` +
+                                `หมดอายุใน: ${data.qr_info.time_remaining_formatted}<br>` +
+                                `โปรดให้ครูสแกน QR Code เพื่อเช็คชื่อ`);
+                        }
+                        this.disabled = false;
+                        this.innerHTML = '<span class="material-icons">refresh</span> ตรวจสอบสถานะ';
                     } else {
-                        // ยังไม่มีการเช็คชื่อ
-                        showResultModal('info', 'ยังไม่มีการเช็คชื่อ', 'QR Code ของคุณยังไม่ถูกใช้เช็คชื่อ โปรดให้ครูสแกน');
+                        // ยังไม่มีการเช็คชื่อและไม่มี QR Code
+                        showResultModal('info', 'ยังไม่มีการเช็คชื่อ',
+                            'คุณยังไม่ได้เช็คชื่อวันนี้<br>กรุณาสร้าง QR Code หรือใช้วิธีการอื่น', false, true);
                         this.disabled = false;
                         this.innerHTML = '<span class="material-icons">refresh</span> ตรวจสอบสถานะ';
                     }
                 } else {
-                    if (data.expired) {
-                        // QR Code หมดอายุ
-                        showResultModal('warning', 'QR Code หมดอายุ', 'QR Code ของคุณหมดอายุแล้ว กรุณาสร้างใหม่', false, true);
-                    } else {
-                        showResultModal('error', 'ตรวจสอบไม่สำเร็จ', data.message || 'เกิดข้อผิดพลาดในการตรวจสอบ กรุณาลองใหม่อีกครั้ง');
-                        this.disabled = false;
-                        this.innerHTML = '<span class="material-icons">refresh</span> ตรวจสอบสถานะ';
-                    }
+                    showResultModal('error', 'ตรวจสอบไม่สำเร็จ',
+                        data.message || 'เกิดข้อผิดพลาดในการตรวจสอบ กรุณาลองใหม่อีกครั้ง');
+                    this.disabled = false;
+                    this.innerHTML = '<span class="material-icons">refresh</span> ตรวจสอบสถานะ';
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
-                showResultModal('error', 'ตรวจสอบไม่สำเร็จ', 'เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่อีกครั้ง');
+                showResultModal('error', 'ตรวจสอบไม่สำเร็จ',
+                    'เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่อีกครั้ง');
                 this.disabled = false;
                 this.innerHTML = '<span class="material-icons">refresh</span> ตรวจสอบสถานะ';
             });
@@ -630,15 +658,15 @@ document.addEventListener('DOMContentLoaded', function() {
             if (qrData.type === 'pin') {
                 // กรณีเป็น PIN
                 fetch('api/check_in_pin.php', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            student_id: studentId,
-                            pin: qrData.pin
-                        })
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        student_id: studentId,
+                        pin: qrData.pin
                     })
+                })
                     .then(response => response.json())
                     .then(data => {
                         if (data.success) {
@@ -654,15 +682,15 @@ document.addEventListener('DOMContentLoaded', function() {
             } else if (qrData.type === 'check_in') {
                 // กรณีเป็น QR Code เช็คชื่อโดยตรง
                 fetch('api/scan_qr_check_in.php', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            student_id: studentId,
-                            qr_data: data
-                        })
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        student_id: studentId,
+                        qr_data: data
                     })
+                })
                     .then(response => response.json())
                     .then(data => {
                         if (data.success) {
@@ -695,7 +723,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const closeModal = document.getElementById('close-modal');
 
     if (modalOk) {
-        modalOk.addEventListener('click', function() {
+        modalOk.addEventListener('click', function () {
             resultModal.style.display = 'none';
 
 
@@ -721,21 +749,21 @@ document.addEventListener('DOMContentLoaded', function() {
                     `;
 
                     // เพิ่ม event listener ให้กับปุ่มใหม่
-                    document.getElementById('generate-qr').addEventListener('click', function() {
+                    document.getElementById('generate-qr').addEventListener('click', function () {
                         this.disabled = true;
                         this.innerHTML = '<span class="material-icons">hourglass_top</span> กำลังสร้าง QR Code...';
 
                         const studentId = document.getElementById('student-id').value;
 
                         fetch('api/generate_qr.php', {
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                },
-                                body: JSON.stringify({
-                                    student_id: studentId
-                                })
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                student_id: studentId
                             })
+                        })
                             .then(response => response.json())
                             .then(data => {
                                 if (data.success) {
@@ -810,7 +838,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     if (closeModal) {
-        closeModal.addEventListener('click', function() {
+        closeModal.addEventListener('click', function () {
             resultModal.style.display = 'none';
         });
     }
@@ -917,12 +945,12 @@ document.addEventListener('DOMContentLoaded', function() {
         resultModal.classList.add('fade-in');
 
         // เพิ่ม event listener ของปุ่มปิด
-        closeModal.onclick = function() {
+        closeModal.onclick = function () {
             closeModalWithAnimation();
         };
 
         // เพิ่ม event listener เมื่อคลิกนอก modal
-        resultModal.onclick = function(event) {
+        resultModal.onclick = function (event) {
             if (event.target === resultModal) {
                 closeModalWithAnimation();
             }
@@ -933,7 +961,7 @@ document.addEventListener('DOMContentLoaded', function() {
             resultModal.classList.remove('fade-in');
             resultModal.classList.add('fade-out');
 
-            setTimeout(function() {
+            setTimeout(function () {
                 resultModal.style.display = 'none';
                 resultModal.classList.remove('fade-out');
             }, 300);
@@ -952,7 +980,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // ตรวจสอบสถานะการเปิด GPS
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(
-                function(position) {
+                function (position) {
                     // เมื่อได้ตำแหน่งสำเร็จ
                     const userLat = position.coords.latitude;
                     const userLng = position.coords.longitude;
@@ -994,7 +1022,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             checkLocationBtn.innerHTML = 'ตรวจสอบตำแหน่ง';
                         });
                 },
-                function(error) {
+                function (error) {
                     // จัดการข้อผิดพลาด geolocation
                     let errorMessage = 'ไม่สามารถระบุตำแหน่งได้';
                     switch (error.code) {
@@ -1012,10 +1040,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     checkLocationBtn.disabled = false;
                     checkLocationBtn.innerHTML = 'ตรวจสอบตำแหน่ง';
                 }, {
-                    enableHighAccuracy: true,
-                    timeout: 10000,
-                    maximumAge: 0
-                }
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 0
+            }
             );
         } else {
             locationStatus.innerHTML = '<span class="text-danger">✗ เบราว์เซอร์ของคุณไม่รองรับการระบุตำแหน่ง</span>';
@@ -1043,7 +1071,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     if (checkStatusBtn) {
         // เพิ่ม event listener สำหรับการคลิก
-        checkStatusBtn.addEventListener('click', function() {
+        checkStatusBtn.addEventListener('click', function () {
             // แสดงการโหลด
             const originalText = this.innerHTML;
             this.innerHTML = '<span class="material-icons spin">refresh</span> กำลังตรวจสอบ...';
@@ -1051,12 +1079,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
             // ส่งคำขอไปยัง API เพื่อตรวจสอบสถานะ
             fetch('api/check_qr_status.php', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                    },
-                    body: 'action=check_status'
-                })
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: 'action=check_status'
+            })
                 .then(response => {
                     if (!response.ok) {
                         throw new Error('การเชื่อมต่อมีปัญหา');

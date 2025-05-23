@@ -1,6 +1,6 @@
 <?php
 /**
- * api/generate_qr.php - API สำหรับสร้าง QR Code
+ * api/generate_qr.php - API สำหรับสร้าง QR Code (แก้ไขแล้ว)
  */
 session_start();
 require_once '../../config/db_config.php';
@@ -74,7 +74,13 @@ try {
 
     // ดึงข้อมูลนักเรียนเพื่อใช้ในการสร้าง QR Code
     $stmt = $conn->prepare("
-        SELECT student_code FROM students WHERE student_id = ?
+        SELECT s.student_code, s.title, u.first_name, u.last_name, 
+               c.level, c.group_number, d.department_name
+        FROM students s
+        JOIN users u ON s.user_id = u.user_id
+        LEFT JOIN classes c ON s.current_class_id = c.class_id
+        LEFT JOIN departments d ON c.department_id = d.department_id
+        WHERE s.student_id = ?
     ");
     $stmt->execute([$student_id]);
     $student = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -85,64 +91,61 @@ try {
         exit;
     }
     
-    // ตรวจสอบว่ามี QR Code ที่ยังไม่หมดอายุหรือไม่
+    // ปิดการใช้งาน QR Code เก่าที่ยังใช้งานได้
     $stmt = $conn->prepare("
-        SELECT * FROM qr_codes 
-        WHERE student_id = ? AND is_active = 1 AND valid_until > NOW()
-        ORDER BY created_at DESC
-        LIMIT 1
+        UPDATE qr_codes 
+        SET is_active = 0 
+        WHERE student_id = ? AND is_active = 1
     ");
     $stmt->execute([$student_id]);
-    $existing_qr = $stmt->fetch(PDO::FETCH_ASSOC);
     
-    if ($existing_qr) {
-        // ใช้ QR Code ที่มีอยู่แล้ว
-        $qr_data = json_decode($existing_qr['qr_code_data'], true);
-        $expire_time = $existing_qr['valid_until'];
-    } else {
-        // สร้าง QR Code ใหม่
-        // กำหนดเวลาหมดอายุ (5 นาที)
-        $valid_from = new DateTime();
-        $valid_until = clone $valid_from;
-        $valid_until->add(new DateInterval('PT5M')); // เพิ่ม 5 นาที
-        
-        // สร้างข้อมูลสำหรับ QR Code
-        $token = md5(time() . $student_id . $student['student_code'] . rand(1000, 9999));
-        $qr_data = [
-            'type' => 'student_link',
-            'student_id' => $student_id,
-            'student_code' => $student['student_code'],
-            'token' => $token,
-            'expire_time' => $valid_until->format('Y-m-d H:i:s')
-        ];
-        
-        // บันทึกข้อมูล QR Code ลงฐานข้อมูล
-        $stmt = $conn->prepare("
-            INSERT INTO qr_codes (student_id, qr_code_data, valid_from, valid_until, is_active, created_at)
-            VALUES (?, ?, ?, ?, 1, NOW())
-        ");
-        $stmt->execute([
-            $student_id,
-            json_encode($qr_data),
-            $valid_from->format('Y-m-d H:i:s'),
-            $valid_until->format('Y-m-d H:i:s')
-        ]);
-        
-        $expire_time = $valid_until->format('Y-m-d H:i:s');
-    }
+    // กำหนดเวลาหมดอายุ (7 วัน)
+    $valid_from = new DateTime();
+    $valid_until = clone $valid_from;
+    $valid_until->add(new DateInterval('P7D')); // เพิ่ม 7 วัน
+    
+    // สร้างข้อมูลสำหรับ QR Code
+    $token = hash('sha256', time() . $student_id . $student['student_code'] . rand(1000, 9999));
+    $qr_data = [
+        'type' => 'student_attendance', // ใช้ type ที่ถูกต้อง
+        'student_id' => (int)$student_id,
+        'student_code' => $active_qr['student_code'],
+        'token' => $token,
+        'generated_at' => $active_qr['created_at'],
+        'expires_at' => $active_qr['valid_until'],
+        'for_date' => date('Y-m-d')
+    ];
+    
+    // บันทึกข้อมูล QR Code ลงฐานข้อมูล
+    $stmt = $conn->prepare("
+        INSERT INTO qr_codes (student_id, qr_code_data, valid_from, valid_until, is_active, created_at)
+        VALUES (?, ?, ?, ?, 1, NOW())
+    ");
+    $stmt->execute([
+        $student_id,
+        json_encode($qr_data),
+        $valid_from->format('Y-m-d H:i:s'),
+        $valid_until->format('Y-m-d H:i:s')
+    ]);
+    
+    $qr_code_id = $conn->lastInsertId();
     
     // คืนค่าสำเร็จ
     header('Content-Type: application/json');
     echo json_encode([
         'success' => true, 
         'qr_data' => $qr_data,
-        'expire_time' => $expire_time
+        'qr_code_id' => $qr_code_id,
+        'expire_time' => $valid_until->format('Y-m-d H:i:s'),
+        'qr_string' => json_encode($qr_data), // สำหรับการสร้าง QR Code
+        'message' => 'สร้าง QR Code สำเร็จ แสดงให้ครูสแกนเพื่อเช็คชื่อ'
     ]);
     
 } catch (PDOException $e) {
     // กรณีเกิดข้อผิดพลาดในการดึงข้อมูล
+    error_log("Database error in generate_qr.php: " . $e->getMessage());
     header('Content-Type: application/json');
-    echo json_encode(['success' => false, 'message' => 'เกิดข้อผิดพลาด: ' . $e->getMessage()]);
+    echo json_encode(['success' => false, 'message' => 'เกิดข้อผิดพลาดในระบบ: ' . $e->getMessage()]);
     exit;
 }
 ?>

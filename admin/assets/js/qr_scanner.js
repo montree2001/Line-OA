@@ -226,33 +226,47 @@ class QRAttendanceScanner {
         try {
             this.updateScannerStatus('กำลังประมวลผล...', 'processing');
             
-            // ตรวจสอบว่า student_id เป็นตัวเลขหรือไม่
-            const studentId = parseInt(qrData.student_id);
-            if (isNaN(studentId)) {
-                throw new Error('รหัสนักเรียนไม่ถูกต้อง');
+            // ตรวจสอบว่าเช็คชื่อแล้วหรือยัง
+            const alreadyChecked = this.checkedStudents.find(s => {
+                const qrDataObj = typeof qrData === 'string' ? JSON.parse(qrData) : qrData;
+                return s.student_id === qrDataObj.student_id;
+            });
+            
+            if (alreadyChecked) {
+                this.showAlert(`${alreadyChecked.name} เช็คชื่อแล้ว`, 'warning');
+                this.updateScannerStatus('เช็คชื่อแล้ว', 'warning');
+                setTimeout(() => {
+                    if (this.isScanning) {
+                        this.updateScannerStatus('กำลังแสกน...', 'scanning');
+                    }
+                }, 3000);
+                return;
             }
             
-            // ดึงข้อมูลนักเรียน - ใช้ไฟล์ที่มีอยู่
-            const response = await fetch(`ajax/get_student_qr.php?student_id=${studentId}`);
+            // ส่งข้อมูล QR Code ไปประมวลผล
+            const response = await fetch('ajax/process_qr_attendance.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    action: 'scan_qr',
+                    qr_data: typeof qrData === 'string' ? qrData : JSON.stringify(qrData)
+                })
+            });
+            
             const result = await response.json();
             
             if (result.success) {
-                this.showStudentModal(result.student, qrData);
-                this.successCount++;
-                this.updateScanInfo();
-                this.updateScannerStatus('แสกนสำเร็จ', 'success');
-                
-                // เล่นเสียงแจ้งเตือน (ถ้ามี)
-                this.playSuccessSound();
+                // บันทึกการเช็คชื่อทันที
+                await this.recordAttendance(result.student);
                 
             } else {
-                throw new Error(result.error || 'ไม่พบข้อมูลนักเรียน');
+                throw new Error(result.error || 'ไม่สามารถประมวลผล QR Code ได้');
             }
             
         } catch (error) {
             console.error('Process QR Error:', error);
-            this.errorCount++;
-            this.updateScanInfo();
             this.showAlert('เกิดข้อผิดพลาด: ' + error.message, 'error');
             this.updateScannerStatus('เกิดข้อผิดพลาด', 'error');
         }
