@@ -28,21 +28,60 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // อัปเดตสถานะปุ่ม Generate QR Code
-    function updateGenerateButtonState() {
-        if (generateQRBtn) {
-            const hasChecked = Array.from(studentCheckboxes).some(checkbox => checkbox.checked);
-            generateQRBtn.disabled = !hasChecked;
+    // เชื่อมโยงวันที่หมดอายุกับอายุการใช้งาน
+    const qrValidityInputs = document.querySelectorAll('[id^="qr_validity"]');
+    const startDateInputs = document.querySelectorAll('[id^="start_date"]');
+    const expiryDateInputs = document.querySelectorAll('[id^="expiry_date"]');
+    
+    // ฟังก์ชั่นสำหรับคำนวณวันหมดอายุ
+    function calculateExpiryDate(startDateInput, validityInput, expiryDateInput) {
+        if (expiryDateInput.value) return; // ถ้ามีการกำหนดวันหมดอายุแล้ว ไม่ต้องคำนวณ
+        
+        const startDate = new Date(startDateInput.value);
+        const validity = parseInt(validityInput.value);
+        
+        if (startDate && !isNaN(validity)) {
+            const expiryDate = new Date(startDate);
+            expiryDate.setDate(expiryDate.getDate() + validity);
+            
+            // ตั้งค่า min ของ expiryDate
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            expiryDateInput.min = tomorrow.toISOString().split('T')[0];
+            
+            // แสดงวันหมดอายุที่คำนวณได้ใน placeholder
+            expiryDateInput.placeholder = expiryDate.toISOString().split('T')[0];
         }
     }
     
-    // เพิ่ม Event Listener ให้กับ checkboxes
-    studentCheckboxes.forEach(checkbox => {
-        checkbox.addEventListener('change', updateGenerateButtonState);
-    });
-    
-    // ตรวจสอบสถานะเริ่มต้น
-    updateGenerateButtonState();
+    // เพิ่ม event listener ให้กับแต่ละชุด input
+    if (qrValidityInputs.length > 0 && startDateInputs.length > 0 && expiryDateInputs.length > 0) {
+        for (let i = 0; i < qrValidityInputs.length; i++) {
+            const validityInput = qrValidityInputs[i];
+            const startDateInput = startDateInputs[i];
+            const expiryDateInput = expiryDateInputs[i];
+            
+            // คำนวณวันหมดอายุเริ่มต้น
+            calculateExpiryDate(startDateInput, validityInput, expiryDateInput);
+            
+            // อัปเดตเมื่อเปลี่ยนอายุการใช้งาน
+            validityInput.addEventListener('change', function() {
+                calculateExpiryDate(startDateInput, validityInput, expiryDateInput);
+            });
+            
+            // อัปเดตเมื่อเปลี่ยนวันที่เริ่มต้น
+            startDateInput.addEventListener('change', function() {
+                calculateExpiryDate(startDateInput, validityInput, expiryDateInput);
+            });
+            
+            // ล้างวันหมดอายุที่คำนวณเมื่อกำหนดวันหมดอายุเอง
+            expiryDateInput.addEventListener('change', function() {
+                if (!this.value) {
+                    calculateExpiryDate(startDateInput, validityInput, expiryDateInput);
+                }
+            });
+        }
+    }
     
     // จัดการการสร้าง QR Code รายบุคคล
     const singleQrBtns = document.querySelectorAll('.single-qr-btn');
@@ -79,6 +118,49 @@ document.addEventListener('DOMContentLoaded', function() {
                 generateSingleQRBtn.setAttribute('data-student-code', studentCode);
                 generateSingleQRBtn.setAttribute('data-student-name', studentName);
                 generateSingleQRBtn.setAttribute('data-student-class', studentClass);
+                
+                // เตรียมฟิลด์วันที่
+                const singleQrValidity = document.getElementById('singleQrValidity');
+                const singleStartDate = document.getElementById('singleStartDate');
+                const singleExpiryDate = document.getElementById('singleExpiryDate');
+                
+                if (singleQrValidity && singleStartDate && singleExpiryDate) {
+                    // กำหนดค่าเริ่มต้น
+                    singleQrValidity.value = 7;
+                    singleStartDate.value = new Date().toISOString().split('T')[0];
+                    singleExpiryDate.value = '';
+                    
+                    // คำนวณวันหมดอายุเริ่มต้น
+                    const expiryDate = new Date();
+                    expiryDate.setDate(expiryDate.getDate() + 7);
+                    singleExpiryDate.placeholder = expiryDate.toISOString().split('T')[0];
+                    
+                    // ตั้งค่า min ของ expiryDate
+                    const tomorrow = new Date();
+                    tomorrow.setDate(tomorrow.getDate() + 1);
+                    singleExpiryDate.min = tomorrow.toISOString().split('T')[0];
+                    
+                    // เพิ่ม event listener
+                    singleQrValidity.addEventListener('change', function() {
+                        if (!singleExpiryDate.value) {
+                            const startDate = new Date(singleStartDate.value);
+                            const validity = parseInt(singleQrValidity.value);
+                            const expiryDate = new Date(startDate);
+                            expiryDate.setDate(expiryDate.getDate() + validity);
+                            singleExpiryDate.placeholder = expiryDate.toISOString().split('T')[0];
+                        }
+                    });
+                    
+                    singleStartDate.addEventListener('change', function() {
+                        if (!singleExpiryDate.value) {
+                            const startDate = new Date(singleStartDate.value);
+                            const validity = parseInt(singleQrValidity.value);
+                            const expiryDate = new Date(startDate);
+                            expiryDate.setDate(expiryDate.getDate() + validity);
+                            singleExpiryDate.placeholder = expiryDate.toISOString().split('T')[0];
+                        }
+                    });
+                }
             });
         });
     }
@@ -90,6 +172,8 @@ document.addEventListener('DOMContentLoaded', function() {
             const studentName = this.getAttribute('data-student-name');
             const studentClass = this.getAttribute('data-student-class');
             const qrValidity = document.getElementById('singleQrValidity').value;
+            const startDate = document.getElementById('singleStartDate').value;
+            const expiryDate = document.getElementById('singleExpiryDate').value;
             
             // ซ่อนปุ่มสร้าง QR Code และแสดง Loading
             this.classList.add('d-none');
@@ -105,7 +189,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 },
                 body: JSON.stringify({
                     student_id: studentId,
-                    qr_validity: qrValidity
+                    qr_validity: qrValidity,
+                    start_date: startDate,
+                    expiry_date: expiryDate
                 })
             })
             .then(response => response.json())
@@ -326,7 +412,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 hour: '2-digit',
                                 minute: '2-digit'
                             })}</p>
-                            <p class="system-name">ระบบน้องชูใจ AI ดูแลผู้เรียน</p>
+                            <p class="system-name">พัฒนาโดย ครูมนตรี  ศรีสุข</p>
                         </div>
                     </div>
                     

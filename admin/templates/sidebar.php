@@ -35,6 +35,11 @@
             <span class="material-icons">scanner</span>
             <span class="menu-text">เช็คด้วย Qr-code</span>
         </a>
+        <a href="print_qr_code.php" class="menu-item <?php echo ($current_page == 'print_qr_code') ? 'active' : ''; ?>">
+            <span class="material-icons">print</span>
+            <span class="menu-text">พิมพ์บัตรเช็คชื่อ</span>
+        </a>
+
         <div class="menu-category">บัญชีผู้ใช้งาน</div>
         <a href="users.php" class="menu-item <?php echo ($current_page == 'users') ? 'active' : ''; ?>">
             <span class="material-icons">people</span>

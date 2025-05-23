@@ -77,6 +77,21 @@
                                                         min="1" max="365" value="<?php echo $qr_validity; ?>">
                                                 </div>
                                             </div>
+                                            <div class="col-md-3">
+                                                <div class="form-group">
+                                                    <label for="start_date">วันที่เริ่มต้น</label>
+                                                    <input type="date" class="form-control" id="start_date" name="start_date" 
+                                                        value="<?php echo date('Y-m-d'); ?>">
+                                                </div>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <div class="form-group">
+                                                    <label for="expiry_date">วันที่หมดอายุ (หากกำหนด)</label>
+                                                    <input type="date" class="form-control" id="expiry_date" name="expiry_date" 
+                                                        min="<?php echo date('Y-m-d', strtotime('+1 day')); ?>">
+                                                    <small class="text-muted">หากไม่ระบุ จะคำนวณจากอายุการใช้งาน</small>
+                                                </div>
+                                            </div>
                                             <div class="col-md-2">
                                                 <div class="form-group">
                                                     <button type="submit" name="search" class="btn btn-primary">
@@ -111,6 +126,20 @@
                                                     <label for="qr_validity_class">อายุการใช้งาน QR Code (วัน)</label>
                                                     <input type="number" class="form-control" id="qr_validity_class" name="qr_validity" 
                                                         min="1" max="365" value="<?php echo $qr_validity; ?>">
+                                                </div>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <div class="form-group">
+                                                    <label for="start_date_class">วันที่เริ่มต้น</label>
+                                                    <input type="date" class="form-control" id="start_date_class" name="start_date" 
+                                                        value="<?php echo date('Y-m-d'); ?>">
+                                                </div>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <div class="form-group">
+                                                    <label for="expiry_date_class">วันที่หมดอายุ (หากกำหนด)</label>
+                                                    <input type="date" class="form-control" id="expiry_date_class" name="expiry_date" 
+                                                        min="<?php echo date('Y-m-d', strtotime('+1 day')); ?>">
                                                 </div>
                                             </div>
                                             <div class="col-md-2">
@@ -172,6 +201,20 @@
                                                     <label for="qr_validity_dept">อายุการใช้งาน QR Code (วัน)</label>
                                                     <input type="number" class="form-control" id="qr_validity_dept" name="qr_validity" 
                                                         min="1" max="365" value="<?php echo $qr_validity; ?>">
+                                                </div>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <div class="form-group">
+                                                    <label for="start_date_dept">วันที่เริ่มต้น</label>
+                                                    <input type="date" class="form-control" id="start_date_dept" name="start_date" 
+                                                        value="<?php echo date('Y-m-d'); ?>">
+                                                </div>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <div class="form-group">
+                                                    <label for="expiry_date_dept">วันที่หมดอายุ (หากกำหนด)</label>
+                                                    <input type="date" class="form-control" id="expiry_date_dept" name="expiry_date" 
+                                                        min="<?php echo date('Y-m-d', strtotime('+1 day')); ?>">
                                                 </div>
                                             </div>
                                             <div class="col-md-2">
@@ -249,6 +292,8 @@
                                         </table>
                                     </div>
                                     <div class="form-group mt-3">
+                                        <input type="hidden" name="start_date" value="<?php echo $start_date; ?>">
+                                        <input type="hidden" name="expiry_date" value="<?php echo $expiry_date; ?>">
                                         <button type="submit" name="generate_qr" class="btn btn-primary" id="generateQRBtn" disabled>
                                             <i class="material-icons">print</i> สร้างและพิมพ์ QR Code
                                         </button>
@@ -286,10 +331,19 @@
                         <label for="singleQrValidity">อายุการใช้งาน QR Code (วัน)</label>
                         <input type="number" class="form-control" id="singleQrValidity" min="1" max="365" value="7">
                     </div>
+                    <div class="form-group">
+                        <label for="singleStartDate">วันที่เริ่มต้น</label>
+                        <input type="date" class="form-control" id="singleStartDate" value="<?php echo date('Y-m-d'); ?>">
+                    </div>
+                    <div class="form-group">
+                        <label for="singleExpiryDate">วันที่หมดอายุ (หากกำหนด)</label>
+                        <input type="date" class="form-control" id="singleExpiryDate" min="<?php echo date('Y-m-d', strtotime('+1 day')); ?>">
+                        <small class="text-muted">หากไม่ระบุ จะคำนวณจากอายุการใช้งาน</small>
+                    </div>
                     <div id="qrPreviewContainer" class="d-none">
                         <div class="qr-card">
                             <div class="qr-header">
-                                <img src="https://prasat.ac.th/wp-content/uploads/2022/12/prasat2.png" alt="Logo" class="qr-logo">
+                                <img src="assets/images/logo.png" alt="Logo" class="qr-logo">
                                 <div class="qr-title">
                                     <h5>วิทยาลัยการอาชีพปราสาท</h5>
                                     <p>QR Code สำหรับเช็คชื่อเข้าแถว</p>
@@ -305,7 +359,7 @@
                             </div>
                             <div class="qr-footer">
                                 <p>วันหมดอายุ: <span id="previewExpireDate"></span></p>
-                              
+                                <p class="system-name">ระบบน้องชูใจ AI ดูแลผู้เรียน</p>
                             </div>
                         </div>
                     </div>

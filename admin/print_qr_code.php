@@ -298,15 +298,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     
                     // บันทึกข้อมูล QR Code ลงฐานข้อมูล
                     $stmt = $conn->prepare("
-                        INSERT INTO qr_codes (student_id, qr_code_data, valid_from, valid_until, is_active, created_at)
-                        VALUES (?, ?, ?, ?, 1, NOW())
-                    ");
-                    $stmt->execute([
-                        $student_id,
-                        json_encode($qr_data),
-                        $valid_from->format('Y-m-d H:i:s'),
-                        $valid_until->format('Y-m-d H:i:s')
-                    ]);
+                    INSERT INTO qr_codes (student_id, qr_code_data, valid_from, valid_until, is_active, created_at)
+                    VALUES (?, ?, ?, ?, 1, NOW())
+                ");
+                $stmt->execute([
+                    $student_id,
+                    json_encode($qr_data),
+                    $valid_from->format('Y-m-d H:i:s'),
+                    $valid_until->format('Y-m-d H:i:s')
+                ]);
                     
                     $generated_count++;
                 } catch (Exception $e) {
