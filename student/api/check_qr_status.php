@@ -1,6 +1,6 @@
 <?php
 /**
- * api/check_qr_status.php - API สำหรับตรวจสอบสถานะ QR Code
+ * api/check_qr_status.php - API สำหรับตรวจสอบสถานะ QR Code (แก้ไขแล้ว)
  */
 session_start();
 require_once '../../config/db_config.php';
@@ -54,27 +54,9 @@ try {
             'is_checked_in' => true,
             'check_method' => $today_attendance['check_method'],
             'check_time' => $today_attendance['check_time'],
-            'is_qr_used' => $is_qr_checkin
-        ]);
-        exit;
-    }
-    
-    // ตรวจสอบว่ามี QR Code ที่ยังไม่หมดอายุหรือไม่
-    $stmt = $conn->prepare("
-        SELECT * FROM qr_codes 
-        WHERE student_id = ? AND is_active = 1 AND valid_until > NOW()
-        ORDER BY created_at DESC
-        LIMIT 1
-    ");
-    $stmt->execute([$student_id]);
-    $active_qr = $stmt->fetch(PDO::FETCH_ASSOC);
-    
-    if (!$active_qr) {
-        header('Content-Type: application/json');
-        echo json_encode([
-            'success' => false, 
-            'message' => 'ไม่พบ QR Code ที่ยังไม่หมดอายุ',
-            'expired' => true
+            'attendance_status' => $today_attendance['attendance_status'],
+            'is_qr_used' => $is_qr_checkin,
+            'message' => 'คุณได้เช็คชื่อไปแล้วในวันนี้'
         ]);
         exit;
     }
@@ -98,10 +80,73 @@ try {
         header('Content-Type: application/json');
         echo json_encode([
             'success' => false, 
-            'message' => 'ไม่อยู่ในช่วงเวลาเช็คชื่อ (' . $start_time . ' - ' . $end_time . ' น.)'
+            'message' => 'ไม่อยู่ในช่วงเวลาเช็คชื่อ (' . $start_time . ' - ' . $end_time . ' น.)',
+            'attendance_period' => [
+                'start' => $start_time,
+                'end' => $end_time,
+                'current' => $current_time
+            ]
         ]);
         exit;
     }
+    
+    // ตรวจสอบว่ามี QR Code ที่ยังไม่หมดอายุหรือไม่
+    $stmt = $conn->prepare("
+        SELECT qc.*, s.student_code 
+        FROM qr_codes qc
+        JOIN students s ON qc.student_id = s.student_id
+        WHERE qc.student_id = ? AND qc.is_active = 1 AND qc.valid_until > NOW()
+        ORDER BY qc.created_at DESC
+        LIMIT 1
+    ");
+    $stmt->execute([$student_id]);
+    $active_qr = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    if (!$active_qr) {
+        header('Content-Type: application/json');
+        echo json_encode([
+            'success' => false, 
+            'message' => 'ไม่พบ QR Code ที่ยังไม่หมดอายุ กรุณาสร้าง QR Code ใหม่',
+            'expired' => true,
+            'can_generate' => true
+        ]);
+        exit;
+    }
+    
+    // ตรวจสอบข้อมูล QR Code
+    $qr_data = json_decode($active_qr['qr_code_data'], true);
+    
+    // ตรวจสอบว่า QR Code มีรูปแบบที่ถูกต้องหรือไม่
+    if (!$qr_data || !isset($qr_data['type']) || !isset($qr_data['student_id'])) {
+        // สร้าง QR Code ใหม่ที่มีรูปแบบถูกต้อง
+        $token = md5(time() . $student_id . $active_qr['student_code'] . rand(1000, 9999));
+        $new_qr_data = [
+            'type' => 'student_attendance', // ใช้ type ที่ถูกต้อง
+            'student_id' => (int)$student_id,
+            'student_code' => $active_qr['student_code'],
+            'token' => $token,
+            'expire_time' => $active_qr['valid_until'],
+            'generated_at' => $active_qr['created_at']
+        ];
+        
+        // อัปเดต QR Code ในฐานข้อมูล
+        $stmt = $conn->prepare("
+            UPDATE qr_codes 
+            SET qr_code_data = ? 
+            WHERE qr_code_id = ?
+        ");
+        $stmt->execute([
+            json_encode($new_qr_data),
+            $active_qr['qr_code_id']
+        ]);
+        
+        $qr_data = $new_qr_data;
+    }
+    
+    // คำนวณเวลาที่เหลือ (ในวินาที)
+    $expire_timestamp = strtotime($active_qr['valid_until']);
+    $current_timestamp = time();
+    $time_remaining = $expire_timestamp - $current_timestamp;
     
     // คืนค่าสถานะ QR Code
     header('Content-Type: application/json');
@@ -109,13 +154,38 @@ try {
         'success' => true, 
         'is_checked_in' => false,
         'qr_id' => $active_qr['qr_code_id'],
-        'expires_at' => $active_qr['valid_until']
+        'qr_data' => $qr_data,
+        'expires_at' => $active_qr['valid_until'],
+        'time_remaining' => $time_remaining,
+        'time_remaining_formatted' => gmdate('i:s', max(0, $time_remaining)),
+        'is_expired' => $time_remaining <= 0,
+        'qr_string' => json_encode($qr_data), // เพิ่มสำหรับการสร้าง QR Code
+        'attendance_period' => [
+            'start' => $start_time,
+            'end' => $end_time,
+            'current' => $current_time
+        ]
     ]);
     
 } catch (PDOException $e) {
     // กรณีเกิดข้อผิดพลาดในการดึงข้อมูล
+    error_log("Database error in check_qr_status.php: " . $e->getMessage());
     header('Content-Type: application/json');
-    echo json_encode(['success' => false, 'message' => 'เกิดข้อผิดพลาด: ' . $e->getMessage()]);
+    echo json_encode([
+        'success' => false, 
+        'message' => 'เกิดข้อผิดพลาดในระบบ กรุณาลองใหม่อีกครั้ง',
+        'error_code' => 'DB_ERROR'
+    ]);
+    exit;
+} catch (Exception $e) {
+    // กรณีเกิดข้อผิดพลาดอื่นๆ
+    error_log("General error in check_qr_status.php: " . $e->getMessage());
+    header('Content-Type: application/json');
+    echo json_encode([
+        'success' => false, 
+        'message' => 'เกิดข้อผิดพลาด: ' . $e->getMessage(),
+        'error_code' => 'GENERAL_ERROR'
+    ]);
     exit;
 }
 ?>

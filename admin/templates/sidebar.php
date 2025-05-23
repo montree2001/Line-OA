@@ -13,10 +13,7 @@
             <span class="material-icons">dashboard</span>
             <span class="menu-text">แดชบอร์ด</span>
         </a>
-        <a href="bulk_attendance.php" class="menu-item <?php echo ($current_page == 'bulk_attendance') ? 'active' : ''; ?>">
-            <span class="material-icons">how_to_reg</span>
-            <span class="menu-text">เช็คชื่อนักเรียน</span>
-        </a>
+   
 
         <a href="enhanced_notification.php" class="menu-item <?php echo ($current_page == 'enhanced_notification') ? 'active' : ''; ?>">
             <span class="material-icons">send</span>
@@ -28,6 +25,15 @@
             <?php if (isset($at_risk_count) && $at_risk_count > 0): ?>
                 <span class="badge"><?php echo $at_risk_count; ?></span>
             <?php endif; ?>
+        </a>
+        <div class="menu-category">เช็คชื่อ</div>
+        <a href="bulk_attendance.php" class="menu-item <?php echo ($current_page == 'bulk_attendance') ? 'active' : ''; ?>">
+            <span class="material-icons">how_to_reg</span>
+            <span class="menu-text">เช็คด้วยตนเอง</span>
+        </a>
+        <a href="qr_attendance.php" class="menu-item <?php echo ($current_page == 'qr_scanner') ? 'active' : ''; ?>">
+            <span class="material-icons">scanner</span>
+            <span class="menu-text">เช็คด้วย Qr-code</span>
         </a>
         <div class="menu-category">บัญชีผู้ใช้งาน</div>
         <a href="users.php" class="menu-item <?php echo ($current_page == 'users') ? 'active' : ''; ?>">

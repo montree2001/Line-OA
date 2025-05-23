@@ -1,5 +1,5 @@
 /**
- * qr_fullscreen.js - JavaScript สำหรับจัดการ QR Code Scanner แบบเต็มจอ
+ * qr_fullscreen.js - JavaScript สำหรับจัดการ QR Code Scanner แบบเต็มจอ (แก้ไขแล้ว)
  */
 
 class QRFullscreenScanner {
@@ -77,9 +77,9 @@ class QRFullscreenScanner {
             this.html5QrCode = new Html5Qrcode("qr-reader-fullscreen");
             
             const config = {
-                fps: QR_FULLSCREEN_CONFIG.scannerSettings.fps,
-                qrbox: QR_FULLSCREEN_CONFIG.scannerSettings.qrbox,
-                aspectRatio: QR_FULLSCREEN_CONFIG.scannerSettings.aspectRatio
+                fps: QR_FULLSCREEN_CONFIG?.scannerSettings?.fps || 10,
+                qrbox: QR_FULLSCREEN_CONFIG?.scannerSettings?.qrbox || { width: 300, height: 300 },
+                aspectRatio: QR_FULLSCREEN_CONFIG?.scannerSettings?.aspectRatio || 1.0
             };
             
             await this.html5QrCode.start(
@@ -127,18 +127,46 @@ class QRFullscreenScanner {
         this.updateScanInfo();
         
         try {
+            console.log('Raw QR Code data:', decodedText); // เพิ่ม log เพื่อ debug
+            
             // แปลง QR Code data
             const qrData = JSON.parse(decodedText);
+            console.log('Parsed QR Data:', qrData); // เพิ่ม log เพื่อ debug
             
-            if (qrData.type === 'student_attendance' && qrData.student_id) {
+            // ปรับปรุงการตรวจสอบให้รองรับได้หลายรูปแบบ
+            const validTypes = ['student_attendance', 'student_link']; // รองรับทั้งสองแบบ
+            
+            if (validTypes.includes(qrData.type) && qrData.student_id) {
+                // ตรวจสอบเวลาหมดอายุ (ถ้ามี)
+                if (qrData.expire_time) {
+                    const expireTime = new Date(qrData.expire_time);
+                    const currentTime = new Date();
+                    
+                    if (currentTime > expireTime) {
+                        throw new Error('QR Code หมดอายุแล้ว');
+                    }
+                }
+                
                 this.processStudentQR(qrData);
             } else {
-                throw new Error('QR Code ไม่ถูกต้อง');
+                throw new Error('QR Code ไม่ถูกต้อง - ไม่ใช่ QR Code สำหรับเช็คชื่อ');
             }
             
         } catch (error) {
             console.error('QR Parse Error:', error);
-            this.showAlert('QR Code ไม่ถูกต้องหรือไม่ใช่ QR Code สำหรับเช็คชื่อ', 'error');
+            console.error('QR Data that failed:', decodedText); // เพิ่ม log เพื่อ debug
+            
+            // แสดงข้อความ error ที่ชัดเจนขึ้น
+            let errorMessage = 'QR Code ไม่ถูกต้อง';
+            if (error.message.includes('JSON')) {
+                errorMessage = 'รูปแบบ QR Code ไม่ถูกต้อง - ไม่ใช่ JSON';
+            } else if (error.message.includes('หมดอายุ')) {
+                errorMessage = 'QR Code หมดอายุแล้ว กรุณาสร้าง QR Code ใหม่';
+            } else if (error.message.includes('ไม่ใช่ QR Code สำหรับเช็คชื่อ')) {
+                errorMessage = 'QR Code นี้ไม่ใช่สำหรับเช็คชื่อ';
+            }
+            
+            this.showAlert(errorMessage, 'error');
         }
     }
     
@@ -150,8 +178,14 @@ class QRFullscreenScanner {
         try {
             this.updateScannerStatus('กำลังประมวลผล...', 'processing');
             
+            // ตรวจสอบว่า student_id เป็นตัวเลขหรือไม่
+            const studentId = parseInt(qrData.student_id);
+            if (isNaN(studentId)) {
+                throw new Error('รหัสนักเรียนไม่ถูกต้อง');
+            }
+            
             // ตรวจสอบว่าเช็คชื่อแล้วหรือยัง
-            const alreadyChecked = this.checkedStudents.find(s => s.student_id === qrData.student_id);
+            const alreadyChecked = this.checkedStudents.find(s => s.student_id === studentId);
             if (alreadyChecked) {
                 this.showAlert(`${alreadyChecked.name} เช็คชื่อแล้ว`, 'warning');
                 this.updateScannerStatus('เช็คชื่อแล้ว', 'warning');
@@ -163,13 +197,13 @@ class QRFullscreenScanner {
                 return;
             }
             
-            // ดึงข้อมูลนักเรียน
-            const response = await fetch(`ajax/get_student.php?student_id=${qrData.student_id}`);
+            // ดึงข้อมูลนักเรียน - ใช้ไฟล์ที่ปรับปรุงแล้ว
+            const response = await fetch(`ajax/get_student_qr.php?student_id=${studentId}`);
             const result = await response.json();
             
             if (result.success) {
                 // บันทึกการเช็คชื่อ
-                await this.recordAttendance(result.student);
+                await this.recordAttendance(result.student, qrData);
                 
             } else {
                 throw new Error(result.error || 'ไม่พบข้อมูลนักเรียน');
@@ -189,7 +223,7 @@ class QRFullscreenScanner {
         }, 3000);
     }
     
-    async recordAttendance(student) {
+    async recordAttendance(student, qrData) {
         try {
             const formData = new FormData();
             formData.append('action', 'record_attendance');
@@ -197,6 +231,11 @@ class QRFullscreenScanner {
             formData.append('method', 'QR_Code');
             formData.append('status', 'present');
             formData.append('date', new Date().toISOString().split('T')[0]);
+            
+            // เพิ่มข้อมูล QR Code token เพื่อตรวจสอบ
+            if (qrData.token) {
+                formData.append('qr_token', qrData.token);
+            }
             
             const response = await fetch('ajax/attendance_actions.php', {
                 method: 'POST',
@@ -328,12 +367,17 @@ class QRFullscreenScanner {
     
     updateScannerStatus(message, type) {
         const statusElement = document.getElementById('scannerStatusFullscreen');
-        statusElement.textContent = message;
-        statusElement.className = `status-value ${type}`;
+        if (statusElement) {
+            statusElement.textContent = message;
+            statusElement.className = `status-value ${type}`;
+        }
     }
     
     updateScanInfo() {
-        document.getElementById('scanCountFullscreen').textContent = this.scanCount;
+        const scanCountElement = document.getElementById('scanCountFullscreen');
+        if (scanCountElement) {
+            scanCountElement.textContent = this.scanCount;
+        }
     }
     
     showAlert(message, type = 'info') {

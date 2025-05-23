@@ -1,5 +1,5 @@
 /* 
- * qr_fullscreen.css - CSS สำหรับหน้า QR Scanner แบบเต็มจอ
+ * qr_fullscreen.css - CSS สำหรับหน้า QR Scanner แบบเต็มจอ (ปรับปรุงแล้ว)
  */
 
  * {
@@ -32,6 +32,7 @@ body {
     align-items: center;
     box-shadow: 0 4px 20px rgba(0,0,0,0.1);
     border-bottom: 3px solid #667eea;
+    z-index: 100;
 }
 
 .header-left {
@@ -117,9 +118,10 @@ body {
     padding: 30px;
     gap: 30px;
     overflow: hidden;
+    min-height: 0;
 }
 
-/* Scanner Panel */
+/* Scanner Panel - ปรับปรุงให้ QR เป็นสี่เหลี่ยมจัตุรัส */
 .scanner-panel {
     flex: 1;
     background: rgba(255, 255, 255, 0.95);
@@ -129,6 +131,7 @@ body {
     box-shadow: 0 8px 32px rgba(0,0,0,0.1);
     display: flex;
     flex-direction: column;
+    min-height: 0;
 }
 
 .scanner-header {
@@ -138,6 +141,7 @@ body {
     margin-bottom: 30px;
     padding-bottom: 20px;
     border-bottom: 2px solid #f0f0f0;
+    flex-shrink: 0;
 }
 
 .scanner-header h2 {
@@ -192,22 +196,33 @@ body {
     transform: translateY(-2px);
 }
 
-/* Camera Container */
+/* Camera Container - ปรับปรุงให้เป็นสี่เหลี่ยมจัตุรัส */
 .camera-container {
     flex: 1;
     position: relative;
-    background: #f8f9fa;
+    background: #000;
     border-radius: 15px;
     overflow: hidden;
     display: flex;
     align-items: center;
     justify-content: center;
     min-height: 400px;
+    aspect-ratio: 1; /* บังคับให้เป็นสี่เหลี่ยมจัตุรัส */
+    max-width: min(100%, 70vh); /* จำกัดขนาดสูงสุด */
+    align-self: center;
 }
 
 .qr-reader-fullscreen {
     width: 100%;
     height: 100%;
+    border-radius: 15px;
+}
+
+/* QR Reader Video Element */
+.qr-reader-fullscreen video {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
     border-radius: 15px;
 }
 
@@ -222,13 +237,15 @@ body {
     align-items: center;
     justify-content: center;
     flex-direction: column;
+    z-index: 10;
 }
 
+/* Scanner Frame - ปรับปรุงให้เป็นสี่เหลี่ยมจัตุรัสที่ชัดเจน */
 .scanner-frame-fullscreen {
-    width: 300px;
-    height: 300px;
+    width: min(350px, 70vmin); /* ปรับขนาดตามหน้าจอ */
+    height: min(350px, 70vmin); /* บังคับให้เป็นสี่เหลี่ยมจัตุรัส */
     border: 4px solid #00ff88;
-    border-radius: 20px;
+    border-radius: 10px; /* ลดมุมโค้งให้ดูเป็นสี่เหลี่ยมมากขึ้น */
     position: relative;
     box-shadow: 0 0 0 9999px rgba(0,0,0,0.6);
     animation: scanner-pulse-fullscreen 2s infinite;
@@ -245,27 +262,88 @@ body {
     }
 }
 
+/* เพิ่มมุมเน้นจุด QR Scanner */
 .scanner-frame-fullscreen::before,
 .scanner-frame-fullscreen::after {
     content: '';
     position: absolute;
-    width: 40px;
-    height: 40px;
-    border: 4px solid #00ff88;
+    width: 50px;
+    height: 50px;
+    border: 6px solid #00ff88;
+    z-index: 2;
 }
 
 .scanner-frame-fullscreen::before {
-    top: -4px;
-    left: -4px;
+    top: -6px;
+    left: -6px;
     border-right: none;
     border-bottom: none;
+    border-top-left-radius: 10px;
 }
 
 .scanner-frame-fullscreen::after {
-    bottom: -4px;
-    right: -4px;
+    bottom: -6px;
+    right: -6px;
     border-left: none;
     border-top: none;
+    border-bottom-right-radius: 10px;
+}
+
+/* เพิ่มมุมบนขวาและล่างซ้าย */
+.scanner-frame-fullscreen {
+    --corner-size: 50px;
+    --corner-border: 6px;
+}
+
+.scanner-frame-fullscreen:before {
+    content: '';
+    position: absolute;
+    top: calc(-1 * var(--corner-border));
+    left: calc(-1 * var(--corner-border));
+    width: var(--corner-size);
+    height: var(--corner-size);
+    border-left: var(--corner-border) solid #00ff88;
+    border-top: var(--corner-border) solid #00ff88;
+    border-top-left-radius: 10px;
+}
+
+.scanner-frame-fullscreen:after {
+    content: '';
+    position: absolute;
+    bottom: calc(-1 * var(--corner-border));
+    right: calc(-1 * var(--corner-border));
+    width: var(--corner-size);
+    height: var(--corner-size);
+    border-right: var(--corner-border) solid #00ff88;
+    border-bottom: var(--corner-border) solid #00ff88;
+    border-bottom-right-radius: 10px;
+}
+
+/* เพิ่มมุมที่เหลือด้วย pseudo elements เพิ่มเติม */
+.scanner-overlay-fullscreen::before {
+    content: '';
+    position: absolute;
+    top: calc(50% - min(175px, 35vmin) - 6px);
+    right: calc(50% - min(175px, 35vmin) - 6px);
+    width: 50px;
+    height: 50px;
+    border-right: 6px solid #00ff88;
+    border-top: 6px solid #00ff88;
+    border-top-right-radius: 10px;
+    z-index: 2;
+}
+
+.scanner-overlay-fullscreen::after {
+    content: '';
+    position: absolute;
+    bottom: calc(50% - min(175px, 35vmin) - 6px);
+    left: calc(50% - min(175px, 35vmin) - 6px);
+    width: 50px;
+    height: 50px;
+    border-left: 6px solid #00ff88;
+    border-bottom: 6px solid #00ff88;
+    border-bottom-left-radius: 10px;
+    z-index: 2;
 }
 
 .scanner-instructions-fullscreen {
@@ -280,6 +358,8 @@ body {
     background: rgba(0,0,0,0.8);
     border-radius: 30px;
     backdrop-filter: blur(10px);
+    max-width: 80%;
+    line-height: 1.4;
 }
 
 .scanner-status-panel {
@@ -290,6 +370,7 @@ body {
     display: flex;
     justify-content: space-around;
     gap: 20px;
+    flex-shrink: 0;
 }
 
 .status-item {
@@ -326,6 +407,14 @@ body {
     color: #dc3545;
 }
 
+.status-value.processing {
+    color: #17a2b8;
+}
+
+.status-value.warning {
+    color: #ffc107;
+}
+
 /* Student Panel */
 .student-panel {
     flex: 1;
@@ -336,6 +425,7 @@ body {
     box-shadow: 0 8px 32px rgba(0,0,0,0.1);
     display: flex;
     flex-direction: column;
+    min-height: 0;
 }
 
 .panel-header {
@@ -343,6 +433,7 @@ body {
     margin-bottom: 30px;
     padding-bottom: 20px;
     border-bottom: 2px solid #f0f0f0;
+    flex-shrink: 0;
 }
 
 .panel-header h2 {
@@ -356,6 +447,7 @@ body {
     display: flex;
     flex-direction: column;
     gap: 30px;
+    min-height: 0;
 }
 
 /* Student Photo */
@@ -408,6 +500,7 @@ body {
 /* Student Info List */
 .student-info-container {
     flex: 1;
+    overflow-y: auto;
 }
 
 .student-info-list {
@@ -434,10 +527,24 @@ body {
 .checkbox-container .material-icons {
     font-size: 24px;
     color: #ddd;
+    transition: all 0.3s ease;
 }
 
 .checkbox-container.checked .material-icons {
     color: #28a745;
+    animation: checkmark-bounce 0.6s ease;
+}
+
+@keyframes checkmark-bounce {
+    0%, 20%, 53%, 80%, 100% {
+        transform: scale(1);
+    }
+    40%, 43% {
+        transform: scale(1.3);
+    }
+    70% {
+        transform: scale(1.1);
+    }
 }
 
 .student-name-field {
@@ -462,6 +569,7 @@ body {
     padding: 10px 15px;
     border-radius: 8px;
     animation: highlight-student 0.5s ease;
+    width: 100%;
 }
 
 @keyframes highlight-student {
@@ -596,22 +704,54 @@ body {
     color: #212529;
 }
 
-/* Responsive Design */
+/* Responsive Design - ปรับปรุงให้ทำงานดีบนมือถือ */
+@media (max-width: 1400px) {
+    .main-content {
+        padding: 20px;
+        gap: 20px;
+    }
+    
+    .scanner-frame-fullscreen {
+        width: min(300px, 60vmin);
+        height: min(300px, 60vmin);
+    }
+    
+    .scanner-overlay-fullscreen::before {
+        top: calc(50% - min(150px, 30vmin) - 6px);
+        right: calc(50% - min(150px, 30vmin) - 6px);
+    }
+    
+    .scanner-overlay-fullscreen::after {
+        bottom: calc(50% - min(150px, 30vmin) - 6px);
+        left: calc(50% - min(150px, 30vmin) - 6px);
+    }
+}
+
 @media (max-width: 1200px) {
     .main-content {
         flex-direction: column;
-        padding: 20px;
+        overflow-y: auto;
+        height: auto;
     }
     
     .scanner-panel,
     .student-panel {
         flex: none;
         height: auto;
+        min-height: auto;
+    }
+    
+    .camera-container {
+        aspect-ratio: 1;
+        max-width: min(80%, 400px);
+        height: auto;
+        min-height: 300px;
     }
     
     .current-student-display {
         flex-direction: row;
         gap: 20px;
+        height: auto;
     }
     
     .student-photo-container {
@@ -621,6 +761,10 @@ body {
     .student-photo {
         width: 150px;
         height: 180px;
+    }
+    
+    .student-info-container {
+        overflow-y: visible;
     }
 }
 
@@ -646,11 +790,174 @@ body {
         padding: 20px;
     }
     
+    .camera-container {
+        max-width: 90%;
+        min-height: 250px;
+    }
+    
+    .scanner-frame-fullscreen {
+        width: min(250px, 70vmin);
+        height: min(250px, 70vmin);
+    }
+    
+    .scanner-overlay-fullscreen::before {
+        top: calc(50% - min(125px, 35vmin) - 6px);
+        right: calc(50% - min(125px, 35vmin) - 6px);
+    }
+    
+    .scanner-overlay-fullscreen::after {
+        bottom: calc(50% - min(125px, 35vmin) - 6px);
+        left: calc(50% - min(125px, 35vmin) - 6px);
+    }
+    
+    .scanner-instructions-fullscreen {
+        font-size: 16px;
+        padding: 10px 20px;
+        bottom: -80px;
+    }
+    
     .current-student-display {
         flex-direction: column;
     }
     
     .student-photo-container {
         align-self: center;
+        flex: none;
     }
+    
+    .success-content {
+        padding: 30px;
+        max-width: 90%;
+    }
+    
+    .success-icon .material-icons {
+        font-size: 60px;
+    }
+    
+    .success-message {
+        font-size: 20px;
+    }
+    
+    .success-student-info {
+        font-size: 16px;
+    }
+}
+
+@media (max-width: 480px) {
+    .camera-container {
+        min-height: 200px;
+    }
+    
+    .scanner-frame-fullscreen {
+        width: min(200px, 80vmin);
+        height: min(200px, 80vmin);
+        border-width: 3px;
+    }
+    
+    .scanner-frame-fullscreen::before,
+    .scanner-frame-fullscreen::after,
+    .scanner-overlay-fullscreen::before,
+    .scanner-overlay-fullscreen::after {
+        width: 30px;
+        height: 30px;
+        border-width: 4px;
+    }
+    
+    .scanner-overlay-fullscreen::before {
+        top: calc(50% - min(100px, 40vmin) - 4px);
+        right: calc(50% - min(100px, 40vmin) - 4px);
+    }
+    
+    .scanner-overlay-fullscreen::after {
+        bottom: calc(50% - min(100px, 40vmin) - 4px);
+        left: calc(50% - min(100px, 40vmin) - 4px);
+    }
+    
+    .scanner-instructions-fullscreen {
+        font-size: 14px;
+        padding: 8px 16px;
+        bottom: -60px;
+    }
+    
+    .status-value {
+        font-size: 18px;
+    }
+    
+    .student-photo {
+        width: 120px;
+        height: 150px;
+    }
+    
+    .alert {
+        min-width: 250px;
+        padding: 12px 20px;
+    }
+}
+
+/* เพิ่ม CSS สำหรับการ Loading */
+.scanner-loading {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: white;
+    text-align: center;
+    z-index: 5;
+}
+
+.loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid rgba(255,255,255,0.3);
+    border-top: 4px solid white;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 10px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* เพิ่มเอฟเฟกต์ Scan Line */
+.scan-line {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 90%;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, #00ff88, transparent);
+    animation: scan-line-animation 2s ease-in-out infinite;
+    z-index: 3;
+}
+
+@keyframes scan-line-animation {
+    0%, 100% {
+        top: 10%;
+        opacity: 0;
+    }
+    50% {
+        top: 90%;
+        opacity: 1;
+    }
+}
+
+/* เพิ่ม scan line เข้าไปใน scanner frame */
+.scanner-frame-fullscreen::after {
+    /* ลบ after element เดิม */
+    display: none;
+}
+
+.scanner-frame-fullscreen .scan-line {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, #00ff88, transparent);
+    animation: scan-line-animation 2s ease-in-out infinite;
+    z-index: 3;
 }
