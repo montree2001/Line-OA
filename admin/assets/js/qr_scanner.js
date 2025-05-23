@@ -1,369 +1,589 @@
 /**
- * qr_scanner.js - จัดการการสแกน QR Code สำหรับเช็คชื่อนักเรียน
+ * qr_scanner.js - JavaScript สำหรับจัดการ QR Code Scanner
+ * ระบบน้องชูใจ AI ดูแลผู้เรียน
  */
 
-document.addEventListener('DOMContentLoaded', function() {
-    // อัปเดตเวลาปัจจุบัน
-    updateCurrentTime();
-    setInterval(updateCurrentTime, 1000);
-    
-    // เริ่มต้นสแกนเนอร์ QR Code
-    initQRScanner();
-    
-    // เชื่อมต่อปุ่มบันทึกการเช็คชื่อ
-    document.getElementById('save-attendance').addEventListener('click', saveAttendance);
-});
-
-/**
- * อัปเดตเวลาปัจจุบัน
- */
-function updateCurrentTime() {
-    const now = new Date();
-    const timeString = now.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    document.getElementById('current-time').textContent = timeString;
-}
-
-/**
- * เริ่มต้นสแกนเนอร์ QR Code
- */
-function initQRScanner() {
-    // หยุดการสแกนหากไม่มีกล้อง
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        alert('เบราว์เซอร์ของคุณไม่รองรับการเข้าถึงกล้อง หรือคุณไม่ได้อนุญาตให้เข้าถึงกล้อง');
-        return;
+class QRAttendanceScanner {
+    constructor() {
+        this.html5QrCode = null;
+        this.isScanning = false;
+        this.currentCameraId = null;
+        this.cameras = [];
+        this.scanCount = 0;
+        this.successCount = 0;
+        this.errorCount = 0;
+        this.lastScanTime = 0;
+        this.scanCooldown = 2000; // 2 seconds cooldown between scans
+        this.attendanceData = [];
+        
+        this.init();
     }
-
-    try {
-        // กำหนดตัวแปรที่ใช้ร่วมกัน
-        const video = document.getElementById('qr-video');
-        let scanner = null;
-        let cameras = [];
-        let currentCameraIndex = 0;
-        let isScanning = true;
+    
+    async init() {
+        // โหลด html5-qrcode library
+        await this.loadQRCodeLibrary();
         
-        // สร้าง Scanner จาก Instascan
-        scanner = new Instascan.Scanner({
-            video: video,
-            mirror: false,
-            captureImage: true,
-            scanPeriod: 5 // สแกนทุก 5 วินาที
-        });
+        // เชื่อมต่อ event listeners
+        this.bindEvents();
         
-        // ตรวจจับเมื่อสแกน QR Code ได้
-        scanner.addListener('scan', function(content) {
-            processQRCode(content);
-        });
+        // โหลดข้อมูลการเช็คชื่อวันนี้
+        this.loadTodayAttendance();
         
-        // เชื่อมต่อปุ่มสลับกล้อง
-        document.getElementById('camera-switch').addEventListener('click', function() {
-            if (cameras.length > 1) {
-                currentCameraIndex = (currentCameraIndex + 1) % cameras.length;
-                scanner.start(cameras[currentCameraIndex]);
-            }
-        });
-        
-        // เชื่อมต่อปุ่มหยุดชั่วคราว/เริ่มสแกน
-        const pauseButton = document.getElementById('camera-pause');
-        pauseButton.addEventListener('click', function() {
-            if (isScanning) {
-                scanner.stop();
-                pauseButton.innerHTML = '<span class="material-icons">play_arrow</span> เริ่มสแกน';
-            } else {
-                scanner.start(cameras[currentCameraIndex]);
-                pauseButton.innerHTML = '<span class="material-icons">pause</span> หยุดชั่วคราว';
-            }
-            isScanning = !isScanning;
-        });
-        
-        // รับรายการกล้องทั้งหมด
-        Instascan.Camera.getCameras().then(function(availableCameras) {
-            cameras = availableCameras;
-            if (cameras.length > 0) {
-                // ถ้ามีกล้องหลังให้ใช้กล้องหลังก่อน
-                let selectedCamera = cameras[0]; // กล้องแรกโดยค่าเริ่มต้น
-                
-                // พยายามหากล้องหลัง (environment)
-                for (let i = 0; i < cameras.length; i++) {
-                    if (cameras[i].name.toLowerCase().includes('back') || 
-                        cameras[i].name.toLowerCase().includes('environment')) {
-                        selectedCamera = cameras[i];
-                        currentCameraIndex = i;
-                        break;
-                    }
-                }
-                
-                scanner.start(selectedCamera);
-            } else {
-                alert('ไม่พบกล้องที่สามารถใช้งานได้');
-            }
-        }).catch(function(error) {
-            console.error('Error getting cameras:', error);
-            alert('เกิดข้อผิดพลาดในการเข้าถึงกล้อง: ' + error);
-        });
-    } catch (error) {
-        console.error('Error initializing QR scanner:', error);
-        alert('เกิดข้อผิดพลาดในการเริ่มต้นสแกนเนอร์ QR Code: ' + error);
+        // ตรวจสอบกล้องที่มีอยู่
+        this.checkAvailableCameras();
     }
-}
-
-/**
- * ประมวลผล QR Code ที่สแกนได้
- */
-function processQRCode(content) {
-    try {
-        // แปลงข้อมูล QR Code เป็น JSON
-        const qrData = JSON.parse(content);
-        
-        // ตรวจสอบว่าเป็น QR Code สำหรับเช็คชื่อหรือไม่
-        if (qrData.type === 'student_link' && qrData.student_id && qrData.student_code) {
-            // เล่นเสียงเมื่อสแกนสำเร็จ
-            playBeepSound();
+    
+    async loadQRCodeLibrary() {
+        return new Promise((resolve, reject) => {
+            if (typeof Html5Qrcode !== 'undefined') {
+                resolve();
+                return;
+            }
             
-            // ดึงข้อมูลนักเรียนจากเซิร์ฟเวอร์
-            fetchStudentData(qrData.student_id);
-        } else {
-            console.log('QR Code ไม่ถูกต้อง:', qrData);
-            showError('QR Code ไม่ถูกต้องหรือไม่ใช่ QR Code สำหรับเช็คชื่อ');
-        }
-    } catch (error) {
-        console.error('Error processing QR code:', error);
-        showError('ไม่สามารถอ่าน QR Code ได้');
-    }
-}
-
-/**
- * แสดงข้อผิดพลาด
- */
-function showError(message) {
-    // สร้าง toast notification
-    const toast = document.createElement('div');
-    toast.className = 'toast toast-error';
-    toast.innerHTML = `
-        <span class="material-icons">error</span>
-        <span>${message}</span>
-    `;
-    
-    document.body.appendChild(toast);
-    
-    // แสดงและลบ toast หลังจาก 3 วินาที
-    setTimeout(() => {
-        toast.classList.add('show');
-        setTimeout(() => {
-            toast.classList.remove('show');
-            setTimeout(() => {
-                toast.remove();
-            }, 300);
-        }, 3000);
-    }, 10);
-}
-
-/**
- * เล่นเสียงเมื่อสแกนสำเร็จ
- */
-function playBeepSound() {
-    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-    const oscillator = audioContext.createOscillator();
-    const gainNode = audioContext.createGain();
-    
-    oscillator.type = 'sine';
-    oscillator.frequency.setValueAtTime(1000, audioContext.currentTime);
-    
-    gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.5);
-    
-    oscillator.connect(gainNode);
-    gainNode.connect(audioContext.destination);
-    
-    oscillator.start();
-    oscillator.stop(audioContext.currentTime + 0.5);
-}
-
-/**
- * ดึงข้อมูลนักเรียนจากเซิร์ฟเวอร์
- */
-function fetchStudentData(studentId) {
-    fetch(`ajax/get_student.php?student_id=${studentId}`)
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                displayStudentData(data.student);
-            } else {
-                showError(data.error || 'ไม่พบข้อมูลนักเรียน');
-            }
-        })
-        .catch(error => {
-            console.error('Error fetching student data:', error);
-            showError('เกิดข้อผิดพลาดในการดึงข้อมูลนักเรียน');
+            const script = document.createElement('script');
+            script.src = 'https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js';
+            script.onload = () => resolve();
+            script.onerror = () => reject(new Error('Failed to load QR Code library'));
+            document.head.appendChild(script);
         });
-}
-
-/**
- * แสดงข้อมูลนักเรียน
- */
-function displayStudentData(student) {
-    // ซ่อนข้อความว่างเปล่าและแสดงข้อมูลนักเรียน
-    document.getElementById('scan-result-empty').style.display = 'none';
-    document.getElementById('scan-result').style.display = 'block';
-    
-    // กำหนดข้อมูลนักเรียน
-    document.getElementById('student-name').textContent = `${student.title}${student.first_name} ${student.last_name}`;
-    document.getElementById('student-id').textContent = `รหัสนักเรียน: ${student.student_code}`;
-    document.getElementById('student-class').textContent = `ห้องเรียน: ${student.class}`;
-    
-    // กำหนดรูปภาพนักเรียน
-    if (student.profile_picture) {
-        document.getElementById('student-image').src = `../uploads/profiles/${student.profile_picture}`;
-    } else {
-        document.getElementById('student-image').src = 'assets/images/default-profile.png';
     }
     
-    // กำหนดสถานะการเข้าแถวเริ่มต้น
-    if (student.attendance && student.attendance.status) {
-        document.getElementById('attendance-status').value = student.attendance.status;
-        document.getElementById('attendance-remark').value = student.attendance.remarks || '';
+    bindEvents() {
+        document.getElementById('startScanBtn').addEventListener('click', () => this.startScanning());
+        document.getElementById('stopScanBtn').addEventListener('click', () => this.stopScanning());
+        document.getElementById('switchCameraBtn').addEventListener('click', () => this.switchCamera());
+        document.getElementById('fullscreenBtn').addEventListener('click', () => this.openFullscreen());
         
-        // แสดงข้อความว่าเช็คชื่อแล้ว
-        document.getElementById('save-status').style.display = 'block';
-        document.getElementById('save-status').innerHTML = `
-            <div class="alert alert-info">
-                <span class="material-icons">info</span>
-                <span class="status-message">นักเรียนคนนี้เช็คชื่อไปแล้วเมื่อเวลา ${student.attendance.check_time} น. (${getStatusText(student.attendance.status)})</span>
+        // เปลี่ยนวันที่
+        document.getElementById('scanDate').addEventListener('change', () => {
+            this.loadTodayAttendance();
+        });
+    }
+    
+    async checkAvailableCameras() {
+        try {
+            this.cameras = await Html5Qrcode.getCameras();
+            
+            if (this.cameras && this.cameras.length > 0) {
+                this.currentCameraId = this.cameras[0].id;
+                
+                // แสดงปุ่มเปลี่ยนกล้องถ้ามีกล้องมากกว่า 1 ตัว
+                if (this.cameras.length > 1) {
+                    document.getElementById('switchCameraBtn').style.display = 'inline-flex';
+                }
+            } else {
+                this.showAlert('ไม่พบกล้องที่สามารถใช้งานได้', 'error');
+            }
+        } catch (error) {
+            console.error('Error checking cameras:', error);
+            this.showAlert('ไม่สามารถเข้าถึงกล้องได้', 'error');
+        }
+    }
+    
+    async startScanning() {
+        if (this.isScanning) return;
+        
+        try {
+            if (!this.currentCameraId) {
+                this.showAlert('ไม่พบกล้องที่สามารถใช้งานได้', 'error');
+                return;
+            }
+            
+            this.html5QrCode = new Html5Qrcode("qr-reader");
+            
+            const config = {
+                fps: QR_SCANNER_CONFIG.scannerSettings.fps,
+                qrbox: QR_SCANNER_CONFIG.scannerSettings.qrbox,
+                aspectRatio: QR_SCANNER_CONFIG.scannerSettings.aspectRatio
+            };
+            
+            await this.html5QrCode.start(
+                this.currentCameraId,
+                config,
+                (decodedText, decodedResult) => this.onScanSuccess(decodedText, decodedResult),
+                (errorMessage) => this.onScanError(errorMessage)
+            );
+            
+            this.isScanning = true;
+            this.updateScannerUI();
+            this.updateScannerStatus('กำลังแสกน...', 'scanning');
+            
+        } catch (error) {
+            console.error('Error starting scanner:', error);
+            this.showAlert('ไม่สามารถเริ่มการแสกนได้: ' + error.message, 'error');
+        }
+    }
+    
+    async stopScanning() {
+        if (!this.isScanning || !this.html5QrCode) return;
+        
+        try {
+            await this.html5QrCode.stop();
+            this.html5QrCode.clear();
+            this.html5QrCode = null;
+            this.isScanning = false;
+            this.updateScannerUI();
+            this.updateScannerStatus('พร้อมแสกน', 'ready');
+        } catch (error) {
+            console.error('Error stopping scanner:', error);
+        }
+    }
+    
+    async switchCamera() {
+        if (!this.isScanning || this.cameras.length <= 1) return;
+        
+        const currentIndex = this.cameras.findIndex(camera => camera.id === this.currentCameraId);
+        const nextIndex = (currentIndex + 1) % this.cameras.length;
+        this.currentCameraId = this.cameras[nextIndex].id;
+        
+        // รีสตาร์ทการแสกนด้วยกล้องใหม่
+        await this.stopScanning();
+        setTimeout(() => this.startScanning(), 500);
+    }
+    
+    openFullscreen() {
+        // เปิดหน้าใหม่ในโหมดเต็มจอ
+        const fullscreenUrl = 'qr_fullscreen.php';
+        const fullscreenWindow = window.open(
+            fullscreenUrl, 
+            'QRFullscreen', 
+            'fullscreen=yes,scrollbars=no,resizable=no,status=no,toolbar=no,menubar=no,location=no'
+        );
+        
+        // ถ้าไม่สามารถเปิด fullscreen ได้ ให้เปิดเป็นหน้าต่างใหม่ขนาดใหญ่
+        if (!fullscreenWindow || fullscreenWindow.closed) {
+            window.open(
+                fullscreenUrl,
+                'QRFullscreen',
+                'width=' + screen.width + ',height=' + screen.height + ',top=0,left=0,scrollbars=no,resizable=yes'
+            );
+        }
+    }
+    
+    onScanSuccess(decodedText, decodedResult) {
+        const currentTime = Date.now();
+        
+        // ตรวจสอบ cooldown
+        if (currentTime - this.lastScanTime < this.scanCooldown) {
+            return;
+        }
+        
+        this.lastScanTime = currentTime;
+        this.scanCount++;
+        this.updateScanInfo();
+        
+        try {
+            // แปลง QR Code data
+            const qrData = JSON.parse(decodedText);
+            
+            if (qrData.type === 'student_attendance' && qrData.student_id) {
+                this.processStudentQR(qrData);
+            } else {
+                throw new Error('QR Code ไม่ถูกต้อง');
+            }
+            
+        } catch (error) {
+            console.error('QR Parse Error:', error);
+            this.errorCount++;
+            this.updateScanInfo();
+            this.showAlert('QR Code ไม่ถูกต้องหรือไม่ใช่ QR Code สำหรับเช็คชื่อ', 'error');
+        }
+    }
+    
+    onScanError(errorMessage) {
+        // ไม่แสดง error ของการแสกนที่ไม่สำเร็จ (เป็นเรื่องปกติ)
+    }
+    
+    async processStudentQR(qrData) {
+        try {
+            this.updateScannerStatus('กำลังประมวลผล...', 'processing');
+            
+            // ดึงข้อมูลนักเรียน
+            const response = await fetch(`ajax/get_student.php?student_id=${qrData.student_id}`);
+            const result = await response.json();
+            
+            if (result.success) {
+                this.showStudentModal(result.student, qrData);
+                this.successCount++;
+                this.updateScanInfo();
+                this.updateScannerStatus('แสกนสำเร็จ', 'success');
+                
+                // เล่นเสียงแจ้งเตือน (ถ้ามี)
+                this.playSuccessSound();
+                
+            } else {
+                throw new Error(result.error || 'ไม่พบข้อมูลนักเรียน');
+            }
+            
+        } catch (error) {
+            console.error('Process QR Error:', error);
+            this.errorCount++;
+            this.updateScanInfo();
+            this.showAlert('เกิดข้อผิดพลาด: ' + error.message, 'error');
+            this.updateScannerStatus('เกิดข้อผิดพลาด', 'error');
+        }
+        
+        // รีเซ็ตสถานะหลังจาก 3 วินาที
+        setTimeout(() => {
+            if (this.isScanning) {
+                this.updateScannerStatus('กำลังแสกน...', 'scanning');
+            }
+        }, 3000);
+    }
+    
+    showStudentModal(student, qrData) {
+        const modal = document.getElementById('studentModal');
+        const content = document.getElementById('studentModalContent');
+        
+        // สร้างข้อมูลนักเรียนในโมดัล
+        content.innerHTML = `
+            <div class="student-info-card">
+                <div class="d-flex align-items-center mb-3">
+                    <div class="student-avatar">
+                        ${student.title ? student.title.charAt(0) : student.first_name.charAt(0)}
+                    </div>
+                    <div class="ms-3">
+                        <div class="student-name">${student.title || ''}${student.first_name} ${student.last_name}</div>
+                        <div class="student-code">รหัสนักเรียน: ${student.student_code}</div>
+                    </div>
+                </div>
+                
+                <div class="student-details">
+                    <div class="detail-item">
+                        <div class="detail-label">ห้องเรียน</div>
+                        <div class="detail-value">${student.class || 'ไม่ระบุ'}</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">สถานะการเช็คชื่อปัจจุบัน</div>
+                        <div class="detail-value">${this.getAttendanceStatusText(student.attendance?.status)}</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">เวลาที่เช็คชื่อล่าสุด</div>
+                        <div class="detail-value">${student.attendance?.check_time || 'ยังไม่เช็คชื่อ'}</div>
+                    </div>
+                </div>
             </div>
         `;
-    } else {
-        // รีเซ็ตฟอร์ม
-        document.getElementById('attendance-status').value = 'present';
-        document.getElementById('attendance-remark').value = '';
-        document.getElementById('save-status').style.display = 'none';
+        
+        // เก็บข้อมูลไว้ใช้ตอนยืนยัน
+        modal.studentData = student;
+        modal.qrData = qrData;
+        
+        // แสดงโมดัล
+        modal.style.display = 'flex';
     }
     
-    // เก็บ ID นักเรียนไว้ใช้ตอนบันทึก
-    document.getElementById('save-attendance').dataset.studentId = student.student_id;
-}
-
-/**
- * แปลงสถานะเป็นข้อความภาษาไทย
- */
-function getStatusText(status) {
-    switch (status) {
-        case 'present': return 'มาเรียน';
-        case 'late': return 'มาสาย';
-        case 'absent': return 'ขาดเรียน';
-        case 'leave': return 'ลา';
-        default: return status;
-    }
-}
-
-/**
- * บันทึกการเช็คชื่อ
- */
-function saveAttendance() {
-    const studentId = document.getElementById('save-attendance').dataset.studentId;
-    const status = document.getElementById('attendance-status').value;
-    const remarks = document.getElementById('attendance-remark').value;
-    
-    if (!studentId) {
-        showError('ไม่พบข้อมูลนักเรียน');
-        return;
-    }
-    
-    // แสดงการโหลด
-    document.getElementById('save-attendance').disabled = true;
-    document.getElementById('save-attendance').innerHTML = '<span class="spinner-border spinner-border-sm"></span> กำลังบันทึก...';
-    
-    // เตรียมข้อมูลสำหรับส่ง
-    const formData = new FormData();
-    formData.append('action', 'record_attendance');
-    formData.append('student_id', studentId);
-    formData.append('method', 'QR_Code');
-    formData.append('status', status);
-    formData.append('remarks', remarks);
-    
-    // ส่งข้อมูลไปยังเซิร์ฟเวอร์
-    fetch('ajax/attendance_actions.php', {
-        method: 'POST',
-        body: formData
-    })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                // แสดงข้อความสำเร็จ
-                document.getElementById('save-status').style.display = 'block';
-                document.getElementById('save-status').innerHTML = `
-                    <div class="alert alert-success">
-                        <span class="material-icons">check_circle</span>
-                        <span class="status-message">บันทึกการเช็คชื่อเรียบร้อยแล้ว (${getStatusText(status)})</span>
-                    </div>
-                `;
-                
-                // เพิ่มข้อมูลในประวัติการสแกน
-                addToScanHistory(data.student);
+    async confirmAttendance() {
+        const modal = document.getElementById('studentModal');
+        const student = modal.studentData;
+        const qrData = modal.qrData;
+        const scanDate = document.getElementById('scanDate').value;
+        const attendanceStatus = document.getElementById('attendanceStatus').value;
+        
+        try {
+            const formData = new FormData();
+            formData.append('action', 'record_attendance');
+            formData.append('student_id', student.student_id);
+            formData.append('method', 'QR_Code');
+            formData.append('status', attendanceStatus);
+            formData.append('date', scanDate);
+            
+            const response = await fetch('ajax/attendance_actions.php', {
+                method: 'POST',
+                body: formData
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                this.showAlert(`เช็คชื่อสำเร็จ: ${student.title || ''}${student.first_name} ${student.last_name}`, 'success');
+                this.showLatestStudent(result.student);
+                this.loadTodayAttendance(); // รีโหลดข้อมูล
+                this.closeStudentModal();
             } else {
-                showError(data.error || 'ไม่สามารถบันทึกการเช็คชื่อได้');
-                document.getElementById('save-status').style.display = 'block';
-                document.getElementById('save-status').innerHTML = `
-                    <div class="alert alert-danger">
-                        <span class="material-icons">error</span>
-                        <span class="status-message">${data.error || 'ไม่สามารถบันทึกการเช็คชื่อได้'}</span>
-                    </div>
-                `;
+                throw new Error(result.error || 'เกิดข้อผิดพลาดในการบันทึก');
             }
-        })
-        .catch(error => {
-            console.error('Error saving attendance:', error);
-            showError('เกิดข้อผิดพลาดในการบันทึกการเช็คชื่อ');
-            document.getElementById('save-status').style.display = 'block';
-            document.getElementById('save-status').innerHTML = `
-                <div class="alert alert-danger">
-                    <span class="material-icons">error</span>
-                    <span class="status-message">เกิดข้อผิดพลาดในการบันทึกการเช็คชื่อ</span>
+            
+        } catch (error) {
+            console.error('Confirm Attendance Error:', error);
+            this.showAlert('เกิดข้อผิดพลาดในการบันทึก: ' + error.message, 'error');
+        }
+    }
+    
+    showLatestStudent(student) {
+        const card = document.getElementById('latestStudentCard');
+        const content = document.getElementById('latestStudentInfo');
+        
+        content.innerHTML = `
+            <div class="d-flex align-items-center">
+                <div class="student-avatar me-3">
+                    ${student.title ? student.title.charAt(0) : student.first_name.charAt(0)}
                 </div>
-            `;
-        })
-        .finally(() => {
-            // รีเซ็ตปุ่ม
-            document.getElementById('save-attendance').disabled = false;
-            document.getElementById('save-attendance').innerHTML = '<span class="material-icons">save</span> บันทึกการเช็คชื่อ';
+                <div class="flex-grow-1">
+                    <div class="student-name">${student.title || ''}${student.first_name} ${student.last_name}</div>
+                    <div class="student-details">
+                        <div class="d-flex justify-content-between">
+                            <span>รหัส: ${student.student_code}</span>
+                            <span>ห้อง: ${student.level}/${student.group_number}</span>
+                            <span class="status-badge ${student.attendance_status}">${this.getAttendanceStatusText(student.attendance_status)}</span>
+                            <span>เวลา: ${student.check_time}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        card.style.display = 'block';
+    }
+    
+    async loadTodayAttendance() {
+        try {
+            const scanDate = document.getElementById('scanDate').value;
+            const response = await fetch(`ajax/get_today_attendance.php?date=${scanDate}`);
+            const result = await response.json();
+            
+            if (result.success) {
+                this.attendanceData = result.attendance;
+                this.updateAttendanceTable();
+                this.updateAttendanceStats();
+            } else {
+                console.error('Load attendance error:', result.error);
+            }
+            
+        } catch (error) {
+            console.error('Load Today Attendance Error:', error);
+        }
+    }
+    
+    updateAttendanceTable() {
+        const tbody = document.getElementById('attendanceTableBody');
+        
+        if (this.attendanceData.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="8" class="text-center">ยังไม่มีการเช็คชื่อวันนี้</td></tr>';
+            return;
+        }
+        
+        tbody.innerHTML = this.attendanceData.map((attendance, index) => `
+            <tr>
+                <td>${index + 1}</td>
+                <td>${attendance.student_code}</td>
+                <td>${attendance.title || ''}${attendance.first_name} ${attendance.last_name}</td>
+                <td>${attendance.level}/${attendance.group_number}</td>
+                <td><span class="status-badge ${attendance.attendance_status}">${this.getAttendanceStatusText(attendance.attendance_status)}</span></td>
+                <td>${attendance.check_time}</td>
+                <td><span class="method-badge ${attendance.check_method.toLowerCase()}">${this.getMethodText(attendance.check_method)}</span></td>
+                <td>
+                    <span>${attendance.remarks || ''}</span>
+                    <button class="btn btn-sm btn-outline-primary ms-2" onclick="qrScanner.editAttendance(${attendance.attendance_id})">
+                        <span class="material-icons" style="font-size: 16px;">edit</span>
+                    </button>
+                </td>
+            </tr>
+        `).join('');
+    }
+    
+    updateAttendanceStats() {
+        const stats = {
+            present: 0,
+            late: 0,
+            absent: 0,
+            leave: 0
+        };
+        
+        this.attendanceData.forEach(attendance => {
+            if (stats.hasOwnProperty(attendance.attendance_status)) {
+                stats[attendance.attendance_status]++;
+            }
         });
+        
+        document.getElementById('presentTotal').textContent = stats.present;
+        document.getElementById('lateTotal').textContent = stats.late;
+        document.getElementById('absentTotal').textContent = stats.absent;
+        document.getElementById('leaveTotal').textContent = stats.leave;
+        document.getElementById('attendanceCount').textContent = `${this.attendanceData.length} คน`;
+    }
+    
+    async editAttendance(attendanceId) {
+        try {
+            // หาข้อมูลการเช็คชื่อ
+            const attendance = this.attendanceData.find(a => a.attendance_id == attendanceId);
+            if (!attendance) return;
+            
+            // เติมข้อมูลในฟอร์มแก้ไข
+            document.getElementById('editAttendanceId').value = attendanceId;
+            document.getElementById('editStudentId').value = attendance.student_id;
+            document.getElementById('editStatus').value = attendance.attendance_status;
+            document.getElementById('editRemarks').value = attendance.remarks || '';
+            
+            // แสดงโมดัลแก้ไข
+            document.getElementById('editAttendanceModal').style.display = 'flex';
+            
+        } catch (error) {
+            console.error('Edit Attendance Error:', error);
+            this.showAlert('เกิดข้อผิดพลาดในการแก้ไข', 'error');
+        }
+    }
+    
+    async saveEditAttendance() {
+        try {
+            const formData = new FormData(document.getElementById('editAttendanceForm'));
+            formData.append('action', 'update_attendance');
+            
+            const response = await fetch('ajax/attendance_actions.php', {
+                method: 'POST',
+                body: formData
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                this.showAlert('แก้ไขการเช็คชื่อสำเร็จ', 'success');
+                this.loadTodayAttendance(); // รีโหลดข้อมูล
+                this.closeEditModal();
+            } else {
+                throw new Error(result.error || 'เกิดข้อผิดพลาดในการแก้ไข');
+            }
+            
+        } catch (error) {
+            console.error('Save Edit Attendance Error:', error);
+            this.showAlert('เกิดข้อผิดพลาดในการบันทึก: ' + error.message, 'error');
+        }
+    }
+    
+    updateScannerUI() {
+        const scannerCard = document.getElementById('scannerCard');
+        const startBtn = document.getElementById('startScanBtn');
+        const stopBtn = document.getElementById('stopScanBtn');
+        const switchBtn = document.getElementById('switchCameraBtn');
+        
+        if (this.isScanning) {
+            scannerCard.style.display = 'block';
+            startBtn.style.display = 'none';
+            stopBtn.style.display = 'inline-flex';
+            switchBtn.style.display = this.cameras.length > 1 ? 'inline-flex' : 'none';
+        } else {
+            scannerCard.style.display = 'none';
+            startBtn.style.display = 'inline-flex';
+            stopBtn.style.display = 'none';
+            switchBtn.style.display = 'none';
+        }
+    }
+    
+    updateScannerStatus(message, type) {
+        const statusElement = document.getElementById('scannerStatus');
+        statusElement.textContent = message;
+        statusElement.className = `status-${type}`;
+    }
+    
+    updateScanInfo() {
+        document.getElementById('scanCount').textContent = this.scanCount;
+        document.getElementById('successCount').textContent = this.successCount;
+        document.getElementById('errorCount').textContent = this.errorCount;
+    }
+    
+    showAlert(message, type = 'info') {
+        const alertContainer = document.getElementById('alertContainer');
+        const alertId = 'alert-' + Date.now();
+        
+        const alertHtml = `
+            <div class="alert alert-${type}" id="${alertId}">
+                <span class="material-icons">${this.getAlertIcon(type)}</span>
+                <div class="alert-message">${message}</div>
+                <button class="alert-close" onclick="document.getElementById('${alertId}').remove()">
+                    <span class="material-icons">close</span>
+                </button>
+            </div>
+        `;
+        
+        alertContainer.insertAdjacentHTML('beforeend', alertHtml);
+        
+        // ลบ alert อัตโนมัติหลังจาก 5 วินาที
+        setTimeout(() => {
+            const alertElement = document.getElementById(alertId);
+            if (alertElement) {
+                alertElement.remove();
+            }
+        }, 5000);
+    }
+    
+    getAlertIcon(type) {
+        const icons = {
+            'success': 'check_circle',
+            'error': 'error',
+            'warning': 'warning',
+            'info': 'info'
+        };
+        return icons[type] || 'info';
+    }
+    
+    getAttendanceStatusText(status) {
+        const statusTexts = {
+            'present': 'มาเรียน',
+            'late': 'มาสาย',
+            'absent': 'ขาดเรียน',
+            'leave': 'ลา'
+        };
+        return statusTexts[status] || 'ไม่ระบุ';
+    }
+    
+    getMethodText(method) {
+        const methodTexts = {
+            'GPS': 'GPS',
+            'QR_Code': 'QR Code',
+            'PIN': 'PIN',
+            'Manual': 'Manual'
+        };
+        return methodTexts[method] || method;
+    }
+    
+    playSuccessSound() {
+        // เล่นเสียงแจ้งเตือนเมื่อแสกนสำเร็จ (ถ้าเบราว์เซอร์รองรับ)
+        try {
+            const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhEkqKt6mXmKOJmH+bYhcRO3K1rpeVpZqGg5mMiX2RiYiGgJWYhpqIgpCJjI2RioOPhYiIhpOEo4ychJiGhZeNiYyMjYqPk4WOhZGOhJqRh4yRjYyPgpOOjZOEi5uWipWHj5iKiZqSioiOhpOIjJqMgJqGi5iDhJWKjJuKhZuMio2NhJGPhoyKjpmQkJuRjJqGi5yVhJOHk5aMjY2Pi4yNhoyGjpKKhpqOjJaFk5CGk4yJi5OGj5OKgoyNhYiOhJCKhpyJjYyPj42Oy4mOhYuJgJ6Oi5WLh5qIlYyDlYWNlIGWlYyZhJaEh5yKhpiQh5CPg5GMhZ+Lh4iGhpWLi5OPhpOGjJiKjp2IjYyMg4KIhJaPgpOLhZuOj46Mio6OhZ+FhZKNjYmShJeOhJOLgZaIjJKIgJONhpCGiZyPjYyGhJ2HjI2Gi4ySjpOSipCKhpOOhJuMjIyKjJOJjYyFkZeCjZyMkZKGipGNhJORgZOGhJOGk5aCpgA==');
+            audio.volume = 0.3;
+            audio.play().catch(() => {
+                // เงียบๆ ถ้าไม่สามารถเล่นเสียงได้
+            });
+        } catch (error) {
+            // ไม่ทำอะไรถ้าไม่สามารถเล่นเสียงได้
+        }
+    }
+    
+    closeStudentModal() {
+        document.getElementById('studentModal').style.display = 'none';
+    }
+    
+    closeEditModal() {
+        document.getElementById('editAttendanceModal').style.display = 'none';
+    }
 }
 
-/**
- * เพิ่มข้อมูลในประวัติการสแกน
- */
-function addToScanHistory(student) {
-    const history = document.getElementById('scan-history');
-    const now = new Date();
-    const timeString = now.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    
-    // สร้างแถวใหม่
-    const newRow = document.createElement('tr');
-    
-    // กำหนดคลาสตามสถานะ
-    let statusClass = '';
-    switch (student.attendance_status) {
-        case 'present': statusClass = 'text-success'; break;
-        case 'late': statusClass = 'text-warning'; break;
-        case 'absent': statusClass = 'text-danger'; break;
-        case 'leave': statusClass = 'text-info'; break;
-    }
-    
-    // กำหนดเนื้อหาแถว
-    newRow.innerHTML = `
-        <td>${timeString}</td>
-        <td>${student.student_code}</td>
-        <td>${student.title}${student.first_name} ${student.last_name}</td>
-        <td class="${statusClass}">${getStatusText(student.attendance_status)}</td>
-    `;
-    
-    // เพิ่มแถวใหม่ไว้ข้างบนสุด
-    if (history.firstChild) {
-        history.insertBefore(newRow, history.firstChild);
-    } else {
-        history.appendChild(newRow);
-    }
-    
-    // จำกัดจำนวนแถวไว้ที่ 10 แถว
-    while (history.children.length > 10) {
-        history.removeChild(history.lastChild);
+// Global functions
+function closeStudentModal() {
+    if (window.qrScanner) {
+        window.qrScanner.closeStudentModal();
     }
 }
+
+function confirmAttendance() {
+    if (window.qrScanner) {
+        window.qrScanner.confirmAttendance();
+    }
+}
+
+function closeEditModal() {
+    if (window.qrScanner) {
+        window.qrScanner.closeEditModal();
+    }
+}
+
+function saveEditAttendance() {
+    if (window.qrScanner) {
+        window.qrScanner.saveEditAttendance();
+    }
+}
+
+// เริ่มต้นระบบเมื่อโหลดหน้าเสร็จ
+document.addEventListener('DOMContentLoaded', function() {
+    window.qrScanner = new QRAttendanceScanner();
+});
