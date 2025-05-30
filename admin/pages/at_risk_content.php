@@ -87,7 +87,7 @@
         </div>
         
         <div class="table-responsive">
-            <table class="data-table">
+        <table class="data-table" id="at-risk-table">
                 <thead>
                     <tr>
                         <th width="25%">นักเรียน</th>
@@ -259,7 +259,7 @@
         </div>
         
         <div class="table-responsive">
-            <table class="data-table">
+        <table class="data-table" id="frequently-absent-table">
                 <thead>
                     <tr>
                         <th width="25%">นักเรียน</th>
@@ -334,7 +334,7 @@
         </div>
         
         <div class="table-responsive">
-            <table class="data-table">
+        <table class="data-table" id="pending-notification-table">
                 <thead>
                     <tr>
                         <th width="25%">นักเรียน</th>

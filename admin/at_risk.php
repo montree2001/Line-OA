@@ -604,13 +604,36 @@ $frequently_absent_count = count($frequently_absent);
 $pending_notification_count = count($pending_notification);
 
 // ไฟล์ CSS และ JS เพิ่มเติม
+/*<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.10.25/css/jquery.dataTables.min.css">
+<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/responsive/2.2.9/css/responsive.dataTables.min.css">
+<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/buttons/1.7.1/css/buttons.dataTables.min.css">
+*/
 $extra_css = [
-    'assets/css/at_risk.css'
+    'assets/css/at_risk.css',
+    'assets/css/charts.css',
+    'https://cdn.datatables.net/1.10.25/css/jquery.dataTables.min.css',
+    'https://cdn.datatables.net/responsive/2.2.9/css/responsive.dataTables.min.css',
+    'https://cdn.datatables.net/buttons/1.7.1/css/buttons.dataTables.min.css'
 ];
+
+/*
+<script type="text/javascript" src="https://cdn.datatables.net/1.10.25/js/jquery.dataTables.min.js"></script>
+<script type="text/javascript" src="https://cdn.datatables.net/responsive/2.2.9/js/dataTables.responsive.min.js"></script>
+<script type="text/javascript" src="https://cdn.datatables.net/buttons/1.7.1/js/dataTables.buttons.min.js"></script>
+<script type="text/javascript" src="https://cdn.datatables.net/buttons/1.7.1/js/buttons.html5.min.js"></script>
+<script type="text/javascript" src="https://cdn.datatables.net/buttons/1.7.1/js/buttons.print.min.js"></script>
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.3/jszip.min.js"></script>
+*/
 
 $extra_js = [
     'assets/js/at_risk.js',
-    'assets/js/charts.js'
+    'assets/js/charts.js',
+    'https://cdn.datatables.net/1.10.25/js/jquery.dataTables.min.js',
+    'https://cdn.datatables.net/responsive/2.2.9/js/dataTables.responsive.min.js',
+    'https://cdn.datatables.net/buttons/1.7.1/js/dataTables.buttons.min.js',
+    'https://cdn.datatables.net/buttons/1.7.1/js/buttons.html5.min.js',
+    'https://cdn.datatables.net/buttons/1.7.1/js/buttons.print.min.js',
+    'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.3/jszip.min.js'
 ];
 
 // ส่งข้อมูลไปยังเทมเพลต
@@ -649,6 +672,10 @@ $data = [
     'risk_settings' => $risk_settings
 ];
 
+
+
+
+
 // กำหนดเส้นทางไปยังไฟล์เนื้อหาเฉพาะหน้า
 $content_path = 'pages/at_risk_content.php';
 
@@ -663,3 +690,4 @@ require_once 'templates/main_content.php';
 
 // โหลดเทมเพลตส่วนท้าย
 require_once 'templates/footer.php';
+

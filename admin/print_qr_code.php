@@ -17,7 +17,10 @@ if (!isset($_SESSION['user_id']) || !isset($_SESSION['user_role']) || !in_array(
     header('Location: ../login.php');
     exit;
 }
-
+/* แสดงผล  Error*/
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
 // เชื่อมต่อฐานข้อมูล
 $conn = getDB();
 
@@ -129,6 +132,9 @@ $qr_validity = 7; // จำนวนวันที่ QR Code ใช้งา�
 $message = '';
 $error = '';
 
+
+// แทนที่ส่วนการค้นหาใน print_qr_code.php (ประมาณบรรทัดที่ 144-180)
+
 // ประมวลผลการค้นหา
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['search'])) {
@@ -146,28 +152,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 JOIN users u ON s.user_id = u.user_id
                 LEFT JOIN classes c ON s.current_class_id = c.class_id
                 LEFT JOIN departments d ON c.department_id = d.department_id
-                WHERE (s.student_code LIKE :search_term 
-                       OR u.first_name LIKE :search_term 
-                       OR u.last_name LIKE :search_term)
+                WHERE (s.student_code LIKE ? 
+                       OR u.first_name LIKE ? 
+                       OR u.last_name LIKE ?)
                       AND s.status = 'กำลังศึกษา'
             ";
             
+            $params = ["%{$search_term}%", "%{$search_term}%", "%{$search_term}%"];
+            
             // เพิ่มเงื่อนไขการค้นหาตามสิทธิ์ของผู้ใช้
             if (!$can_view_all && isset($admin_info['teacher_id'])) {
-                $sql .= " AND c.class_id IN (SELECT ca.class_id FROM class_advisors ca WHERE ca.teacher_id = :teacher_id)";
+                $sql .= " AND c.class_id IN (SELECT ca.class_id FROM class_advisors ca WHERE ca.teacher_id = ?)";
+                $params[] = $admin_info['teacher_id'];
             }
             
             $sql .= " ORDER BY c.level, d.department_name, c.group_number, u.first_name";
             
             $stmt = $conn->prepare($sql);
-            $stmt->bindValue(':search_term', "%{$search_term}%", PDO::PARAM_STR);
-            
-            if (!$can_view_all && isset($admin_info['teacher_id'])) {
-                $stmt->bindValue(':teacher_id', $admin_info['teacher_id'], PDO::PARAM_INT);
-            }
-            
-            $stmt->execute();
+            $stmt->execute($params);
             $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
         } elseif (isset($_POST['department_id']) && isset($_POST['level']) && isset($_POST['group_number'])) {
             // ค้นหาตามแผนก/ระดับชั้น/กลุ่ม
             $selected_department = !empty($_POST['department_id']) ? $_POST['department_id'] : null;
@@ -187,35 +191,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $params = [];
             
             if ($selected_department) {
-                $sql .= " AND c.department_id = :department_id";
-                $params[':department_id'] = $selected_department;
+                $sql .= " AND c.department_id = ?";
+                $params[] = $selected_department;
             }
             
             if ($selected_level) {
-                $sql .= " AND c.level = :level";
-                $params[':level'] = $selected_level;
+                $sql .= " AND c.level = ?";
+                $params[] = $selected_level;
             }
             
             if ($selected_group) {
-                $sql .= " AND c.group_number = :group_number";
-                $params[':group_number'] = $selected_group;
+                $sql .= " AND c.group_number = ?";
+                $params[] = $selected_group;
             }
             
             // เพิ่มเงื่อนไขการค้นหาตามสิทธิ์ของผู้ใช้
             if (!$can_view_all && isset($admin_info['teacher_id'])) {
-                $sql .= " AND c.class_id IN (SELECT ca.class_id FROM class_advisors ca WHERE ca.teacher_id = :teacher_id)";
-                $params[':teacher_id'] = $admin_info['teacher_id'];
+                $sql .= " AND c.class_id IN (SELECT ca.class_id FROM class_advisors ca WHERE ca.teacher_id = ?)";
+                $params[] = $admin_info['teacher_id'];
             }
             
             $sql .= " ORDER BY c.level, d.department_name, c.group_number, u.first_name";
             
             $stmt = $conn->prepare($sql);
-            foreach ($params as $key => $value) {
-                $stmt->bindValue($key, $value);
-            }
-            
-            $stmt->execute();
+            $stmt->execute($params);
             $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
         } elseif (isset($_POST['class_id']) && !empty($_POST['class_id'])) {
             // ค้นหาตามห้องเรียน
             $selected_class = $_POST['class_id'];
@@ -227,13 +228,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 JOIN users u ON s.user_id = u.user_id
                 LEFT JOIN classes c ON s.current_class_id = c.class_id
                 LEFT JOIN departments d ON c.department_id = d.department_id
-                WHERE s.current_class_id = :class_id AND s.status = 'กำลังศึกษา'
-                ORDER BY u.first_name
+                WHERE s.current_class_id = ? AND s.status = 'กำลังศึกษา'
             ";
             
+            $params = [$selected_class];
+            
+            // เพิ่มเงื่อนไขการค้นหาตามสิทธิ์ของผู้ใช้ (แม้ว่าจะเลือกห้องเรียนแล้วก็ตาม)
+            if (!$can_view_all && isset($admin_info['teacher_id'])) {
+                $sql .= " AND c.class_id IN (SELECT ca.class_id FROM class_advisors ca WHERE ca.teacher_id = ?)";
+                $params[] = $admin_info['teacher_id'];
+            }
+            
+            $sql .= " ORDER BY u.first_name";
+            
             $stmt = $conn->prepare($sql);
-            $stmt->bindValue(':class_id', $selected_class, PDO::PARAM_INT);
-            $stmt->execute();
+            $stmt->execute($params);
             $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
         }
         
@@ -243,6 +252,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($qr_validity < 1) $qr_validity = 1;
             if ($qr_validity > 365) $qr_validity = 365;
         }
+        
     } elseif (isset($_POST['generate_qr'])) {
         // สร้าง QR Code สำหรับนักเรียนที่เลือก
         if (isset($_POST['selected_students']) && !empty($_POST['selected_students'])) {
@@ -298,15 +308,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     
                     // บันทึกข้อมูล QR Code ลงฐานข้อมูล
                     $stmt = $conn->prepare("
-                    INSERT INTO qr_codes (student_id, qr_code_data, valid_from, valid_until, is_active, created_at)
-                    VALUES (?, ?, ?, ?, 1, NOW())
-                ");
-                $stmt->execute([
-                    $student_id,
-                    json_encode($qr_data),
-                    $valid_from->format('Y-m-d H:i:s'),
-                    $valid_until->format('Y-m-d H:i:s')
-                ]);
+                        INSERT INTO qr_codes (student_id, qr_code_data, valid_from, valid_until, is_active, created_at)
+                        VALUES (?, ?, ?, ?, 1, NOW())
+                    ");
+                    $stmt->execute([
+                        $student_id,
+                        json_encode($qr_data),
+                        $valid_from->format('Y-m-d H:i:s'),
+                        $valid_until->format('Y-m-d H:i:s')
+                    ]);
                     
                     $generated_count++;
                 } catch (Exception $e) {

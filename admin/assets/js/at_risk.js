@@ -76,6 +76,92 @@ function showTab(tabId) {
 }
 
 /**
+ * ตั้งค่าตาราง DataTable
+ */
+function initDataTables() {
+    if (typeof $.fn !== 'undefined' && typeof $.fn.DataTable !== 'undefined') {
+        // กำหนดภาษาไทยสำหรับ DataTable
+        const thaiLanguage = {
+            "emptyTable": "ไม่พบข้อมูล",
+            "info": "แสดง _START_ ถึง _END_ จาก _TOTAL_ รายการ",
+            "infoEmpty": "แสดง 0 ถึง 0 จาก 0 รายการ",
+            "infoFiltered": "(กรองข้อมูล _MAX_ ทุกรายการ)",
+            "infoPostFix": "",
+            "thousands": ",",
+            "lengthMenu": "แสดง _MENU_ รายการ",
+            "loadingRecords": "กำลังโหลดข้อมูล...",
+            "processing": "กำลังดำเนินการ...",
+            "search": "ค้นหา:",
+            "zeroRecords": "ไม่พบข้อมูลที่ค้นหา",
+            "paginate": {
+                "first": "หน้าแรก",
+                "last": "หน้าสุดท้าย",
+                "next": "ถัดไป",
+                "previous": "ก่อนหน้า"
+            },
+            "aria": {
+                "sortAscending": ": เรียงข้อมูลจากน้อยไปมาก",
+                "sortDescending": ": เรียงข้อมูลจากมากไปน้อย"
+            }
+        };
+
+        // ตั้งค่า DataTable สำหรับตารางนักเรียนเสี่ยงตกกิจกรรม
+        $('#at-risk-table').DataTable({
+            language: thaiLanguage,
+            responsive: true,
+            pageLength: 10,
+            order: [[5, 'asc']], // เรียงตามอัตราการเข้าแถวจากน้อยไปมาก
+            columnDefs: [
+                { targets: 0, width: '25%' }, // คอลัมน์นักเรียน
+                { targets: 1, width: '10%' }, // คอลัมน์ชั้น/ห้อง
+                { targets: 2, width: '12%' }, // คอลัมน์อัตราการเข้าแถว
+                { targets: 3, width: '8%' }, // คอลัมน์วันที่ขาด
+                { targets: 4, width: '15%' }, // คอลัมน์ครูที่ปรึกษา
+                { targets: 5, width: '15%' }, // คอลัมน์การแจ้งเตือน
+                { targets: 6, width: '15%', orderable: false } // คอลัมน์จัดการ (ไม่ต้องเรียงลำดับ)
+            ],
+            dom: 'Blfrtip', // แสดงปุ่มส่งออก, ตัวเลือกแสดงจำนวนรายการ, ช่องค้นหา, ตาราง, ข้อมูลจำนวนรายการ, pagination
+            buttons: [
+                {
+                    extend: 'excel',
+                    text: '<i class="material-icons">file_download</i> Excel',
+                    className: 'btn btn-success',
+                    exportOptions: {
+                        columns: [0, 1, 2, 3, 4, 5] // ส่งออกทุกคอลัมน์ยกเว้นคอลัมน์จัดการ
+                    },
+                    title: 'รายงานนักเรียนเสี่ยงตกกิจกรรม'
+                },
+                {
+                    extend: 'print',
+                    text: '<i class="material-icons">print</i> พิมพ์',
+                    className: 'btn btn-info',
+                    exportOptions: {
+                        columns: [0, 1, 2, 3, 4, 5] // พิมพ์ทุกคอลัมน์ยกเว้นคอลัมน์จัดการ
+                    }
+                }
+            ]
+        });
+
+        // ตั้งค่า DataTable สำหรับตารางนักเรียนขาดแถวบ่อย
+        $('#frequently-absent-table').DataTable({
+            language: thaiLanguage,
+            responsive: true,
+            pageLength: 10,
+            order: [[3, 'desc']] // เรียงตามจำนวนวันที่ขาดจากมากไปน้อย
+        });
+
+        // ตั้งค่า DataTable สำหรับตารางนักเรียนรอการแจ้งเตือน
+        $('#pending-notification-table').DataTable({
+            language: thaiLanguage,
+            responsive: true,
+            pageLength: 10,
+            order: [[2, 'asc']] // เรียงตามอัตราการเข้าแถวจากน้อยไปมาก
+        });
+    }
+}
+
+
+/**
  * ตั้งค่า event listeners
  */
 function initEventListeners() {
@@ -904,7 +990,6 @@ function resetFilters() {
     // โหลดหน้าใหม่พร้อมกับพารามิเตอร์แท็บ (ถ้ามี)
     window.location.href = window.location.pathname + tabParam;
 }
-
 /**
  * ดาวน์โหลดรายงานนักเรียนเสี่ยงตกกิจกรรม
  */
@@ -913,67 +998,50 @@ function downloadAtRiskReport() {
     showLoadingOverlay();
     
     // รวบรวมเงื่อนไขการกรอง
-    const filters = {
-        department_id: document.getElementById('departmentId')?.value || '',
-        class_level: document.getElementById('classLevel')?.value || '',
-        class_room: document.getElementById('classRoom')?.value || '',
-        advisor: document.getElementById('advisor')?.value || '',
-        min_attendance: document.getElementById('minAttendance')?.value || '',
-        max_attendance: document.getElementById('maxAttendance')?.value || ''
+    const departmentId = document.getElementById('departmentId')?.value || '';
+    const classLevel = document.getElementById('classLevel')?.value || '';
+    const classRoom = document.getElementById('classRoom')?.value || '';
+    const advisor = document.getElementById('advisor')?.value || '';
+    const minAttendance = document.getElementById('minAttendance')?.value || '';
+    const maxAttendance = document.getElementById('maxAttendance')?.value || '';
+    const academicYearId = document.querySelector('meta[name="academic-year-id"]')?.content || '1';
+    
+    // สร้าง form สำหรับ submit แบบ POST
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = 'api/reports/at_risk_export.php';
+    form.target = '_blank'; // เปิดในแท็บใหม่
+    form.style.display = 'none';
+    
+    // เพิ่ม input fields
+    const addInput = (name, value) => {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = name;
+        input.value = value;
+        form.appendChild(input);
     };
     
-    // ส่งข้อมูลไปยัง server
-    fetch('api/reports/at-risk', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            filters: filters,
-            academic_year_id: document.querySelector('meta[name="academic-year-id"]')?.content || '1'
-        })
-    })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error('Failed to generate report');
-        }
-        return response.blob();
-    })
-    .then(blob => {
-        // ซ่อน loading overlay
+    // เพิ่มข้อมูลการกรอง
+    addInput('department_id', departmentId);
+    addInput('class_level', classLevel);
+    addInput('class_room', classRoom);
+    addInput('advisor', advisor);
+    addInput('min_attendance', minAttendance);
+    addInput('max_attendance', maxAttendance);
+    addInput('academic_year_id', academicYearId);
+    
+    // แนบ form เข้ากับ document และ submit
+    document.body.appendChild(form);
+    form.submit();
+    
+    // ลบ form หลังจาก submit
+    setTimeout(() => {
+        document.body.removeChild(form);
         hideLoadingOverlay();
-        
-        // สร้าง URL สำหรับไฟล์ที่ดาวน์โหลด
-        const url = window.URL.createObjectURL(blob);
-        
-        // สร้างลิงก์สำหรับดาวน์โหลด
-        const a = document.createElement('a');
-        a.style.display = 'none';
-        a.href = url;
-        a.download = `รายงานนักเรียนเสี่ยงตกกิจกรรม-${new Date().toLocaleDateString('th-TH')}.xlsx`;
-        
-        // เพิ่มลิงก์ลงใน DOM และคลิก
-        document.body.appendChild(a);
-        a.click();
-        
-        // ลบลิงก์
-        window.URL.revokeObjectURL(url);
-        a.remove();
-        
-        // แสดงข้อความแจ้งเตือน
-        showAlert('ดาวน์โหลดรายงานเรียบร้อยแล้ว', 'success');
-    })
-    .catch(error => {
-        console.error('Error downloading report:', error);
-        
-        // ซ่อน loading overlay
-        hideLoadingOverlay();
-        
-        // แสดงข้อความแจ้งเตือน
-        showAlert('ไม่สามารถดาวน์โหลดรายงานได้ กรุณาลองใหม่อีกครั้ง', 'danger');
-    });
+        showAlert('กำลังดาวน์โหลดรายงาน Excel', 'success');
+    }, 1000);
 }
-
 /**
  * แปลง date format
  * 
