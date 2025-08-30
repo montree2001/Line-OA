@@ -143,7 +143,7 @@
 
             echo "ระหว่างวันที่ " . $first_day['day_num'] . " ";
             if ($same_month) {
-                echo "- " . $last_day['day_num'] . " เดือน" . $start_month_name . " ";
+                echo "- " . $last_day['day_num'] . " เดือน " . $start_month_name . " ";
             } else {
                 echo "เดือน" . $start_month_name . " - วันที่ " . $last_day['day_num'] . " เดือน" . $end_month_name . " ";
             }

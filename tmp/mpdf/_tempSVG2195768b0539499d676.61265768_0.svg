@@ -1,0 +1,2 @@
+<svg class="pie-svg" viewBox="0 0 200 200">
+                    <path class="pie-slice present" d="M 100,100 L 180,100 A 80,80 0 1,1 171.49061122587,64.096065583963 Z"></path><path class="pie-slice absent" d="M 100,100 L 171.49061122587,64.096065583963 A 80,80 0 0,1 180,100 Z"></path>                </svg>

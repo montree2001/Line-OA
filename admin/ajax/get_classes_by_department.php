@@ -6,6 +6,11 @@
  * วิทยาลัยการอาชีพปราสาท
  */
 
+// ตั้งค่า headers สำหรับ cross-platform compatibility
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type');
+
 // เริ่ม session
 session_start();
 
@@ -30,8 +35,8 @@ try {
     
     $department_id = $_GET['department_id'];
     
-    // ถ้าเป็นครูให้ดึงเฉพาะห้องที่เป็นที่ปรึกษา
-    if ($_SESSION['user_role'] == 'teacher' && isset($_SESSION['teacher_id'])) {
+    // ถ้าเป็นครูให้ดึงเฉพาะห้องที่เป็นที่ปรึกษา (เฉพาะเมื่อมี session)
+    if (isset($_SESSION['user_role']) && $_SESSION['user_role'] == 'teacher' && isset($_SESSION['teacher_id'])) {
         $teacher_id = $_SESSION['teacher_id'];
         
         $query = "SELECT DISTINCT c.class_id, c.level, c.group_number, d.department_name
@@ -44,7 +49,7 @@ try {
         $stmt = $conn->prepare($query);
         $stmt->execute([$teacher_id, $department_id, $academic_year['academic_year_id']]);
     } else {
-        // ถ้าเป็นแอดมินให้ดึงทุกห้องในแผนกนั้น
+        // ถ้าเป็นแอดมินหรือไม่มี session (สาธารณะ) ให้ดึงทุกห้องในแผนกนั้น
         $query = "SELECT DISTINCT c.class_id, c.level, c.group_number, d.department_name
                   FROM classes c 
                   JOIN departments d ON c.department_id = d.department_id 
@@ -70,10 +75,10 @@ try {
     }
     
     // ส่งข้อมูลกลับเป็น JSON
-    header('Content-Type: application/json');
-    echo json_encode(['classes' => $unique_classes, 'status' => 'success']);
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode(['classes' => $unique_classes, 'status' => 'success'], JSON_UNESCAPED_UNICODE);
 } catch (Exception $e) {
     // ส่งข้อความแจ้งข้อผิดพลาดกลับเป็น JSON
-    header('Content-Type: application/json');
-    echo json_encode(['error' => $e->getMessage(), 'status' => 'error']);
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode(['error' => $e->getMessage(), 'status' => 'error'], JSON_UNESCAPED_UNICODE);
 }

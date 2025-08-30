@@ -6,6 +6,11 @@
  * วิทยาลัยการอาชีพปราสาท
  */
 
+// ตั้งค่า headers สำหรับ cross-platform compatibility
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type');
+
 // เริ่ม session
 session_start();
 
@@ -187,10 +192,10 @@ try {
         $response['class_info'] = $class_info;
     }
     
-    header('Content-Type: application/json');
-    echo json_encode($response);
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode($response, JSON_UNESCAPED_UNICODE);
     
 } catch (Exception $e) {
-    header('Content-Type: application/json');
-    echo json_encode(['error' => $e->getMessage(), 'status' => 'error']);
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode(['error' => $e->getMessage(), 'status' => 'error'], JSON_UNESCAPED_UNICODE);
 }
