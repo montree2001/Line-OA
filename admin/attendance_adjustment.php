@@ -73,7 +73,6 @@ function getStudentsUnder60Percent() {
             WHERE s.status = 'กำลังศึกษา'
             HAVING attendance_percentage < 60
             ORDER BY attendance_percentage ASC
-            LIMIT 50
         ";
         
         $stmt = $conn->prepare($query);
@@ -255,8 +254,24 @@ function table_exists($conn, $table_name) {
 $students_under_60 = getStudentsUnder60Percent();
 
 // กำหนดตัวแปรสำหรับเทมเพลต
-$extra_css = [];
-$extra_js = [];
+$extra_css = [
+    'https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css',
+    'https://cdn.datatables.net/buttons/2.4.2/css/buttons.bootstrap5.min.css',
+    'https://cdn.datatables.net/responsive/2.5.0/css/responsive.bootstrap5.min.css'
+];
+$extra_js = [
+    'https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js',
+    'https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js',
+    'https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js',
+    'https://cdn.datatables.net/buttons/2.4.2/js/buttons.bootstrap5.min.js',
+    'https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js',
+    'https://cdn.datatables.net/buttons/2.4.2/js/buttons.print.min.js',
+    'https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js',
+    'https://cdn.datatables.net/responsive/2.5.0/js/responsive.bootstrap5.min.js',
+    'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js',
+    'https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/pdfmake.min.js',
+    'https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/vfs_fonts.js'
+];
 
 // เริ่มต้น output buffering สำหรับ content
 ob_start();
@@ -512,6 +527,67 @@ ob_start();
     .alert .material-icons {
         font-size: 20px;
     }
+    
+    /* DataTable Custom Styles */
+    .dataTables_wrapper .dt-buttons {
+        margin-bottom: 15px;
+    }
+    
+    .dataTables_wrapper .dt-buttons .btn {
+        margin-right: 10px;
+        margin-bottom: 5px;
+    }
+    
+    .dataTables_wrapper .form-select {
+        margin-left: 15px;
+        width: auto;
+        display: inline-block;
+    }
+    
+    .dataTables_wrapper .dataTables_length,
+    .dataTables_wrapper .dataTables_filter {
+        margin-bottom: 15px;
+    }
+    
+    .dataTables_wrapper .dataTables_length label,
+    .dataTables_wrapper .dataTables_filter label {
+        font-weight: 500;
+        color: #2A3547;
+    }
+    
+    .dataTables_wrapper .dataTables_length select,
+    .dataTables_wrapper .dataTables_filter input {
+        border: 1px solid #ddd;
+        border-radius: 7px;
+        padding: 5px 10px;
+    }
+    
+    .dataTables_wrapper .dataTables_paginate .paginate_button {
+        border-radius: 7px !important;
+        margin: 0 2px;
+    }
+    
+    .dataTables_wrapper .dataTables_paginate .paginate_button.current {
+        background: linear-gradient(135deg, #5D87FF, #4a6ccc) !important;
+        border-color: #5D87FF !important;
+        color: white !important;
+    }
+    
+    .dataTables_wrapper .dataTables_info {
+        color: #5A6A85;
+        font-weight: 500;
+    }
+    
+    #studentsTable_wrapper .table thead th {
+        background: #F6F9FC;
+        color: #2A3547;
+        font-weight: 600;
+        border-bottom: 2px solid #5D87FF;
+    }
+    
+    #studentsTable tbody tr:hover {
+        background-color: #F6F9FC;
+    }
 </style>
 
 <!-- Page Header -->
@@ -572,8 +648,8 @@ ob_start();
             </form>
         </div>
         
-        <div style="overflow-x: auto;">
-            <table class="students-table">
+        <div style="padding: 20px;">
+            <table id="studentsTable" class="table table-striped table-bordered dt-responsive nowrap" style="width:100%">
                 <thead>
                     <tr>
                         <th>นักเรียน</th>
@@ -641,6 +717,89 @@ ob_start();
 <?php endif; ?>
 
 <script>
+$(document).ready(function() {
+    // Initialize DataTable
+    $('#studentsTable').DataTable({
+        responsive: true,
+        dom: 'Bfrtip',
+        buttons: [
+            {
+                extend: 'excel',
+                text: '<i class="fas fa-file-excel"></i> Excel',
+                className: 'btn btn-success btn-sm',
+                exportOptions: {
+                    columns: [0, 1, 2, 3, 4, 5, 6] // Exclude action column
+                }
+            },
+            {
+                extend: 'pdf',
+                text: '<i class="fas fa-file-pdf"></i> PDF',
+                className: 'btn btn-danger btn-sm',
+                exportOptions: {
+                    columns: [0, 1, 2, 3, 4, 5, 6] // Exclude action column
+                },
+                customize: function (doc) {
+                    doc.defaultStyle.font = 'THSarabunNew';
+                }
+            },
+            {
+                extend: 'print',
+                text: '<i class="fas fa-print"></i> พิมพ์',
+                className: 'btn btn-info btn-sm',
+                exportOptions: {
+                    columns: [0, 1, 2, 3, 4, 5, 6] // Exclude action column
+                }
+            }
+        ],
+        language: {
+            url: 'https://cdn.datatables.net/plug-ins/1.13.7/i18n/th.json'
+        },
+        pageLength: 25,
+        lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, "ทั้งหมด"]],
+        order: [[4, 'asc']], // Sort by attendance percentage (ascending)
+        columnDefs: [
+            {
+                targets: [4, 6], // Percentage columns
+                type: 'num',
+                render: function(data, type, row) {
+                    if (type === 'display' || type === 'type') {
+                        return data;
+                    }
+                    // For sorting, extract numeric value
+                    return parseFloat(data.toString().replace('%', ''));
+                }
+            },
+            {
+                targets: [5], // Days needed column
+                type: 'num'
+            },
+            {
+                targets: [7], // Action column
+                orderable: false,
+                searchable: false
+            }
+        ],
+        initComplete: function () {
+            // Add custom search for class filter
+            this.api().columns([1]).every(function () {
+                var column = this;
+                var select = $('<select class="form-select form-select-sm"><option value="">ทุกชั้นเรียน</option></select>')
+                    .appendTo($('.dt-buttons'))
+                    .on('change', function () {
+                        var val = $.fn.dataTable.util.escapeRegex($(this).val());
+                        column.search(val ? '^' + val + '$' : '', true, false).draw();
+                    });
+
+                column.data().unique().sort().each(function (d, j) {
+                    if (d) {
+                        select.append('<option value="' + d + '">' + d + '</option>');
+                    }
+                });
+            });
+        }
+    });
+
+    // Auto-hide alerts
     setTimeout(function() {
         const alerts = document.querySelectorAll('.alert');
         alerts.forEach(function(alert) {
@@ -651,6 +810,7 @@ ob_start();
             }, 500);
         });
     }, 5000);
+});
 </script>
 
 <?php
