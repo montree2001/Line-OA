@@ -3,7 +3,7 @@
 define('DB_HOST', 'localhost');
 define('DB_USER', 'root');
 define('DB_PASS', '');
-define('DB_NAME', 'stp_prasat');
+define('DB_NAME', 'prasat_db');
 
 // ตั้งค่า timezone
 date_default_timezone_set('Asia/Bangkok');

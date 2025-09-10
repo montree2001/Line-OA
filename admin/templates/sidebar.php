@@ -73,6 +73,10 @@
 
 
         <div class="menu-category">จัดการข้อมูล</div>
+        <a href="attendance_adjustment.php" class="menu-item <?php echo ($current_page == 'attendance_adjustment') ? 'active' : ''; ?>">
+            <span class="material-icons">auto_fix_high</span>
+            <span class="menu-text">ปรับข้อมูลเข้าแถว</span>
+        </a>
         <a href="students.php" class="menu-item <?php echo ($current_page == 'students') ? 'active' : ''; ?>">
             <span class="material-icons">people</span>
             <span class="menu-text">นักเรียน</span>

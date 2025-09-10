@@ -1,13 +1,8 @@
 <?php
-// db_connect.php
+// db_connect.php - หลักการเชื่อมต่อฐานข้อมูลเดียว
 
-// กำหนดค่าการเชื่อมต่อฐานข้อมูลโดยตรวจสอบว่ามีการกำหนดค่าไว้แล้วหรือไม่
-// ปรับแก้ค่าการเชื่อมต่อให้ถูกต้อง
-if (!defined('DB_HOST')) define('DB_HOST', 'localhost');
-if (!defined('DB_NAME')) define('DB_NAME', 'prasat_db'); // ชื่อฐานข้อมูลที่ถูกต้อง
-if (!defined('DB_USER')) define('DB_USER', 'root');
-if (!defined('DB_PASS')) define('DB_PASS', ''); // รหัสผ่านอาจไม่ว่างเปล่า
-if (!defined('DB_CHARSET')) define('DB_CHARSET', 'utf8mb4');
+// โหลด config หลัก
+require_once __DIR__ . '/config/db_config.php';
 
 class Database {
     private static $instance = null;
@@ -16,20 +11,22 @@ class Database {
     // Constructor เป็น private เพื่อป้องกันการสร้าง instance โดยตรง
    // ในไฟล์ db_connect.php ให้ปรับปรุงเมธอด __construct() ในคลาส Database
 
-private function __construct() {
-    try {
-        $dsn = "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=" . DB_CHARSET;
-        $this->conn = new PDO($dsn, DB_USER, DB_PASS);
-        $this->conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        $this->conn->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
-        
-        // เพิ่มบรรทัดนี้เพื่อปิดการจำลอง prepared statements
-        $this->conn->setAttribute(PDO::ATTR_EMULATE_PREPARES, false);
-    } catch (PDOException $e) {
-        // ในระบบจริง ควร log error นี้ไปยังไฟล์ log แทนการแสดงผล
-        die("การเชื่อมต่อฐานข้อมูลล้มเหลว: " . $e->getMessage());
+    private function __construct() {
+        try {
+            $dsn = "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=utf8mb4";
+            $this->conn = new PDO($dsn, DB_USER, DB_PASS);
+            $this->conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+            $this->conn->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+            $this->conn->setAttribute(PDO::ATTR_EMULATE_PREPARES, false);
+            
+            // ตั้งค่า timezone
+            $this->conn->exec("SET time_zone = '+07:00'");
+            
+        } catch (PDOException $e) {
+            error_log("Database connection failed: " . $e->getMessage());
+            die("การเชื่อมต่อฐานข้อมูลล้มเหลว: " . $e->getMessage());
+        }
     }
-}
 
     // ใช้ Singleton pattern เพื่อให้มี connection เดียว
     public static function getInstance() {

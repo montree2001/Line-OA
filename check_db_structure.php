@@ -1,27 +1,30 @@
 <?php
+// ตรวจสอบโครงสร้างฐานข้อมูล
+error_reporting(E_ALL);
+ini_set("display_errors", 1);
+
 try {
-    require_once 'db_connect.php';
-    $conn = getDB();
+    $pdo = new PDO("mysql:host=localhost;dbname=prasat_db;charset=utf8mb4", "root", "");
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     
-    echo "<h2>Students Table Structure:</h2>";
-    $query = "DESCRIBE students";
-    $stmt = $conn->query($query);
+    echo "<h2>🔍 โครงสร้างตาราง students</h2>";
+    $stmt = $pdo->query("DESCRIBE students");
     $columns = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
-    echo "<pre>";
-    print_r($columns);
-    echo "</pre>";
-    
-    echo "<h2>Sample Students Data:</h2>";
-    $query = "SELECT * FROM students LIMIT 3";
-    $stmt = $conn->query($query);
-    $samples = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    
-    echo "<pre>";
-    print_r($samples);
-    echo "</pre>";
+    echo "<table border=\"1\" style=\"border-collapse: collapse;\">";
+    echo "<tr><th>Column</th><th>Type</th><th>Null</th><th>Key</th><th>Default</th></tr>";
+    foreach ($columns as $column) {
+        echo "<tr>";
+        echo "<td>{$column[\"Field\"]}</td>";
+        echo "<td>{$column[\"Type\"]}</td>";
+        echo "<td>{$column[\"Null\"]}</td>";
+        echo "<td>{$column[\"Key\"]}</td>";
+        echo "<td>{$column[\"Default\"]}</td>";
+        echo "</tr>";
+    }
+    echo "</table><br>";
     
 } catch (Exception $e) {
-    echo "Error: " . $e->getMessage();
+    echo "❌ เกิดข้อผิดพลาด: " . $e->getMessage();
 }
 ?>

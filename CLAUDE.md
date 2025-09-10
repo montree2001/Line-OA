@@ -1,0 +1,116 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Project Overview
+
+This is a PHP-based student attendance tracking system ("STP-Prasat") integrated with LINE Official Account for Thai educational institutions. The system manages student check-ins, teacher supervision, and parent notifications through LINE messaging.
+
+## Architecture
+
+### Core Structure
+- **Root level**: Main entry points (`index.php`, `login.php`) and shared utilities
+- **admin/**: Administrative dashboard and management functions
+- **student/**: Student-facing features (check-in, activities, profile)
+- **teacher/**: Teacher tools (attendance tracking, class management)  
+- **parent/**: Parent portal for monitoring student attendance
+- **config/**: Database configuration and environment settings
+- **api/**: API endpoints for LINE integration and mobile features
+- **assets/**: Frontend resources (CSS, JS, images)
+- **database/**: SQL schema and migration files
+- **uploads/**: User-uploaded files and profile pictures
+
+### Key Components
+- **Authentication**: LINE Login integration with session management
+- **Database**: MySQL database `stp_prasat` with timezone set to `Asia/Bangkok`
+- **LINE Integration**: Official Account callbacks and messaging via LINE API
+- **PDF Generation**: Uses mPDF for attendance reports
+- **Excel Processing**: PhpSpreadsheet for data import/export
+
+## Environment Setup
+
+### Database Configuration
+Database settings are in `config/db_config.php`:
+- Host: localhost
+- User: root  
+- Password: (empty)
+- Database: stp_prasat
+- Timezone: Asia/Bangkok
+
+### LINE Integration
+Environment variables in `.env`:
+- `LINE_CHANNEL_ID`: LINE Official Account channel ID
+- `LINE_CHANNEL_SECRET`: Channel secret for authentication
+- `LINE_CALLBACK_URL`: Webhook endpoint URL
+
+## Dependencies
+
+The project uses Composer for PHP package management:
+- `vlucas/phpdotenv`: Environment variable management
+- `phpoffice/phpspreadsheet`: Excel file processing  
+- `mpdf/mpdf`: PDF report generation
+- `shuchkin/simplexlsxgen`: Lightweight Excel generation
+
+## Development Commands
+
+Since this is a PHP web application running on XAMPP:
+
+### Start Development Environment
+```bash
+# Start XAMPP services (Apache + MySQL)
+sudo /Applications/XAMPP/xamppfiles/xampp start
+```
+
+### Install Dependencies
+```bash
+composer install
+```
+
+### Database Setup
+```bash
+# Import database schema
+mysql -u root stp_prasat < database/stp_prasat.sql
+```
+
+### Testing Database Connection
+```bash
+php test_db.php
+```
+
+## System Features
+
+### Student Module (`student/`)
+- GPS-based attendance check-in
+- QR code generation for teacher scanning
+- PIN-based attendance entry
+- Activity participation tracking
+- Profile management and photo upload
+
+### Teacher Module (`teacher/`)
+- Class attendance management
+- 4-digit PIN code generation for student check-ins
+- QR code scanning capabilities
+- Individual student progress reports
+- Parent contact information access
+
+### Parent Module (`parent/`)
+- LINE notification system for attendance alerts
+- Student attendance summary viewing
+- Multi-child support for families
+- Teacher advisor contact information
+
+### Admin Module (`admin/`)
+- System-wide attendance oversight
+- Comprehensive reporting and analytics
+- At-risk student identification
+- Bulk LINE messaging to parents
+- Data export capabilities
+
+## File Structure Patterns
+
+- **Entry points**: `index.php` files in each module directory
+- **API endpoints**: Organized under `api/` with LINE webhook handlers
+- **Shared components**: `struck/` contains common UI elements (header, sidebar, menu)
+- **Database utilities**: `db_connect.php` and `config/db_config.php` for connections
+- **Reports**: PDF generation scripts with `print_` prefix
+- **AJAX handlers**: Files prefixed with `ajax_` for dynamic content loading
