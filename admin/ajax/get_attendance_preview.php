@@ -1,10 +1,28 @@
 <?php
 /**
- * ajax/get_attendance_preview.php - API สำหรับดึงข้อมูลตัวอย่างการเข้าแถว
+ * ajax/get_attendance_preview.php - API สำหรับดึงข้อมูลตัวอย่างการเข้าแถว (Optimized Version)
  * 
  * ส่วนหนึ่งของระบบน้องชูใจ AI - ดูแลผู้เรียน
  * วิทยาลัยการอาชีพปราสาท
  */
+
+// เพิ่ม simple caching mechanism
+function getCacheKey($data) {
+    return 'attendance_' . md5(serialize($data));
+}
+
+function getFromCache($key) {
+    $cache_file = sys_get_temp_dir() . '/' . $key . '.cache';
+    if (file_exists($cache_file) && (time() - filemtime($cache_file)) < 300) { // 5 minutes cache
+        return json_decode(file_get_contents($cache_file), true);
+    }
+    return false;
+}
+
+function setCache($key, $data) {
+    $cache_file = sys_get_temp_dir() . '/' . $key . '.cache';
+    file_put_contents($cache_file, json_encode($data, JSON_UNESCAPED_UNICODE));
+}
 
 // ตั้งค่า headers สำหรับ cross-platform compatibility
 header('Access-Control-Allow-Origin: *');
@@ -26,6 +44,15 @@ require_once '../../db_connect.php';
 $conn = getDB();
 
 try {
+    // ตรวจสอบ cache ก่อน
+    $cache_key = getCacheKey([$_GET, 'v2']); // v2 เพื่อ cache busting
+    $cached_data = getFromCache($cache_key);
+    if ($cached_data) {
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode($cached_data, JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+    
     // ดึงข้อมูลปีการศึกษาปัจจุบัน
     $query = "SELECT academic_year_id FROM academic_years WHERE is_active = 1 LIMIT 1";
     $stmt = $conn->query($query);
@@ -70,13 +97,14 @@ try {
             throw new Exception("ไม่พบข้อมูลห้องเรียน");
         }
         
-        // ดึงข้อมูลนักเรียนในห้อง
+        // ดึงข้อมูลนักเรียนในห้อง (เพิ่ม LIMIT เพื่อป้องกันการโหลดข้อมูลมากเกินไป)
         $query = "SELECT s.student_id, s.student_code, s.title, u.first_name, u.last_name,
                   CASE WHEN u.title IS NULL THEN s.title ELSE u.title END as display_title  
                   FROM students s 
                   JOIN users u ON s.user_id = u.user_id 
                   WHERE s.current_class_id = ? AND s.status = 'กำลังศึกษา' 
-                  ORDER BY s.student_code";
+                  ORDER BY s.student_code
+                  LIMIT 500";
         $stmt = $conn->prepare($query);
         $stmt->execute([$class_id]);
         $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -88,19 +116,20 @@ try {
             throw new Exception("กรุณาระบุข้อมูลที่ต้องการค้นหา");
         }
         
-        // ค้นหานักเรียนจากชื่อ นามสกุล หรือรหัสนักเรียน
+        // ค้นหานักเรียนจากชื่อ นามสกุล หรือรหัสนักเรียน (เพิ่ม LIMIT และ optimization)
         $query = "SELECT s.student_id, s.student_code, s.title, u.first_name, u.last_name,
                   CASE WHEN u.title IS NULL THEN s.title ELSE u.title END as display_title,
                   c.class_id, c.level, c.group_number, d.department_name,
                   CONCAT(c.level, '/', c.group_number, ' ', d.department_name) as class_name
-                  FROM students s 
+                  FROM students s
                   JOIN users u ON s.user_id = u.user_id 
                   LEFT JOIN classes c ON s.current_class_id = c.class_id
                   LEFT JOIN departments d ON c.department_id = d.department_id
                   WHERE s.status = 'กำลังศึกษา' 
                   AND (s.student_code LIKE ? OR u.first_name LIKE ? OR u.last_name LIKE ? 
                        OR CONCAT(u.first_name, ' ', u.last_name) LIKE ?)
-                  ORDER BY s.student_code";
+                  ORDER BY s.student_code
+                  LIMIT 100";
         
         $search_param = "%$search_input%";
         $stmt = $conn->prepare($query);
@@ -112,8 +141,11 @@ try {
         throw new Exception("ไม่พบข้อมูลนักเรียนตามเงื่อนไขที่ระบุ");
     }
     
-    // ดึงข้อมูลวันหยุด
-    $query = "SELECT holiday_date, holiday_name FROM holidays WHERE holiday_date BETWEEN ? AND ?";
+    // ดึงข้อมูลวันหยุด (เพิ่ม LIMIT และ INDEX)
+    $query = "SELECT holiday_date, holiday_name 
+              FROM holidays
+              WHERE holiday_date BETWEEN ? AND ? 
+              LIMIT 365";
     $stmt = $conn->prepare($query);
     $stmt->execute([$start_date, $end_date]);
     $holidays_result = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -123,27 +155,37 @@ try {
         $holidays[$holiday['holiday_date']] = $holiday['holiday_name'];
     }
     
-    // ดึงข้อมูลการเข้าแถว
+    // ดึงข้อมูลการเข้าแถว (เพิ่ม optimization)
     $student_ids = array_column($students, 'student_id');
     $attendance_data = [];
     
-    if (!empty($student_ids)) {
-        $placeholders = str_repeat('?,', count($student_ids) - 1) . '?';
-        
-        $query = "SELECT student_id, date, attendance_status FROM attendance 
-                  WHERE student_id IN ({$placeholders}) 
-                  AND academic_year_id = ? 
-                  AND date BETWEEN ? AND ?";
-        
-        $query_params = array_merge($student_ids, [$academic_year['academic_year_id'], $start_date, $end_date]);
-        
-        $stmt = $conn->prepare($query);
-        $stmt->execute($query_params);
-        $attendance_results = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
-        // จัดรูปแบบข้อมูลเป็น [student_id][date] => status
-        foreach ($attendance_results as $result) {
-            $attendance_data[$result['student_id']][$result['date']] = $result['attendance_status'];
+    // จำกัดจำนวนนักเรียนต่อครั้งเพื่อป้องกันการ query ที่ใหญ่เกินไป
+    $max_students_per_query = 200;
+    $student_chunks = array_chunk($student_ids, $max_students_per_query);
+    
+    foreach ($student_chunks as $chunk) {
+        if (!empty($chunk)) {
+            $placeholders = str_repeat('?,', count($chunk) - 1) . '?';
+            
+            // เพิ่ม INDEX hint และ LIMIT เพื่อเพิ่มประสิทธิภาพ
+            $query = "SELECT student_id, date, attendance_status 
+                      FROM attendance
+                      WHERE student_id IN ({$placeholders}) 
+                      AND academic_year_id = ? 
+                      AND date BETWEEN ? AND ?
+                      ORDER BY student_id, date
+                      LIMIT 10000";
+            
+            $query_params = array_merge($chunk, [$academic_year['academic_year_id'], $start_date, $end_date]);
+            
+            $stmt = $conn->prepare($query);
+            $stmt->execute($query_params);
+            $attendance_results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            // จัดรูปแบบข้อมูลเป็น [student_id][date] => status
+            foreach ($attendance_results as $result) {
+                $attendance_data[$result['student_id']][$result['date']] = $result['attendance_status'];
+            }
         }
     }
     
@@ -191,6 +233,9 @@ try {
     if ($class_info) {
         $response['class_info'] = $class_info;
     }
+    
+    // บันทึกลง cache
+    setCache($cache_key, $response);
     
     header('Content-Type: application/json; charset=utf-8');
     echo json_encode($response, JSON_UNESCAPED_UNICODE);

@@ -211,12 +211,15 @@ require_once 'templates/sidebar.php';
                     <!-- ข้อมูลสรุปจะถูกเพิ่มด้วย JavaScript -->
                 </div>
                 
-                <!-- แสดงการโหลด -->
+                <!-- แสดงการโหลด (ปรับปรุงใหม่) -->
                 <div id="preview_loading" class="text-center py-5" style="display: none;">
                     <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
                         <span class="visually-hidden">กำลังโหลด...</span>
                     </div>
                     <p class="mt-3 text-primary fs-5">กำลังโหลดข้อมูล กรุณารอสักครู่...</p>
+                    <div class="mt-3">
+                        <small class="text-muted">หากใช้เวลานานเกิน 30 วินาที กรุณาลดช่วงข้อมูลหรือรีเฟรชหน้า</small>
+                    </div>
                 </div>
                 
                 <!-- แสดงผลการค้นหา -->
@@ -542,12 +545,21 @@ document.addEventListener('DOMContentLoaded', function() {
             ajaxData.search_input = searchData.search_input;
         }
         
+        // เพิ่ม timeout และ progress indicator
+        let startTime = Date.now();
+        let progressInterval = setInterval(function() {
+            let elapsed = Math.floor((Date.now() - startTime) / 1000);
+            $('#preview_loading p').html('กำลังโหลดข้อมูล... (' + elapsed + ' วินาที)');
+        }, 1000);
+        
         $.ajax({
             url: 'ajax/get_attendance_preview.php',
             type: 'GET',
             data: ajaxData,
             dataType: 'json',
+            timeout: 60000, // 60 second timeout
             success: function(response) {
+                clearInterval(progressInterval);
                 $('#preview_loading').hide();
                 
                 if (response.status === 'success') {
@@ -560,9 +572,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             },
             error: function(xhr, status, error) {
+                clearInterval(progressInterval);
                 $('#preview_loading').hide();
+                
+                let errorMessage = 'เกิดข้อผิดพลาดในการโหลดข้อมูล';
+                if (status === 'timeout') {
+                    errorMessage = 'การโหลดข้อมูลใช้เวลานานเกินไป กรุณาลองเลือกข้อมูลน้อยลงหรือลองใหม่อีกครั้ง';
+                }
+                
                 console.error('AJAX error:', { xhr, status, error });
-                alert('เกิดข้อผิดพลาดในการเชื่อมต่อกับเซิร์ฟเวอร์');
+                alert(errorMessage);
                 $('#report_container').hide();
                 $('#info_panel').show();
             }

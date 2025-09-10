@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(rm:*)",
+      "Bash(dir:*)",
+      "Bash(mysql:*)",
+      "Bash(php:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
