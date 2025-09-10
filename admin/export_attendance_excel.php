@@ -144,6 +144,16 @@ while ($current_date <= $end_date_obj) {
     $current_date->modify('+1 day');
 }
 
+// ตรวจสอบว่ามีข้อมูลวันทำการหรือไม่
+if (empty($weekdays)) {
+    die('ไม่พบข้อมูลวันทำการในช่วงเวลาที่เลือก กรุณาตรวจสอบวันที่เริ่มต้นและสิ้นสุด');
+}
+
+// ตรวจสอบว่ามีข้อมูลนักเรียนหรือไม่
+if (empty($students)) {
+    die('ไม่พบข้อมูลนักเรียน');
+}
+
 // ดึงข้อมูลการเข้าแถว
 $student_ids = array_column($students, 'student_id');
 $attendance_data = [];
@@ -187,7 +197,23 @@ $headerLines = [
 $currentRow = 1;
 foreach ($headerLines as $line) {
     $sheet->setCellValue("A{$currentRow}", $line);
-    $sheet->mergeCells("A{$currentRow}:" . chr(67 + count($weekdays)) . "{$currentRow}");
+    
+    // คำนวณคอลัมน์สุดท้ายสำหรับ merge (A, B, C + จำนวนวัน + รวม)
+    // คอลัมน์: A=ลำดับ, B=รหัส, C=ชื่อ, D-...=วันทำการ, สุดท้าย=รวม
+    $totalColumns = 3 + count($weekdays) + 1; // 3 คอลัมน์หลัก + วันทำการ + คอลัมน์รวม
+    $lastColIndex = 64 + $totalColumns; // A=65, ดังนั้น A+n-1
+    
+    // ตรวจสอบให้อยู่ในขอบเขตที่ถูกต้อง
+    if ($lastColIndex > 90) { // Z=90
+        $lastColIndex = 90; // จำกัดที่ Z
+    }
+    if ($lastColIndex < 68) { // D=68
+        $lastColIndex = 68; // อย่างน้อยถึง D
+    }
+    
+    $lastCol = chr($lastColIndex);
+    $sheet->mergeCells("A{$currentRow}:{$lastCol}{$currentRow}");
+    
     $sheet->getStyle("A{$currentRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
     $sheet->getStyle("A{$currentRow}")->getFont()->setBold(true);
     $currentRow++;

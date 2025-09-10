@@ -219,6 +219,7 @@ function getStudentsUnder60Percent($filters = []) {
                     AND sar.academic_year_id = ?
             WHERE 
                 ROUND((COALESCE(sar.total_attendance_days, 0) / ?) * 100, 2) < 60
+                AND s.status = 'กำลังศึกษา'
                 $where_clause
             ORDER BY 
                 ROUND((COALESCE(sar.total_attendance_days, 0) / ?) * 100, 2) ASC
@@ -288,7 +289,7 @@ function createSampleStudentsData($filters = []) {
                     'student_id' => $student_id,
                     'student_code' => 'STD' . str_pad($student_id - 1000, 4, '0', STR_PAD_LEFT),
                     'title' => ($student_id % 2 == 0) ? 'นาย' : 'นางสาว',
-                    'status' => 'ปกติ',
+                    'status' => 'กำลังศึกษา',
                     'first_name' => 'นักเรียน',
                     'last_name' => 'ตัวอย่าง' . ($student_id - 1000),
                     'level' => $level,
@@ -721,7 +722,8 @@ $students_under_60 = getStudentsUnder60Percent($filters);
         .dataTables_wrapper .dataTables_filter,
         .dataTables_wrapper .dataTables_info,
         .dataTables_wrapper .dataTables_paginate {
-            margin: 10px 0;
+            margin: 15px 0;
+            padding: 10px 20px;
         }
         
         .dataTables_wrapper .dataTables_filter {
@@ -739,6 +741,65 @@ $students_under_60 = getStudentsUnder60Percent($filters);
         .dataTables_wrapper .dataTables_filter input[type="search"]:focus {
             outline: none;
             border-color: #2196f3;
+        }
+        
+        /* Pagination Styles */
+        .dataTables_wrapper .dataTables_paginate {
+            text-align: center;
+            background: #f8f9fa;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+        
+        .dataTables_wrapper .dataTables_paginate .pagination {
+            justify-content: center;
+            margin: 0;
+        }
+        
+        .dataTables_wrapper .dataTables_paginate .page-link {
+            color: #495057;
+            background-color: #fff;
+            border: 1px solid #dee2e6;
+            padding: 8px 12px;
+            margin: 0 2px;
+            border-radius: 6px;
+            transition: all 0.3s ease;
+        }
+        
+        .dataTables_wrapper .dataTables_paginate .page-link:hover {
+            color: #0056b3;
+            background-color: #e9ecef;
+            border-color: #adb5bd;
+            transform: translateY(-1px);
+        }
+        
+        .dataTables_wrapper .dataTables_paginate .page-item.active .page-link {
+            background-color: #007bff;
+            border-color: #007bff;
+            color: #fff;
+            box-shadow: 0 2px 4px rgba(0,123,255,0.25);
+        }
+        
+        .dataTables_wrapper .dataTables_paginate .page-item.disabled .page-link {
+            color: #6c757d;
+            background-color: #fff;
+            border-color: #dee2e6;
+            cursor: not-allowed;
+        }
+        
+        /* Info and Length Styles */
+        .dataTables_wrapper .dataTables_info {
+            color: #6c757d;
+            font-size: 14px;
+            padding-top: 10px;
+        }
+        
+        .dataTables_wrapper .dataTables_length select {
+            padding: 6px 10px;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            background-color: #fff;
+            color: #495057;
         }
         
         .dt-buttons {
@@ -794,6 +855,18 @@ $students_under_60 = getStudentsUnder60Percent($filters);
             border-radius: 12px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.08);
             overflow: hidden;
+            margin-bottom: 30px;
+        }
+        
+        .students-table-container .dataTables_wrapper {
+            padding: 0;
+        }
+        
+        .students-table-container .dataTables_wrapper .dataTables_paginate {
+            background: white;
+            border-top: 1px solid #f0f0f0;
+            margin-top: 0;
+            padding: 20px;
         }
         
         .table-header {

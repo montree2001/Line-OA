@@ -325,15 +325,37 @@ try {
             font-size: 14pt;
         }
         
+        .signature-and-notes-wrapper {
+            page-break-inside: avoid;
+            break-inside: avoid;
+            margin-top: 30px;
+            min-height: 300px;
+        }
+        
+        .signature-and-notes-wrapper:before {
+            content: "";
+            display: block;
+            page-break-before: auto;
+            orphans: 4;
+            widows: 4;
+        }
+        
         .signature-section {
             margin-top: 40px;
             width: 100%;
+            page-break-inside: avoid;
+            break-inside: avoid;
+            display: table;
+            table-layout: fixed;
         }
         
         .signature-box {
-            float: left;
+            display: table-cell;
             width: 25%;
             text-align: center;
+            vertical-align: top;
+            page-break-inside: avoid;
+            break-inside: avoid;
         }
         
         .signature-line {
@@ -512,7 +534,8 @@ try {
         </ul>
     </div>
     
-    <!-- ส่วนเซ็นชื่อ -->
+    <!-- ส่วนเซ็นชื่อและหมายเหตุ -->
+    <div class="signature-and-notes-wrapper">
     <div class="signature-section">
         <div class="signature-box">
             <div>ลงชื่อ...........................................</div>';
@@ -594,6 +617,7 @@ try {
     $html .= '<div class="page-footer">';
     $html .= '<p>พิมพ์เมื่อวันที่ ' . date('j/n/Y') . '</p>';
     $html .= '</div>';
+    $html .= '</div>'; // Close signature-and-notes-wrapper
     $html .= '</body>';
     $html .= '</html>';
 
