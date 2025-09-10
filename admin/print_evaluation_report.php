@@ -102,15 +102,27 @@ foreach ($holidays_data as $holiday) {
 $student_ids = array_column($students, 'student_id');
 $placeholders = str_repeat('?,', count($student_ids) - 1) . '?';
 
+// ดึงข้อมูลปีการศึกษาปัจจุบัน
+$academic_year_query = "SELECT academic_year_id FROM academic_years WHERE is_active = 1 LIMIT 1";
+$stmt = $conn->query($academic_year_query);
+$academic_year = $stmt->fetch(PDO::FETCH_ASSOC);
+$academic_year_id = $academic_year ? $academic_year['academic_year_id'] : 1;
+
 $query = "
-    SELECT student_id, attendance_date, status
-    FROM attendance_records
+    SELECT student_id, date as attendance_date, 
+           CASE 
+               WHEN attendance_status = 'present' THEN 'present'
+               WHEN attendance_status = 'late' THEN 'late'
+               ELSE 'absent'
+           END as status
+    FROM attendance
     WHERE student_id IN ($placeholders) 
-          AND attendance_date BETWEEN ? AND ?
-    ORDER BY attendance_date
+          AND academic_year_id = ?
+          AND date BETWEEN ? AND ?
+    ORDER BY date
 ";
 
-$params = array_merge($student_ids, [$start_date, $end_date]);
+$params = array_merge($student_ids, [$academic_year_id, $start_date, $end_date]);
 $stmt = $conn->prepare($query);
 $stmt->execute($params);
 $attendance_records = $stmt->fetchAll(PDO::FETCH_ASSOC);

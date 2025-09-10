@@ -459,8 +459,8 @@ function adjustStudentAttendance($student_id, $days_to_add) {
     try {
         $conn->beginTransaction();
         
-        // ดึงปีการศึกษาปัจจุบัน
-        $academic_year_query = "SELECT academic_year_id FROM academic_years WHERE is_active = 1 LIMIT 1";
+        // ดึงปีการศึกษาปัจจุบัน - ใช้เฉพาะคอลัมน์ที่แน่ใจว่ามี
+        $academic_year_query = "SELECT * FROM academic_years WHERE is_active = 1 LIMIT 1";
         $stmt = $conn->query($academic_year_query);
         $academic_year = $stmt->fetch(PDO::FETCH_ASSOC);
         
@@ -468,10 +468,23 @@ function adjustStudentAttendance($student_id, $days_to_add) {
             throw new Exception('ไม่พบปีการศึกษาที่ใช้งาน');
         }
         
-        $academic_year_id = $academic_year['academic_year_id'];
+        // หา academic_year_id ที่ถูกต้อง - ลองหลายความเป็นไปได้
+        $academic_year_id = null;
+        foreach (['academic_year_id', 'id', 'year_id'] as $possible_column) {
+            if (isset($academic_year[$possible_column])) {
+                $academic_year_id = $academic_year[$possible_column];
+                error_log("🔍 DEBUG: Found academic_year_id in column: $possible_column = $academic_year_id");
+                break;
+            }
+        }
         
-        // ดึงข้อมูลนักเรียน
-        $student_query = "SELECT current_class_id FROM students WHERE student_id = ?";
+        if (!$academic_year_id) {
+            error_log("🔍 DEBUG: Academic year data: " . json_encode($academic_year));
+            throw new Exception('ไม่สามารถหา academic_year_id ได้ จากข้อมูล: ' . json_encode($academic_year));
+        }
+        
+        // ดึงข้อมูลนักเรียน - ใช้ SELECT * เพื่อความปลอดภัย
+        $student_query = "SELECT * FROM students WHERE student_id = ? LIMIT 1";
         $stmt = $conn->prepare($student_query);
         $stmt->execute([$student_id]);
         $student = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -480,130 +493,166 @@ function adjustStudentAttendance($student_id, $days_to_add) {
             throw new Exception('ไม่พบข้อมูลนักเรียน');
         }
         
-        $class_id = $student['current_class_id'];
+        // ใช้ academic_year_id ของนักเรียนแทน เพราะอาจไม่ตรงกับระบบ
+        error_log("🔍 DEBUG: Student data found: " . json_encode($student));
         
-        // ดึงรายการวันหยุด
-        $holidays = getHolidays($academic_year_id);
-        
-        // หาวันที่มีการเรียนย้อนหลังที่จะเพิ่มการเข้าแถว
-        $today = date('Y-m-d');
-        $working_days = getWorkingDaysFromPast($today, $days_to_add, $holidays);
-        
-        if (empty($working_days)) {
-            throw new Exception('ไม่สามารถหาวันทำการย้อนหลังที่เหมาะสม');
+        // ลองหา academic_year_id ของนักเรียน
+        $student_academic_year_id = null;
+        foreach (['academic_year_id', 'year_id', 'class_year'] as $possible_column) {
+            if (isset($student[$possible_column])) {
+                $student_academic_year_id = $student[$possible_column];
+                error_log("🔍 DEBUG: Found student's academic_year_id in column: $possible_column = $student_academic_year_id");
+                break;
+            }
         }
         
-        // Debug: บันทึกข้อมูลการค้นหาวันทำการ
-        error_log("Days to add: $days_to_add, Working days found: " . count($working_days));
-        
-        // ตรวจสอบว่ามีการเข้าแถวอยู่แล้วหรือไม่
-        $check_existing = "SELECT date FROM attendance WHERE student_id = ? AND academic_year_id = ? AND date IN (" . 
-                         str_repeat('?,', count($working_days) - 1) . "?)";
-        $params = array_merge([$student_id, $academic_year_id], $working_days);
-        $stmt = $conn->prepare($check_existing);
-        $stmt->execute($params);
-        
-        $existing_dates = [];
-        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-            $existing_dates[] = $row['date'];
+        if ($student_academic_year_id) {
+            $academic_year_id = $student_academic_year_id;
+            error_log("🔍 DEBUG: Using student's academic_year_id: $academic_year_id instead of system active year");
         }
         
-        // กรองวันที่ยังไม่มีการเข้าแถว
-        $new_attendance_days = array_diff($working_days, $existing_dates);
+        error_log("🔍 DEBUG: Final academic_year_id to use: $academic_year_id");
+        
+        // นับวันที่นักเรียนขาดเรียน (absent)
+        $count_absent_query = "
+            SELECT COUNT(*) as total_absent_days
+            FROM attendance 
+            WHERE student_id = ? 
+              AND academic_year_id = ? 
+              AND attendance_status = 'absent'
+        ";
+        
+        $count_stmt = $conn->prepare($count_absent_query);
+        $count_stmt->execute([$student_id, $academic_year_id]);
+        $count_result = $count_stmt->fetch(PDO::FETCH_ASSOC);
+        $total_absent_days = $count_result['total_absent_days'];
+        
+        error_log("Student $student_id has $total_absent_days total absent days");
+        
+        if ($total_absent_days == 0) {
+            throw new Exception('นักเรียนไม่มีวันขาดเรียน (absent) ที่จะนำมาปรับแก้');
+        }
+        
+        // ตรวจสอบว่าต้องการปรับเกินจำนวนที่ขาดหรือไม่
+        if ($days_to_add > $total_absent_days) {
+            error_log("Requested $days_to_add days but only have $total_absent_days absent days");
+            $days_to_add = $total_absent_days; // ปรับให้ไม่เกินที่มี
+            error_log("Adjusted to maximum available: $days_to_add days");
+        }
+        
+        // หาวันที่ขาดเรียนเพื่อนำมาแก้ไข (เอาวันที่ล่าสุดก่อน)
+        $absent_days_query = "
+            SELECT date 
+            FROM attendance 
+            WHERE student_id = ? 
+              AND academic_year_id = ? 
+              AND attendance_status = 'absent'
+            ORDER BY date DESC
+            LIMIT ?
+        ";
+        
+        $absent_stmt = $conn->prepare($absent_days_query);
+        $absent_stmt->execute([$student_id, $academic_year_id, $days_to_add]);
+        $days_to_update = $absent_stmt->fetchAll(PDO::FETCH_COLUMN);
+        
+        error_log("Will update " . count($days_to_update) . " absent days to present: " . implode(', ', $days_to_update));
+        
         $actual_days_added = 0;
         
-        // เพิ่มประวัติการเข้าแถว
-        foreach ($new_attendance_days as $date) {
+        // UPDATE วันที่ขาดเรียน (absent) เป็น มาเรียน (present)
+        foreach ($days_to_update as $date) {
             if ($actual_days_added >= $days_to_add) break;
             
+            // DEBUG: ตรวจสอบสถานะปัจจุบันของวันนี้ก่อน UPDATE
+            $debug_check = "SELECT attendance_status, academic_year_id FROM attendance WHERE student_id = ? AND date = ?";
+            $debug_stmt = $conn->prepare($debug_check);
+            $debug_stmt->execute([$student_id, $date]);
+            $debug_result = $debug_stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if ($debug_result) {
+                error_log("🔍 DEBUG: Date $date - Current status: {$debug_result['attendance_status']}, Academic Year in DB: {$debug_result['academic_year_id']}");
+                error_log("🔍 DEBUG: Expected academic_year_id for UPDATE: $academic_year_id");
+                error_log("🔍 DEBUG: Academic year match: " . ($debug_result['academic_year_id'] == $academic_year_id ? 'YES' : 'NO'));
+                error_log("🔍 DEBUG: Status match: " . ($debug_result['attendance_status'] == 'absent' ? 'YES' : 'NO'));
+            } else {
+                error_log("🔍 DEBUG: Date $date - NO RECORD FOUND for student $student_id");
+                continue;
+            }
+            
             try {
-                $insert_attendance = "
-                    INSERT INTO attendance 
-                    (student_id, academic_year_id, date, attendance_status, check_method, checker_user_id, check_time, remarks) 
-                    VALUES (?, ?, ?, 'present', 'Manual', ?, '08:00:00', 'ปรับข้อมูลย้อนหลัง')
+                // แก้ไข: ลบ academic_year_id ออกจาก WHERE เพื่อให้ UPDATE ได้จริง
+                $update_attendance = "
+                    UPDATE attendance 
+                    SET attendance_status = 'present', 
+                        check_method = 'Manual Adjustment', 
+                        check_time = '08:00:00', 
+                        remarks = 'ปรับสถานะจาก absent เป็น present',
+                        updated_at = NOW()
+                    WHERE student_id = ? AND date = ? AND attendance_status = 'absent'
                 ";
                 
-                $stmt = $conn->prepare($insert_attendance);
-                $stmt->execute([$student_id, $academic_year_id, $date, $_SESSION['user_id']]);
-                $actual_days_added++;
+                error_log("🔍 DEBUG: NEW APPROACH - Executing UPDATE WITHOUT academic_year_id - student_id: $student_id, date: $date");
                 
-                // บันทึกการเปลี่ยนแปลงเพื่อดีบัก
-                error_log("Added attendance for date: $date, total added: $actual_days_added");
+                $stmt = $conn->prepare($update_attendance);
+                $result = $stmt->execute([$student_id, $date]);
+                $rows_affected = $stmt->rowCount();
+                
+                error_log("🔍 DEBUG: UPDATE result - success: " . ($result ? 'true' : 'false') . ", rows_affected: $rows_affected");
+                
+                if ($result && $rows_affected > 0) {
+                    $actual_days_added++;
+                    error_log("✅ UPDATE ABSENT->PRESENT: Successfully updated attendance for student $student_id on date: $date (total: $actual_days_added)");
+                    
+                    // อัพเดต attendance_records ด้วย
+                    try {
+                        $update_attendance_records = "
+                            UPDATE attendance_records 
+                            SET status = 'present', updated_at = NOW()
+                            WHERE student_id = ? AND attendance_date = ?
+                        ";
+                        
+                        $stmt2 = $conn->prepare($update_attendance_records);
+                        $stmt2->execute([$student_id, $date]);
+                        error_log("✅ Also updated attendance_records for date: $date");
+                        
+                        // ถ้าไม่มีใน attendance_records ให้ INSERT
+                        if ($stmt2->rowCount() == 0) {
+                            $insert_attendance_records = "
+                                INSERT INTO attendance_records 
+                                (student_id, attendance_date, status, created_at) 
+                                VALUES (?, ?, 'present', NOW())
+                            ";
+                            $stmt3 = $conn->prepare($insert_attendance_records);
+                            $stmt3->execute([$student_id, $date]);
+                            error_log("✅ Inserted into attendance_records for date: $date");
+                        }
+                    } catch (Exception $e) {
+                        error_log("⚠️ Warning: Could not update attendance_records for date $date: " . $e->getMessage());
+                    }
+                } else {
+                    error_log("❌ Failed to update attendance (absent->present) for student $student_id on date: $date");
+                    error_log("❌ Possible reasons: 1) Record not found, 2) Status is not 'absent', 3) Academic year mismatch");
+                    
+                    // แสดงข้อมูลที่พบจริง
+                    if ($debug_result) {
+                        error_log("❌ Expected: status='absent', academic_year_id=$academic_year_id");
+                        error_log("❌ Actual: status='{$debug_result['attendance_status']}', academic_year_id={$debug_result['academic_year_id']}");
+                    }
+                }
                 
             } catch (Exception $e) {
-                error_log("Error adding attendance for date $date: " . $e->getMessage());
-                // ถ้าเกิดข้อผิดพลาดให้ข้ามไป
+                error_log("❌ Error updating attendance (absent->present) for date $date: " . $e->getMessage());
+                error_log("❌ SQL Error details: " . print_r($stmt->errorInfo(), true));
                 continue;
             }
         }
         
-        // ถ้าเพิ่มไม่ครบ ให้พยายามสร้างวันเพิ่มเติม
+        // ถ้าปรับไม่ครบตามจำนวนที่ต้องการ
         if ($actual_days_added < $days_to_add) {
-            error_log("Need to add more days: added $actual_days_added out of $days_to_add");
+            error_log("⚠️ Could only update $actual_days_added out of $days_to_add requested days");
             
-            // สร้างวันทำการเพิ่มเติม
-            $additional_needed = $days_to_add - $actual_days_added;
-            // ใช้วันที่ในช่วงปีการศึกษา (ใช้ปี 2024 สำหรับปีการศึกษา 2024-2025)
-            $fallback_date = new DateTime('2024-08-01'); // เริ่มจากต้นปีการศึกษา
-            
-            // เริ่มจากรอบที่ 1: หาวันจากช่วงสิงหาคม-กันยายน 2024
-            $periods = [
-                new DateTime('2024-09-01'),
-                new DateTime('2024-08-15'),
-                new DateTime('2024-07-15'),
-            ];
-            
-            foreach ($periods as $period_start) {
-                if ($actual_days_added >= $days_to_add) break;
-                
-                $fallback_date = clone $period_start;
-                $attempts_in_period = 0;
-                $max_attempts_per_period = 100; // ให้ความยืดหยุ่นมากขึ้น
-                
-                while ($actual_days_added < $days_to_add && $attempts_in_period < $max_attempts_per_period) {
-                    $fallback_date->modify('-1 day');
-                    $date_str = $fallback_date->format('Y-m-d');
-                    $day_of_week = (int)$fallback_date->format('w');
-                    $attempts_in_period++;
-                    
-                    // ข้ามเสาร์-อาทิตย์
-                    if ($day_of_week == 0 || $day_of_week == 6) {
-                        continue;
-                    }
-                    
-                    // ตรวจสอบว่าไม่มีการเข้าแถวในวันนี้อยู่แล้ว
-                    $check_date_query = "SELECT COUNT(*) FROM attendance WHERE student_id = ? AND academic_year_id = ? AND date = ?";
-                    $check_stmt = $conn->prepare($check_date_query);
-                    $check_stmt->execute([$student_id, $academic_year_id, $date_str]);
-                    
-                    if ($check_stmt->fetchColumn() > 0) {
-                        continue; // มีข้อมูลอยู่แล้ว
-                    }
-                    
-                    // หยุดถ้าย้อนหลังไปมากเกินไป (ก่อนปี 2024)
-                    if ($fallback_date->format('Y') < '2024') {
-                        break;
-                    }
-                    
-                    try {
-                        $insert_attendance = "
-                            INSERT INTO attendance 
-                            (student_id, academic_year_id, date, attendance_status, check_method, checker_user_id, check_time, remarks) 
-                            VALUES (?, ?, ?, 'present', 'Manual', ?, '08:00:00', 'ปรับข้อมูลย้อนหลัง - ระบบสำรอง')
-                        ";
-                        
-                        $stmt = $conn->prepare($insert_attendance);
-                        $stmt->execute([$student_id, $academic_year_id, $date_str, $_SESSION['user_id']]);
-                        $actual_days_added++;
-                        
-                        error_log("Added fallback attendance for date: $date_str, total added: $actual_days_added");
-                        
-                    } catch (Exception $e) {
-                        error_log("Error adding fallback attendance for date $date_str: " . $e->getMessage());
-                        continue;
-                    }
-                }
-            }
+            $remaining_needed = $days_to_add - $actual_days_added;
+            error_log("📋 Still need $remaining_needed more days, but no more 'absent' records available");
         }
         
         // อัพเดต student_academic_records
@@ -644,18 +693,20 @@ function adjustStudentAttendance($student_id, $days_to_add) {
         
         $status_message = "";
         if ($actual_days_added == $days_to_add) {
-            $status_message = "✅ เพิ่มครบตามที่ต้องการ";
+            $status_message = "✅ แก้ไขครบตามที่ต้องการ";
         } elseif ($actual_days_added < $days_to_add) {
             $deficit = $days_to_add - $actual_days_added;
-            $status_message = "⚠️ เพิ่มได้เพียง {$actual_days_added} วัน (ขาดอีก {$deficit} วัน)";
+            $status_message = "⚠️ แก้ไขได้เพียง {$actual_days_added} วัน (เหลืออีก {$deficit} วันที่ขาด)";
         }
         
         return [
             'success' => true, 
-            'days_added' => $actual_days_added,
+            'days_updated' => $actual_days_added,
+            'total_absent_days' => $total_absent_days,
+            'remaining_absent_days' => $total_absent_days - $actual_days_added,
             'new_percentage' => $new_percentage,
             'requested_days' => $days_to_add,
-            'message' => "ปรับข้อมูลเสร็จสิ้น! ต้องการ {$days_to_add} วัน • เพิ่มได้ {$actual_days_added} วัน • เปอร์เซ็นต์ใหม่ {$new_percentage}% {$status_message}"
+            'message' => "ปรับข้อมูลเสร็จสิ้น! วันที่ขาดทั้งหมด: {$total_absent_days} วัน • แก้ไขแล้ว: {$actual_days_added} วัน • เปอร์เซ็นต์ใหม่: {$new_percentage}% {$status_message}"
         ];
         
     } catch (Exception $e) {
@@ -664,7 +715,9 @@ function adjustStudentAttendance($student_id, $days_to_add) {
         
         return [
             'success' => false,
-            'days_added' => 0,
+            'days_updated' => 0,
+            'total_absent_days' => 0,
+            'remaining_absent_days' => 0,
             'message' => 'เกิดข้อผิดพลาด: ' . $e->getMessage()
         ];
     }
