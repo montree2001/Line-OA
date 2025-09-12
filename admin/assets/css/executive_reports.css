@@ -335,6 +335,7 @@ body {
 .section-header {
     margin-bottom: 25px;
     text-align: center;
+    position: relative;
 }
 
 .section-header h2 {
@@ -351,6 +352,45 @@ body {
     color: var(--executive-gray);
     font-size: 1.1rem;
     margin: 0;
+}
+
+.section-actions {
+    position: absolute;
+    top: 0;
+    right: 0;
+    display: flex;
+    gap: 10px;
+}
+
+.export-excel-btn {
+    background: linear-gradient(135deg, var(--executive-success) 0%, #2E7D32 100%);
+    border: none;
+    color: white;
+    padding: 10px 16px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: var(--transition);
+    font-weight: 500;
+    font-size: 0.9rem;
+    box-shadow: 0 2px 8px rgba(46, 125, 50, 0.3);
+}
+
+.export-excel-btn:hover {
+    background: linear-gradient(135deg, #2E7D32 0%, var(--executive-success) 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(46, 125, 50, 0.4);
+}
+
+.export-excel-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 6px rgba(46, 125, 50, 0.3);
+}
+
+.export-excel-btn i {
+    font-size: 18px;
 }
 
 /* ===== ประสิทธิภาพแผนกวิชา ===== */
@@ -1069,6 +1109,17 @@ body {
         font-size: 1.5rem;
         flex-direction: column;
         gap: 5px;
+    }
+    
+    .section-actions {
+        position: static;
+        justify-content: center;
+        margin-top: 15px;
+    }
+    
+    .export-excel-btn {
+        padding: 8px 12px;
+        font-size: 0.8rem;
     }
     
     .performance-grid,

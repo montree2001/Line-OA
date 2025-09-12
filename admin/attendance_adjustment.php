@@ -49,6 +49,7 @@ function getStudentsUnder60Percent() {
         
         $total_days = 48;
         
+        // ปรับปรุง Query ให้ใช้ JOIN แทน Subquery เพื่อความเร็ว
         $query = "
             SELECT 
                 s.student_id,
@@ -60,23 +61,29 @@ function getStudentsUnder60Percent() {
                 COALESCE(c.group_number, '1') AS group_number,
                 COALESCE(d.department_name, 'สามัญ') AS department_name,
                 CONCAT(COALESCE(c.level, 'ม.6'), '/', COALESCE(c.group_number, '1')) AS class,
-                (SELECT COUNT(*) FROM attendance 
-                 WHERE student_id = s.student_id AND academic_year_id = ? AND attendance_status = 'present') AS attended_days,
-                (SELECT COUNT(*) FROM attendance 
-                 WHERE student_id = s.student_id AND academic_year_id = ? AND attendance_status = 'absent') AS absent_days,
-                ROUND(((SELECT COUNT(*) FROM attendance 
-                        WHERE student_id = s.student_id AND academic_year_id = ? AND attendance_status = 'present') / ?) * 100, 2) AS attendance_percentage
+                COALESCE(att_summary.attended_days, 0) AS attended_days,
+                COALESCE(att_summary.absent_days, 0) AS absent_days,
+                ROUND((COALESCE(att_summary.attended_days, 0) / ?) * 100, 2) AS attendance_percentage
             FROM students s
             LEFT JOIN users u ON s.user_id = u.user_id
             LEFT JOIN classes c ON s.current_class_id = c.class_id
             LEFT JOIN departments d ON c.department_id = d.department_id
+            LEFT JOIN (
+                SELECT 
+                    student_id,
+                    SUM(CASE WHEN attendance_status = 'present' THEN 1 ELSE 0 END) AS attended_days,
+                    SUM(CASE WHEN attendance_status = 'absent' THEN 1 ELSE 0 END) AS absent_days
+                FROM attendance 
+                WHERE academic_year_id = ?
+                GROUP BY student_id
+            ) att_summary ON s.student_id = att_summary.student_id
             WHERE s.status = 'กำลังศึกษา'
             HAVING attendance_percentage < 60
             ORDER BY attendance_percentage ASC
         ";
         
         $stmt = $conn->prepare($query);
-        $stmt->execute([$academic_year_id, $academic_year_id, $academic_year_id, $total_days]);
+        $stmt->execute([$total_days, $academic_year_id]);
         $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
         foreach ($students as &$student) {
@@ -205,27 +212,93 @@ function autoAdjustSingleStudent($student_id) {
 
 function autoAdjustAllStudents() {
     try {
-        $students = getStudentsUnder60Percent();
-        $success_count = 0;
-        $error_count = 0;
+        $conn = getDB();
+        $conn->beginTransaction();
         
-        foreach ($students as $student) {
-            if ($student['days_needed'] > 0) {
-                $result = autoAdjustSingleStudent($student['student_id']);
-                if ($result['success']) {
-                    $success_count++;
-                } else {
-                    $error_count++;
+        $academic_year_query = "SELECT academic_year_id FROM academic_years WHERE is_active = 1 LIMIT 1";
+        $stmt = $conn->query($academic_year_query);
+        $academic_year = $stmt->fetch(PDO::FETCH_ASSOC);
+        $academic_year_id = $academic_year['academic_year_id'] ?? 1;
+        
+        $students = getStudentsUnder60Percent();
+        $students_to_process = array_filter($students, function($s) { return $s['days_needed'] > 0; });
+        
+        if (empty($students_to_process)) {
+            $conn->rollBack();
+            return [
+                'success' => false,
+                'message' => 'ไม่พบนักเรียนที่ต้องปรับข้อมูล'
+            ];
+        }
+        
+        $total_updated = 0;
+        $processed_students = [];
+        
+        // ใช้ batch processing แทนการ loop แต่ละคน
+        foreach ($students_to_process as $student) {
+            $student_id = $student['student_id'];
+            $days_needed = $student['days_needed'];
+            
+            // ดึงวันที่ขาดเรียนล่าสุดตามจำนวนที่ต้องการ
+            $absent_days_query = "
+                SELECT date 
+                FROM attendance 
+                WHERE student_id = ? AND academic_year_id = ? AND attendance_status = 'absent'
+                ORDER BY date DESC
+                LIMIT ?
+            ";
+            $stmt = $conn->prepare($absent_days_query);
+            $stmt->execute([$student_id, $academic_year_id, $days_needed]);
+            $absent_dates = $stmt->fetchAll(PDO::FETCH_COLUMN);
+            
+            if (!empty($absent_dates)) {
+                // ใช้ IN clause เพื่อ update หลาย record พร้อมกัน
+                $date_placeholders = str_repeat('?,', count($absent_dates) - 1) . '?';
+                $update_query = "
+                    UPDATE attendance 
+                    SET attendance_status = 'present',
+                        check_method = 'Manual',
+                        check_time = '08:00:00',
+                        remarks = 'ปรับจาก absent เป็น present เพื่อให้เกิน 60% (Batch Update)'
+                    WHERE student_id = ? AND academic_year_id = ? AND date IN ($date_placeholders) AND attendance_status = 'absent'
+                ";
+                
+                $params = array_merge([$student_id, $academic_year_id], $absent_dates);
+                $stmt = $conn->prepare($update_query);
+                
+                if ($stmt->execute($params)) {
+                    $updated_rows = $stmt->rowCount();
+                    $total_updated += $updated_rows;
+                    $processed_students[] = [
+                        'name' => $student['first_name'] . ' ' . $student['last_name'],
+                        'updated_days' => $updated_rows
+                    ];
                 }
             }
         }
         
-        $total_processed = $success_count + $error_count;
-        $summary = "ประมวลผล {$total_processed} คน - สำเร็จ: {$success_count} คน";
-        
-        if ($error_count > 0) {
-            $summary .= ", ผิดพลาด: {$error_count} คน";
+        // อัพเดท student_academic_records ถ้าตารางมีอยู่
+        if (table_exists($conn, 'student_academic_records')) {
+            foreach ($students_to_process as $student) {
+                $student_id = $student['student_id'];
+                $days_needed = min($student['days_needed'], $student['absent_days']);
+                
+                $update_records_query = "
+                    UPDATE student_academic_records 
+                    SET 
+                        total_attendance_days = COALESCE(total_attendance_days, 0) + ?,
+                        total_absence_days = GREATEST(0, COALESCE(total_absence_days, 0) - ?)
+                    WHERE student_id = ? AND academic_year_id = ?
+                ";
+                $stmt = $conn->prepare($update_records_query);
+                $stmt->execute([$days_needed, $days_needed, $student_id, $academic_year_id]);
+            }
         }
+        
+        $conn->commit();
+        
+        $success_count = count($processed_students);
+        $summary = "✅ ประมวลผลสำเร็จ! อัปเดต {$success_count} คน รวม {$total_updated} วัน";
         
         return [
             'success' => $success_count > 0,
@@ -233,6 +306,7 @@ function autoAdjustAllStudents() {
         ];
         
     } catch (Exception $e) {
+        if (isset($conn)) $conn->rollBack();
         error_log("Error in autoAdjustAllStudents: " . $e->getMessage());
         return [
             'success' => false,
@@ -353,6 +427,7 @@ ob_start();
         gap: 8px;
         transition: all 0.3s ease;
         text-decoration: none;
+        position: relative;
     }
     
     .auto-adjust-btn:hover {
@@ -360,6 +435,93 @@ ob_start();
         transform: translateY(-1px);
         color: white;
         box-shadow: 0px 15px 30px rgba(19, 222, 185, 0.3);
+    }
+    
+    .auto-adjust-btn:disabled {
+        background: #6c757d;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+    }
+    
+    .btn-loading {
+        pointer-events: none;
+        opacity: 0.7;
+    }
+    
+    .btn-loading .btn-text {
+        opacity: 0;
+    }
+    
+    .btn-loading::after {
+        content: "";
+        position: absolute;
+        width: 20px;
+        height: 20px;
+        top: 50%;
+        left: 50%;
+        margin-left: -10px;
+        margin-top: -10px;
+        border: 2px solid #ffffff;
+        border-radius: 50%;
+        border-top-color: transparent;
+        animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+        to {
+            transform: rotate(360deg);
+        }
+    }
+    
+    .progress-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.7);
+        display: none;
+        justify-content: center;
+        align-items: center;
+        z-index: 9999;
+    }
+    
+    .progress-content {
+        background: white;
+        padding: 30px;
+        border-radius: 10px;
+        text-align: center;
+        max-width: 400px;
+        width: 90%;
+    }
+    
+    .progress-title {
+        font-size: 18px;
+        font-weight: 600;
+        margin-bottom: 15px;
+        color: #2A3547;
+    }
+    
+    .progress-bar {
+        width: 100%;
+        height: 8px;
+        background: #f0f0f0;
+        border-radius: 4px;
+        overflow: hidden;
+        margin-bottom: 15px;
+    }
+    
+    .progress-fill {
+        height: 100%;
+        background: linear-gradient(135deg, #5D87FF, #4a6ccc);
+        width: 0%;
+        transition: width 0.3s ease;
+    }
+    
+    .progress-text {
+        color: #5A6A85;
+        font-size: 14px;
     }
     
     .students-table {
@@ -440,12 +602,44 @@ ob_start();
         display: flex;
         align-items: center;
         gap: 5px;
+        position: relative;
     }
     
     .adjust-btn:hover {
         background: linear-gradient(135deg, #4a6ccc, #5D87FF);
         transform: translateY(-1px);
         box-shadow: 0px 15px 30px rgba(93, 135, 255, 0.3);
+    }
+    
+    .adjust-btn:disabled {
+        background: #6c757d;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+    }
+    
+    .adjust-btn.btn-loading {
+        pointer-events: none;
+        opacity: 0.7;
+    }
+    
+    .adjust-btn.btn-loading .btn-text {
+        opacity: 0;
+    }
+    
+    .adjust-btn.btn-loading::after {
+        content: "";
+        position: absolute;
+        width: 16px;
+        height: 16px;
+        top: 50%;
+        left: 50%;
+        margin-left: -8px;
+        margin-top: -8px;
+        border: 2px solid #ffffff;
+        border-radius: 50%;
+        border-top-color: transparent;
+        animation: spin 1s linear infinite;
     }
     
     .no-students {
@@ -638,12 +832,12 @@ ob_start();
     <div class="main-card">
         <div class="card-header">
             <h3>รายชื่อนักเรียนที่ต้องปรับข้อมูล</h3>
-            <form method="POST" style="margin: 0;">
+            <form method="POST" style="margin: 0;" id="batchForm">
                 <input type="hidden" name="action" value="auto_adjust_all">
-                <button type="submit" class="auto-adjust-btn" 
-                        onclick="return confirm('คุณต้องการปรับข้อมูลให้นักเรียนทั้งหมด <?php echo count($students_under_60); ?> คน ให้มีการเข้าแถวเกิน 60% หรือไม่?\n\nระบบจะทำการเปลี่ยนสถานะจาก absent เป็น present ในวันที่ขาดเรียน\n\nยืนยันการดำเนินการ?')">
+                <button type="button" class="auto-adjust-btn" id="batchBtn"
+                        onclick="confirmBatchUpdate(<?php echo count($students_under_60); ?>)">
                     <span class="material-icons">auto_fix_high</span>
-                    ปรับทุกคนอัตโนมัติ
+                    <span class="btn-text">ปรับทุกคนอัตโนมัติ</span>
                 </button>
             </form>
         </div>
@@ -691,10 +885,16 @@ ob_start();
                                 <form method="POST" style="margin: 0;">
                                     <input type="hidden" name="action" value="adjust_single">
                                     <input type="hidden" name="student_id" value="<?php echo $student['student_id']; ?>">
-                                    <button type="submit" class="adjust-btn" 
-                                            onclick="return confirm('ปรับข้อมูลให้ <?php echo htmlspecialchars($student['first_name'] . ' ' . $student['last_name']); ?>?\n\nปัจจุบัน: <?php echo $student['attended_days']; ?> วัน (<?php echo $student['attendance_percentage']; ?>%)\nจะปรับเป็น: <?php echo ($student['attended_days'] + $student['days_needed']); ?> วัน (<?php echo $student['projected_percentage']; ?>%)\n\nยืนยัน?')">
+                                    <button type="button" class="adjust-btn" 
+                                            onclick="adjustSingleStudent(this, 
+                                                <?php echo $student['student_id']; ?>, 
+                                                '<?php echo htmlspecialchars($student['first_name'] . ' ' . $student['last_name'], ENT_QUOTES); ?>', 
+                                                <?php echo $student['attended_days']; ?>, 
+                                                <?php echo $student['attendance_percentage']; ?>, 
+                                                <?php echo ($student['attended_days'] + $student['days_needed']); ?>, 
+                                                <?php echo $student['projected_percentage']; ?>)">
                                         <span class="material-icons" style="font-size: 16px;">check</span>
-                                        ปรับเดี่ยว
+                                        <span class="btn-text">ปรับเดี่ยว</span>
                                     </button>
                                 </form>
                             </td>
@@ -715,6 +915,17 @@ ob_start();
         </div>
     </div>
 <?php endif; ?>
+
+<!-- Progress Overlay -->
+<div class="progress-overlay" id="progressOverlay">
+    <div class="progress-content">
+        <div class="progress-title" id="progressTitle">กำลังปรับข้อมูลการเข้าแถว</div>
+        <div class="progress-bar">
+            <div class="progress-fill" id="progressFill"></div>
+        </div>
+        <div class="progress-text" id="progressText">กรุณารอสักครู่...</div>
+    </div>
+</div>
 
 <script>
 $(document).ready(function() {
@@ -811,6 +1022,61 @@ $(document).ready(function() {
         });
     }, 5000);
 });
+
+// Batch update confirmation and progress
+function confirmBatchUpdate(studentCount) {
+    if (confirm(`คุณต้องการปรับข้อมูลให้นักเรียนทั้งหมด ${studentCount} คน ให้มีการเข้าแถวเกิน 60% หรือไม่?\n\nระบบจะทำการเปลี่ยนสถานะจาก absent เป็น present ในวันที่ขาดเรียน\n\nยืนยันการดำเนินการ?`)) {
+        startBatchUpdate(studentCount);
+    }
+}
+
+function startBatchUpdate(studentCount) {
+    const btn = document.getElementById('batchBtn');
+    const overlay = document.getElementById('progressOverlay');
+    const progressFill = document.getElementById('progressFill');
+    const progressText = document.getElementById('progressText');
+    
+    // Show loading state
+    btn.classList.add('btn-loading');
+    btn.disabled = true;
+    overlay.style.display = 'flex';
+    
+    // Simulate progress (since we can't track real progress in PHP)
+    let progress = 0;
+    const increment = 100 / Math.max(studentCount, 10);
+    
+    const progressInterval = setInterval(() => {
+        progress += increment;
+        if (progress <= 95) {
+            progressFill.style.width = progress + '%';
+            progressText.textContent = `ประมวลผล ${Math.floor(progress)}% (${Math.floor((progress/100) * studentCount)}/${studentCount} คน)`;
+        }
+    }, 100);
+    
+    // Submit form
+    setTimeout(() => {
+        clearInterval(progressInterval);
+        progressFill.style.width = '100%';
+        progressText.textContent = 'เสร็จสิ้น! กำลังบันทึกข้อมูล...';
+        
+        setTimeout(() => {
+            document.getElementById('batchForm').submit();
+        }, 500);
+    }, Math.max(2000, studentCount * 50));
+}
+
+// Individual student adjustment with loading
+function adjustSingleStudent(button, studentId, studentName, currentDays, currentPercentage, targetDays, targetPercentage) {
+    if (confirm(`ปรับข้อมูลให้ ${studentName}?\n\nปัจจุบัน: ${currentDays} วัน (${currentPercentage}%)\nจะปรับเป็น: ${targetDays} วัน (${targetPercentage}%)\n\nยืนยัน?`)) {
+        
+        // Show loading state
+        button.classList.add('btn-loading');
+        button.disabled = true;
+        
+        // Submit form
+        button.closest('form').submit();
+    }
+}
 </script>
 
 <?php

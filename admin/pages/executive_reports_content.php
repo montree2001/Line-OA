@@ -245,6 +245,11 @@ $current_thai_month = getThaiMonth($current_month);
     <div class="section-header">
         <h2><i class="material-icons">class</i> ประสิทธิภาพห้องเรียน</h2>
         <p>รายละเอียดผลการดำเนินงานของแต่ละห้องเรียน</p>
+        <div class="section-actions">
+            <button class="export-excel-btn" onclick="exportClassPerformanceExcel()">
+                <i class="material-icons">file_download</i> ดาวน์โหลด Excel
+            </button>
+        </div>
     </div>
     
     <!-- กราฟอันดับห้องเรียน -->

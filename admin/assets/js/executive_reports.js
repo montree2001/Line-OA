@@ -549,6 +549,45 @@ function exportReport() {
 }
 
 /**
+ * ส่งออกรายงานประสิทธิภาพห้องเรียนเป็น Excel
+ */
+function exportClassPerformanceExcel() {
+    showLoading();
+    
+    try {
+        // สร้าง URL สำหรับการส่งออก Excel
+        const params = new URLSearchParams({
+            period: currentPeriod,
+            department_id: currentDepartment === 'all' ? '' : currentDepartment
+        });
+        
+        // สร้าง URL สำหรับดาวน์โหลด
+        const exportUrl = `export_class_performance_excel.php?${params}`;
+        
+        // สร้าง link element สำหรับดาวน์โหลด
+        const link = document.createElement('a');
+        link.href = exportUrl;
+        link.download = '';
+        link.style.display = 'none';
+        
+        // เพิ่มเข้าไปใน DOM และคลิก
+        document.body.appendChild(link);
+        link.click();
+        
+        // ลบ link ออกจาก DOM
+        document.body.removeChild(link);
+        
+        hideLoading();
+        showSuccess('กำลังดาวน์โหลดไฟล์ Excel...');
+        
+    } catch (error) {
+        console.error('เกิดข้อผิดพลาดในการส่งออก Excel:', error);
+        hideLoading();
+        showError('ไม่สามารถส่งออกไฟล์ Excel ได้ กรุณาลองใหม่อีกครั้ง');
+    }
+}
+
+/**
  * เปิดใช้งานแท็บ
  */
 function activateTab(tabId) {
@@ -969,3 +1008,4 @@ window.addEventListener('resize', function() {
 // ฟังก์ชันที่เรียกจากภายนอก
 window.refreshDashboard = refreshDashboard;
 window.exportReport = exportReport;
+window.exportClassPerformanceExcel = exportClassPerformanceExcel;
